@@ -1,0 +1,1743 @@
+# Contracts
+
+> Linear: [LOG-349](https://linear.app/logiqdev/issue/LOG-349/contracts) · Status: Backlog
+
+## 1. Purpose
+
+The Contracts module is the contractual source of truth for the Agency
+Operating System. It manages the lifecycle of agreements from generation
+and negotiation through approval, electronic signature, activation,
+modification, renewal, termination and archival.
+
+It must integrate with the existing CRM, Offers, Projects, Finance,
+Documents, Customer Portal, Messaging, Calendar and Task Management
+modules without recreating their domain logic.
+
+### Core lifecycle
+
+**Generate → Review → Modify → Version → Approve → Sign → Activate →**
+**Amend → Renew / Terminate → Archive**
+
+### Core principles
+
+* A client can have many contracts.
+* A contract can reference one or many projects.
+* A project can exist without a contract.
+* Signed contract versions are immutable.
+* Every material modification is traceable to a version, amendment or
+  renewal.
+* A signature request is always bound to one exact document version.
+* Commercial truth remains in Offers; execution truth remains in
+  Projects; financial transaction truth remains in Finance; document
+  storage remains in Documents.
+
+---
+
+## 2. Contract Types
+
+Configurable types should include:
+
+* Master Service Agreement (MSA)
+* Statement of Work (SOW)
+* Software Development Agreement
+* AI Automation Agreement
+* Consulting Agreement
+* Retainer Agreement
+* Maintenance Agreement
+* Support Agreement
+* Managed Services Agreement
+* Subscription Agreement
+* Licensing Agreement
+* NDA
+* DPA
+* Vendor Agreement
+* Contractor Agreement
+* Partnership Agreement
+* Change Order
+* Amendment
+* Renewal
+* Termination Agreement
+* Other
+
+Each type can define its default template, required metadata, approval
+workflow, signature requirements, renewal behavior and required
+relationships.
+
+---
+
+## 3. Contract Record
+
+A contract is a structured business record plus one or more document
+versions.
+
+Core metadata:
+
+* Contract ID
+* Contract number
+* Title
+* Type
+* Status
+* Owner
+* Primary client
+* Additional parties
+* Effective date
+* Start date
+* End date
+* Renewal type
+* Renewal date
+* Notice deadline
+* Currency
+* Contract value reference
+* Related Offer
+* Related Projects
+* Related parent contract
+* Related documents
+* Tags
+* Custom fields
+
+The metadata record must remain separate from the generated file
+artifact.
+
+---
+
+## 4. Parties
+
+Contracts support multiple parties.
+
+Each party can reference an existing CRM/company/contact record rather
+than duplicating it.
+
+Store contractual party context:
+
+* Legal name
+* Party type
+* Address reference
+* Signatory
+* Signatory title
+* Signatory email
+* Signature requirements
+
+A contract may have multiple signatories for the same party.
+
+---
+
+## 5. Contract Lifecycle States
+
+Recommended states:
+
+* Draft
+* Internal Review
+* Client Review
+* Approval Required
+* Ready for Signature
+* Partially Signed
+* Fully Signed
+* Active
+* Expiring
+* Renewed
+* Superseded
+* Terminated
+* Expired
+* Cancelled
+* Archived
+
+Lifecycle status and document/version status are separate concepts.
+
+---
+
+## 6. Contract Numbering
+
+Support configurable numbering rules such as `CTR-2026-0001`, including
+prefixes, year, type and organization-specific sequences.
+
+Contract numbers should be stable and auditable.
+
+---
+
+## 7. Generation Sources
+
+A contract can be created from:
+
+* Blank contract
+* Contract template
+* Accepted Offer
+* Existing client
+* Existing Project
+* Renewal
+* Amendment
+* Change Request
+* API
+
+The most important workflow is:
+
+**CRM Deal → Accepted Offer → Contract → Project**
+
+The Contract stores the source Offer and Offer version used for
+generation.
+
+---
+
+## 8. Template System
+
+Templates are reusable contractual structures containing:
+
+* Sections
+* Clauses
+* Variables
+* Conditional sections
+* Signature blocks
+* Default metadata
+* Required fields
+* Optional clauses
+* Appendices
+
+Templates are independently versioned. Changing a template never
+modifies existing contracts.
+
+---
+
+## 9. Template Variables
+
+Variables populate contractual data from platform records.
+
+Examples:
+
+* Client legal name
+* Company legal name
+* Contract number
+* Effective date
+* Expiration date
+* Project name
+* Offer number
+* Offer total
+* Payment terms
+* Signatory details
+
+Required unresolved variables prevent final generation.
+
+---
+
+## 10. Conditional Clauses
+
+Templates can conditionally include clauses based on structured contract
+data.
+
+Examples:
+
+* DPA section when personal data is processed.
+* SLA section for managed support.
+* Recurring billing section for retainers.
+* Maintenance section for maintenance agreements.
+* Milestone payment section for project-based work.
+
+Rules must be deterministic, reviewable and versioned.
+
+---
+
+## 11. Clause Library
+
+Reusable clauses should have:
+
+* Clause ID
+* Name
+* Category
+* Text
+* Version
+* Status
+* Description
+* Usage restrictions
+* Owner
+* Effective date
+* Deprecated date
+
+Categories may include payment, IP, confidentiality, privacy, liability,
+warranty, termination, renewal, SLA, security and governing law.
+
+---
+
+## 12. Clause Versioning
+
+A clause change creates a new clause version.
+
+A previously generated contract retains the exact clause version used at
+generation time.
+
+No historical contract should silently inherit a newer clause.
+
+---
+
+## 13. Contract Editor
+
+Authorized users can edit draft versions using a rich document editor
+supporting:
+
+* Rich text
+* Headings
+* Lists
+* Tables
+* Page breaks
+* Sections
+* Clause insertion
+* Variable insertion
+* Signature blocks
+* Headers/footers
+* Comments
+* Review markers
+* Appendices
+
+Signed documents cannot be edited.
+
+---
+
+## 14. Structured Sections
+
+Sections should be addressable individually so the system can support
+review comments, diffs and amendments against a specific section.
+
+Typical sections:
+
+ 1. Parties
+ 2. Definitions
+ 3. Scope
+ 4. Deliverables
+ 5. Responsibilities
+ 6. Fees
+ 7. Payment
+ 8. IP
+ 9. Confidentiality
+10. Data Protection
+11. Security
+12. Liability
+13. Term
+14. Renewal
+15. Termination
+16. Governing Law
+17. Signatures
+18. Schedules / Appendices
+
+---
+
+## 15. Contract Generation Workflow
+
+ 1. Select contract type.
+ 2. Select template.
+ 3. Select parties.
+ 4. Select related Offer / Project.
+ 5. Populate structured metadata.
+ 6. Resolve variables.
+ 7. Resolve conditional clauses.
+ 8. Generate draft.
+ 9. Preview rendered document.
+10. Edit if required.
+11. Save a version.
+12. Submit for review.
+13. Approve exact version.
+14. Lock version for signature.
+15. Create signature package.
+16. Send for signature.
+
+---
+
+## 16. Generation Validation
+
+Before generation validate:
+
+* Contract type
+* Required parties
+* Required fields
+* Template version
+* Clause dependencies
+* Variables
+* Dates
+* Signatories
+* Related records
+
+Errors should identify the exact missing input.
+
+---
+
+## 17. Rendered Document
+
+Every finalized generation creates a document artifact containing:
+
+* Contract ID
+* Version
+* Template version
+* Clause versions
+* Generation timestamp
+* Generator
+* Source references
+* Document ID
+* Integrity hash where applicable
+
+---
+
+## 18. PDF Generation
+
+The final signature artifact should support stable PDF generation with
+preserved pagination, formatting, tables, headers, footers, signature
+blocks and appendices.
+
+The exact rendering engine is an implementation detail.
+
+---
+
+## 19. Version Model
+
+Every material draft change creates a version.
+
+Example:
+
+* v0.1 Initial draft
+* v0.2 Internal revision
+* v0.3 Client revision
+* v0.4 Final negotiation revision
+* v1.0 Approved for signature
+* Amendment 1
+* Amendment 2
+
+Version numbering can be configurable.
+
+---
+
+## 20. Version Record
+
+Each version stores:
+
+* Version ID
+* Version number
+* Parent version
+* Author
+* Timestamp
+* Change summary
+* Status
+* Document artifact
+* Template version
+* Approval state
+* Signature state
+
+---
+
+## 21. Version Comparison
+
+Users can compare any two versions.
+
+Comparison must highlight:
+
+* Added text
+* Removed text
+* Changed text
+* Added/removed sections
+* Changed clauses
+* Changed variables
+* Changed dates
+* Changed commercial references
+
+Comparison must be read-only and must never modify either version.
+
+---
+
+## 22. Version Timeline
+
+Show a chronological version graph with author, timestamp, state, change
+summary, approvals and signature status.
+
+Example:
+
+`v0.1 → v0.2 → v0.3 → v1.0 Signed → Amendment 1 → Renewal`
+
+---
+
+## 23. Review Workflow
+
+A review request references one exact version.
+
+Reviewers can:
+
+* Approve
+* Reject
+* Request changes
+* Comment on a section
+* Resolve comments
+
+If a new version is created, the new version may require a new review.
+
+Old review history remains attached to the old version.
+
+---
+
+## 24. Internal vs External Review
+
+Comments and review requests must distinguish:
+
+* Internal
+* Client-visible
+
+Internal notes must never be exposed through the Customer Portal.
+
+---
+
+## 25. Negotiation Workflow
+
+Support:
+
+**Internal Draft → Client Review → Requested Changes → New Version →**
+**Internal Approval → Client Approval → Signature**
+
+Every negotiation round remains traceable.
+
+---
+
+## 26. Change Requests
+
+Contract changes should capture:
+
+* Requested section
+* Requested change
+* Requester
+* Reason
+* Impact
+* Status
+* Related version
+* Resulting version
+
+A client request should never directly mutate the current contract.
+
+---
+
+## 27. Approval Workflow
+
+Signature approval is separate from internal business approval.
+
+Approval steps may include:
+
+* Account owner
+* Finance
+* Legal reviewer
+* Executive
+* Technical owner
+
+Each approval is bound to an exact contract version.
+
+---
+
+## 28. Approval Rules
+
+Approval requirements can depend on:
+
+* Contract value
+* Contract type
+* Liability terms
+* Discount
+* Payment terms
+* Duration
+* Client category
+* Risk level
+* Custom fields
+
+Example:
+
+`High-value contract → Finance approval → Executive approval → Ready for Signature`
+
+---
+
+## 29. Approval Audit
+
+Record:
+
+* Version
+* Approval step
+* Approver
+* Decision
+* Date
+* Comments
+
+Approval of v1.0 does not approve v1.1.
+
+---
+
+## 30. Signature Preparation
+
+Before sending for signature validate:
+
+* Exact version selected
+* Required approvals complete
+* Required parties exist
+* Signatories are configured
+* Signature fields are mapped
+* Required fields are populated
+* Required appendices exist
+* No blocking review comments remain
+
+---
+
+## 31. Signature Blocks
+
+Support:
+
+* Party
+* Signer name
+* Title
+* Email
+* Signature field
+* Date field
+* Initial field
+* Text field
+
+Each field is mapped to a specific signer.
+
+---
+
+## 32. Signature Workflow
+
+Support:
+
+* Single signer
+* Multiple signers
+* Sequential signing
+* Parallel signing
+* Internal then external
+* External then internal
+* Multiple parties
+
+---
+
+## 33. Signature Provider Abstraction
+
+Use a provider abstraction so the product can support providers such as
+DocuSign, Dropbox Sign, Adobe Acrobat Sign or another provider without
+changing the Contracts domain model.
+
+Provider-specific metadata should remain separate from core contract
+fields.
+
+---
+
+## 34. Signature Request
+
+A signature request contains:
+
+* Request ID
+* Contract ID
+* Exact version ID
+* Signers
+* Signing order
+* Provider
+* Provider request ID
+* Created timestamp
+* Sent timestamp
+* Expiration
+* Status
+
+The version relationship is immutable.
+
+---
+
+## 35. Signature States
+
+Support:
+
+* Not Sent
+* Sent
+* Delivered
+* Viewed
+* Partially Signed
+* Fully Signed
+* Declined
+* Expired
+* Cancelled
+* Failed
+
+---
+
+## 36. Signer Experience
+
+The signer sees:
+
+* Contract title
+* Parties
+* Document preview
+* Required fields
+* Signature controls
+* Completion status
+* Signing confirmation
+
+The signing UX can be supplied by the signature provider or embedded
+through its supported integration.
+
+---
+
+## 37. Signature Reminders
+
+Support configurable reminder frequency, maximum reminders and
+expiration.
+
+Reminder delivery uses the existing notification/communication
+infrastructure rather than creating a separate messaging system.
+
+---
+
+## 38. Signature Audit Trail
+
+Record provider events including:
+
+* Request created
+* Sent
+* Delivered
+* Viewed
+* Signed
+* Declined
+* Reminder sent
+* Cancelled
+* Expired
+
+Where available retain provider timestamp, signer, authentication
+method, provider event ID and audit certificate reference.
+
+---
+
+## 39. Signed Artifact Immutability
+
+After full signature:
+
+* Document cannot be edited.
+* Signed version cannot be overwritten.
+* Signature evidence cannot be replaced.
+* Audit history cannot be rewritten.
+* Future changes require an amendment, renewal or new contract.
+
+---
+
+## 40. Signed Artifact Integrity
+
+Store an integrity hash/fingerprint of the finalized signed artifact
+where appropriate.
+
+This provides technical evidence that the stored artifact has not been
+changed.
+
+---
+
+## 41. Signature Completion
+
+When all required signatures are completed:
+
+1. Receive provider completion event.
+2. Validate request and version.
+3. Retrieve final artifact.
+4. Store signed artifact.
+5. Store signature evidence.
+6. Mark version Signed.
+7. Move contract to Active where applicable.
+8. Create audit event.
+9. Trigger configured downstream workflows.
+
+---
+
+## 42. Signature Failure / Expiration
+
+Failed or expired requests must preserve history and allow authorized
+retry.
+
+Retrying a signature request must not silently change the signed
+document version.
+
+If content changes, create a new version first.
+
+---
+
+## 43. Amendments
+
+An amendment is a first-class record linked to the original signed
+contract.
+
+Fields:
+
+* Amendment number
+* Original contract
+* Original signed version
+* Effective date
+* Reason
+* Changed sections
+* Old language reference
+* New language
+* Approval state
+* Signature state
+* Related Project Change Request
+* Related Offer / commercial record
+
+---
+
+## 44. Amendment Generation
+
+Workflow:
+
+ 1. Select active contract.
+ 2. Select amendment template.
+ 3. Select sections being changed.
+ 4. Populate new language.
+ 5. Link originating change request if applicable.
+ 6. Generate amendment.
+ 7. Review.
+ 8. Approve.
+ 9. Lock amendment version.
+10. Send for signature.
+11. Activate after completion.
+
+The original contract remains unchanged.
+
+---
+
+## 45. Amendment Document
+
+The amendment should clearly identify:
+
+* Original agreement
+* Amendment number
+* Effective date
+* Modified sections
+* Replacement language
+* Unchanged provisions
+* Signatures
+
+---
+
+## 46. Renewal
+
+Renewals should preserve lineage:
+
+**Original Contract → Renewal → Renewal Version**
+
+Support:
+
+* Manual renewal
+* Automatic renewal workflow
+* Modified renewal
+* Renewal with new Offer
+* Renewal with new Project
+
+---
+
+## 47. Superseding Contract
+
+A new contract can supersede an existing contract.
+
+Relationship:
+
+**Contract A → Superseded By → Contract B**
+
+The old contract remains historically accessible.
+
+---
+
+## 48. Master Agreement / SOW Structure
+
+Support structures such as:
+
+**MSA → SOW → Amendment → Renewal**
+
+The MSA can contain general legal terms while SOWs contain
+project-specific scope.
+
+Each SOW may link to a Project.
+
+---
+
+## 49. Contract Obligations
+
+Authorized users may track operational obligations such as:
+
+* Deliverable due date
+* Payment obligation
+* Reporting obligation
+* Renewal notice
+* SLA requirement
+* Security review
+* Customer approval
+
+Each obligation should link to its originating contract section.
+
+Where execution is needed, the obligation may create/link a Task instead
+of duplicating task functionality.
+
+---
+
+## 50. Obligation Tracking
+
+An obligation contains:
+
+* Title
+* Type
+* Responsible party
+* Due date
+* Frequency
+* Status
+* Reminder
+* Related Project
+* Related Task
+* Source contract section
+
+---
+
+## 51. Contract Dates
+
+Distinguish:
+
+* Draft date
+* Approval date
+* Signature date
+* Effective date
+* Start date
+* End date
+* Renewal date
+* Notice deadline
+* Expiration date
+* Termination date
+
+These dates should be independently addressable by automation.
+
+---
+
+## 52. Expiration / Renewal Monitoring
+
+The system should monitor upcoming expiration and notice dates.
+
+Configurable reminder windows can include 180, 120, 90, 60, 30, 14 and 7
+days.
+
+The exact windows should be organization-configurable.
+
+---
+
+## 53. Termination
+
+Termination records:
+
+* Termination type
+* Reason
+* Requesting party
+* Notice date
+* Effective date
+* Approval
+* Supporting document
+* Notes
+
+Termination never deletes or alters the original signed document.
+
+---
+
+## 54. Contract Value / Payment Context
+
+Contracts may store structured contractual context:
+
+* Total value
+* Currency
+* One-time value
+* Recurring value
+* Billing frequency
+* Payment terms
+
+Finance remains authoritative for actual invoices, payments, expenses
+and accounting records.
+
+---
+
+## 55. Offer Integration
+
+Contracts reference the Offer and exact Offer version that produced the
+contractual commercial context.
+
+The Contract may consume:
+
+* Services
+* Scope
+* Deliverables
+* Pricing context
+* Payment terms
+* Duration
+* Commercial assumptions
+
+Offers remain authoritative for proposal versions and commercial
+acceptance.
+
+---
+
+## 56. Project Integration
+
+Contracts can reference multiple Projects.
+
+Projects can surface:
+
+* Contract status
+* Effective dates
+* Relevant scope
+* Contractual milestones
+* Change requests
+* Amendments
+* Obligations
+
+Projects remain authoritative for delivery execution.
+
+---
+
+## 57. Project / Contract Creation Flow
+
+Example:
+
+**Offer Accepted → Contract Generated → Contract Signed → Project**
+**Created / Activated**
+
+The Project receives relevant operational context but does not copy the
+entire contract as a second source of truth.
+
+---
+
+## 58. Finance Integration
+
+Finance may consume contract context such as:
+
+* Contract value
+* Billing frequency
+* Payment terms
+* Currency
+* Renewal dates
+* Related projects
+
+Finance owns invoices, payments, expenses and accounting records.
+
+---
+
+## 59. CRM Integration
+
+Contracts should appear from the relevant client/company/contact
+context.
+
+CRM owns relationship and sales records.
+
+Contracts own contractual records.
+
+---
+
+## 60. Documents Integration
+
+Documents stores the actual contract artifacts.
+
+Contracts owns:
+
+* Contract metadata
+* Version lineage
+* Approval state
+* Signature state
+* Amendment relationships
+* Lifecycle
+
+Documents owns storage, file metadata and document infrastructure.
+
+---
+
+## 61. Customer Portal Integration
+
+The Customer Portal can expose, when authorized:
+
+* Contracts for review
+* Contracts awaiting signature
+* Active contracts
+* Signed documents
+* Amendments
+* Renewals
+* Client-visible comments
+
+Portal authentication and customer access control remain in the Customer
+Portal module.
+
+---
+
+## 62. Messaging Integration
+
+Contract events can trigger contextual notifications/messages such as:
+
+* Review requested
+* Approval requested
+* Signature required
+* Signature completed
+* Amendment requested
+* Renewal approaching
+
+Actual conversations remain in Messaging.
+
+---
+
+## 63. Calendar Integration
+
+Contract dates can create calendar context for:
+
+* Expiration
+* Renewal
+* Notice deadlines
+* Review meetings
+* Signature deadlines
+
+Calendar remains authoritative for actual events.
+
+---
+
+## 64. Contract Search / Views
+
+Search by:
+
+* Contract number
+* Title
+* Client
+* Type
+* Status
+* Owner
+* Signatory
+* Offer
+* Project
+* Effective date
+* Expiration date
+* Tags
+* Custom fields
+
+Views:
+
+* All
+* Drafts
+* Internal Review
+* Client Review
+* Approval
+* Awaiting Signature
+* Active
+* Expiring
+* Amendments
+* Renewals
+* Terminated
+* Archived
+
+---
+
+## 65. Contract Dashboard
+
+Widgets should include:
+
+* Active contracts
+* Drafts
+* Awaiting approval
+* Awaiting signature
+* Expiring soon
+* Renewals due
+* Recently signed
+* Recent amendments
+* Contract value context
+* Contracts by type
+* Contracts by client
+
+---
+
+## 66. Contract Timeline
+
+Show the complete lifecycle:
+
+* Created
+* Generated
+* Versioned
+* Reviewed
+* Approved
+* Signature requested
+* Signed
+* Activated
+* Amended
+* Renewed
+* Terminated
+* Archived
+
+---
+
+## 67. Permissions
+
+Permissions should distinguish:
+
+* View contract
+* View confidential terms
+* Create contract
+* Edit draft
+* Create version
+* Review
+* Approve
+* Send signature request
+* Cancel signature request
+* Create amendment
+* Renew
+* Terminate
+* Archive
+* Manage templates
+* Manage clauses
+
+Signed content requires stricter controls than drafts.
+
+---
+
+## 68. Audit Trail
+
+Audit all material actions:
+
+* Created
+* Generated
+* Edited
+* Version created
+* Review requested
+* Comment added
+* Approved
+* Signature requested
+* Signature completed
+* Amendment created
+* Renewal created
+* Status changed
+* Terminated
+* Archived
+
+Audit entries identify actor, timestamp, affected record/version and
+action.
+
+---
+
+## 69. API
+
+Contracts should be first-class API resources.
+
+Operations should include:
+
+* Create
+* Retrieve
+* Update draft
+* Search
+* Generate
+* Create version
+* Compare versions
+* Submit review
+* Approve
+* Create signature request
+* Retrieve signature status
+* Create amendment
+* Create renewal
+* Link Offer
+* Link Project
+* Archive
+
+The API must prevent unauthorized mutation of signed artifacts.
+
+---
+
+## 70. Webhooks
+
+Recommended events:
+
+* `contract.created`
+* `contract.generated`
+* `contract.version_created`
+* `contract.review_requested`
+* `contract.change_requested`
+* `contract.approved`
+* `contract.signature_requested`
+* `contract.partially_signed`
+* `contract.signed`
+* `contract.signature_declined`
+* `contract.signature_expired`
+* `contract.amendment_created`
+* `contract.renewal_created`
+* `contract.expiring`
+* `contract.terminated`
+* `contract.archived`
+
+Support event IDs, signatures, retries and idempotency.
+
+---
+
+## 71. Signature Provider Events
+
+Provider callbacks must be processed idempotently.
+
+Duplicate callbacks must not:
+
+* Create duplicate versions
+* Create duplicate signature records
+* Trigger duplicate downstream workflows
+
+Provider IDs and raw provider event references should be retained for
+troubleshooting.
+
+---
+
+## 72. AI Assistance
+
+AI may assist with:
+
+* Draft generation
+* Clause suggestions
+* Summarization
+* Version-difference summaries
+* Missing-field detection
+* Obligation extraction
+* Risk identification
+* Renewal preparation
+* Plain-language explanations
+
+AI output must never silently alter approved or signed contractual
+language.
+
+---
+
+## 73. AI Contract Review
+
+AI can flag:
+
+* Missing clauses
+* Conflicting dates
+* Unusual payment terms
+* Liability differences
+* Termination differences
+* Scope inconsistencies
+* Renewal provisions
+* Non-standard clauses
+
+Every finding should point to the relevant section and indicate that it
+is an AI-generated recommendation.
+
+---
+
+## 74. Contract Risk Scoring
+
+Optional configurable scoring may consider:
+
+* Contract type
+* Liability
+* Payment terms
+* Duration
+* Termination rights
+* Privacy requirements
+* Non-standard clauses
+* Manual risk flags
+
+Risk scores should be explainable and should not constitute legal
+advice.
+
+---
+
+## 75. AI Obligation Extraction
+
+The system may extract obligations from the final contract:
+
+* Obligation
+* Responsible party
+* Due date
+* Frequency
+* Source section
+* Confidence
+* Review state
+
+No automated operational action should be created from an unreviewed
+extraction unless explicitly configured.
+
+---
+
+## 76. Contract Knowledge Search
+
+Authorized users can search contractual content across active and
+historical versions.
+
+Search must respect contract permissions, client isolation and document
+access.
+
+Active/current contractual language should be clearly distinguished from
+historical language.
+
+---
+
+## 77. Contract Template Governance
+
+Templates require:
+
+* Owner
+* Version
+* Approval state
+* Effective date
+* Deprecated state
+* Change history
+
+Only authorized users can publish templates.
+
+---
+
+## 78. Contract Package
+
+A signature package can contain multiple documents:
+
+* MSA
+* SOW
+* DPA
+* SLA
+* Appendices
+
+Package ordering and exact document versions must be locked when
+submitted for signature.
+
+---
+
+## 79. Package Validation
+
+Before signature validate:
+
+* Primary document exists
+* Required attachments exist
+* All signers exist
+* Signature fields are mapped
+* Required approvals are complete
+* Exact version is selected
+* No blocking comments remain
+
+---
+
+## 80. Version Locking Rules
+
+### Review lock
+
+A review request references one version.
+
+### Approval lock
+
+Approval is granted to one exact version.
+
+### Signature lock
+
+A signature request references one immutable version.
+
+### Signed lock
+
+A signed version is permanently immutable.
+
+Any subsequent change creates a new version or amendment.
+
+---
+
+## 81. Re-signing
+
+If a signed document must change:
+
+1. Identify required change.
+2. Create amendment or new draft/version.
+3. Run review and approval.
+4. Generate new artifact.
+5. Create new signature request.
+6. Preserve original signed artifact.
+
+---
+
+## 82. Bulk Generation
+
+Authorized users may generate multiple independent contracts from one
+template.
+
+Each generated contract must have:
+
+* Independent ID
+* Independent version history
+* Independent approval
+* Independent signature state
+* Independent audit trail
+
+---
+
+## 83. Contract Closeout
+
+When a contract expires or terminates:
+
+* Record final state.
+* Preserve signed versions.
+* Identify open obligations.
+* Close or hand off renewal workflow.
+* Notify related Projects where configured.
+* Preserve Finance relationships.
+* Preserve Portal visibility according to policy.
+* Retain audit history.
+
+---
+
+## 84. Data Retention
+
+Retention policies should be configurable by organization and contract
+type.
+
+Retention must not break contractual lineage or signature evidence.
+
+Deletion workflows for legally retained contracts must be restricted and
+auditable.
+
+---
+
+## 85. Security / Isolation
+
+The module must enforce:
+
+* Organization isolation
+* Client isolation
+* Role-based access
+* Contract-level access
+* Secure document access
+* Signature security
+* Auditability
+* API authorization
+
+A user with access to Client A must not automatically access Client B
+contracts.
+
+---
+
+## 86. Operational vs Legal State
+
+The UI should clearly separate:
+
+* Document state
+* Contract state
+* Project state
+* Finance state
+
+Example:
+
+`Document = Signed` `Contract = Active` `Project = In Progress`
+`Finance = Billing`
+
+These states are related but independently owned.
+
+---
+
+## 87. Contract Lifecycle Automation
+
+Examples:
+
+* Offer accepted → prepare contract
+* Contract approved → prepare signature
+* Contract fully signed → activate contract
+* Contract signed → create/activate Project workflow
+* Expiration approaching → notify owner
+* Renewal due → create renewal workflow
+* Amendment signed → update contractual context for linked Projects
+* Contract terminated → notify relevant Project / Finance workflows
+
+Automations must be configurable.
+
+---
+
+## 88. Recommended MVP
+
+### Core
+
+* Contract records
+* Contract types
+* Parties
+* Lifecycle
+* Numbering
+* Client relationships
+* Offer relationships
+* Project relationships
+
+### Generation
+
+* Templates
+* Variables
+* Conditional clauses
+* Clause library
+* Rich editor
+* Preview
+* PDF generation
+
+### Versioning
+
+* Draft versions
+* Version history
+* Version comparison
+* Change summaries
+* Immutable signed versions
+
+### Review / Approval
+
+* Review workflow
+* Internal/external comments
+* Approval workflow
+* Approval audit
+
+### Signature
+
+* Signature blocks
+* Provider abstraction
+* Signature requests
+* Sequential/parallel signing
+* Signature status
+* Provider audit trail
+* Signed artifact storage
+* Reminder / expiration handling
+
+### Lifecycle
+
+* Amendments
+* Renewals
+* Termination
+* Expiration monitoring
+* Obligations
+
+### Integrations
+
+* CRM
+* Offers
+* Projects
+* Finance
+* Documents
+* Customer Portal
+* Messaging
+* Calendar
+
+### Platform
+
+* Permissions
+* Audit trail
+* Search
+* Views
+* Existing custom fields
+* API
+* Webhooks
+
+---
+
+## 89. Phase 2
+
+* Advanced negotiation
+* Clause governance
+* AI contract review
+* Obligation extraction
+* Contract risk scoring
+* Bulk generation
+* Advanced renewal automation
+* Contract analytics
+* Advanced signature packages
+* Advanced approval rules
+* Contract dashboards
+
+---
+
+## 90. Phase 3
+
+* AI-assisted drafting
+* Jurisdiction-aware clause systems
+* Advanced obligation monitoring
+* Contract-to-project orchestration
+* Cross-contract risk analysis
+* Organization-wide obligation dashboards
+* Advanced legal-system integrations
+
+---
+
+## 91. End-to-End Example
+
+**CRM**
+
+Deal reaches commercial stage.
+
+↓
+
+**Offers**
+
+Offer is generated, negotiated, versioned and accepted.
+
+↓
+
+**Contracts**
+
+Accepted Offer initializes the correct contract template. Client,
+services, scope and commercial context populate variables.
+
+↓
+
+**Review**
+
+Internal approval and client review occur against specific versions.
+
+↓
+
+**Modification**
+
+Client requests changes. A new contract version is created. The previous
+version remains available.
+
+↓
+
+**Approval**
+
+The exact final version is approved.
+
+↓
+
+**Signature**
+
+That exact version is locked and sent to signers.
+
+↓
+
+**Activation**
+
+Signature provider confirms completion. Signed artifact and audit
+evidence are stored. Contract becomes Active.
+
+↓
+
+**Projects**
+
+The contract is linked to one or more Projects. Projects consume
+contractual scope and deadlines but remain the execution layer.
+
+↓
+
+**Finance**
+
+Finance uses contractual billing context to manage invoices and
+payments.
+
+↓
+
+**Amendment**
+
+Additional scope creates a Project Change Request. After approval, a
+Contract Amendment is generated, signed and linked to the original
+agreement.
+
+↓
+
+**Renewal**
+
+Expiration monitoring starts the renewal workflow. The renewal
+references the historical agreement and produces a new contractual
+artifact.
+
+---
+
+## 92. Final Architecture Rule
+
+Contracts should be the **single contractual source of truth**.
+
+The complete platform relationship is:
+
+**CRM → Offer → Contract → Project → Tasks / Time / Support / Finance**
+
+Each module owns its own domain.
+
+Contracts own contractual metadata, contractual versions, approval
+state, signature state, amendments, renewals, obligations and
+legal-document lineage.
+
+Contracts must integrate deeply with the rest of the Agency OS while
+avoiding duplication of CRM, Offer, Project, Task, Finance, Support,
+Document, Messaging, Calendar and Portal functionality.
+
+### Critical invariant
+
+**A signed contract version can never be edited or overwritten. Any**
+**substantive change must be represented by a new contractual artifact**
+**with a traceable relationship to the previous signed agreement.**
