@@ -2,6 +2,14 @@
 
 > Linear: [LOG-106](https://linear.app/logiqdev/issue/LOG-106/communication-center) · Status: Backlog
 
+> **Canonical for:** outbound email and SMS: sending, templates, campaigns, segmentation, scheduling, delivery tracking, communication history and analytics. It is also the **delivery provider** for the email and SMS channels of 14 Notifications.
+>
+> **Boundaries:** [12 Messaging](./12-messaging-team-communication.md) owns internal chat and project/customer channels. [13 Customer Support](./13-customer-support-communication-hub.md) owns inbound customer conversations, including inbound email and email-to-ticket. [14 Notifications](./14-notifications-activity-center.md) owns notification events, preferences and inbox. [02 CRM](./02-crm-sales-management.md) owns contacts and companies. This module does not own contacts, notifications or conversations.
+>
+> **Depends on:** [01](./01-users-organizations-permissions.md) (LOG-406) for permissions, branding (01 §15) and localization · [02 CRM](./02-crm-sales-management.md) (LOG-404) for recipients and segmentation fields · [08 Finance](./08-financial-management-stripe-integration.md) (LOG-104) for billing state in segments and invoice emails · [20 Automation Engine](./20-automation-engine.md) (LOG-410) for triggered communications · [17 Documents](./17-documents-file-management.md) (LOG-407) for attachments.
+>
+> **Consumed by:** 03 Proposals (delivery emails), 04 Contracts (signature emails via provider or 11), 08 Finance (invoice and reminder emails), 13 Support (outbound replies by email), 14 Notifications (email and SMS channels), 10 Employees (announcements).
+
 Develop a centralized **Communication Center** that enables agencies to manage all customer communications from a single platform. The module should support email and SMS messaging for both individual customers and bulk campaigns while integrating seamlessly with projects, billing, support, and customer management.
 
 The Communication Center should serve as the agency's primary communication hub, allowing users to send personalized, automated, and AI-assisted messages throughout the customer lifecycle.
@@ -72,12 +80,9 @@ Support templates for:
 Templates should support:
 
 * Variables and placeholders
-* Dynamic customer data
-* Project information
-* Billing information
+* Dynamic customer data (02), project information (05), billing information (08)
 * Conditional content
-* Branding
-* Logos
+* Organization and branch branding consumed from 01 §15 and §120
 * Multiple languages
 * Template categories
 
@@ -122,31 +127,21 @@ Support marketing communication through:
 
 ---
 
-## Contact Management
+## Recipients
 
-Maintain a centralized contact database including:
+> Defined by → [02 CRM](./02-crm-sales-management.md) §2–3 (Companies, Contacts), §3 contact roles · Linear LOG-404.
 
-* Customers
-* Leads
-* Organizations
-* Billing contacts
-* Technical contacts
-* Project stakeholders
-* Internal users
+Recipients are CRM Contacts (customers, leads, billing and technical contacts, stakeholders) and, for internal announcements, Members (01). This module does not maintain a separate contact database. It owns:
 
-Support:
-
-* Contact lists
-* Tags
-* Segments
-* Contact search
-* Contact history
+* Recipient lists and saved segments built on CRM fields and tags
+* Consent, opt-in and unsubscribe state per channel
+* Suppression lists and bounce handling
 
 ---
 
 ## Customer Segmentation
 
-Allow recipients to be filtered using criteria such as:
+Segments are saved filters over CRM Companies and Contacts (02 §29 saved views and §24 custom fields) combined with billing state from 08 and project state from 05. Criteria such as:
 
 * Customer
 * Organization
@@ -166,7 +161,9 @@ Allow recipients to be filtered using criteria such as:
 
 ## Automation
 
-Automate communication workflows including:
+> Engine defined by → [20 Automation Engine](./20-automation-engine.md) · Linear LOG-410. This module exposes "send email from template" and "send SMS from template" as actions and does not run its own rules engine.
+
+Typical triggered communications:
 
 * Welcome messages
 * Customer onboarding
@@ -182,7 +179,7 @@ Automate communication workflows including:
 * Project completion messages
 * Customer follow-ups
 
-Support configurable automation triggers based on platform events.
+Triggers come from platform events published to 20.
 
 ---
 
@@ -227,7 +224,7 @@ Track communication performance including:
 
 ## Communication History
 
-Maintain complete communication records for every customer.
+Maintain complete outbound communication records for every customer. Entries are contributed to the Customer 360 timeline (02 §18). Inbound replies to support addresses are captured by 13 and linked to the same customer.
 
 Include:
 
@@ -255,29 +252,11 @@ Allow employees to:
 
 ---
 
-## Notification Center
+## Notification Delivery Provider
 
-Provide an internal notification system for platform users.
+> Notification engine defined by → [14 Notifications & Activity Center](./14-notifications-activity-center.md) · Linear LOG-403.
 
-Support notifications for:
-
-* New customer messages
-* Project updates
-* Invoice payments
-* Failed payments
-* Customer replies
-* Support requests
-* New feature requests
-* Task assignments
-* Project mentions
-* System announcements
-
-Deliver notifications through:
-
-* In-app notifications
-* Email
-* SMS
-* Configurable user preferences
+This module does not define notification events, preferences or an inbox. It provides the **email and SMS delivery channels** that 14 uses: branded notification templates, sending, delivery tracking and bounce handling. Notification emails and SMS are logged separately from customer communications and campaigns.
 
 ---
 

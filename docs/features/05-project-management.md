@@ -2,21 +2,29 @@
 
 > Linear: [LOG-405](https://linear.app/logiqdev/issue/LOG-405/project-management) · Status: Backlog
 
+> **Canonical for:** Project, project types and lifecycle, project membership and roles, workspace, health, progress, objectives, Deliverables, Workstreams, Milestones, dependencies, Risks, Project Issues, Blockers, Decisions, status updates, Project Change Requests, approval and quality gates, acceptance criteria, templates, portfolio and parent/child projects, planned resource allocation, handover and closeout.
+>
+> **Terminology:** "Proposal" replaces the former "Offer"; "Customer" replaces "Client". A **Project Issue** (§30) is a delivery problem. It is not a Task (06 calls tasks "issues" in its UI) and not a Ticket (13).
+>
+> **Depends on:** [01](./01-users-organizations-permissions.md) (LOG-406) for Members, Teams, Branches (01 §32–33 branch projects), permissions, isolation · [02 CRM](./02-crm-sales-management.md) (LOG-404) for Customers · [03 Proposals](./03-proposal-quotation-generator.md) (LOG-303) · [04 Contracts](./04-contracts.md) (LOG-349) · [06 Task Management](./06-task-management.md) (LOG-102) for Tasks · [10 Employees](./10-employee-management-system.md) (LOG-107) for availability and capacity · [17 Documents](./17-documents-file-management.md) (LOG-407) · [18 Time Tracking](./18-time-tracking.md) (LOG-408) · [19 Calendar](./19-calendar.md) (LOG-409) · [14 Notifications](./14-notifications-activity-center.md) (LOG-403) · [20 Automation Engine](./20-automation-engine.md) (LOG-410).
+>
+> **Consumed by:** 06 Tasks (project context), 07 Customer Portal (project surface), 08 Finance (project billing), 09 Income & Expense (project profitability), 12 Messaging (project channels), 13 Support (ticket to project link), 18 Time Tracking.
+
 ## 1. Overview
 
-The Project Management module is the operational delivery layer of the Agency Operating System. It organizes client and internal work from planning through completion while connecting the project to the other modules of the platform.
+The Project Management module is the operational delivery layer of the Agency Operating System. It organizes customer and internal work from planning through completion while connecting the project to the other modules of the platform.
 
 Projects must support software development, websites, mobile applications, AI automations, integrations, consulting, design, maintenance, retainers, internal initiatives, research, and other delivery models.
 
 ### Core principles
 
-* A client can have multiple projects.
-* A project does not require a client.
-* A project may be created before a client is assigned.
+* A customer can have multiple projects.
+* A project does not require a customer.
+* A project may be created before a customer is assigned.
 * Projects can be internal or external.
 * A project can contain multiple workstreams, milestones, deliverables, and dependencies.
 * Tasks remain owned by the dedicated Task Management module.
-* Offers, Contracts, Finance, Support, Time Tracking, Messaging, Documents, Customer Portal, Employees, and CRM remain the source of truth for their respective domains.
+* Proposals, Contracts, Finance, Support, Time Tracking, Messaging, Documents, Customer Portal, Employees, and CRM remain the source of truth for their respective domains.
 * Projects provide the operational context connecting these modules without duplicating their functionality.
 
 ## 2. Project Types
@@ -45,20 +53,20 @@ Organizations can define project types such as:
 
 Project types can define defaults such as statuses, required fields, templates, milestones, workstreams, checklists, health rules, and permissions.
 
-## 3. Client Association
+## 3. Customer Association
 
-A project may optionally reference one primary client.
+A project may optionally reference one primary customer.
 
 ### Required behavior
 
-* One client can have many projects.
-* A project can have zero or one primary client.
-* A client can be assigned after project creation.
-* Removing a client must not delete the project.
-* Client-association changes must be recorded in project history.
-* Projects without clients must behave as first-class projects.
+* One customer can have many projects.
+* A project can have zero or one primary customer.
+* A customer can be assigned after project creation.
+* Removing a customer must not delete the project.
+* Customer-association changes must be recorded in project history.
+* Projects without customers must behave as first-class projects.
 
-Examples of projects without a client:
+Examples of projects without a customer:
 
 * Internal product development
 * Company website
@@ -93,7 +101,7 @@ Organizations can configure allowed transitions and automation associated with t
 Projects can be created:
 
 * Manually
-* From an accepted Offer
+* From an accepted Proposal
 * From a signed Contract
 * From a Customer Portal request
 * From a Support request
@@ -111,7 +119,7 @@ Projects can be created:
 * Description
 * Type
 * Status
-* Client
+* Customer
 * Owner
 * Team
 * Priority
@@ -195,7 +203,7 @@ Project-level permissions should control capabilities such as:
 * Manage project documents
 * Archive project
 
-Permissions must integrate with the organization's global permission model.
+Permissions are entries in the global permission catalog defined by [01](./01-users-organizations-permissions.md) §44–52 (project roles are a role type, 01 §45; project-level assignment, 01 §92). Keys follow 01 §46 (`projects.projects.read`, `projects.members.manage`, `projects.finance.read`).
 
 ## 11. Project Workspace
 
@@ -224,7 +232,7 @@ Recommended sections:
 * Team
 * Time
 * Financial Summary
-* Client Context
+* Customer Context
 * Related Records
 * Settings
 
@@ -237,7 +245,7 @@ The overview should provide a high-level operational picture.
 Display:
 
 * Project name
-* Client
+* Customer
 * Status
 * Health
 * Owner
@@ -357,7 +365,7 @@ Fields may include:
 * Related documents
 * Related commercial scope references
 
-Commercial pricing and contractual authority remain in Offers and Contracts.
+Commercial pricing and contractual authority remain in Proposals and Contracts.
 
 ## 19. Workstreams
 
@@ -372,7 +380,7 @@ Examples:
 * Infrastructure
 * QA
 * Content
-* Client onboarding
+* Customer onboarding
 * Deployment
 * Documentation
 
@@ -471,7 +479,7 @@ The project calendar can surface:
 * Customer deadlines
 * Relevant linked calendar events
 
-The Calendar module remains the source of truth for actual calendar events.
+The Calendar module ([19](./19-calendar.md), LOG-409) remains the source of truth for actual calendar events; milestone and deliverable dates are projected onto it read-only (19 §2).
 
 ## 27. Dependencies
 
@@ -578,13 +586,13 @@ Notes may contain rich text and attachments.
 
 Projects should provide access to relevant documentation such as requirements, specifications, architecture, designs, reports, and acceptance documentation.
 
-The Documents module remains the source of truth for stored documents.
+The Documents module ([17](./17-documents-file-management.md), LOG-407) remains the source of truth for stored documents.
 
 ## 35. Project Files
 
 Projects should provide a contextual file view for deliverables, designs, customer files, requirements, reports, attachments, and other project assets.
 
-Files remain managed by the Documents / File Management module.
+Files remain managed by [17 Documents & File Management](./17-documents-file-management.md). Project folder templates are defined there (17 §7). Project credentials (hosting, API keys) live in the credential vault (17 §12), never in project notes.
 
 ## 36. Project Templates
 
@@ -639,7 +647,7 @@ Users should be able to configure their project dashboard.
 
 ## 42. Project Activity
 
-The project activity feed records project-level events such as project creation, status changes, owner changes, client assignment, member changes, milestone creation/completion, deliverable changes, risk creation/resolution, decisions, change requests, completion, and archival.
+The project activity feed records project-level events such as project creation, status changes, owner changes, customer assignment, member changes, milestone creation/completion, deliverable changes, risk creation/resolution, decisions, change requests, completion, and archival.
 
 Events should identify whether they were generated by a user or system automation. Messages remain in the Messaging module.
 
@@ -649,7 +657,7 @@ Important project fields should have an audit trail:
 
 * Status
 * Owner
-* Client
+* Customer
 * Dates
 * Priority
 * Type
@@ -664,7 +672,7 @@ History should include previous value, new value, actor, and timestamp.
 
 The project should provide an operational view of included work, deliverables, exclusions, assumptions, constraints, acceptance criteria, and approved changes.
 
-The authoritative commercial scope remains in Offers and Contracts.
+The authoritative commercial scope remains in Proposals and Contracts.
 
 ## 45. Change Requests
 
@@ -685,7 +693,7 @@ Fields:
 * Approval
 * Related task
 * Related deliverable
-* Related Offer
+* Related Proposal
 * Related Contract
 
 Statuses:
@@ -745,51 +753,53 @@ Employee and resource information remains owned by the relevant modules.
 
 Projects may record planned allocation by person/team, role, planned hours, date range, allocation percentage, workstream, and milestone.
 
-Actual effort is recorded by Time Tracking.
+Actual effort is recorded by [18 Time Tracking](./18-time-tracking.md).
+
+Ownership split: Projects owns the **plan** (who is allocated to what, how much, when). [10 Employees](./10-employee-management-system.md) owns **availability and capacity** (working hours, leave, utilization). [18 Time Tracking](./18-time-tracking.md) owns **actuals**.
 
 ## 52. Capacity and Workload
 
 Project views should surface overallocated people, resource conflicts, availability problems, deadline conflicts, and insufficient capacity.
 
-The Employee / Resource Planning module remains authoritative for employee availability.
+[10 Employee Management](./10-employee-management-system.md) (LOG-107) remains authoritative for employee availability and capacity; utilization is computed by 18 Time Tracking. Projects only displays the result against its planned allocation.
 
 ## 53. External Stakeholders
 
-Projects may contain client contacts, executives, vendors, partners, consultants, and reviewers.
+Projects may contain customer contacts, executives, vendors, partners, consultants, and reviewers.
 
 Stakeholders can have name, organization, role, responsibility, visibility, and decision authority.
 
-## 54. Client Context
+## 54. Customer Context
 
-For client projects, the project should surface relevant context from the client record: client, contacts, related projects, offers, contracts, support history, portal access, and financial references.
+For customer projects, the project should surface relevant context from the customer record: customer, contacts, related projects, proposals, contracts, support history, portal access, and financial references.
 
-The Project module should not duplicate the client record.
+The Project module should not duplicate the customer record.
 
-## 55. Multiple Projects Per Client
+## 55. Multiple Projects Per Customer
 
 The relationship must explicitly support:
 
-**Client → Many Projects**
+**Customer → Many Projects**
 
-Each project can have its own owner, team, scope, timeline, contract, offer, deliverables, budget, status, support context, and lifecycle.
+Each project can have its own owner, team, scope, timeline, contract, proposal, deliverables, budget, status, support context, and lifecycle.
 
 Projects remain independently manageable.
 
-## 56. Projects Without Clients
+## 56. Projects Without Customers
 
-The same project model must work without a client.
+The same project model must work without a customer.
 
 Examples include internal products, internal websites, infrastructure, research, prototypes, internal automation, and operational improvements.
 
-A client can be added later without requiring project recreation.
+A customer can be added later without requiring project recreation.
 
-## 57. Offer Integration
+## 57. Proposal Integration
 
-An accepted Offer may create or initialize a project.
+An accepted Proposal may create or initialize a project.
 
-A project can reference the Offer, Offer version, approved scope, commercial assumptions, and proposed deliverables.
+A project can reference the Proposal, Proposal version, approved scope, commercial assumptions, and proposed deliverables.
 
-Offers remain the source of truth for proposal versions, pricing, commercial terms, and acceptance. Projects consume that context for delivery.
+Proposals remain the source of truth for proposal versions, pricing, commercial terms, and acceptance. Projects consume that context for delivery.
 
 ## 58. Contract Integration
 
@@ -836,7 +846,7 @@ The Customer Portal owns customer authentication and access control.
 
 ## 61. Support Integration
 
-Support tickets may reference project, client, feature, task, release, and deliverable.
+Support tickets may reference project, customer, feature, task, release, and deliverable.
 
 Projects should surface relevant support activity.
 
@@ -866,11 +876,11 @@ Time entries may reference project, workstream, milestone, task, and employee.
 
 Projects can show planned hours, logged hours, billable hours, non-billable hours, and hours by employee, workstream, and milestone.
 
-Time Tracking owns the actual time entries.
+[18 Time Tracking](./18-time-tracking.md) (LOG-408) owns the actual time entries.
 
 ## 65. Documents Integration
 
-Projects should provide contextual access to requirements, specifications, designs, contracts, offers, reports, acceptance records, and handover documents.
+Projects should provide contextual access to requirements, specifications, designs, contracts, proposals, reports, acceptance records, and handover documents.
 
 Documents remain owned by the Documents module.
 
@@ -888,11 +898,11 @@ Employee Management remains responsible for employee records, employment informa
 
 Projects consume the relevant employee context.
 
-## 68. Project-to-Client Relationship
+## 68. Project-to-Customer Relationship
 
-The platform should clearly distinguish client-level information from project-level information.
+The platform should clearly distinguish customer-level information from project-level information.
 
-Client-level examples:
+Customer-level examples:
 
 * Company profile
 * Contacts
@@ -915,15 +925,17 @@ This prevents duplicated data and conflicting sources of truth.
 
 A project may depend on records from other modules.
 
-Examples include contract approval, offer acceptance, customer approval, payment, support resolution, document approval, and employee availability.
+Examples include contract approval, proposal acceptance, customer approval, payment, support resolution, document approval, and employee availability.
 
 The project should display the dependency and its state without taking ownership of the underlying record.
 
 ## 70. Project Status Automation
 
+> Engine defined by → [20 Automation Engine](./20-automation-engine.md) · Linear LOG-410. Projects declares triggers and actions; rules run in the engine.
+
 Examples of configurable workflows:
 
-* Offer accepted → Create project
+* Proposal accepted → Create project
 * Contract signed → Move project to Planned
 * First execution task started → Move project to In Progress
 * Critical blocker created → Mark project At Risk
@@ -973,7 +985,7 @@ Reopening should record reason, previous status, new status, owner, new dates, r
 
 ## 75. Project Search
 
-Search should support project name, project ID, project code, client, type, owner, team, status, health, tags, custom fields, dates, and related records.
+Search should support project name, project ID, project code, customer, type, owner, team, status, health, tags, custom fields, dates, and related records.
 
 ## 76. Project Views
 
@@ -998,11 +1010,11 @@ Saved views may be personal, team-wide, or organization-wide.
 
 ## 78. Portfolio View
 
-Portfolio views aggregate projects and can display project, client, type, owner, team, status, health, progress, start date, target completion, current milestone, risk, and budget summary.
+Portfolio views aggregate projects and can display project, customer, type, owner, team, status, health, progress, start date, target completion, current milestone, risk, and budget summary.
 
 ## 79. Project Grouping
 
-Projects can be grouped by client, type, owner, team, status, health, priority, department, business unit, or custom field.
+Projects can be grouped by customer, type, owner, team, status, health, priority, department, business unit, or custom field.
 
 ## 80. Project Priority
 
@@ -1031,17 +1043,13 @@ Examples:
 
 ## 82. Project Custom Fields
 
-Supported field types may include text, long text, number, decimal, currency, percentage, boolean, date, date/time, dropdown, multi-select, user, team, client, project reference, URL, email, and phone.
+> Defined by → [02 CRM](./02-crm-sales-management.md) §24–26 (platform custom field model) · Linear LOG-404.
 
-Custom fields should support required state, default values, validation, visibility, search, filter, sort, and display order.
+Projects, milestones, deliverables, risks and change requests support custom fields using the platform model. Field types, validation, visibility and the API are defined in 02 §24 and §26.
 
 ## 83. Shared Custom Fields
 
-Projects should be able to consume organization-wide shared custom field definitions.
-
-Examples include region, department, business unit, service type, project category, and customer tier.
-
-Shared definitions reduce inconsistent field structures across modules.
+Projects consume organization-wide shared custom field definitions (02 §25), for example region, department, business unit, service type, project category and customer tier. Projects does not define its own field type system.
 
 ## 84. Project API
 
@@ -1082,21 +1090,23 @@ The external system remains the source of truth for its own records.
 
 ## 87. Project Integrations
 
-Potential integrations include CRM, Task Management, Offers, Contracts, Support, Finance, Time Tracking, Messaging, Customer Portal, Documents, Calendar, Employee Management, GitHub, GitLab, Linear, Jira, Notion, Google Drive, and Microsoft 365.
+Potential integrations include CRM, Task Management, Proposals, Contracts, Support, Finance, Time Tracking, Messaging, Customer Portal, Documents, Calendar, Employee Management, GitHub, GitLab, Linear, Jira, Notion, Google Drive, and Microsoft 365.
 
 The Project module should provide relationship context rather than duplicate integrated records.
 
 ## 88. Project Activity Feed
 
-The project feed should focus on operational project events, such as milestone completion, risk creation, blocker resolution, owner changes, client assignment, deliverable approval, change request approval, and project status changes.
+The project feed should focus on operational project events, such as milestone completion, risk creation, blocker resolution, owner changes, customer assignment, deliverable approval, change request approval, and project status changes.
 
 Messaging content remains in Messaging.
 
 ## 89. Notifications
 
-Project-related notifications may include added to project, role changed, milestone approaching, deliverable approaching, project blocked, risk escalated, change request awaiting approval, status changed, and project completed.
+> Engine defined by → [14 Notifications & Activity Center](./14-notifications-activity-center.md) · Linear LOG-403.
 
-The platform notification system owns delivery and notification preferences.
+Projects emits these events: added to project, role changed, milestone approaching, milestone completed, deliverable approaching, project blocked, risk escalated, change request awaiting approval, status changed, health changed, project completed.
+
+14 owns recipients, channels, preferences, inbox and delivery.
 
 ## 90. Reminders
 
@@ -1104,7 +1114,9 @@ Reminders can be created for milestones, deliverables, reviews, approvals, risk 
 
 ## 91. Project Automation
 
-Automation triggers may include project creation, status change, milestone completion, deadline approaching, health change, risk creation, change request approval, and project completion.
+> Engine defined by → [20 Automation Engine](./20-automation-engine.md) · Linear LOG-410.
+
+Triggers Projects declares may include project creation, status change, milestone completion, deadline approaching, health change, risk creation, change request approval, and project completion.
 
 Actions may include update project field, create task, assign user, create milestone, notify users, create reminder, link record, and trigger another module workflow.
 
@@ -1172,7 +1184,7 @@ Closeout should consolidate final status, final deliverables, customer acceptanc
 
 ## 104. Reusable Project Structures
 
-Organizations should be able to reuse project structures across clients without copying historical records. This should primarily use Project Templates.
+Organizations should be able to reuse project structures across customers without copying historical records. This should primarily use Project Templates.
 
 ## 105. Project Relationships
 
@@ -1190,7 +1202,7 @@ The parent project provides portfolio-level coordination.
 
 An optional hierarchy may be:
 
-**Client → Parent Project / Engagement → Projects → Workstreams → Milestones → Tasks**
+**Customer → Parent Project / Engagement → Projects → Workstreams → Milestones → Tasks**
 
 Not every project requires every hierarchy level.
 
@@ -1208,19 +1220,17 @@ Complex projects can enable workstreams, milestones, dependencies, risks, issues
 
 ## 110. Security
 
-Project security must support authentication, authorization, project permissions, client isolation, secure files, audit history, API authorization, and external stakeholder controls.
+> Defined by → [01](./01-users-organizations-permissions.md) §3, §9, §85, §136–137 · Linear LOG-406.
 
-## 111. Client Data Isolation
+Projects consumes the central authorization service for authentication, authorization, tenant and customer isolation and API authorization. Project-specific additions: project roles (§8–10), external stakeholder controls (§53) and customer visibility flags (§60).
 
-Users associated with one client must not automatically gain access to another client's projects.
+## 111. Customer Data Isolation
 
-Client visibility must follow explicit authorization.
-
-Internal projects must remain separate from client-visible projects.
+Customer isolation is the rule in 01 §116 and `docs/Product_Specification.md` §4.3: users associated with one customer never automatically gain access to another customer's projects, and internal projects remain separate from customer-visible projects. Projects enforces this through the visibility field and the central authorization service.
 
 ## 112. Internal Projects
 
-Internal projects use the same core project model but do not require client, Customer Portal access, external stakeholders, or commercial records.
+Internal projects use the same core project model but do not require customer, Customer Portal access, external stakeholders, or commercial records.
 
 ## 113. Project Customization
 
@@ -1228,19 +1238,19 @@ Organizations should be able to configure project types, statuses, health states
 
 ## 114. Naming Conventions
 
-Organizations may define project naming conventions such as client code + project code, year + client + project, or department + initiative.
+Organizations may define project naming conventions such as customer code + project code, year + customer + project, or department + initiative.
 
 Naming conventions should not affect the stable project ID.
 
 ## 115. API Extensibility
 
-Projects should be designed as first-class platform resources so external systems can create projects, update projects, search projects, link clients, link offers, link contracts, link tasks, link support tickets, link documents, manage milestones, manage members, read project activity, and read custom fields.
+Projects should be designed as first-class platform resources so external systems can create projects, update projects, search projects, link customers, link proposals, link contracts, link tasks, link support tickets, link documents, manage milestones, manage members, read project activity, and read custom fields.
 
 ## 116. Cross-Module Webhook Workflows
 
 Examples:
 
-* Offer accepted → project created
+* Proposal accepted → project created
 * Contract signed → project becomes Planned
 * Project started → notify customer
 * Milestone completed → update portal
@@ -1282,8 +1292,8 @@ Projects should reference external module records rather than duplicate them.
 
 Examples:
 
-* Client → CRM
-* Offer → Offers
+* Customer → CRM
+* Proposal → Proposals
 * Contract → Contracts
 * Task → Task Management
 * Ticket → Support
@@ -1305,15 +1315,15 @@ Examples:
 * Change request approved → update project and execution workflow
 * Project completed → trigger closeout workflows
 * Contract deadline approaching → display project warning
-* Offer accepted → initiate project creation workflow
+* Proposal accepted → initiate project creation workflow
 * Support ticket linked to project → surface project impact
 
->>> ## 120. Recommended MVP
+## 120. Recommended MVP
 
 ### Core
 
 * Project creation
-* Optional client
+* Optional customer
 * Project types
 * Statuses
 * Owners
@@ -1355,8 +1365,8 @@ Examples:
 
 ### Integrations
 
-* CRM / Clients
-* Offers
+* CRM / Customers
+* Proposals
 * Contracts
 * Task Management
 * Support
@@ -1375,8 +1385,6 @@ Examples:
 * Audit history
 * Permissions
 * Notifications
-
->>>
 
 ## 121. Phase 2
 
@@ -1416,12 +1424,12 @@ Add:
 
 The Projects module is successful when:
 
-* A client can have multiple independent projects.
-* A project can exist without a client.
+* A customer can have multiple independent projects.
+* A project can exist without a customer.
 * Projects work equally well for internal and external delivery.
 * Projects can scale from lightweight to complex.
 * Tasks remain owned by Task Management.
-* Offers provide commercial proposal context.
+* Proposals provide commercial proposal context.
 * Contracts provide contractual context.
 * Support tickets can reference projects.
 * Finance and Time Tracking provide financial and effort visibility.
@@ -1438,19 +1446,22 @@ The Projects module is successful when:
 
 | Module | Relationship to Projects | Source of Truth |
 | -- | -- | -- |
-| CRM / Clients | Associates clients and customer context | CRM |
-| Offers | Provides proposed commercial scope and may initiate projects | Offers |
-| Contracts | Provides contractual context and obligations | Contracts |
-| Task Management | Executes project work | Task Management |
-| Support | Handles customer support issues related to projects | Support |
-| Finance | Provides invoices, payments, expenses, costs, and profitability | Finance |
-| Time Tracking | Records actual project effort | Time Tracking |
-| Messaging | Provides project communication | Messaging |
-| Documents | Stores project documents and files | Documents |
-| Customer Portal | Exposes approved project information to customers | Customer Portal |
-| Employees | Provides employee identity, roles, teams, and availability | Employee Management |
-| Calendar | Provides project-related events and meetings | Calendar |
-| Projects | Coordinates delivery and project-specific operational context | Projects |
+| [01 Identity & Permissions](./01-users-organizations-permissions.md) | Members, teams, branches, roles, isolation | LOG-406 |
+| [02 CRM](./02-crm-sales-management.md) | Associates customers and customer context; custom field model | LOG-404 |
+| [03 Proposals](./03-proposal-quotation-generator.md) | Provides proposed commercial scope and may initiate projects | LOG-303 |
+| [04 Contracts](./04-contracts.md) | Provides contractual context and obligations | LOG-349 |
+| [06 Task Management](./06-task-management.md) | Executes project work | LOG-102 |
+| [13 Support](./13-customer-support-communication-hub.md) | Handles customer support issues related to projects | LOG-342 |
+| [08 Finance](./08-financial-management-stripe-integration.md) / [09 Income & Expense](./09-income-expense-management.md) | Invoices, payments, expenses, costs, profitability | LOG-104 / LOG-105 |
+| [18 Time Tracking](./18-time-tracking.md) | Records actual project effort | LOG-408 |
+| [12 Messaging](./12-messaging-team-communication.md) | Provides project communication | LOG-313 |
+| [17 Documents](./17-documents-file-management.md) | Stores project documents, files and credentials | LOG-407 |
+| [07 Customer Portal](./07-customer-portal.md) | Exposes approved project information to customers | LOG-103 |
+| [10 Employees](./10-employee-management-system.md) | Employee records, availability and capacity | LOG-107 |
+| [19 Calendar](./19-calendar.md) | Project-related events and projected dates | LOG-409 |
+| [14 Notifications](./14-notifications-activity-center.md) | Delivers project events | LOG-403 |
+| [20 Automation Engine](./20-automation-engine.md) | Runs project rules and workflows | LOG-410 |
+| Projects | Coordinates delivery and project-specific operational context | LOG-405 |
 
 ### Final architectural principle
 

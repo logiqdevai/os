@@ -1,11 +1,19 @@
-# Customer Support & Communication Hub
+# Customer Support
 
-> Linear: [LOG-342](https://linear.app/logiqdev/issue/LOG-342/3-customer-support-and-communication-hub) · Status: Backlog · Assignee: Anna Zoi
+> Linear: [LOG-342](https://linear.app/logiqdev/issue/LOG-342/customer-support) · Status: Backlog · Assignee: Anna Zoi
 
-Build a comprehensive, AI-powered customer communication and support
-platform inspired by Intercom. It should function as the central
-communication layer of the application, connecting customers, team
-members, projects, tasks, and all existing application entities.
+> **Canonical for:** customer support: the unified support inbox and support Conversations (live chat, inbound email, widget, portal requests), Tickets and SLAs, support automation rules, ticket-to-task conversion, the customer-facing knowledge base and help center, support analytics and the AI support agent. Every **customer request** from the portal is a Ticket here.
+>
+> **Boundaries:** [12 Messaging](./12-messaging-team-communication.md) owns internal chat and project customer channels. [11 Communication Center](./11-communication-center.md) owns outbound email/SMS and campaigns. [06 Task Management](./06-task-management.md) owns the Task a ticket converts into. [02 CRM](./02-crm-sales-management.md) owns the customer record and the Customer 360 timeline. [15 Business Docs](./15-notion-business-docs.md) owns internal knowledge; this module owns the customer-facing knowledge base.
+>
+> **Depends on:** [01](./01-users-organizations-permissions.md) (LOG-406) for Members, Teams, Customer Portal Users, permissions, isolation, branch-level support (01 §38) · [02 CRM](./02-crm-sales-management.md) (LOG-404) · [05 Projects](./05-project-management.md) (LOG-405) · [06 Tasks](./06-task-management.md) (LOG-102) · [07 Customer Portal](./07-customer-portal.md) (LOG-103) as the customer surface · [17 Documents](./17-documents-file-management.md) (LOG-407) for attachments · [14 Notifications](./14-notifications-activity-center.md) (LOG-403) · [20 Automation Engine](./20-automation-engine.md) (LOG-410) for support workflows and SLA timers · [11 Communication Center](./11-communication-center.md) (LOG-106) for outbound email replies · [18 Time Tracking](./18-time-tracking.md) (LOG-408) for time on tickets.
+>
+> **Consumed by:** 07 Customer Portal (requests, chat, knowledge base), 05 Projects (§61 support activity), 02 CRM (timeline events), 06 Tasks (linked tickets, affected customers on releases).
+
+Build a comprehensive, AI-powered customer support platform inspired by
+Intercom. It is the single entry point for customer support requests,
+connecting customers, Members, projects, tasks and all existing
+application entities.
 
 **Core principle: Do not duplicate existing functionality or entities.**
 Reuse the existing customer records, organizations, contacts, users,
@@ -207,10 +215,15 @@ issues without manually recreating information.
 entities and workflows. Do not implement a second task management system
 inside Support.
 
-## 5. Customer Portal
+## 5. Customer Portal Integration
 
-Provide a customer-facing support portal connected to the existing
-customer accounts.
+> Surface defined by → [07 Customer Portal](./07-customer-portal.md) §5 · Linear LOG-103. Identity defined by → 01 §79.
+
+Support defines the request and ticket capabilities; the Customer Portal
+surfaces them. Customers never create Tasks directly: every portal
+request (feature request, bug report, change request, question) is a
+Ticket here, and the agency converts it to a Task (06) or Project Change
+Request (05 §45).
 
 * Submit support requests.
 * Create and view tickets.
@@ -254,7 +267,9 @@ customer-facing answers.
 
 ## 7. Automation & Workflows
 
-Implement a flexible support automation engine.
+> Engine defined by → [20 Automation Engine](./20-automation-engine.md) · Linear LOG-410. Support declares its triggers (ticket created, SLA at risk, inactivity, AI classification completed) and actions (assign, route, respond, close, reopen, create task) and registers SLA timers and auto-close as scheduled jobs. It does not implement its own rules runtime.
+
+Support-specific rules should cover:
 
 * Automatic ticket categorization.
 * Assignment rules.
@@ -279,10 +294,11 @@ code.
 
 ## 8. Customer Timeline & Unified Activity
 
-Every customer should have a unified activity timeline that brings
-together information from the entire application.
+> Defined by → [02 CRM](./02-crm-sales-management.md) §18 (Customer 360 view) and §34 · Linear LOG-404.
 
-Display:
+The unified customer timeline is the CRM Customer 360 view. Support
+contributes its events to it and displays it inside the support inbox;
+it does not build a second timeline. Support contributes:
 
 * Support conversations.
 * Support tickets.
@@ -335,7 +351,9 @@ and ticket category.
 
 ## 10. Notifications & Communication
 
-Integrate with the application's existing notification infrastructure.
+> Engine defined by → [14 Notifications & Activity Center](./14-notifications-activity-center.md) · Linear LOG-403. Outbound email replies are sent through [11 Communication Center](./11-communication-center.md).
+
+Support emits these events:
 
 * New ticket notifications.
 * New customer replies.
@@ -365,21 +383,20 @@ Reuse existing entities and services:
   status synchronization.
 * **Projects:** Link tickets to existing projects and their
   development work.
-* **Users & Teams:** Shared users, roles, permissions, assignments,
-  and team structures.
-* **Files & Attachments:** Reuse the existing file storage and
-  attachment infrastructure.
-* **Notifications:** Use the existing notification engine.
-* **Communication:** Integrate with existing email, messaging, and
-  communication services.
-* **AI Infrastructure:** Use JEV from Typesafe AI through a shared AI
-  integration layer.
-* **Knowledge Base:** Reuse the application's existing documentation
-  and knowledge entities if available.
-* **Automation Engine:** Integrate with existing automation and
-  workflow infrastructure.
-* **Analytics:** Expose support metrics to the application's existing
-  reporting system.
+* **Users & Teams:** 01 Members, roles, permissions, Teams, Customer
+  Portal Users.
+* **Files & Attachments:** 17 Documents & File Management.
+* **Notifications:** 14 Notifications & Activity Center.
+* **Communication:** 11 Communication Center for outbound email/SMS;
+  12 Messaging for internal discussion of a ticket (12 §60).
+* **AI Infrastructure:** the shared AI integration layer
+  (`docs/Product_Specification.md` §6). Support uses JEV from Typesafe
+  AI as its model through that layer; other modules may use other
+  models behind the same layer.
+* **Knowledge Base:** this module owns the customer-facing knowledge
+  base (§6); internal knowledge is 15 Business Docs.
+* **Automation Engine:** 20 Automation Engine.
+* **Analytics:** support metrics are exposed to platform reporting.
 
 Avoid creating duplicate customer records, task entities, project
 entities, user records, file storage, notification systems, or AI

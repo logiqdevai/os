@@ -2,269 +2,208 @@
 
 > Linear: [LOG-102](https://linear.app/logiqdev/issue/LOG-102/task-management) · Status: Backlog
 
-## Linear-Inspired Project & Task Management
+> **Canonical for:** Task, Subtask, task fields and relationships, task statuses and workflows, labels, estimates, backlog and agile planning, task views, bulk operations, Releases, task-level comments and the task workload view. Task Management is the only task entity in the platform: CRM follow-ups, support fixes, project work, customer requests and retrospective actions are all Tasks linked to their originating record.
+>
+> **Terminology:** The UI may call a Task an "Issue" (Linear style). A **Project Issue** (05 §30) is a delivery problem, and a **Ticket** (13) is a support case; neither is a Task. Projects, Milestones and Workstreams are owned by [05 Project Management](./05-project-management.md).
+>
+> **Depends on:** [01](./01-users-organizations-permissions.md) (LOG-406) for Members, Teams, permissions, isolation · [05 Projects](./05-project-management.md) (LOG-405) for Project, Workstream and Milestone context · [02 CRM](./02-crm-sales-management.md) §24–26 (LOG-404) for custom fields · [17 Documents](./17-documents-file-management.md) (LOG-407) for attachments · [18 Time Tracking](./18-time-tracking.md) (LOG-408) for estimates vs actuals and timers · [10 Employees](./10-employee-management-system.md) (LOG-107) for capacity · [14 Notifications](./14-notifications-activity-center.md) (LOG-403) · [20 Automation Engine](./20-automation-engine.md) (LOG-410) for recurring tasks and status rules · [12 Messaging](./12-messaging-team-communication.md) (LOG-313) for task discussions.
+>
+> **Consumed by:** 02 CRM (§14 sales tasks), 05 Projects (§22–23, §59), 07 Customer Portal (customer-visible tasks), 13 Support (§4 ticket-to-task), 18 Time Tracking, 19 Calendar (due dates projected).
 
-Develop a **Linear-inspired project and work management system** that provides a fast and highly responsive experience for planning, tracking, and delivering software projects. The module should support the complete project lifecycle, from initial planning and backlog creation to release management, and project completion.
+## 1. Overview
 
-### Workspace & Organization
+Develop a **Linear-inspired task management system** that provides a fast and highly responsive experience for planning, tracking and delivering work. The module covers the lifecycle of a work item from backlog to release.
 
-Support hierarchical organization of work through:
+### Work hierarchy
 
-* Workspaces
-* Teams
-* Projects
-* Milestones
-* Tasks (Issues)
-* Subtasks
+**Organization → Team → Project → Workstream / Milestone → Task → Subtask**
 
-Projects should support multiple teams, members, stakeholders, and customers with configurable permissions and visibility settings.
+Organization and Team come from 01. Project, Workstream and Milestone come from 05. Tasks may also exist directly under a Project or, for personal and CRM work, without a Project.
 
----
+## 2. Project Context
 
-## Project Management
+> Defined by → [05 Project Management](./05-project-management.md) · Linear LOG-405.
 
-Each project should support:
+Project overview, health, objectives, templates, duplication, archive, documentation, customer visibility settings and project-level activity are defined in 05. Task Management does not redefine them. It consumes project context (project, workstream, milestone, project roles, customer visibility flag) when creating and displaying tasks.
 
-* Project overview dashboard
-* Project description
-* Objectives
-* Project health status
-* Configurable statuses
-* Multiple issue types
-* Priorities
-* Labels
-* Categories
-* Project templates
-* Project duplication
-* Archive and restore
-* Project ownership
-* Multiple project views
-* Activity history
-* Project documentation
-* File storage
-* Key value storage that supports plain text and encrypted credentials
-* Comments
-* Customer visibility settings
-
----
-
-## Task & Issue Management
+## 3. Task Record
 
 Tasks should include:
 
-* Rich Markdown descriptions
+* Title and rich Markdown description
+* Task type (task, bug, feature, improvement, chore, follow-up; configurable)
+* Status (configurable per team or project type, with workflow transitions)
+* Priority
+* Assignees (one primary, optional additional)
+* Reporter
+* Project, workstream, milestone (optional)
+* Team
+* Labels, tags, categories
 * Checklists
 * Acceptance criteria
-* Attachments
-* Comments
-* Threaded discussions
-* Due dates
-* Start dates
-* Completion dates
-* Priorities
-* Time estimates
-* Time tracking
-* Actual time spent
-* Labels
-* Tags
-* Categories
-* Assignees
-* Activity timeline
-* Version history
-* Audit log
+* Start date, due date, completion date
+* Estimate (points or hours) and actual effort (from 18 Time Tracking)
+* Attachments (17 Documents)
+* Comments and threaded discussion
+* Activity timeline, version history, audit log
+* Custom fields (02 §24–26)
+* Customer visibility flag (visible in Customer Portal or internal only)
+* Related records: CRM record (02), Ticket (13), Project Change Request (05), Customer Request (07), Release
 
 Tasks should support:
 
-* Parent tasks
-* Subtasks
-* Task dependencies
-* Blocking relationships
-* Related tasks
+* Parent tasks and subtasks
+* Dependencies: blocks, blocked by, related, duplicates
 * Duplicate detection
 * Cross-project links
-* Task cloning
-* Recurring task
-* Bulk editing
-* Bulk assignment
-* Bulk status updates
-* Bulk labeling
-* Bulk deletion
+* Cloning and templates
+* Recurring tasks (schedule defined in 20 Automation Engine, instances created here)
+* Bulk editing, assignment, status update, labeling, deletion
 
----
+## 4. Planning & Agile
 
-## Planning & Agile Features
+Support Agile and traditional methodologies:
 
-Support Agile and traditional project management methodologies including:
-
-* Backlog management
+* Backlog management and triage
 * Kanban workflows
+* Cycles / sprints with carry-over of unfinished work
 * Story point estimation
-* Lead time
-* Throughput metrics
-* Carry-over unfinished work
+* Lead time, cycle time, throughput
 * Release planning
 
----
+## 5. Views
 
-## Views
+Provide multiple synchronized views:
 
-Provide multiple synchronized project views:
+* Kanban board
+* List
+* Table
+* Calendar (due dates; events come from 19 Calendar)
+* Timeline / Gantt
+* Roadmap (grouped by milestone or release)
+* Workload (task distribution per assignee)
+* Backlog
+* Release
 
-* Kanban Board
-* List View
-* Table View
-* Calendar View
-* Timeline View
-* Gantt View
-* Roadmap View
-* Workload View
-* Backlog View
-* Release View
+Users can save custom views, group, filter, sort and customize visible columns. Saved views can be personal, team or organization-wide.
 
-Users should be able to:
+## 6. Search & Filtering
 
-* Save custom views
-* Group tasks
-* Filter tasks
-* Sort tasks
-* Customize visible columns
+Full-text search across all tasks in the organization, filtered by assignee, team, project, milestone, label, priority, status, due date, tag, custom field and related record. Task search feeds the platform global search.
 
----
+## 7. Collaboration
 
-## Search & Filtering
+* Comments with mentions, reactions and threads
+* Internal notes versus customer-visible comments (customer-visible comments surface in 07 Customer Portal)
+* Live updates and real-time synchronization
+* Task discussions can open a contextual conversation in 12 Messaging (12 §25); the comment thread on the task remains the record of decisions
+* Notifications for assignment, mention, status change, due soon, overdue, blocked and comment are emitted to 14 Notifications
 
-Implement powerful search capabilities including:
+## 8. Attachments & Files
 
-* Full-text search
-* Search across all projects
-* Filter by assignee
-* Team
-* Milestone
-* Project
-* Labels
-* Priority
-* Status
-* Due date
-* Tags
+> Defined by → [17 Documents & File Management](./17-documents-file-management.md) · Linear LOG-407.
 
----
+Tasks attach Documents. Folder organization, versions, previews, deliverable files and project file storage are owned by 17. Credentials belong in the credential vault (17 §12), never in task descriptions.
 
-## Collaboration
+## 9. Releases
 
-Support real-time collaboration through:
+Task Management owns Releases:
 
-* Live updates
-* Comments
-* Threaded conversations
-* Notifications
-* Activity feeds
-* Shared project updates
-* Internal notes
-* Customer-visible comments
-* Document attachments
+* Release name, version, target date, status (planned, in progress, released, cancelled)
+* Tasks included
+* Deployment status per environment
+* Release notes (generated from included tasks, publishable to the Customer Portal and Support knowledge base)
+* Customers affected (from linked Tickets, 13 §4)
 
-## File Management
+Milestones are project checkpoints owned by 05; a Release may map to a Milestone.
 
-Support centralized project file management including:
+## 10. Workload
 
-* File uploads
-* Folder organization
-* Drag-and-drop uploads
-* Version history
-* File previews
-* Image previews
-* Document downloads
-* Shared assets
-* Deliverables
-* Technical documentation
-* Design files
-* Contracts
-* Project resources
+Task Management provides the **task distribution** view: open tasks, estimates and due dates per assignee and team, plus bottleneck detection on blocked and overdue work.
 
----
+Capacity, availability and utilization are defined by [10 Employees](./10-employee-management-system.md) and [18 Time Tracking](./18-time-tracking.md). Planned allocation is defined by [05 Projects](./05-project-management.md) §51. The workload view combines these without owning them.
 
-## Milestones & Releases
+## 11. Reporting & Analytics
 
-Support planning and tracking of:
+Dashboards and reports for:
 
-* Milestones
-* Deployment status
-* Release progress
-* Completed releases
-* Upcoming release
-
----
-
-## Workload & Resource Management
-
-Provide managers with tools to monitor:
-
-* Team capacity
-* Employee workload
-* Resource allocation
-* Task distribution
-* Estimated vs actual effort
-* Team utilization
-* Available capacity
-* Overall project health
-* Bottleneck detection
-
----
-
-## Reporting & Analytics
-
-Generate dashboards and reports for:
-
-* Project progress
-* Milestone completion
-* Sprint performance
-* Team productivity
-* Lead time
-* Throughput
-* Blocked tasks
-* Overdue tasks
-* Completion rate
+* Task completion rate, overdue and blocked tasks
+* Cycle and sprint performance
+* Lead time, cycle time, throughput
+* Estimate vs actual (with 18)
 * Workload distribution
-* Time tracking
+* Release progress
 
----
+Project-level progress, health and milestone reporting are in 05 §40–41.
 
-## Productivity Features
+## 12. Productivity
 
-Include productivity enhancements such as:
+* Drag-and-drop, inline editing, optimistic UI, instant search
+* Auto-save, undo/redo, quick actions, command palette, keyboard shortcuts
+* Task templates and bulk operations
 
-* Drag-and-drop interactions
-* Inline editing
-* Optimistic UI updates
-* Instant search
-* Real-time synchronization
-* Auto-save
-* Undo/Redo
-* Quick actions
-* Templates
-* Bulk operations
+## 13. Linked Work from Other Modules
 
----
+| Source | Relationship |
+| -- | -- |
+| 02 CRM §14 | Sales follow-ups are Tasks linked to Lead, Company, Contact or Deal |
+| 13 Support §4 | Tickets convert to Tasks with a permanent link and bidirectional status sync |
+| 07 Customer Portal | Customer requests become Tickets (13) first; approved work becomes Tasks |
+| 05 Projects §45, §49, §92 | Approved change requests, retrospective actions and checklist items create Tasks |
+| 04 Contracts §49 | Contract obligations may create Tasks |
+| 10 Employees | Onboarding and HR actions may create Tasks |
 
-## AI Features
+Task Management exposes "create task from record" and "link task to record" so no module duplicates task logic.
 
-Artificial Intelligence should be deeply integrated throughout the project management experience and be capable of:
+## 14. AI Features
 
-* Creating complete projects from customer requirements
-* Breaking projects into milestones, and tasks
-* Generating subtasks automatically
-* Estimating development effort
-* Prioritizing work
-* Detecting project risks
-* Identifying blockers
-* Suggesting task assignments based on workload
-* Summarizing project progress
-* Generating project documentation
-* Creating technical specifications
-* Drafting customer updates
-* Answering questions about project status
-* Providing project health insights
-* Predicting delivery delays
-* Generating executive reports
+AI should be able to:
 
-The project management module should deliver a modern, extremely fast, AI-first experience comparable to Linear while providing enterprise-grade planning, collaboration, reporting, and project execution capabilities suitable for software agencies of any size.
+* Break a project or requirement into milestones (05) and tasks
+* Generate subtasks and acceptance criteria
+* Estimate effort
+* Prioritize and suggest assignment based on workload and skills (10)
+* Detect blockers, risks and delivery delays
+* Summarize progress and draft status updates (05 §39) and customer updates (07)
+* Generate technical specifications and release notes
+* Answer questions about task status
+
+AI output is editable and reviewable (`docs/Product_Specification.md` §4.9).
+
+## 15. Permissions
+
+Keys follow 01 §46:
+
+* `tasks.tasks.read / create / update / delete / assign`
+* `tasks.comments.internal.read`
+* `tasks.workflows.manage`
+* `tasks.releases.manage`
+* `tasks.bulk.execute`
+
+Project roles (05 §10) and customer visibility flags determine which tasks a Member or Customer Portal user can see.
+
+## 16. API & Webhooks
+
+API: CRUD tasks and subtasks, transitions, assignment, comments, links to records, bulk operations, saved views, releases.
+
+Webhooks: `task.created`, `task.updated`, `task.status_changed`, `task.assigned`, `task.completed`, `task.deleted`, `task.comment_added`, `task.linked`, `release.created`, `release.deployed`. Delivery follows the platform standard in `docs/Product_Specification.md` §4.
+
+## 17. Recommended MVP
+
+* Task record, subtasks, statuses, priorities, labels, assignees
+* Kanban, list, table and backlog views with saved views
+* Comments, mentions, attachments
+* Dependencies and duplicates
+* Cycles and estimates
+* Links to CRM, Projects, Tickets
+* Search, bulk operations, keyboard shortcuts
+* Events to 14 and 20
+
+## 18. Phase 2
+
+* Releases and deployment status
+* Workload view
+* Recurring tasks via 20
+* Estimate vs actual with 18
+* AI breakdown, estimation and assignment
+* Customer-visible tasks in 07

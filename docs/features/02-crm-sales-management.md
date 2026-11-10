@@ -2,6 +2,14 @@
 
 > Linear: [LOG-404](https://linear.app/logiqdev/issue/LOG-404/crm-and-sales-management) · Status: Backlog
 
+> **Canonical for:** Company, Contact, Lead, Deal, Pipeline, CRM Activities (calls, meetings, notes, follow-ups), customer lifecycle, Customer 360 view, record ownership and assignment rules, CRM import/export, and the platform-wide **Custom Fields and Shared Custom Fields** model (§24–26).
+>
+> **Depends on:** [01 Users, Organizations & Permissions](./01-users-organizations-permissions.md) (LOG-406) for Members, Teams, Branches, permissions and branch-scoped customers (01 §31, §37) · [06 Task Management](./06-task-management.md) (LOG-102) for Tasks linked to CRM records · [19 Calendar](./19-calendar.md) (LOG-409) for meeting events · [14 Notifications](./14-notifications-activity-center.md) (LOG-403) · [20 Automation Engine](./20-automation-engine.md) (LOG-410) for sales automation rules · [17 Documents](./17-documents-file-management.md) (LOG-407) for attachments.
+>
+> **Consumed by:** 03 Proposals, 04 Contracts, 05 Projects (customer association), 07 Customer Portal, 08 Finance (billing profiles reference Companies), 11 Communication Center (contacts and segmentation), 12 Messaging (record sharing), 13 Support (customer identity and timeline).
+>
+> **Terminology:** "Company" is the CRM record. "Customer" is a Company whose lifecycle stage is Customer or later. "Organization" is reserved for the platform tenant (01) and is never used for a CRM company.
+
 Develop a comprehensive **CRM and Sales Management system** comparable to HubSpot CRM, but designed specifically for software agencies and with a highly extensible architecture.
 
 The CRM should provide a complete view of the relationship between the agency, leads, prospects, companies, contacts, deals, proposals, contracts, projects, invoices, support activity, and customer history.
@@ -14,24 +22,23 @@ The CRM should function as the central source of truth for all commercial relati
 
 The CRM should support the following primary entities:
 
+CRM-owned entities:
+
 * Contacts
-* Companies / Organizations
+* Companies (including Customers, Partners and Vendors as company types or lifecycle stages)
+* Leads
 * Deals / Opportunities
-* Customers
-* Partners
-* Vendors
-* Activities
-* Meetings
-* Calls
-* Notes
-* Tasks
-* Follow-ups
-* Proposals
-* Contracts
-* Projects
-* Tickets
-* Invoices
-* Payments
+* Activities (calls, meetings, notes, follow-ups)
+
+Entities owned by other modules and linked from the CRM:
+
+* Tasks → [06 Task Management](./06-task-management.md)
+* Proposals → [03 Proposals](./03-proposal-quotation-generator.md)
+* Contracts → [04 Contracts](./04-contracts.md)
+* Projects → [05 Project Management](./05-project-management.md)
+* Tickets → [13 Customer Support](./13-customer-support-communication-hub.md)
+* Invoices, Payments, Subscriptions → [08 Finance](./08-financial-management-stripe-integration.md)
+* Meeting events → [19 Calendar](./19-calendar.md)
 
 Entities should be interconnected so users can navigate the complete relationship history.
 
@@ -52,9 +59,9 @@ Company
 
 ---
 
-# 2. Companies / Organizations
+# 2. Companies
 
-Provide complete company management.
+Provide complete company management. A Company is any external legal entity the agency deals with: prospect, customer, partner or vendor. Company type and lifecycle stage distinguish them; there is one record model.
 
 Each company should support:
 
@@ -89,7 +96,27 @@ Each company should support:
 * Related support tickets
 * Activity history
 
-Support parent/child company relationships for organizations with multiple branches, subsidiaries, or departments.
+Support parent/child company relationships for customer groups with subsidiaries, regional entities or departments. These are CRM company relationships; they are not platform Branches (01 §16) and not platform Organizations (01 §8).
+
+A Company is organization-wide by default and may carry branch relationships for branch sales ownership and reporting (01 §31, §37) without being duplicated per branch.
+
+---
+
+# 2a. Vendors & Partners
+
+Vendors and partners use the Company and Contact model with a company type of Vendor or Partner.
+
+Typical vendor contacts an agency needs at hand:
+
+* Accountant / accounting firm
+* Lawyer / legal counsel
+* Bank contact
+* Hosting and infrastructure providers
+* Software vendors
+* Subcontractors and freelancers
+* Insurance
+
+Vendor companies link to supplier invoices and expenses in [09 Income & Expense](./09-income-expense-management.md) and to vendor or contractor agreements in [04 Contracts](./04-contracts.md). Contractors who need platform access are External Collaborators per 01 §77; the CRM record and the platform membership are separate.
 
 ---
 
@@ -453,9 +480,11 @@ Activities should be visible from both the individual record and a centralized a
 
 # 14. Tasks & Follow-Ups
 
-Provide CRM-specific tasks for sales representatives.
+> Defined by → [06 Task Management](./06-task-management.md) · Linear LOG-102.
 
-Examples:
+CRM tasks are ordinary Tasks owned by Task Management, linked to a Lead, Company, Contact or Deal. The CRM does not implement a second task entity. The CRM surfaces linked Tasks on the record and in the activity timeline, and offers quick creation with the CRM record pre-linked.
+
+Examples of sales tasks:
 
 * Call prospect
 * Schedule discovery meeting
@@ -466,25 +495,23 @@ Examples:
 * Review contract
 * Follow up on negotiation
 
-Support:
+Due dates, priority, assignee, recurrence, reminders and completion are Task features (06). The CRM adds:
 
-* Due dates
-* Priority
-* Assignee
-* Recurring tasks
-* Reminders
-* Related CRM record
-* Completion status
+* Related CRM record (required for a CRM-created task)
+* Task type "Follow-up" as a default task template
+* Visibility of the task on the related Company, Contact, Lead and Deal
 
-Provide automatic follow-up reminders for deals that have become inactive.
+Automatic follow-up reminders for inactive deals are an Automation Engine rule (20) that creates a Task.
 
 ---
 
 # 15. Meetings
 
-Support CRM meeting management.
+> Event record defined by → [19 Calendar](./19-calendar.md) · Linear LOG-409.
 
-Meeting records should include:
+A CRM meeting is a Calendar event of type customer meeting linked to CRM records. Calendar owns the event (date, time, attendees, location, link). The CRM owns the sales context stored on the Activity: outcomes, notes and follow-ups.
+
+The meeting activity in the CRM should expose:
 
 * Meeting title
 * Date
@@ -637,7 +664,9 @@ Provide automatic assignment rules based on configurable criteria.
 
 # 21. CRM Teams & Permissions
 
-Support multiple sales teams.
+> Teams, roles, scopes and the permission catalog are defined by → [01 Users, Organizations & Permissions](./01-users-organizations-permissions.md) · Linear LOG-406. This section lists only CRM-specific permissions, named per 01 §46 (`crm.companies.read`, `crm.deals.update`, `crm.records.export`, and so on).
+
+Sales teams are ordinary Teams (01 §40).
 
 For example:
 
@@ -691,6 +720,8 @@ Support:
 ---
 
 # 24. Custom Fields
+
+> **Platform-wide definition.** Sections 24–26 define the custom field model for the whole Agency OS. Other modules (04 Contracts, 05 Projects, 06 Tasks, 13 Support, 17 Documents, 09 Income & Expense) consume this definition and only list which of their entities support custom fields.
 
 The CRM must be highly customizable without requiring development work.
 
@@ -846,13 +877,11 @@ Provide webhook/event support for important CRM events such as:
 * Deal won
 * Deal lost
 * Activity created
-* Task completed
-* Proposal sent
-* Proposal accepted
-* Contract signed
-* Customer created
+* Customer created (lifecycle stage reached Customer)
 
-This allows external systems and internal modules to react to CRM events in real time.
+Proposal events (sent, accepted) are emitted by 03, contract events by 04 and task events by 06. The CRM subscribes to those events to update deals; it does not re-emit them.
+
+Webhook delivery follows the platform standard in `docs/Product_Specification.md` §4. Events are also published to the [20 Automation Engine](./20-automation-engine.md) and [14 Notifications](./14-notifications-activity-center.md).
 
 ---
 
@@ -946,7 +975,9 @@ Search should support:
 
 # 31. Sales Automation
 
-Support configurable CRM automation rules without making this part of the communications/campaign system.
+> Engine defined by → [20 Automation Engine](./20-automation-engine.md) · Linear LOG-410.
+
+The CRM declares its triggers (lead created, deal stage changed, deal inactive, proposal accepted) and actions (assign, create task, change stage, create project) to the Automation Engine. It does not implement its own rules runtime. Email/SMS campaign automation remains in 11.
 
 Examples:
 

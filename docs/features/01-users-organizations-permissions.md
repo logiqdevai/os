@@ -2,6 +2,12 @@
 
 > Linear: [LOG-406](https://linear.app/logiqdev/issue/LOG-406/users-members-organizations-branches-and-permissions) · Status: Backlog
 
+> **Canonical for:** User, Organization (tenant), Branch, Team, Department, Membership, Role, Permission, Scope, module access, authentication, invitations, SSO/SCIM, Customer Portal identity, organization branding and localization defaults, tenant isolation, authorization API and audit of access changes. Every module references this file for these concepts instead of redefining them.
+>
+> **Depends on:** nothing inside the product. This is the foundation module.
+>
+> **Consumed by:** every other module. Terminology for the whole platform is fixed in `docs/Product_Specification.md` §"Terminology".
+
 ## 1. Purpose
 
 This module defines the identity, organization, membership, branch, team, role, permission, access-control, and workspace structure for the Agency Operating System.
@@ -88,7 +94,7 @@ Example:
 **Organization A — Acme**
 
 * Users
-* Clients
+* Customers
 * Projects
 * Finance
 * Contracts
@@ -99,7 +105,7 @@ must be isolated from:
 **Organization B — Northwind**
 
 * Users
-* Clients
+* Customers
 * Projects
 * Finance
 * Contracts
@@ -223,7 +229,7 @@ Examples:
 
 * Projects
 * Tasks
-* Clients
+* Customers
 * Contracts
 * Offers
 * Invoices
@@ -492,7 +498,7 @@ Can access:
 
 * Heraklion branch
 * Heraklion projects
-* Heraklion clients
+* Heraklion customers
 
 ### Regional manager
 
@@ -559,7 +565,7 @@ Membership 2:
 
 Membership 3:
 
-**Client Company** → External collaborator
+**Customer Company** → External collaborator
 
 Switching organizations must change the active data scope.
 
@@ -604,7 +610,7 @@ Resources should define whether they are:
 
 Examples:
 
-A global CRM client may be organization-wide.
+A global CRM customer may be organization-wide.
 
 A branch-specific employee may belong to Athens.
 
@@ -649,25 +655,25 @@ Employee → Primary branch Athens
 
 Project → Primary branch Athens
 
-Client → Organization-wide
+Customer → Organization-wide
 
 Contract → Organization-wide or linked to relevant branch
 
 ---
 
-# 31. Organization-Wide vs Branch-Level Clients
+# 31. Organization-Wide vs Branch-Level Customers
 
 The CRM should support both:
 
-### Organization client
+### Organization customer
 
-A client relationship managed centrally across the company.
+A customer relationship managed centrally across the company.
 
-### Branch client
+### Branch customer
 
-A client primarily associated with a particular branch.
+A customer primarily associated with a particular branch.
 
-The client should not be duplicated simply because multiple branches interact with it.
+The customer should not be duplicated simply because multiple branches interact with it.
 
 Example:
 
@@ -677,7 +683,7 @@ Acme Corporation may be a single CRM company for Deloitte while having relations
 * Deloitte UK
 * Deloitte Germany
 
-Branch relationships should be represented as relationships / ownership rather than duplicate client records.
+Branch relationships should be represented as relationships / ownership rather than duplicate customer records.
 
 ---
 
@@ -705,7 +711,7 @@ Projects involving multiple branches should support:
 
 Example:
 
-A global client implementation may involve:
+A global customer implementation may involve:
 
 * Greece engineering
 * UK account management
@@ -769,7 +775,7 @@ This allows:
 * Branch revenue attribution
 * Regional reporting
 
-without duplicating the client.
+without duplicating the customer.
 
 ---
 
@@ -778,7 +784,7 @@ without duplicating the client.
 Support tickets may include:
 
 * Organization
-* Client
+* Customer
 * Branch
 * Assigned team
 
@@ -932,10 +938,10 @@ Permissions represent individual capabilities.
 
 Examples:
 
-* `crm.clients.read`
-* `crm.clients.create`
-* `crm.clients.update`
-* `crm.clients.delete`
+* `crm.companies.read`
+* `crm.companies.create`
+* `crm.companies.update`
+* `crm.companies.delete`
 * `projects.projects.read`
 * `projects.projects.update`
 * `projects.members.manage`
@@ -1473,7 +1479,7 @@ External users may be granted limited organization access.
 Examples:
 
 * Contractor
-* Client stakeholder
+* Customer stakeholder
 * Partner
 * Consultant
 
@@ -1498,7 +1504,18 @@ Guest access must not imply organization-wide membership.
 
 Customer Portal users should be separate from internal Members while still using the underlying identity infrastructure where appropriate.
 
-A client contact can have a portal identity without becoming an internal organization Member.
+A customer contact can have a portal identity without becoming an internal organization Member.
+
+This module owns the Customer Portal identity model:
+
+* **Customer Portal User**: a User whose membership is to a Customer (a CRM Company, see 02) inside an agency Organization, not to the Organization itself.
+* A Customer can have many Customer Portal Users.
+* Customer roles are organization-configurable with these defaults: Owner, Administrator, Manager, Finance, Legal, Viewer.
+* Customer permissions follow the same catalog and scope model as internal permissions, limited to customer-visible resources (projects, documents, proposals, contracts, invoices, tickets, approvals, portal settings).
+* Customer Portal authentication supports the same methods as internal authentication (§6) subject to the Organization's portal security policy, including optional SSO for enterprise customers.
+* Inviting, suspending and removing Customer Portal Users is performed by authorized Members, or by a customer Owner/Administrator for their own Customer.
+
+[07 Customer Portal](./07-customer-portal.md) defines what these users see and do. It does not define identity, roles or permissions.
 
 ---
 
@@ -1618,7 +1635,7 @@ Examples:
 
 * Shared project
 * Shared team
-* Shared client
+* Shared customer
 * Global support
 * Global finance
 
@@ -1833,7 +1850,7 @@ Exporting data should be separately permissioned from reading data.
 
 Example:
 
-A user may read CRM clients but not export the entire client database.
+A user may read CRM customers but not export the entire customer database.
 
 ---
 
@@ -2093,7 +2110,7 @@ Cross-organization collaboration should be explicit.
 
 Example:
 
-Deloitte can collaborate with a client organization on a Project without giving the client access to Deloitte's internal organization.
+Deloitte can collaborate with a customer organization on a Project without giving the customer access to Deloitte's internal organization.
 
 The Customer Portal / external collaboration mechanisms should be used rather than breaking tenant isolation.
 
@@ -2103,7 +2120,7 @@ The Customer Portal / external collaboration mechanisms should be used rather th
 
 Organizations may have business relationships:
 
-* Client
+* Customer
 * Vendor
 * Partner
 * Parent company
@@ -2494,7 +2511,7 @@ Branch dashboard may show:
 * Members
 * Teams
 * Projects
-* Clients
+* Customers
 * Support workload
 * Revenue context
 * Open tasks

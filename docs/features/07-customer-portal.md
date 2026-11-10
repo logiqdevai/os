@@ -2,275 +2,164 @@
 
 > Linear: [LOG-103](https://linear.app/logiqdev/issue/LOG-103/customer-portal) · Status: Backlog
 
-Develop a modern, secure, and user-friendly **Customer Portal** that provides clients with complete visibility into their projects while enabling seamless collaboration with the agency. The portal should serve as the primary communication and self-service platform where customers can monitor progress, review deliverables, submit requests, manage documents, and access all project-related information without requiring manual updates from the agency.
-
----
-
-## Dashboard
-
-Provide customers with a personalized dashboard displaying:
+> **Canonical for:** the customer-facing surface of the Agency OS: what a Customer Portal user can see and do, portal navigation, dashboard, customer-visible fields and actions, portal branding, portal-specific AI and the embedded widget. The portal **does not own** identity, projects, tasks, tickets, documents, invoices or conversations. Each section below names the owning module.
+>
+> **Depends on:** [01](./01-users-organizations-permissions.md) §79 (LOG-406) for Customer Portal Users, customer roles, permissions and authentication · [02 CRM](./02-crm-sales-management.md) (LOG-404) for the Customer (Company) and Contacts · [03 Proposals](./03-proposal-quotation-generator.md) (LOG-303) · [04 Contracts](./04-contracts.md) (LOG-349) · [05 Projects](./05-project-management.md) (LOG-405) · [06 Tasks](./06-task-management.md) (LOG-102) · [08 Finance](./08-financial-management-stripe-integration.md) (LOG-104) · [12 Messaging](./12-messaging-team-communication.md) (LOG-313) · [13 Support](./13-customer-support-communication-hub.md) (LOG-342) · [14 Notifications](./14-notifications-activity-center.md) (LOG-403) · [17 Documents](./17-documents-file-management.md) (LOG-407) · [19 Calendar](./19-calendar.md) (LOG-409).
+>
+> **Consumed by:** every module that marks a record customer-visible.
 
-* Active projects
-* Completed projects
-* Upcoming milestones
-* Recent activity
-* Pending approvals
-* Outstanding invoices
-* Active subscriptions
-* Recent payments
-* Latest messages
-* Open support requests
-* Project health overview
-* Team members assigned to their projects
-* Recent document uploads
-
----
+## 1. Purpose
 
-## Project Overview
+Develop a modern, secure Customer Portal that gives customers complete visibility into their engagement with the agency and lets them collaborate without email chains or manual status updates: monitor progress, review and approve deliverables, submit requests, access documents, sign proposals and contracts, and manage billing.
 
-Each project should include:
+### Visibility principle
 
-* Project summary
-* Current project status
-* Overall completion percentage
-* Progress timeline
-* Milestone progress
-* Project objectives
-* Expected delivery date
-* Last updated timestamp
-* Assigned agency team members
-* Project activity feed
+A record appears in the portal only when its owning module marks it customer-visible (`docs/Product_Specification.md` §4.5). Internal notes, risks, private financial data, internal conversations and employee information are never exposed. Every portal read re-evaluates permissions through the central authorization service (01 §136).
 
----
+## 2. Identity, Access & Customer Roles
 
-## Progress Tracking
+> Defined by → [01](./01-users-organizations-permissions.md) §79 · Linear LOG-406.
 
-Allow customers to monitor project execution through:
+Customer Portal Users, customer roles (Owner, Administrator, Manager, Finance, Legal, Viewer), permissions, authentication methods, SSO, MFA and invitations are defined in 01. The portal provides:
 
-* Real-time progress updates
-* Milestone completion
-* Task completion percentages
-* Development phases
-* Upcoming milestones
-* Completed deliverables
-* Current priorities
-* Recently completed work
-* Project timeline
-* Roadmap view
+* Login, registration by invitation, password and MFA self-service
+* Customer profile: company information and contact details (writes go to the Customer record in 02, subject to agency approval policy)
+* User management for customer Owners and Administrators: invite users, assign customer roles, deactivate users
+* Notification preferences (14 §6)
+* Language and time zone preferences (01 §127)
 
----
-
-## Tasks & Feature Requests
+## 3. Dashboard
 
-Customers should be able to:
+Personalized dashboard showing:
 
-* Create feature requests
-* Submit bug reports
-* Create project tasks
-* Submit change requests
-* Define priorities
-* Attach files
-* Provide detailed descriptions
-* Track request status
-* View request history
-* Edit submitted requests
-* Comment on requests
-* Receive notifications when requests are updated
-* Allow customers to upload files directly to specific projects, specific folders to the file management system, tasks, or conversations.
-
-Agency users should be able to convert customer requests into internal development tasks while maintaining traceability.
-
----
+* Active and completed projects with health and progress (05)
+* Upcoming milestones and deadlines (05, 19)
+* Pending approvals: deliverables (05 §47), proposals (03), contracts (04), documents (17 §10)
+* Open tickets and recent replies (13)
+* Outstanding invoices, upcoming renewals, active subscriptions (08)
+* Latest messages in customer channels (12)
+* Recent documents (17)
+* Agency team members assigned to the customer's projects (05 §8, limited to name, role and photo)
 
-## Project Communication
+## 4. Projects
 
-Provide a dedicated communication thread for every project where customers and agency members can collaborate.
+> Defined by → [05 Project Management](./05-project-management.md) §60 · Linear LOG-405.
 
-Features should include:
+For each customer-visible project the portal shows: summary, status, progress, milestones, roadmap and timeline, customer-visible deliverables, customer-visible tasks (06), published status updates (05 §39), customer-visible change requests (05 §45), customer deadlines and the assigned agency team.
 
-* Project conversations
-* Threaded replies
-* Rich text messages
-* File attachments
-* Image sharing
-* Document sharing
-* Automatic notifications
-* Read receipts
-* Message history
-* Search within conversations
-* Internal agency notes hidden from customers
-* Customer-visible announcements
+Customers can: comment on status updates, approve or request revisions on deliverables (05 §47 acceptance criteria), and approve change requests where the agency routes approval to them.
 
-All communication should remain permanently associated with the project.
+## 5. Requests
 
----
+> Defined by → [13 Customer Support](./13-customer-support-communication-hub.md) §2, §4, §5 · Linear LOG-342.
 
-## Deliverables
+Every customer-originated request (feature request, bug report, change request, question, support request) is a **Ticket** in 13. Customers never create Tasks directly. The agency converts a ticket into a Task (06) or a Project Change Request (05 §45) with a permanent link, and the ticket shows the resulting status to the customer.
 
-Allow customers to access:
+Portal capabilities:
 
-* Completed deliverables
-* Design assets
-* Source files (when applicable)
-* Documentation
-* Release notes
+* Create a request with type, priority, description, attachments (17) and related project
+* Track status, history and linked work outcome
+* Reply and comment on a request
+* Edit a request while it is unassigned
+* View the knowledge base and FAQs (13 §6)
+* Receive notifications on request changes (14)
 
-Support approval workflows where customers can:
+Live chat and the embedded messaging widget are the Support channels of 13 §1 surfaced inside the portal.
 
-* Approve deliverables
-* Request revisions
-* Leave feedback
-* Reject submissions with comments
-* Track approval history
+## 6. Project Communication
 
----
+> Defined by → [12 Messaging](./12-messaging-team-communication.md) §26–28 · Linear LOG-313.
 
-## Project Timeline
+The portal exposes the customer channel of each project (12 §27) as the project conversation: threads, rich text, attachments, mentions, read state and search. Internal messages and internal channels are never visible (12 §28). Support conversations (13) remain separate from project channels; both link to the same customer record.
 
-Provide an interactive timeline displaying:
+## 7. Deliverables & Approvals
 
-* Project start date
-* Milestones
-* Deliverables
-* Releases
-* Deadlines
-* Completed work
-* Upcoming work
-* Estimated completion
+> Defined by → [05 Projects](./05-project-management.md) §18, §46–47 and [17 Documents](./17-documents-file-management.md) §10.
 
----
+Customers can access customer-visible deliverables, design assets, source files when applicable, documentation and release notes (06 §9), and can approve, request revisions, reject with comments and view approval history. Acceptance records are stored in 05; document approval state in 17.
 
-## Notifications
+## 8. Proposals & Contracts
 
-Notify customers about important project events including:
+> Defined by → [03 Proposals](./03-proposal-quotation-generator.md) and [04 Contracts](./04-contracts.md) §61.
 
-* New messages
-* Milestone completion
-* Deliverable uploads
-* Project updates
-* Task status changes
-* Approval requests
-* Invoice creation
-* Payment confirmations
-* Subscription renewals
+Customers can view, download, comment on, accept, reject, request changes to and sign proposals (03 "Customer Approval") and review, comment on and sign contracts, amendments and renewals (04 §36, §61). The signing experience is provided by the signature provider abstraction (04 §33).
 
-Support:
+## 9. Documents
 
-* In-app notifications
-* Email notifications
-* SMS notifications
-* Configurable notification preferences
+> Defined by → [17 Documents & File Management](./17-documents-file-management.md) · Linear LOG-407.
 
----
+The portal shows every Document shared with the customer or scoped to a customer-visible project: proposals, contracts, statements of work, specifications, meeting notes, release notes, manuals and exports. Customers can upload files into permitted project folders, tickets and conversations (17 §5). Categorization, versioning, preview, download and search are 17 features. Customer-scoped vault entries may be shown when enabled (17 §12).
 
-## Documents
+## 10. Billing
 
-Provide centralized access to all project-related documents including:
+> Defined by → [08 Finance](./08-financial-management-stripe-integration.md) "Customer Self-Service" · Linear LOG-104.
 
-* Proposals
-* Contracts
-* Statements of Work (SOW)
-* Project documentation
-* Technical specifications
-* Meeting notes
-* Release notes
-* User manuals
-* PDF exports
-* Shared resources
+The portal surfaces: invoices and status, online payment, payment history and receipts, outstanding balances, payment methods, subscriptions (view, upgrade, downgrade, cancel per policy), upcoming renewals and billing history. Rules, statuses and Stripe behavior are owned by 08. Accepted proposals (03) appear in billing history as the origin of invoices and subscriptions.
 
-Support document categorization, versioning, previewing, downloading, and search.
+## 11. Calendar
 
----
+> Defined by → [19 Calendar](./19-calendar.md) §8.
 
-## Financial Overview
+Customer-visible meetings, approval deadlines and milestone dates appear in a portal calendar. Customers can respond to invitations and use booking links.
 
-Allow customers to manage all financial interactions from within the portal.
+## 12. Notifications
 
-Include:
+> Defined by → [14 Notifications & Activity Center](./14-notifications-activity-center.md) §3, §7.
 
-* Invoices
-* Quotes
-* Payment history
-* Outstanding balances
-* Active subscriptions
-* Subscription plans
-* Payment methods
-* Downloadable PDF invoices
-* Payment confirmations
-* Upcoming renewals
+The portal has a customer-scoped inbox and the customer channels in-app, email and SMS (opt-in). Events include new messages, milestone completion, deliverable uploads, status updates, request updates, approval requests, invoice creation, payment confirmation and subscription renewal. Customers never receive internal-only events.
 
-Customers should be able to:
+## 13. Search
 
-* Pay invoices online
-* View invoice status
-* Download invoices
-* Update payment methods
-* Manage subscriptions
-* View billing history
+Global portal search across projects, messages, documents, tasks, requests, deliverables, invoices and contracts. Each module's search is reused and every result is permission-checked (01 §140, 12 §86).
 
----
+## 14. Branding & White-Label
 
-## Customer Profile
+> Defined by → [01](./01-users-organizations-permissions.md) §15.
 
-Allow customers to manage their organization by:
+The portal consumes organization branding: logo, colors, favicon, email branding and optional custom domain. Branch-level branding may apply when the customer belongs to a branch (01 §120).
 
-* Updating company information
-* Managing contact details
-* Inviting additional users with roles
-* Changing passwords
-* Configuring notification preferences
-* Managing profile settings
+## 15. AI Features
 
----
+Portal AI, running on the shared AI layer with customer-scoped data only:
 
-## Multi-User Customer Access
+* Summarize project progress and explain completed work in non-technical language
+* Answer questions about project, request and invoice status
+* Summarize conversations
+* Explain upcoming milestones
+* Draft requests from a description
+* Find documents and information
+* Translate updates into the customer's language
 
-Support multiple users within the same customer organization.
+AI never reveals internal-only data; it queries through the same permission layer as the UI.
 
-Example roles include:
+## 16. Permissions
 
-* Owner
-* Administrator
-* Manager
-* Finance
-* Laywer
-* Viewer
+Customer permissions are catalog entries under the `portal.*` namespace (01 §46), for example `portal.projects.read`, `portal.deliverables.approve`, `portal.invoices.pay`, `portal.contracts.sign`, `portal.users.manage`. Customer roles bundle them (01 §79).
 
-Permissions should control access to projects, documents, financial information, approvals, and administrative settings.
+## 17. Audit
 
----
+Audit login, approvals, signatures, payments, document downloads of sensitive categories and user management actions by customer users.
 
-## Search
+## 18. API
 
-Provide global search across:
+The portal uses the same APIs as the internal application with the Customer Portal identity. An embeddable widget (support chat and request form) is provided for customer websites and apps (13 §5).
 
-* Projects
-* Messages
-* Documents
-* Tasks
-* Feature requests
-* Deliverables
-* Invoices
-* Contracts
-* Files
+## 19. Recommended MVP
 
----
+* Identity and roles from 01 §79
+* Dashboard
+* Projects with milestones, status updates and deliverable approvals
+* Requests via 13
+* Documents via 17
+* Proposals view and acceptance via 03
+* Billing via 08
+* Notifications via 14
 
-## AI Features
+## 20. Phase 2
 
-Integrate AI throughout the customer portal to improve communication and transparency.
-
-AI should be capable of:
-
-* Summarizing project progress
-* Explaining completed work in non-technical language
-* Answering customer questions about project status
-* Summarizing conversations
-* Explaining upcoming milestones
-* Suggesting feature requests
-* Searching project documentation
-* Assisting customers in finding files and information
-* Generating status reports
-* Translating technical updates into business-friendly language
-
-The Customer Portal should provide a professional, transparent, and collaborative experience that gives customers full visibility into their projects while reducing the need for manual status updates and email exchanges.
+* Project channels via 12
+* Contract signing via 04
+* Calendar and booking
+* White-label domains
+* Vault access
+* Portal AI assistant

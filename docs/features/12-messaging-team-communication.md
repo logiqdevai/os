@@ -2,6 +2,14 @@
 
 > Linear: [LOG-313](https://linear.app/logiqdev/issue/LOG-313/messaging-and-team-communication) · Status: Backlog
 
+> **Canonical for:** internal real-time messaging: direct messages, channels (public, private, project, customer, announcement), threads, reactions, mentions, record sharing and previews, contextual conversations on business records, presence, saved messages, pinning, search inside messaging, moderation, retention and export of messages.
+>
+> **Boundaries:** [13 Customer Support](./13-customer-support-communication-hub.md) owns customer support conversations, live chat and inbound email. [11 Communication Center](./11-communication-center.md) owns outbound email/SMS and campaigns. [14 Notifications](./14-notifications-activity-center.md) owns notification channels, preferences and the inbox. [17 Documents](./17-documents-file-management.md) owns attachments. [01](./01-users-organizations-permissions.md) owns identity, Teams, guests, external collaborators and Customer Portal Users.
+>
+> **Depends on:** 01 (LOG-406) · 14 (LOG-403) · 17 (LOG-407) · [20 Automation Engine](./20-automation-engine.md) (LOG-410) for channel lifecycle rules and system events · [19 Calendar](./19-calendar.md) (LOG-409) for calls and huddles.
+>
+> **Consumed by:** 05 Projects (§62 project channels), 06 Tasks (§7 task discussions), 07 Customer Portal (§6 project communication), 13 Support (§11 internal discussion of tickets), 02 CRM (§58 record conversations).
+
 ## 1. Overview
 
 Build a first-class internal messaging and collaboration system comparable to Slack, designed as a core module of the Agency Operating System.
@@ -33,7 +41,7 @@ The messaging system should contain several communication primitives:
 * Public channels
 * Private channels
 * Project channels
-* Customer/client channels
+* Customer channels
 * Announcement channels
 * Temporary/group conversations
 * Threaded discussions
@@ -43,21 +51,21 @@ A user should be able to move from a message to the related project, customer, t
 
 ### Core hierarchy
 
-**Organization → Workspace/Team → Channel → Message → Thread → Attachments/Reactions/Mentions/Links**
+**Organization → Team → Channel → Message → Thread → Attachments/Reactions/Mentions/Links**
 
 Direct messaging exists alongside the channel hierarchy.
 
 ---
 
-## 3. Organizations & Workspaces
+## 3. Organizations & Teams
 
-The messaging system operates within an organization.
+> Defined by → [01](./01-users-organizations-permissions.md) §8 (Organization), §16 (Branch), §40 (Team) · Linear LOG-406.
 
-Organizations may contain multiple logical workspaces or teams.
+The messaging system operates within an Organization. Channels can be scoped to a Team or Branch. There is no separate "workspace" concept; where earlier drafts said workspace, read Organization or Team.
 
 ## 4. Users & Presence
 
-Users should have a messaging identity separate from their broader employee profile.
+The messaging identity is the Member (01 §24). Employee profile data stays in 10; messaging only adds presence and status.
 
 ### Presence states
 
@@ -132,7 +140,7 @@ Channels are persistent spaces for team communication.
 
 #### Public channel
 
-Visible and discoverable by all authorized workspace members.
+Visible and discoverable by all authorized Members of the Organization (or Team/Branch scope).
 
 #### Private channel
 
@@ -388,9 +396,9 @@ Mentions should trigger notifications according to recipient notification prefer
 
 ## 16. Notifications
 
-The system should provide centralized messaging notifications.
+> Engine defined by → [14 Notifications & Activity Center](./14-notifications-activity-center.md) · Linear LOG-403. Messaging emits the events below; 14 owns channels, global preferences, inbox and delivery. Sections 17–18 describe only the messaging-specific settings layered on top of 14.
 
-### Notification events
+### Notification events emitted
 
 * Direct message
 * Mention
@@ -405,21 +413,13 @@ The system should provide centralized messaging notifications.
 * Customer message
 * Announcement
 
-### Notification channels
-
-* In-app
-* Desktop
-* Browser
-* Mobile push
-* Email notification where configured
-
-Email notifications are notifications only; the email/SMS communication module remains separate.
+Channels (in-app, desktop, browser, push, email) are provided by 14 §5.
 
 ---
 
 ## 17. Notification Preferences
 
-Users should have granular notification controls.
+Global preferences, Do Not Disturb and digest settings live in 14 §6. Messaging adds **per-channel and per-conversation** settings:
 
 ### Preferences
 
@@ -445,7 +445,7 @@ Additional settings:
 
 ## 18. Notification Inbox
 
-Provide a dedicated notification/activity inbox.
+The inbox is the Activity Center of 14 §7. Messaging contributes these categories and actions to it rather than building a separate inbox:
 
 ### Categories
 
@@ -549,7 +549,7 @@ Messaging should support file sharing.
 * Preview
 * Download/access permissions
 
-Files should integrate with the organization's document/file storage system where applicable.
+Attachments are Documents owned by [17 Documents & File Management](./17-documents-file-management.md) (LOG-407), linked to the message and conversation. Vault entries (17 §12) cannot be attached; only a reference link is shared.
 
 ---
 
@@ -678,6 +678,12 @@ Customers should not automatically gain access unless explicitly configured.
 The system should optionally support external participants.
 
 This allows customers to participate in selected conversations without accessing internal channels.
+
+Ownership rule for customer communication:
+
+* **Project collaboration** (ongoing discussion about a project with the customer) is a Messaging project customer channel, shown in 07 Customer Portal §6.
+* **Support** (questions, problems, requests) is a Support conversation and Ticket in 13, including live chat and inbound email. Messaging does not implement a support inbox.
+* External participants are Customer Portal Users (01 §79) or guests/external collaborators (01 §77–78); Messaging does not create its own external identities.
 
 ### External participant capabilities
 
@@ -1218,7 +1224,9 @@ Audit logs should be immutable and accessible only to authorized administrators.
 
 ## 52. Security
 
-Messaging contains potentially sensitive business information and must use strong security controls.
+> Authentication, authorization, RBAC, organization isolation and session management are defined by → [01](./01-users-organizations-permissions.md) · Linear LOG-406.
+
+Messaging consumes the central authorization service and adds:
 
 ### Requirements
 
@@ -1266,7 +1274,7 @@ Organizations should be able to configure message retention.
 ### Retention scopes
 
 * Organization-wide
-* Workspace
+* Team or Branch
 * Channel
 * Conversation type
 
@@ -1294,7 +1302,7 @@ Authorized administrators should be able to export messaging data.
 ### Export options
 
 * Organization
-* Workspace
+* Team or Branch
 * Channel
 * Date range
 * Conversation type
@@ -1387,7 +1395,7 @@ Internal support notes remain private.
 
 ## 61. Messaging & Finance Integration
 
-Financial events may optionally generate internal notifications.
+Financial events may optionally be posted to channels as system messages through a 20 Automation Engine rule ("post message to channel" action).
 
 Examples:
 
@@ -1739,14 +1747,16 @@ Organizations should be able to customize:
 * Mention permissions
 * Announcement permissions
 * Emoji/reaction availability
-* Branding
-* Workspace organization
+* Branding (consumed from 01 §15)
+* Channel sections and defaults
 
 ---
 
 ## 81. Permissions Model
 
-Messaging permissions should support organization, workspace, channel, and conversation levels.
+> Catalog, roles and scopes defined by → [01](./01-users-organizations-permissions.md) §44–52 · Linear LOG-406. Keys follow 01 §46 (`messaging.channels.manage`, `messaging.messages.delete_any`, `messaging.external_users.manage`).
+
+Messaging permissions apply at organization, channel and conversation levels.
 
 ### Organization permissions
 
@@ -1834,7 +1844,7 @@ Search must never reveal unauthorized information.
 For every result, the system must verify:
 
 * Organization membership
-* Workspace access
+* Team or Branch scope
 * Channel access
 * Conversation access
 * Record access
@@ -1985,6 +1995,8 @@ Naming rules should prevent duplicate/confusing channel names.
 ---
 
 ## 95. Archival & Lifecycle Automation
+
+> Engine defined by → [20 Automation Engine](./20-automation-engine.md) · Linear LOG-410. Messaging exposes "create channel", "archive channel" and "post message" actions.
 
 Channels may be automatically archived based on rules.
 
@@ -2160,7 +2172,9 @@ Specific compliance requirements should be configurable based on the organizatio
 
 ## 108. Multi-Tenant Isolation
 
-If the Agency OS is multi-tenant, messaging data must be isolated by organization.
+> Defined by → [01](./01-users-organizations-permissions.md) §3, §9 · Linear LOG-406.
+
+The Agency OS is multi-tenant. Messaging data is isolated by Organization.
 
 No user, API request, search operation, notification, file URL, or integration event should cross organization boundaries without explicit authorization.
 

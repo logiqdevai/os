@@ -2,9 +2,17 @@
 
 > Linear: [LOG-303](https://linear.app/logiqdev/issue/LOG-303/ai-powered-proposal-and-quotation-generator) · Status: Backlog
 
+> **Canonical for:** Proposals and quotations: creation, AI generation, templates, pricing builder, versions, internal review, PDF, customer delivery, customer acceptance, status, tracking, analytics and conversion into contract, project and billing records.
+>
+> **Terminology:** **Proposal** is the canonical term. "Offer", "Quote", "Quotation" and "Estimate" are synonyms for the same record and are not separate features. The former "Quotes & Estimates" feature in 08 Finance is this module.
+>
+> **Depends on:** [01](./01-users-organizations-permissions.md) (LOG-406) for permissions, approval rights (01 §95) and branding (01 §15) · [02 CRM](./02-crm-sales-management.md) (LOG-404) for Companies, Contacts and Deals · [08 Finance](./08-financial-management-stripe-integration.md) (LOG-104) for the products and services catalog, tax rates and currency · [04 Contracts](./04-contracts.md) (LOG-349) for the e-signature provider abstraction · [07 Customer Portal](./07-customer-portal.md) (LOG-103) for customer-facing delivery · [17 Documents](./17-documents-file-management.md) (LOG-407) for generated PDFs and attachments · [14 Notifications](./14-notifications-activity-center.md) (LOG-403).
+>
+> **Consumed by:** 02 CRM (deal to proposal, proposal accepted → Closed Won), 04 Contracts (contract generated from accepted proposal), 05 Projects (project created from accepted proposal), 08 Finance (invoices and subscriptions from accepted proposal), 07 Customer Portal.
+
 ## AI-Powered Proposal & Quotation Generator
 
-Develop a comprehensive **AI-powered Proposal and Quotation Generator** that enables the agency to quickly create professional, branded, and client-ready offers based on project requirements, pricing, timelines, and other relevant business information.
+Develop a comprehensive **AI-powered Proposal and Quotation Generator** that enables the agency to quickly create professional, branded, customer-ready proposals based on project requirements, pricing, timelines, and other relevant business information.
 
 The system should combine structured quotation management, reusable document templates, AI-generated content, PDF generation, customer approval, and proposal tracking into a single workflow.
 
@@ -179,6 +187,8 @@ Automatically calculate:
 
 Allow users to mark individual services as optional so customers can choose additional features or packages.
 
+Services, packages, unit prices, tax rates and currencies come from the products and services catalog in [08 Finance](./08-financial-management-stripe-integration.md). Custom line items are allowed per proposal.
+
 ---
 
 ## Proposal Versions
@@ -244,11 +254,11 @@ The generated PDF should be suitable for sending directly to customers and downl
 
 Allow proposals to be delivered directly to customers through:
 
-* Email
-* Customer Portal
-* PDF attachment
+* Email (sent through [11 Communication Center](./11-communication-center.md))
+* Customer Portal ([07](./07-customer-portal.md))
+* PDF attachment (stored in [17 Documents](./17-documents-file-management.md))
 
-Customers should be able to open and review proposals through a professional web-based proposal view in addition to receiving the PDF.
+Customers should be able to open and review proposals through a professional web-based proposal view in addition to receiving the PDF. Delivery and status notifications go through [14 Notifications](./14-notifications-activity-center.md).
 
 Track proposal delivery and customer activity.
 
@@ -270,9 +280,9 @@ Customers should be able to:
 * Approve specific optional items
 * Confirm acceptance of terms
 * Provide their name and contact information
-* Sign electronically where supported
+* Sign electronically where supported, using the signature provider abstraction defined in [04 Contracts](./04-contracts.md) §33–38
 
-Record the complete approval history and timestamp.
+Record the complete approval history and timestamp. Every acceptance is bound to the exact proposal version that was sent.
 
 ---
 
@@ -320,20 +330,20 @@ Track:
 
 Once a proposal is accepted, allow the agency to convert it into operational work without re-entering information.
 
-The system should be able to automatically create or update:
+The platform's commercial flow is:
 
-* Customer
-* Project
-* Project scope
-* Milestones
-* Tasks
-* Deliverables
-* Payment schedule
-* Invoice
-* Subscription
-* Recurring services
+**CRM Deal → Proposal → Contract (optional) → Project → Tasks / Time / Support / Finance**
 
-The accepted proposal should remain permanently linked to the resulting project and financial records.
+A contract is optional (04 §1 "a project can exist without a contract"). The organization configures, per proposal type, whether acceptance requires a contract before project and billing records are created.
+
+On acceptance the system can create or update, through the owning module:
+
+* Customer lifecycle stage and deal Closed Won → 02 CRM
+* Contract from the accepted proposal version → 04 Contracts §7
+* Project with scope, milestones, deliverables and initial tasks → 05 Projects §5, §57 and 06 Tasks
+* Invoice, payment schedule, subscription and recurring services → 08 Finance
+
+The accepted proposal version remains permanently linked to the resulting contract, project and financial records. Those modules remain the source of truth for the records they create.
 
 ---
 
