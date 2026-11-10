@@ -271,6 +271,23 @@ An organization may be created by:
 
 Creation should establish the initial Owner membership.
 
+### Module default provisioning
+
+Organization creation is the single place where per-organization module defaults are created. Each module declares a `provisionDefaults(organizationId)` step that the organization-creation service runs inside the same transaction, in build order, after the Owner membership exists. Defaults are owned copies per organization, never shared platform rows, so an organization can change them without affecting others.
+
+Provisioned by this module: the Owner's membership and role assignment, organization module access (§56) for every module enabled by the plan, the security policy (§73) with platform defaults, and the organization's clones of the role templates (§111).
+
+Provisioned by other modules through the same hook:
+
+* 02 CRM → default pipeline and stages, lead statuses, lifecycle stages, lead sources (02 §37).
+* 05 Projects → default project types, statuses and health states.
+* 06 Tasks → default task statuses and workflow.
+* 13 Support → default ticket statuses, priorities and SLA policy.
+* 14 Notifications → organization notification defaults.
+* 17 Documents → default folder structure and retention policy.
+
+The hook is also re-runnable for an existing organization when a module is enabled later (§56), and must be idempotent: it never duplicates defaults that already exist. Organization templates (§149) select which defaults are provisioned.
+
 ---
 
 # 12. Organization Owner

@@ -1,8 +1,20 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Prisma schema — Logiqdev OS API
+//
+// Module coverage:
+//   01 Users, Members, Organizations, Branches & Permissions  → docs/features/01-users-organizations-permissions.md (LOG-406)
+//   02 CRM & Sales Management (incl. platform custom fields, tags, saved views) → docs/features/02-crm-sales-management.md (LOG-404)
+//   03 Proposals & Quotations (incl. platform number sequences) → docs/features/03-proposal-quotation-generator.md (LOG-303)
+//   04 Contracts (incl. e-signature provider abstraction) → docs/features/04-contracts.md (LOG-349)
+//   05 Project Management → docs/features/05-project-management.md (LOG-405)
+//   06 Task Management → docs/features/06-task-management.md (LOG-102)
+//
+// Conventions:
+//   - Table names snake_case plural via @@map; columns snake_case.
+//   - Primary keys are uuid strings; foreign keys end in _id.
+//   - Records that belong to a tenant carry organization_id (01 §9).
+//   - Tables owned by other modules (companies, projects, documents, …) are NOT defined here.
+//     Where 01 must point at them, the id is stored as a plain string without a relation
+//     and the owning spec is named in a comment.
 
 generator client {
   provider = "prisma-client-js"
@@ -13,6 +25,11 @@ datasource db {
   provider = "postgresql"
 }
 
+// =====================================================================
+// Enums — 01 Users, Organizations & Permissions
+// =====================================================================
+
+/// Platform-level role (01 §64). Operates the SaaS itself; not an organization role.
 enum AuthRole {
   USER
   ADMIN
@@ -20,6 +37,204 @@ enum AuthRole {
   SUPPORT
 }
 
+/// 01 §5
+enum UserStatus {
+  INVITED
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  LOCKED
+  DEACTIVATED
+}
+
+/// 01 §6, §74
+enum AuthMethodType {
+  PASSWORD
+  MAGIC_LINK
+  PASSKEY
+  OAUTH
+  SSO
+  TOTP
+  SMS_OTP
+  EMAIL_OTP
+  RECOVERY_CODES
+}
+
+/// 01 §10
+enum OrganizationStatus {
+  SETUP
+  ACTIVE
+  SUSPENDED
+  READ_ONLY
+  ARCHIVED
+  PENDING_DELETION
+  DELETED
+}
+
+/// 01 §19
+enum BranchStatus {
+  ACTIVE
+  PLANNED
+  TEMPORARILY_CLOSED
+  SUSPENDED
+  ARCHIVED
+}
+
+/// 01 §16, §119 — what the branch represents; never implies legal status.
+enum BranchKind {
+  OPERATIONAL
+  OFFICE
+  REGIONAL_UNIT
+  SUBSIDIARY_REFERENCE
+  SERVICE_CENTER
+  REMOTE
+}
+
+/// 01 §24, §77–79 — the nature of a membership.
+enum MembershipType {
+  INTERNAL
+  EXTERNAL_COLLABORATOR
+  GUEST
+}
+
+/// 01 §24 membership status
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+/// 01 §41, §43
+enum TeamKind {
+  TEAM
+  DEPARTMENT
+  BUSINESS_UNIT
+  PROJECT_TEAM
+}
+
+/// 01 §45 — role types. CUSTOMER_PORTAL roles bundle portal.* permissions (01 §79).
+enum RoleType {
+  SYSTEM
+  ORGANIZATION
+  BRANCH
+  TEAM
+  PROJECT
+  CUSTOMER_PORTAL
+}
+
+enum RoleStatus {
+  DRAFT
+  PUBLISHED
+  DEPRECATED
+}
+
+/// 01 §22, §50 — where a role assignment or grant applies.
+enum ScopeType {
+  ORGANIZATION
+  BRANCH
+  BRANCH_HIERARCHY
+  TEAM
+  PROJECT
+  RESOURCE
+  CUSTOMER
+}
+
+/// 01 §53
+enum PermissionEffect {
+  ALLOW
+  DENY
+}
+
+/// 01 §56 — products that can be enabled per organization and per member.
+enum ModuleKey {
+  CRM
+  PROPOSALS
+  CONTRACTS
+  PROJECTS
+  TASKS
+  CUSTOMER_PORTAL
+  FINANCE
+  INCOME_EXPENSE
+  EMPLOYEES
+  COMMUNICATION
+  MESSAGING
+  SUPPORT
+  NOTIFICATIONS
+  BUSINESS_DOCS
+  DOCUMENTS
+  TIME_TRACKING
+  CALENDAR
+  AUTOMATION
+  ADMINISTRATION
+}
+
+/// 01 §66
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+  REJECTED
+}
+
+/// 01 §65, §67 — how a membership or invitation was provisioned.
+enum ProvisioningSource {
+  MANUAL
+  INVITATION_LINK
+  BULK_IMPORT
+  SSO
+  SCIM
+  API
+}
+
+/// 01 §69
+enum SsoProtocol {
+  SAML
+  OIDC
+}
+
+/// 01 §70
+enum DomainVerificationStatus {
+  PENDING
+  VERIFIED
+  FAILED
+  REVOKED
+}
+
+/// 01 §74
+enum MfaPolicy {
+  OPTIONAL
+  REQUIRED_FOR_ADMINS
+  REQUIRED_FOR_ALL
+  REQUIRED_FOR_SENSITIVE_MODULES
+}
+
+/// 01 §76
+enum ServiceAccountStatus {
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+/// 01 §94
+enum DelegationStatus {
+  SCHEDULED
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+/// 01 §99–100, §139 — who performed an audited action.
+enum AuditActorType {
+  USER
+  SERVICE_ACCOUNT
+  SYSTEM
+  PLATFORM_ADMIN
+}
+
+/// Legacy enum used by the Document model. Documents are owned by
+/// docs/features/17-documents-file-management.md (LOG-407).
 enum DocumentType {
   LOGO
   BANNER
@@ -31,26 +246,53 @@ enum DocumentType {
   OTHER
 }
 
-model User {
-  id                  String  @id @default(uuid())
-  email     String   @unique
-  phone     String?   @unique
-  password  String
+// =====================================================================
+// Identity — 01 §4–7, §72, §74, §127
+// =====================================================================
 
-  role      AuthRole
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+/// 01 §4 — a global human identity. Never tenant-scoped.
+model User {
+  id                      String     @id @default(uuid())
+  email                   String     @unique
+  phone                   String?    @unique
+  password                String
+  /// Platform-level role (01 §64). Organization permissions are modelled through Membership, not here.
+  role                    AuthRole   @default(USER)
+  status                  UserStatus @default(ACTIVE)
+  first_name              String?
+  last_name               String?
+  display_name            String?
+  profile_photo_url       String?
+  locale                  String?
+  timezone                String?
+  language                String?
+  email_verified_at       DateTime?
+  phone_verified_at       DateTime?
+  mfa_enabled             Boolean    @default(false)
+  last_login_at           DateTime?
+  /// 01 §127 — not permissions.
+  default_organization_id String?
+  deactivated_at          DateTime?
+  created_at              DateTime   @default(now())
+  updated_at              DateTime   @updatedAt
 
   password_reset_tokens PasswordResetToken[]
+  auth_methods          UserAuthMethod[]
+  sessions              UserSession[]
+  preferences           UserPreference?
+  memberships           Membership[]
+  customer_memberships  CustomerPortalMembership[]
+  invitations_sent      Invitation[]               @relation("InvitationInviter")
+  audit_events          AuditEvent[]               @relation("AuditActorUser")
 
   @@index([email])
   @@index([phone])
-  @@index([id])
+  @@index([status])
   @@map("users")
 }
 
 model PasswordResetToken {
-  id         String  @id @default(uuid())
+  id         String    @id @default(uuid())
   token_hash String    @unique
   user_uuid  String
   expires_at DateTime
@@ -64,21 +306,4700 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+/// 01 §6, §74 — configured authentication factors per user (passkeys, OAuth links, MFA).
+model UserAuthMethod {
+  id           String         @id @default(uuid())
+  user_id      String
+  type         AuthMethodType
+  /// Provider or credential identifier: OAuth subject, passkey credential id, phone number, etc.
+  identifier   String?
+  /// Hashed secret where applicable (TOTP seed, recovery codes). Never plain text.
+  secret_hash  String?
+  label        String?
+  /// Provider-specific data (OAuth provider name, passkey public key, transports, …).
+  metadata     Json?
+  verified_at  DateTime?
+  last_used_at DateTime?
+  disabled_at  DateTime?
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, type, identifier])
+  @@index([user_id])
+  @@map("user_auth_methods")
+}
+
+/// 01 §72 — active sessions, revocable by the user or by security policy.
+model UserSession {
+  id                     String    @id @default(uuid())
+  user_id                String
+  /// Organization active in this session (01 §26). Null before the user picks one.
+  active_organization_id String?
+  /// 01 §27 — selected branch context; null means entire organization.
+  active_branch_id       String?
+  token_hash             String    @unique
+  device                 String?
+  browser                String?
+  ip_address             String?
+  location_approx        String?
+  user_agent             String?
+  last_activity_at       DateTime  @default(now())
+  expires_at             DateTime
+  revoked_at             DateTime?
+  revoked_reason         String?
+  created_at             DateTime  @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+  @@map("user_sessions")
+}
+
+/// 01 §127 — user-specific preferences. These are not permissions.
+model UserPreference {
+  user_id                  String   @id
+  theme                    String?
+  default_organization_id  String?
+  default_branch_id        String?
+  default_team_id          String?
+  /// Per-user notification defaults; the engine is docs/features/14 (LOG-403).
+  notification_preferences Json?
+  dashboard_layout         Json?
+  updated_at               DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+// =====================================================================
+// Organization (tenant) — 01 §8–15, §70, §73, §128
+// =====================================================================
+
+/// 01 §8 — the tenant. Every major resource belongs to exactly one Organization (01 §9).
+model Organization {
+  id              String             @id @default(uuid())
+  legal_name      String
+  display_name    String
+  short_name      String?
+  slug            String             @unique
+  logo_url        String?
+  website         String?
+  country         String?
+  contact_email   String?
+  contact_phone   String?
+  address         Json?
+  tax_identifiers Json?
+  status          OrganizationStatus @default(SETUP)
+
+  // 01 §14, §128 — organization defaults; branches and users may override.
+  default_currency String  @default("EUR")
+  default_timezone String  @default("Europe/Athens")
+  default_language String  @default("en")
+  default_locale   String?
+  date_format      String?
+  number_format    String?
+  week_start       Int     @default(1)
+  working_days     Json?
+  business_hours   Json?
+
+  /// 01 §15 — consumed by every module instead of per-module branding.
+  branding Json?
+  /// Non-structured organization defaults (project defaults, document defaults, notification defaults).
+  settings Json?
+
+  /// 01 §103 — deletion lifecycle.
+  deletion_requested_at DateTime?
+  deletion_scheduled_at DateTime?
+  deleted_at            DateTime?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  security_policy      OrganizationSecurityPolicy?
+  domains              OrganizationDomain[]
+  modules              OrganizationModule[]
+  branches             Branch[]
+  teams                Team[]
+  memberships          Membership[]
+  roles                Role[]
+  invitations          Invitation[]
+  sso_configurations   SsoConfiguration[]
+  service_accounts     ServiceAccount[]
+  api_keys             ApiKey[]
+  delegations          Delegation[]
+  customer_memberships CustomerPortalMembership[]
+  audit_events         AuditEvent[]
+
+  // 02 CRM
+  crm_companies            CrmCompany[]
+  crm_contacts             CrmContact[]
+  crm_leads                CrmLead[]
+  crm_deals                CrmDeal[]
+  crm_pipelines            CrmPipeline[]
+  crm_lead_sources         CrmLeadSource[]
+  crm_lead_statuses        CrmLeadStatus[]
+  crm_lifecycle_stages     CrmLifecycleStage[]
+  crm_activities           CrmActivity[]
+  crm_notes                CrmNote[]
+  crm_assignment_rules     CrmAssignmentRule[]
+  crm_import_jobs          CrmImportJob[]
+  // 03 Proposals
+  proposal_templates       ProposalTemplate[]
+  proposals                Proposal[]
+  number_sequences         NumberSequence[]
+  // 04 Contracts
+  contract_types           ContractType[]
+  contract_templates       ContractTemplate[]
+  contract_clauses         ContractClause[]
+  contract_approval_rules  ContractApprovalRule[]
+  contracts                Contract[]
+  signature_requests       SignatureRequest[]
+  // 05 Projects
+  project_types            ProjectType[]
+  project_statuses         ProjectStatus[]
+  project_templates        ProjectTemplate[]
+  projects                 Project[]
+  // 06 Tasks
+  task_statuses            TaskStatus[]
+  task_types               TaskType[]
+  task_labels              TaskLabel[]
+  tasks                    Task[]
+  cycles                   Cycle[]
+  releases                 Release[]
+  custom_field_groups      CustomFieldGroup[]
+  custom_field_definitions CustomFieldDefinition[]
+  tags                     Tag[]
+  saved_views              SavedView[]
+
+  @@index([status])
+  @@map("organizations")
+}
+
+/// 01 §73–74 — organization security policy.
+model OrganizationSecurityPolicy {
+  organization_id                 String    @id
+  password_min_length             Int       @default(10)
+  password_require_symbols        Boolean   @default(false)
+  password_max_age_days           Int?
+  mfa_policy                      MfaPolicy @default(OPTIONAL)
+  sso_required                    Boolean   @default(false)
+  session_duration_minutes        Int       @default(43200)
+  idle_timeout_minutes            Int?
+  allowed_email_domains           String[]  @default([])
+  /// Invitations limited to allowed domains.
+  restrict_invitations_to_domains Boolean   @default(false)
+  allowed_ip_ranges               String[]  @default([])
+  /// Portal users may use the same policy or a lighter one (01 §79).
+  portal_mfa_policy               MfaPolicy @default(OPTIONAL)
+  updated_at                      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@map("organization_security_policies")
+}
+
+/// 01 §70 — verified corporate email domains.
+model OrganizationDomain {
+  id                 String                   @id @default(uuid())
+  organization_id    String
+  domain             String
+  status             DomainVerificationStatus @default(PENDING)
+  verification_token String
+  verified_at        DateTime?
+  /// Allow users with this email domain to discover and request to join (01 §70).
+  allow_discovery    Boolean                  @default(false)
+  /// Automatically provision membership on SSO login from this domain.
+  auto_provision     Boolean                  @default(false)
+  created_at         DateTime                 @default(now())
+  updated_at         DateTime                 @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@unique([domain])
+  @@index([organization_id])
+  @@map("organization_domains")
+}
+
+/// 01 §56 — which products are enabled for the organization.
+model OrganizationModule {
+  id              String    @id @default(uuid())
+  organization_id String
+  module          ModuleKey
+  enabled         Boolean   @default(true)
+  enabled_at      DateTime?
+  disabled_at     DateTime?
+  settings        Json?
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@unique([organization_id, module])
+  @@map("organization_modules")
+}
+
+// =====================================================================
+// Branches — 01 §16–23, §120–122
+// =====================================================================
+
+/// 01 §18 — an organizational unit inside an Organization. Never a tenant.
+model Branch {
+  id               String       @id @default(uuid())
+  organization_id  String
+  parent_branch_id String?
+  name             String
+  code             String?
+  kind             BranchKind   @default(OPERATIONAL)
+  status           BranchStatus @default(ACTIVE)
+  country          String?
+  region           String?
+  city             String?
+  address          Json?
+  phone            String?
+  email            String?
+  /// Materialized path of ancestor ids for hierarchy queries (01 §17, §52).
+  path             String       @default("")
+  depth            Int          @default(0)
+  /// Cost center / currency references consumed by Finance (01 §34).
+  cost_center_code String?
+  currency         String?
+
+  // 01 §120–121 — overrides; organization defaults remain the fallback.
+  timezone       String?
+  locale         String?
+  language       String?
+  date_format    String?
+  week_start     Int?
+  working_days   Json?
+  business_hours Json?
+  /// 01 §120 branch-level branding override (optional).
+  branding       Json?
+  custom_fields  Json?
+
+  archived_at DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  organization         Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  parent               Branch?            @relation("BranchHierarchy", fields: [parent_branch_id], references: [id], onDelete: Restrict)
+  children             Branch[]           @relation("BranchHierarchy")
+  managers             BranchManager[]
+  holidays             BranchHoliday[]
+  memberships          MembershipBranch[]
+  teams                Team[]
+  invitations          Invitation[]
+  group_mappings       SsoGroupMapping[]
+  crm_company_branches CrmCompanyBranch[]
+  crm_leads            CrmLead[]
+  crm_deals            CrmDeal[]
+  proposals            Proposal[]
+  contracts            Contract[]
+  projects             Project[]
+  project_branches     ProjectBranch[]
+
+  @@unique([organization_id, code])
+  @@index([organization_id])
+  @@index([parent_branch_id])
+  @@index([organization_id, status])
+  @@map("branches")
+}
+
+/// 01 §20 — responsible Members for a branch.
+model BranchManager {
+  id            String   @id @default(uuid())
+  branch_id     String
+  membership_id String
+  title         String?
+  created_at    DateTime @default(now())
+
+  branch     Branch     @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+
+  @@unique([branch_id, membership_id])
+  @@map("branch_managers")
+}
+
+/// 01 §122 — local holiday calendars consumed by Calendar (19) and Employees (10).
+model BranchHoliday {
+  id         String   @id @default(uuid())
+  branch_id  String
+  name       String
+  date       DateTime @db.Date
+  recurring  Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  branch Branch @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+
+  @@unique([branch_id, date, name])
+  @@index([branch_id, date])
+  @@map("branch_holidays")
+}
+
+// =====================================================================
+// Teams — 01 §40–43, §87–88
+// =====================================================================
+
+/// 01 §40 — functional collaboration group. Not a Branch.
+model Team {
+  id              String    @id @default(uuid())
+  organization_id String
+  parent_team_id  String?
+  /// 01 §88 — set when the team is restricted to one branch; null for organization-wide / cross-branch.
+  branch_id       String?
+  name            String
+  slug            String?
+  description     String?
+  kind            TeamKind  @default(TEAM)
+  archived_at     DateTime?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  organization        Organization        @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  parent              Team?               @relation("TeamHierarchy", fields: [parent_team_id], references: [id], onDelete: SetNull)
+  children            Team[]              @relation("TeamHierarchy")
+  branch              Branch?             @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  members             TeamMembership[]
+  invitations         Invitation[]
+  group_mappings      SsoGroupMapping[]
+  crm_companies       CrmCompany[]
+  crm_deals           CrmDeal[]
+  crm_pipelines       CrmPipeline[]
+  saved_views         SavedView[]
+  projects            Project[]
+  project_allocations ProjectAllocation[]
+  tasks               Task[]
+  task_statuses       TaskStatus[]
+  cycles              Cycle[]
+  releases            Release[]
+
+  @@unique([organization_id, slug])
+  @@index([organization_id])
+  @@index([parent_team_id])
+  @@index([branch_id])
+  @@map("teams")
+}
+
+/// 01 §42
+model TeamMembership {
+  id            String    @id @default(uuid())
+  team_id       String
+  membership_id String
+  /// Free-form team role label (lead, member, …). Permissions come from Role assignments scoped to the team.
+  team_role     String?
+  is_primary    Boolean   @default(false)
+  started_at    DateTime  @default(now())
+  ended_at      DateTime?
+  created_at    DateTime  @default(now())
+
+  team       Team       @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+
+  @@unique([team_id, membership_id])
+  @@index([membership_id])
+  @@map("team_memberships")
+}
+
+// =====================================================================
+// Membership — 01 §7, §21, §24–25, §77–78, §89–90, §125–126, §131
+// =====================================================================
+
+/// 01 §24 — the authorization relationship between a User and an Organization.
+/// Employee data (10) is NOT here; see 01 §80–81.
+model Membership {
+  id                  String             @id @default(uuid())
+  user_id             String
+  organization_id     String
+  type                MembershipType     @default(INTERNAL)
+  status              MembershipStatus   @default(ACTIVE)
+  provisioning_source ProvisioningSource @default(MANUAL)
+  /// SCIM / IdP external identifier (01 §68).
+  external_id         String?
+  invited_by_user_id  String?
+  /// 01 §125–126 — defaults for navigation and creation; never restrict permissions.
+  default_branch_id   String?
+  default_team_id     String?
+  job_title           String?
+  joined_at           DateTime           @default(now())
+  last_active_at      DateTime?
+  suspended_at        DateTime?
+  deactivated_at      DateTime?
+  /// 01 §131 — offboarding record (who, when, ownership transfers performed).
+  offboarding         Json?
+  created_at          DateTime           @default(now())
+  updated_at          DateTime           @updatedAt
+
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  branches               MembershipBranch[]
+  teams                  TeamMembership[]
+  managed_branches       BranchManager[]
+  module_access          MembershipModuleAccess[]
+  role_assignments       RoleAssignment[]
+  permission_grants      PermissionGrant[]
+  api_keys               ApiKey[]
+  delegations_given      Delegation[]             @relation("DelegationDelegator")
+  delegations_received   Delegation[]             @relation("DelegationDelegate")
+  owned_service_accounts ServiceAccount[]
+
+  // 02 CRM ownership (02 §20)
+  owned_companies         CrmCompany[]        @relation("CrmCompanyOwner")
+  managed_companies       CrmCompany[]        @relation("CrmCompanyAccountManager")
+  success_owned_companies CrmCompany[]        @relation("CrmCompanySuccessOwner")
+  owned_contacts          CrmContact[]        @relation("CrmContactOwner")
+  owned_leads             CrmLead[]           @relation("CrmLeadOwner")
+  owned_deals             CrmDeal[]           @relation("CrmDealOwner")
+  owned_activities        CrmActivity[]       @relation("CrmActivityOwner")
+  authored_notes          CrmNote[]           @relation("CrmNoteAuthor")
+  // 03 Proposals
+  owned_proposals         Proposal[]          @relation("ProposalOwner")
+  proposal_approvals      ProposalApproval[]  @relation("ProposalApprover")
+  proposal_comments       ProposalComment[]   @relation("ProposalCommentAuthor")
+  // 04 Contracts
+  owned_contracts         Contract[]          @relation("ContractOwner")
+  contract_reviews        ContractReview[]    @relation("ContractReviewer")
+  contract_approvals      ContractApproval[]  @relation("ContractApprover")
+  contract_comments       ContractComment[]   @relation("ContractCommentAuthor")
+  contract_signatories    ContractSignatory[]
+  // 05 Projects
+  owned_projects          Project[]           @relation("ProjectOwner")
+  project_memberships     ProjectMember[]
+  project_allocations     ProjectAllocation[]
+  project_gate_approvals  ProjectGate[]       @relation("ProjectGateApprover")
+  // 06 Tasks
+  assigned_tasks          Task[]              @relation("TaskAssignee")
+  reported_tasks          Task[]              @relation("TaskReporter")
+  task_assignments        TaskAssignee[]
+  task_comments           TaskComment[]       @relation("TaskCommentAuthor")
+  task_watches            TaskWatcher[]
+  saved_views             SavedView[]
+  crm_import_jobs         CrmImportJob[]
+
+  @@unique([user_id, organization_id])
+  @@unique([organization_id, external_id])
+  @@index([organization_id, status])
+  @@index([user_id])
+  @@map("memberships")
+}
+
+/// 01 §21, §90 — a Member can belong to one or many branches.
+model MembershipBranch {
+  id               String    @id @default(uuid())
+  membership_id    String
+  branch_id        String
+  is_primary       Boolean   @default(false)
+  /// 01 §91 — whether access cascades to child branches.
+  include_children Boolean   @default(false)
+  started_at       DateTime  @default(now())
+  ended_at         DateTime?
+
+  membership Membership @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+  branch     Branch     @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+
+  @@unique([membership_id, branch_id])
+  @@index([branch_id])
+  @@map("membership_branches")
+}
+
+/// 01 §56–57 — per-member product access, evaluated before feature permissions.
+model MembershipModuleAccess {
+  id                 String    @id @default(uuid())
+  membership_id      String
+  module             ModuleKey
+  enabled            Boolean   @default(true)
+  granted_by_user_id String?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  membership Membership @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+
+  @@unique([membership_id, module])
+  @@map("membership_module_access")
+}
+
+// =====================================================================
+// Roles & Permissions — 01 §44–63, §92–97, §111–114
+// =====================================================================
+
+/// 01 §46 — the global permission catalog. Keys follow `<module>.<resource>.<action>`.
+model Permission {
+  id             String    @id @default(uuid())
+  key            String    @unique
+  module         ModuleKey
+  resource       String
+  action         String
+  description    String?
+  /// 01 §59 — requires elevated roles; surfaced in conflict warnings (01 §97).
+  is_sensitive   Boolean   @default(false)
+  /// 01 §60 — field-level permission marker.
+  is_field_level Boolean   @default(false)
+  created_at     DateTime  @default(now())
+
+  roles  RolePermission[]
+  grants PermissionGrant[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+/// 01 §44–45, §111 — reusable permission bundle. organization_id is null for system roles and
+/// platform-provided templates (01 §111) that organizations clone.
+model Role {
+  id               String      @id @default(uuid())
+  organization_id  String?
+  name             String
+  slug             String
+  description      String?
+  type             RoleType    @default(ORGANIZATION)
+  status           RoleStatus  @default(PUBLISHED)
+  is_system        Boolean     @default(false)
+  /// Template this role was cloned from (01 §111).
+  template_role_id String?
+  /// Default scope type this role is intended for (01 §50).
+  default_scope    ScopeType   @default(ORGANIZATION)
+  /// Modules this role grants product access to when assigned (01 §109).
+  modules          ModuleKey[] @default([])
+  created_at       DateTime    @default(now())
+  updated_at       DateTime    @updatedAt
+
+  organization         Organization?              @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  permissions          RolePermission[]
+  assignments          RoleAssignment[]
+  invitations          Invitation[]
+  group_mappings       SsoGroupMapping[]
+  customer_memberships CustomerPortalMembership[]
+  project_members      ProjectMember[]
+
+  @@unique([organization_id, slug])
+  @@index([organization_id, type])
+  @@map("roles")
+}
+
+/// 01 §44, §53 — permissions bundled in a role, with optional explicit deny.
+model RolePermission {
+  role_id       String
+  permission_id String
+  effect        PermissionEffect @default(ALLOW)
+  /// Optional field-level or resource-level restriction data (01 §48, §60).
+  conditions    Json?
+
+  role       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@id([role_id, permission_id])
+  @@index([permission_id])
+  @@map("role_permissions")
+}
+
+/// 01 §92–93 — a role given to a principal (Member or Service Account) within a scope.
+/// scope_id references the Branch, Team, Project (05), Customer (02) or resource identified by scope_type.
+model RoleAssignment {
+  id                 String    @id @default(uuid())
+  membership_id      String?
+  service_account_id String?
+  role_id            String
+  scope_type         ScopeType @default(ORGANIZATION)
+  scope_id           String?
+  granted_by_user_id String?
+  reason             String?
+  valid_from         DateTime  @default(now())
+  /// 01 §93 — temporary access; null means permanent.
+  valid_until        DateTime?
+  revoked_at         DateTime?
+  created_at         DateTime  @default(now())
+
+  membership      Membership?     @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+  service_account ServiceAccount? @relation(fields: [service_account_id], references: [id], onDelete: Cascade)
+  role            Role            @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@index([membership_id])
+  @@index([service_account_id])
+  @@index([role_id])
+  @@index([scope_type, scope_id])
+  @@map("role_assignments")
+}
+
+/// 01 §49, §53 — explicit per-member allow or deny for one permission, outside any role.
+model PermissionGrant {
+  id                 String           @id @default(uuid())
+  membership_id      String
+  permission_id      String
+  effect             PermissionEffect @default(ALLOW)
+  scope_type         ScopeType        @default(ORGANIZATION)
+  scope_id           String?
+  granted_by_user_id String?
+  reason             String?
+  valid_from         DateTime         @default(now())
+  valid_until        DateTime?
+  revoked_at         DateTime?
+  created_at         DateTime         @default(now())
+
+  membership Membership @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@index([membership_id])
+  @@index([permission_id])
+  @@index([scope_type, scope_id])
+  @@map("permission_grants")
+}
+
+/// 01 §94 — temporary delegation of selected responsibilities.
+model Delegation {
+  id                      String           @id @default(uuid())
+  organization_id         String
+  delegator_membership_id String
+  delegate_membership_id  String
+  /// Permission keys or role ids delegated.
+  permission_keys         String[]         @default([])
+  role_ids                String[]         @default([])
+  scope_type              ScopeType        @default(ORGANIZATION)
+  scope_id                String?
+  status                  DelegationStatus @default(SCHEDULED)
+  reason                  String?
+  starts_at               DateTime
+  ends_at                 DateTime
+  revoked_at              DateTime?
+  created_at              DateTime         @default(now())
+  updated_at              DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  delegator    Membership   @relation("DelegationDelegator", fields: [delegator_membership_id], references: [id], onDelete: Cascade)
+  delegate     Membership   @relation("DelegationDelegate", fields: [delegate_membership_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id, status])
+  @@index([delegate_membership_id])
+  @@map("delegations")
+}
+
+// =====================================================================
+// Invitations — 01 §65–66
+// =====================================================================
+
+model Invitation {
+  id                 String             @id @default(uuid())
+  organization_id    String
+  email              String
+  type               MembershipType     @default(INTERNAL)
+  branch_id          String?
+  team_id            String?
+  role_id            String?
+  /// Modules to enable on acceptance (01 §65).
+  modules            ModuleKey[]        @default([])
+  token_hash         String             @unique
+  status             InvitationStatus   @default(PENDING)
+  source             ProvisioningSource @default(MANUAL)
+  message            String?
+  invited_by_user_id String?
+  expires_at         DateTime
+  accepted_at        DateTime?
+  /// Membership created on acceptance.
+  membership_id      String?
+  cancelled_at       DateTime?
+  rejected_at        DateTime?
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  branch       Branch?      @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  team         Team?        @relation(fields: [team_id], references: [id], onDelete: SetNull)
+  role         Role?        @relation(fields: [role_id], references: [id], onDelete: SetNull)
+  invited_by   User?        @relation("InvitationInviter", fields: [invited_by_user_id], references: [id], onDelete: SetNull)
+
+  @@index([organization_id, status])
+  @@index([email])
+  @@index([expires_at])
+  @@map("invitations")
+}
+
+// =====================================================================
+// SSO & provisioning — 01 §68–71
+// =====================================================================
+
+/// 01 §69 — identity provider configuration per organization.
+model SsoConfiguration {
+  id              String      @id @default(uuid())
+  organization_id String
+  name            String
+  protocol        SsoProtocol
+  enabled         Boolean     @default(false)
+  /// Issuer, entity id, metadata URL, client id, certificates, attribute mapping. Secrets are stored encrypted.
+  config          Json
+  auto_provision  Boolean     @default(false)
+  /// 01 §67–68 — SCIM provisioning token hash and settings, when enabled.
+  scim_enabled    Boolean     @default(false)
+  scim_token_hash String?
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+
+  organization   Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  group_mappings SsoGroupMapping[]
+
+  @@index([organization_id])
+  @@map("sso_configurations")
+}
+
+/// 01 §71 — external IdP group → role / team / branch / module access.
+model SsoGroupMapping {
+  id                   String      @id @default(uuid())
+  sso_configuration_id String
+  external_group       String
+  role_id              String?
+  team_id              String?
+  branch_id            String?
+  modules              ModuleKey[] @default([])
+  created_at           DateTime    @default(now())
+
+  sso_configuration SsoConfiguration @relation(fields: [sso_configuration_id], references: [id], onDelete: Cascade)
+  role              Role?            @relation(fields: [role_id], references: [id], onDelete: SetNull)
+  team              Team?            @relation(fields: [team_id], references: [id], onDelete: SetNull)
+  branch            Branch?          @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+
+  @@unique([sso_configuration_id, external_group])
+  @@map("sso_group_mappings")
+}
+
+// =====================================================================
+// API access & service accounts — 01 §75–76
+// =====================================================================
+
+/// 01 §76 — non-human identity for automation. Permissions come from RoleAssignment.
+model ServiceAccount {
+  id                  String               @id @default(uuid())
+  organization_id     String
+  owner_membership_id String?
+  name                String
+  purpose             String?
+  status              ServiceAccountStatus @default(ACTIVE)
+  expires_at          DateTime?
+  created_at          DateTime             @default(now())
+  updated_at          DateTime             @updatedAt
+
+  organization     Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  owner            Membership?      @relation(fields: [owner_membership_id], references: [id], onDelete: SetNull)
+  role_assignments RoleAssignment[]
+  api_keys         ApiKey[]
+
+  @@unique([organization_id, name])
+  @@index([organization_id, status])
+  @@map("service_accounts")
+}
+
+/// 01 §75 — API credential owned by a Member or a Service Account. Never inherits unlimited permissions.
+model ApiKey {
+  id                 String    @id @default(uuid())
+  organization_id    String
+  membership_id      String?
+  service_account_id String?
+  name               String
+  /// First characters shown to the user for identification.
+  key_prefix         String
+  key_hash           String    @unique
+  /// Optional narrowing of the owner's permissions (permission keys).
+  scopes             String[]  @default([])
+  expires_at         DateTime?
+  last_used_at       DateTime?
+  rotated_from_id    String?
+  revoked_at         DateTime?
+  created_at         DateTime  @default(now())
+
+  organization    Organization    @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  membership      Membership?     @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+  service_account ServiceAccount? @relation(fields: [service_account_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id])
+  @@index([membership_id])
+  @@index([service_account_id])
+  @@map("api_keys")
+}
+
+// =====================================================================
+// Customer Portal identity — 01 §79
+// =====================================================================
+
+/// 01 §79 — a User's membership to a Customer (a CRM Company owned by docs/features/02, LOG-404)
+/// inside an agency Organization. customer_id has no relation until the CRM module defines companies.
+model CustomerPortalMembership {
+  id                 String           @id @default(uuid())
+  organization_id    String
+  /// CRM Company id (02). No FK until LOG-404 is implemented.
+  customer_id        String
+  user_id            String
+  /// Role of type CUSTOMER_PORTAL (01 §79 defaults: Owner, Administrator, Manager, Finance, Legal, Viewer).
+  role_id            String?
+  status             MembershipStatus @default(ACTIVE)
+  invited_by_user_id String?
+  joined_at          DateTime         @default(now())
+  last_active_at     DateTime?
+  deactivated_at     DateTime?
+  created_at         DateTime         @default(now())
+  updated_at         DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role         Role?        @relation(fields: [role_id], references: [id], onDelete: SetNull)
+
+  @@unique([organization_id, customer_id, user_id])
+  @@index([customer_id])
+  @@index([user_id])
+  @@map("customer_portal_memberships")
+}
+
+// =====================================================================
+// Audit — 01 §99–100, §139
+// =====================================================================
+
+/// Immutable audit event. Identity and access changes are written here by module 01;
+/// other modules append their own event types using the same table.
+model AuditEvent {
+  id                       String         @id @default(uuid())
+  organization_id          String?
+  actor_type               AuditActorType @default(USER)
+  actor_user_id            String?
+  actor_service_account_id String?
+  /// Stable key, e.g. `membership.role_assigned`, `user.login`, `sso.configuration_changed`.
+  event_type               String
+  resource_type            String?
+  resource_id              String?
+  /// Before/after values or event-specific payload.
+  metadata                 Json?
+  ip_address               String?
+  user_agent               String?
+  created_at               DateTime       @default(now())
+
+  organization Organization? @relation(fields: [organization_id], references: [id], onDelete: SetNull)
+  actor_user   User?         @relation("AuditActorUser", fields: [actor_user_id], references: [id], onDelete: SetNull)
+
+  @@index([organization_id, created_at])
+  @@index([actor_user_id, created_at])
+  @@index([event_type])
+  @@index([resource_type, resource_id])
+  @@map("audit_events")
+}
+
+// =====================================================================
+// Legacy — owned by docs/features/17-documents-file-management.md (LOG-407).
+// Kept as-is until module 17 is implemented; it will gain organization_id and scope then.
+// =====================================================================
+
 model Document {
-  id                 String  @id @default(uuid())
-  user_uuid          String
-  filename           String
-  mimetype           String
-  size               Int
-  url                String
-  path               String
-  type               DocumentType  @default(LOGO)
-  created_at         DateTime      @default(now())
+  id         String       @id @default(uuid())
+  user_uuid  String
+  filename   String
+  mimetype   String
+  size       Int
+  url        String
+  path       String
+  type       DocumentType @default(LOGO)
+  created_at DateTime     @default(now())
 
   @@index([user_uuid])
-  @@index([id])
   @@map("documents")
 }
 
+// =====================================================================
+// Platform shared concepts defined by 02 CRM — custom fields (§24–26),
+// tags (§36), saved views (§29). Consumed by every module.
+// =====================================================================
 
+/// Entities that can carry custom fields, tags and saved views. Modules append their own values.
+enum RecordEntityType {
+  CRM_COMPANY
+  CRM_CONTACT
+  CRM_LEAD
+  CRM_DEAL
+  CRM_ACTIVITY
+  PROJECT
+  TASK
+  CONTRACT
+  PROPOSAL
+  TICKET
+  DOCUMENT
+  FINANCIAL_RECORD
+  EMPLOYEE
+  INVOICE
+}
 
+/// 02 §24 — supported field types.
+enum CustomFieldType {
+  TEXT
+  LONG_TEXT
+  NUMBER
+  DECIMAL
+  CURRENCY
+  PERCENTAGE
+  BOOLEAN
+  DATE
+  DATETIME
+  EMAIL
+  PHONE
+  URL
+  DROPDOWN
+  MULTI_SELECT
+  RADIO
+  USER
+  TEAM
+  COMPANY
+  CONTACT
+  DEAL
+  RECORD_REFERENCE
+}
+
+enum SavedViewVisibility {
+  PERSONAL
+  TEAM
+  ORGANIZATION
+}
+
+/// 02 §25 — logical sections for shared fields.
+model CustomFieldGroup {
+  id              String   @id @default(uuid())
+  organization_id String
+  name            String
+  description     String?
+  sort_order      Int      @default(0)
+  created_at      DateTime @default(now())
+
+  organization Organization            @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  fields       CustomFieldDefinition[]
+
+  @@unique([organization_id, name])
+  @@map("custom_field_groups")
+}
+
+/// 02 §24–26 — one definition; shared fields list several entity types (02 §25).
+/// `key` is the stable API identifier (02 §26); `label` may change.
+model CustomFieldDefinition {
+  id              String             @id @default(uuid())
+  organization_id String
+  group_id        String?
+  key             String
+  label           String
+  description     String?
+  type            CustomFieldType
+  /// Entity types this field applies to. Length > 1 means a shared field (02 §25).
+  entity_types    RecordEntityType[]
+  is_shared       Boolean            @default(false)
+  is_required     Boolean            @default(false)
+  /// Options for DROPDOWN / MULTI_SELECT / RADIO: [{ value, label, color?, sort_order? }]
+  options         Json?
+  default_value   Json?
+  /// Validation rules (min, max, regex, length …).
+  validation      Json?
+  /// Role-based visibility and visibility rules (02 §24).
+  visibility      Json?
+  is_searchable   Boolean            @default(true)
+  is_filterable   Boolean            @default(true)
+  is_sortable     Boolean            @default(false)
+  sort_order      Int                @default(0)
+  archived_at     DateTime?
+  created_at      DateTime           @default(now())
+  updated_at      DateTime           @updatedAt
+
+  organization Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  group        CustomFieldGroup?  @relation(fields: [group_id], references: [id], onDelete: SetNull)
+  values       CustomFieldValue[]
+
+  @@unique([organization_id, key])
+  @@index([organization_id])
+  @@map("custom_field_definitions")
+}
+
+/// Value of a custom field on a record. entity_id points at the table named by entity_type.
+model CustomFieldValue {
+  id            String           @id @default(uuid())
+  definition_id String
+  entity_type   RecordEntityType
+  entity_id     String
+  /// Typed value stored as JSON (string, number, boolean, ISO date, option value, option values[], referenced id).
+  value         Json?
+  /// Denormalized text for search/filter.
+  value_text    String?
+  updated_at    DateTime         @updatedAt
+
+  definition CustomFieldDefinition @relation(fields: [definition_id], references: [id], onDelete: Cascade)
+
+  @@unique([definition_id, entity_id])
+  @@index([entity_type, entity_id])
+  @@index([definition_id, value_text])
+  @@map("custom_field_values")
+}
+
+/// Organization-scoped tags, applied to any record through Tagging.
+model Tag {
+  id              String             @id @default(uuid())
+  organization_id String
+  name            String
+  slug            String
+  color           String?
+  /// Restrict a tag to certain entity types; empty = any.
+  entity_types    RecordEntityType[] @default([])
+  created_at      DateTime           @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  taggings     Tagging[]
+
+  @@unique([organization_id, slug])
+  @@map("tags")
+}
+
+model Tagging {
+  tag_id      String
+  entity_type RecordEntityType
+  entity_id   String
+  created_at  DateTime         @default(now())
+
+  tag Tag @relation(fields: [tag_id], references: [id], onDelete: Cascade)
+
+  @@id([tag_id, entity_type, entity_id])
+  @@index([entity_type, entity_id])
+  @@map("taggings")
+}
+
+/// 02 §29 — saved views with filters, sorting, grouping, columns; personal, team or organization-wide.
+model SavedView {
+  id                  String              @id @default(uuid())
+  organization_id     String
+  entity_type         RecordEntityType
+  name                String
+  /// table | kanban | pipeline | list | timeline | calendar | activity | forecast
+  layout              String              @default("table")
+  visibility          SavedViewVisibility @default(PERSONAL)
+  owner_membership_id String?
+  team_id             String?
+  filters             Json?
+  sorting             Json?
+  grouping            Json?
+  columns             Json?
+  search              String?
+  is_default          Boolean             @default(false)
+  created_at          DateTime            @default(now())
+  updated_at          DateTime            @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  owner        Membership?  @relation(fields: [owner_membership_id], references: [id], onDelete: Cascade)
+  team         Team?        @relation(fields: [team_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id, entity_type])
+  @@index([owner_membership_id])
+  @@map("saved_views")
+}
+
+// =====================================================================
+// 02 CRM & Sales Management — docs/features/02-crm-sales-management.md (LOG-404)
+// Owns: Company, Contact, Lead, Deal, Pipeline, Activities, Notes, lifecycle, ownership.
+// Does not own: Tasks (06), Proposals (03), Contracts (04), Projects (05), Tickets (13),
+// Invoices/Payments/Subscriptions (08), Calendar events (19). Those are referenced by id only.
+// Record history (02 §34) is written to audit_events (01 §139).
+// =====================================================================
+
+/// 02 §2 — company type; lifecycle stage is a separate, configurable dimension (02 §17).
+enum CrmCompanyType {
+  PROSPECT
+  CUSTOMER
+  PARTNER
+  VENDOR
+  OTHER
+}
+
+/// 02 §3 — contact roles within a company; a contact may hold several.
+enum CrmContactRole {
+  PRIMARY
+  DECISION_MAKER
+  TECHNICAL
+  BILLING
+  PROJECT_STAKEHOLDER
+  EXECUTIVE
+}
+
+/// 02 §13 — activity types. MEETING activities link to a Calendar event (19).
+enum CrmActivityType {
+  CALL
+  MEETING
+  FOLLOW_UP
+  REMINDER
+  APPOINTMENT
+  INTERNAL_COMMENT
+  EMAIL
+  OTHER
+}
+
+enum CrmActivityStatus {
+  PLANNED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum CrmPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+/// 02 §11 — forecast categories.
+enum CrmForecastCategory {
+  PIPELINE
+  BEST_CASE
+  COMMIT
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+enum CrmDealStatus {
+  OPEN
+  WON
+  LOST
+  ABANDONED
+}
+
+/// 02 §22 — import lifecycle.
+enum CrmImportStatus {
+  PENDING
+  VALIDATING
+  PREVIEW
+  IMPORTING
+  COMPLETED
+  FAILED
+  ROLLED_BACK
+}
+
+/// 01 §31 — how a branch relates to a company (one company, many branch relationships).
+enum CrmBranchRelationType {
+  OWNER
+  SALES
+  DELIVERY
+  SUPPORT
+  BILLING
+  OTHER
+}
+
+// --- Configuration -----------------------------------------------------------
+
+/// 02 §5 — configurable lead sources.
+model CrmLeadSource {
+  id              String    @id @default(uuid())
+  organization_id String
+  name            String
+  slug            String
+  is_default      Boolean   @default(false)
+  sort_order      Int       @default(0)
+  archived_at     DateTime?
+  created_at      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  companies    CrmCompany[]
+  contacts     CrmContact[]
+  leads        CrmLead[]
+  deals        CrmDeal[]
+
+  @@unique([organization_id, slug])
+  @@map("crm_lead_sources")
+}
+
+/// 02 §4 — configurable lead statuses.
+model CrmLeadStatus {
+  id              String    @id @default(uuid())
+  organization_id String
+  name            String
+  slug            String
+  color           String?
+  sort_order      Int       @default(0)
+  is_default      Boolean   @default(false)
+  is_converted    Boolean   @default(false)
+  is_lost         Boolean   @default(false)
+  archived_at     DateTime?
+  created_at      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  leads        CrmLead[]
+
+  @@unique([organization_id, slug])
+  @@map("crm_lead_statuses")
+}
+
+/// 02 §17 — configurable lifecycle stages (Lead → MQL → SQL → Opportunity → Customer → …).
+model CrmLifecycleStage {
+  id              String    @id @default(uuid())
+  organization_id String
+  name            String
+  slug            String
+  sort_order      Int       @default(0)
+  /// Reaching this stage marks the company as a Customer (terminology, Product_Specification §5a).
+  is_customer     Boolean   @default(false)
+  is_default      Boolean   @default(false)
+  archived_at     DateTime?
+  created_at      DateTime  @default(now())
+
+  organization Organization          @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  companies    CrmCompany[]
+  contacts     CrmContact[]
+  history      CrmLifecycleHistory[]
+
+  @@unique([organization_id, slug])
+  @@map("crm_lifecycle_stages")
+}
+
+/// 02 §17 — historical lifecycle changes.
+model CrmLifecycleHistory {
+  id                 String   @id @default(uuid())
+  company_id         String?
+  contact_id         String?
+  stage_id           String
+  changed_by_user_id String?
+  changed_at         DateTime @default(now())
+
+  company CrmCompany?       @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  contact CrmContact?       @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+  stage   CrmLifecycleStage @relation(fields: [stage_id], references: [id], onDelete: Cascade)
+
+  @@index([company_id, changed_at])
+  @@index([contact_id, changed_at])
+  @@map("crm_lifecycle_history")
+}
+
+/// 02 §8 — multiple pipelines per organization.
+model CrmPipeline {
+  id              String    @id @default(uuid())
+  organization_id String
+  name            String
+  slug            String
+  description     String?
+  /// Optional owning team (02 §21).
+  team_id         String?
+  is_default      Boolean   @default(false)
+  currency        String?
+  archived_at     DateTime?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  organization Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  team         Team?              @relation(fields: [team_id], references: [id], onDelete: SetNull)
+  stages       CrmPipelineStage[]
+  deals        CrmDeal[]
+
+  @@unique([organization_id, slug])
+  @@map("crm_pipelines")
+}
+
+/// 02 §8 — pipeline-specific stages with default probability.
+model CrmPipelineStage {
+  id                String              @id @default(uuid())
+  pipeline_id       String
+  name              String
+  slug              String
+  sort_order        Int                 @default(0)
+  /// Default win probability (0–100) applied to deals entering this stage.
+  probability       Int                 @default(0)
+  forecast_category CrmForecastCategory @default(PIPELINE)
+  is_won            Boolean             @default(false)
+  is_lost           Boolean             @default(false)
+  /// Days after which a deal in this stage is considered stale (02 §31 inactive-deal rule).
+  stale_after_days  Int?
+  color             String?
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+
+  pipeline     CrmPipeline           @relation(fields: [pipeline_id], references: [id], onDelete: Cascade)
+  deals        CrmDeal[]
+  history_from CrmDealStageHistory[] @relation("StageHistoryFrom")
+  history_to   CrmDealStageHistory[] @relation("StageHistoryTo")
+
+  @@unique([pipeline_id, slug])
+  @@index([pipeline_id, sort_order])
+  @@map("crm_pipeline_stages")
+}
+
+// --- Core records -----------------------------------------------------------
+
+/// 02 §2 — any external legal entity: prospect, customer, partner or vendor. One record model.
+/// Never a platform Organization (01 §8) and never a Branch (01 §16).
+model CrmCompany {
+  id                            String         @id @default(uuid())
+  organization_id               String
+  parent_company_id             String?
+  name                          String
+  legal_name                    String?
+  type                          CrmCompanyType @default(PROSPECT)
+  lifecycle_stage_id            String?
+  industry                      String?
+  company_size                  String?
+  number_of_employees           Int?
+  annual_revenue                Decimal?       @db.Decimal(18, 2)
+  currency                      String?
+  website                       String?
+  email                         String?
+  phone                         String?
+  country                       String?
+  address                       Json?
+  tax_id                        String?
+  vat_number                    String?
+  registration_number           String?
+  description                   String?
+  lead_source_id                String?
+  customer_since                DateTime?
+  /// 02 §20 — ownership and responsibility.
+  owner_membership_id           String?
+  account_manager_membership_id String?
+  success_owner_membership_id   String?
+  team_id                       String?
+  /// External system identifiers (02 §27). The billing profile itself is owned by 08.
+  external_ids                  Json?
+  last_activity_at              DateTime?
+  next_activity_at              DateTime?
+  archived_at                   DateTime?
+  created_by_user_id            String?
+  created_at                    DateTime       @default(now())
+  updated_at                    DateTime       @updatedAt
+
+  organization    Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  parent          CrmCompany?        @relation("CrmCompanyHierarchy", fields: [parent_company_id], references: [id], onDelete: SetNull)
+  children        CrmCompany[]       @relation("CrmCompanyHierarchy")
+  lifecycle_stage CrmLifecycleStage? @relation(fields: [lifecycle_stage_id], references: [id], onDelete: SetNull)
+  lead_source     CrmLeadSource?     @relation(fields: [lead_source_id], references: [id], onDelete: SetNull)
+  owner           Membership?        @relation("CrmCompanyOwner", fields: [owner_membership_id], references: [id], onDelete: SetNull)
+  account_manager Membership?        @relation("CrmCompanyAccountManager", fields: [account_manager_membership_id], references: [id], onDelete: SetNull)
+  success_owner   Membership?        @relation("CrmCompanySuccessOwner", fields: [success_owner_membership_id], references: [id], onDelete: SetNull)
+  team            Team?              @relation(fields: [team_id], references: [id], onDelete: SetNull)
+
+  contacts             CrmContact[]
+  leads                CrmLead[]
+  deals                CrmDeal[]
+  activities           CrmActivity[]
+  branches             CrmCompanyBranch[]
+  lifecycle_history    CrmLifecycleHistory[]
+  converted_from_leads CrmLead[]             @relation("LeadConvertedCompany")
+  proposals            Proposal[]
+  primary_contracts    Contract[]            @relation("ContractPrimaryCompany")
+  contract_parties     ContractParty[]
+  projects             Project[]
+
+  @@index([organization_id, name])
+  @@index([organization_id, type])
+  @@index([organization_id, lifecycle_stage_id])
+  @@index([owner_membership_id])
+  @@index([parent_company_id])
+  @@map("crm_companies")
+}
+
+/// 01 §31, §37 — branch relationships on one company record instead of duplicate companies.
+model CrmCompanyBranch {
+  id            String                @id @default(uuid())
+  company_id    String
+  branch_id     String
+  relation_type CrmBranchRelationType @default(SALES)
+  is_primary    Boolean               @default(false)
+  created_at    DateTime              @default(now())
+
+  company CrmCompany @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  branch  Branch     @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+
+  @@unique([company_id, branch_id, relation_type])
+  @@index([branch_id])
+  @@map("crm_company_branches")
+}
+
+/// 02 §3 — a person at a Company. Not a platform User (01 §4).
+model CrmContact {
+  id                  String           @id @default(uuid())
+  organization_id     String
+  company_id          String?
+  first_name          String
+  last_name           String?
+  job_title           String?
+  department          String?
+  /// Primary email; additional addresses in `emails`.
+  email               String?
+  emails              Json?
+  phone               String?
+  mobile              String?
+  phones              Json?
+  website             String?
+  linkedin_url        String?
+  social_profiles     Json?
+  roles               CrmContactRole[] @default([])
+  contact_type        String?
+  lifecycle_stage_id  String?
+  lead_source_id      String?
+  owner_membership_id String?
+  timezone            String?
+  language            String?
+  /// Marketing consent per channel (consumed by 11 Communication Center).
+  consent             Json?
+  description         String?
+  last_activity_at    DateTime?
+  archived_at         DateTime?
+  created_by_user_id  String?
+  created_at          DateTime         @default(now())
+  updated_at          DateTime         @updatedAt
+
+  organization    Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  company         CrmCompany?        @relation(fields: [company_id], references: [id], onDelete: SetNull)
+  lifecycle_stage CrmLifecycleStage? @relation(fields: [lifecycle_stage_id], references: [id], onDelete: SetNull)
+  lead_source     CrmLeadSource?     @relation(fields: [lead_source_id], references: [id], onDelete: SetNull)
+  owner           Membership?        @relation("CrmContactOwner", fields: [owner_membership_id], references: [id], onDelete: SetNull)
+
+  leads                CrmLead[]
+  primary_deals        CrmDeal[]                @relation("CrmDealPrimaryContact")
+  deal_links           CrmDealContact[]
+  activities           CrmActivityParticipant[]
+  lifecycle_history    CrmLifecycleHistory[]
+  converted_from_leads CrmLead[]                @relation("LeadConvertedContact")
+  proposals            Proposal[]
+  proposal_deliveries  ProposalDelivery[]
+  proposal_acceptances ProposalAcceptance[]
+  contract_signatories ContractSignatory[]
+  project_stakeholders ProjectStakeholder[]
+
+  @@index([organization_id, email])
+  @@index([organization_id, last_name, first_name])
+  @@index([company_id])
+  @@index([owner_membership_id])
+  @@map("crm_contacts")
+}
+
+/// 02 §4–7 — prospect before qualification. Conversion links to the created records (02 §7).
+model CrmLead {
+  id                     String    @id @default(uuid())
+  organization_id        String
+  branch_id              String?
+  name                   String
+  company_id             String?
+  contact_id             String?
+  /// Free-text company/contact details captured before records exist.
+  company_name           String?
+  contact_name           String?
+  email                  String?
+  phone                  String?
+  website                String?
+  industry               String?
+  estimated_company_size String?
+  estimated_value        Decimal?  @db.Decimal(18, 2)
+  currency               String?
+  status_id              String?
+  lead_source_id         String?
+  owner_membership_id    String?
+  /// 02 §6 — qualification criteria and answers.
+  qualification          Json?
+  qualification_notes    String?
+  lead_score             Int?
+  manual_score           Int?
+  description            String?
+  last_activity_at       DateTime?
+  next_follow_up_at      DateTime?
+  converted_at           DateTime?
+  converted_company_id   String?
+  converted_contact_id   String?
+  converted_deal_id      String?
+  lost_reason            String?
+  archived_at            DateTime?
+  created_by_user_id     String?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  organization      Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  branch            Branch?        @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  company           CrmCompany?    @relation(fields: [company_id], references: [id], onDelete: SetNull)
+  contact           CrmContact?    @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+  status            CrmLeadStatus? @relation(fields: [status_id], references: [id], onDelete: SetNull)
+  lead_source       CrmLeadSource? @relation(fields: [lead_source_id], references: [id], onDelete: SetNull)
+  owner             Membership?    @relation("CrmLeadOwner", fields: [owner_membership_id], references: [id], onDelete: SetNull)
+  converted_company CrmCompany?    @relation("LeadConvertedCompany", fields: [converted_company_id], references: [id], onDelete: SetNull)
+  converted_contact CrmContact?    @relation("LeadConvertedContact", fields: [converted_contact_id], references: [id], onDelete: SetNull)
+  converted_deal    CrmDeal?       @relation("LeadConvertedDeal", fields: [converted_deal_id], references: [id], onDelete: SetNull)
+  activities        CrmActivity[]
+
+  @@index([organization_id, status_id])
+  @@index([organization_id, owner_membership_id])
+  @@index([organization_id, email])
+  @@map("crm_leads")
+}
+
+/// 02 §9 — deal / opportunity. Totals derive from line items when any exist (02 §10).
+model CrmDeal {
+  id                  String              @id @default(uuid())
+  organization_id     String
+  branch_id           String?
+  pipeline_id         String
+  stage_id            String
+  name                String
+  company_id          String?
+  primary_contact_id  String?
+  owner_membership_id String?
+  team_id             String?
+  status              CrmDealStatus       @default(OPEN)
+  value               Decimal             @default(0) @db.Decimal(18, 2)
+  recurring_value     Decimal             @default(0) @db.Decimal(18, 2)
+  one_time_value      Decimal             @default(0) @db.Decimal(18, 2)
+  discount_amount     Decimal             @default(0) @db.Decimal(18, 2)
+  tax_amount          Decimal             @default(0) @db.Decimal(18, 2)
+  currency            String
+  probability         Int?
+  forecast_category   CrmForecastCategory @default(PIPELINE)
+  expected_close_date DateTime?           @db.Date
+  actual_close_date   DateTime?           @db.Date
+  deal_type           String?
+  lead_source_id      String?
+  competitor          String?
+  lost_reason         String?
+  next_step           String?
+  description         String?
+  /// References to records owned by other modules (ids only): 03, 04, 05.
+  proposal_id         String?
+  contract_id         String?
+  project_id          String?
+  stage_entered_at    DateTime            @default(now())
+  last_activity_at    DateTime?
+  archived_at         DateTime?
+  created_by_user_id  String?
+  created_at          DateTime            @default(now())
+  updated_at          DateTime            @updatedAt
+
+  organization    Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  branch          Branch?          @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  pipeline        CrmPipeline      @relation(fields: [pipeline_id], references: [id], onDelete: Restrict)
+  stage           CrmPipelineStage @relation(fields: [stage_id], references: [id], onDelete: Restrict)
+  company         CrmCompany?      @relation(fields: [company_id], references: [id], onDelete: SetNull)
+  primary_contact CrmContact?      @relation("CrmDealPrimaryContact", fields: [primary_contact_id], references: [id], onDelete: SetNull)
+  owner           Membership?      @relation("CrmDealOwner", fields: [owner_membership_id], references: [id], onDelete: SetNull)
+  team            Team?            @relation(fields: [team_id], references: [id], onDelete: SetNull)
+  lead_source     CrmLeadSource?   @relation(fields: [lead_source_id], references: [id], onDelete: SetNull)
+  project         Project?         @relation("CrmDealProject", fields: [project_id], references: [id], onDelete: SetNull)
+
+  contacts             CrmDealContact[]
+  line_items           CrmDealLineItem[]
+  stage_history        CrmDealStageHistory[]
+  activities           CrmActivity[]
+  converted_from_leads CrmLead[]             @relation("LeadConvertedDeal")
+  proposals            Proposal[]
+
+  @@index([organization_id, pipeline_id, stage_id])
+  @@index([organization_id, status])
+  @@index([company_id])
+  @@index([owner_membership_id])
+  @@index([expected_close_date])
+  @@map("crm_deals")
+}
+
+/// 02 §9 — additional contacts on a deal.
+model CrmDealContact {
+  deal_id    String
+  contact_id String
+  role       String?
+  created_at DateTime @default(now())
+
+  deal    CrmDeal    @relation(fields: [deal_id], references: [id], onDelete: Cascade)
+  contact CrmContact @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+
+  @@id([deal_id, contact_id])
+  @@index([contact_id])
+  @@map("crm_deal_contacts")
+}
+
+/// 02 §10 — deal line items. product_id references the Finance catalog (08); no FK until 08 exists.
+model CrmDealLineItem {
+  id                String   @id @default(uuid())
+  deal_id           String
+  product_id        String?
+  name              String
+  description       String?
+  quantity          Decimal  @default(1) @db.Decimal(12, 3)
+  unit_price        Decimal  @default(0) @db.Decimal(18, 2)
+  discount_percent  Decimal? @db.Decimal(5, 2)
+  discount_amount   Decimal  @default(0) @db.Decimal(18, 2)
+  tax_percent       Decimal? @db.Decimal(5, 2)
+  net_amount        Decimal  @default(0) @db.Decimal(18, 2)
+  tax_amount        Decimal  @default(0) @db.Decimal(18, 2)
+  gross_amount      Decimal  @default(0) @db.Decimal(18, 2)
+  is_recurring      Boolean  @default(false)
+  /// monthly | quarterly | annual | custom
+  billing_frequency String?
+  sort_order        Int      @default(0)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  deal CrmDeal @relation(fields: [deal_id], references: [id], onDelete: Cascade)
+
+  @@index([deal_id])
+  @@map("crm_deal_line_items")
+}
+
+/// 02 §8, §34 — stage transitions for duration, velocity and history.
+model CrmDealStageHistory {
+  id                 String   @id @default(uuid())
+  deal_id            String
+  from_stage_id      String?
+  to_stage_id        String
+  changed_by_user_id String?
+  changed_at         DateTime @default(now())
+  /// Seconds spent in from_stage.
+  duration_seconds   Int?
+
+  deal       CrmDeal           @relation(fields: [deal_id], references: [id], onDelete: Cascade)
+  from_stage CrmPipelineStage? @relation("StageHistoryFrom", fields: [from_stage_id], references: [id], onDelete: SetNull)
+  to_stage   CrmPipelineStage  @relation("StageHistoryTo", fields: [to_stage_id], references: [id], onDelete: Cascade)
+
+  @@index([deal_id, changed_at])
+  @@map("crm_deal_stage_history")
+}
+
+// --- Activities & notes -----------------------------------------------------
+
+/// 02 §12–15 — unified CRM activity. Tasks are NOT activities: they live in 06 and link back to CRM
+/// records from Task Management. MEETING rows reference a Calendar event (19).
+model CrmActivity {
+  id                  String            @id @default(uuid())
+  organization_id     String
+  type                CrmActivityType
+  status              CrmActivityStatus @default(PLANNED)
+  priority            CrmPriority       @default(NORMAL)
+  title               String
+  description         String?
+  company_id          String?
+  contact_id          String?
+  lead_id             String?
+  deal_id             String?
+  /// Project reference (05); id only.
+  project_id          String?
+  owner_membership_id String?
+  starts_at           DateTime?
+  ends_at             DateTime?
+  duration_minutes    Int?
+  location            String?
+  meeting_url         String?
+  /// Calendar event id (19); id only.
+  calendar_event_id   String?
+  outcome             String?
+  /// Automation rule id (20) when created by a rule.
+  automation_rule_id  String?
+  completed_at        DateTime?
+  created_by_user_id  String?
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  organization Organization             @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  company      CrmCompany?              @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  lead         CrmLead?                 @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+  deal         CrmDeal?                 @relation(fields: [deal_id], references: [id], onDelete: Cascade)
+  owner        Membership?              @relation("CrmActivityOwner", fields: [owner_membership_id], references: [id], onDelete: SetNull)
+  participants CrmActivityParticipant[]
+
+  @@index([organization_id, starts_at])
+  @@index([company_id])
+  @@index([contact_id])
+  @@index([deal_id])
+  @@index([lead_id])
+  @@index([owner_membership_id, status])
+  @@map("crm_activities")
+}
+
+/// Participants of an activity: internal Members (by membership id) and CRM Contacts.
+model CrmActivityParticipant {
+  id            String  @id @default(uuid())
+  activity_id   String
+  membership_id String?
+  contact_id    String?
+  response      String?
+
+  activity CrmActivity @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+  contact  CrmContact? @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+
+  @@unique([activity_id, membership_id, contact_id])
+  @@index([contact_id])
+  @@map("crm_activity_participants")
+}
+
+/// 02 §16 — notes attachable to companies, contacts, leads, deals and other modules' records.
+model CrmNote {
+  id                   String           @id @default(uuid())
+  organization_id      String
+  entity_type          RecordEntityType
+  entity_id            String
+  author_membership_id String?
+  /// Markdown / rich text body.
+  body                 String
+  is_private           Boolean          @default(false)
+  /// Mentioned membership ids.
+  mentions             String[]         @default([])
+  pinned               Boolean          @default(false)
+  edited_at            DateTime?
+  /// Previous bodies for edit history (02 §16).
+  edit_history         Json?
+  created_at           DateTime         @default(now())
+  updated_at           DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  author       Membership?  @relation("CrmNoteAuthor", fields: [author_membership_id], references: [id], onDelete: SetNull)
+
+  @@index([entity_type, entity_id, created_at])
+  @@index([organization_id])
+  @@map("crm_notes")
+}
+
+// --- Operations ---------------------------------------------------------------
+
+/// 02 §20 — automatic assignment rules (evaluated by the Automation Engine, 20).
+model CrmAssignmentRule {
+  id              String           @id @default(uuid())
+  organization_id String
+  name            String
+  entity_type     RecordEntityType
+  /// Conditions on record fields and custom fields.
+  conditions      Json
+  /// { membership_id } | { team_id, strategy: "round_robin" | "least_loaded" }
+  assign_to       Json
+  priority        Int              @default(0)
+  enabled         Boolean          @default(true)
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id, entity_type, enabled])
+  @@map("crm_assignment_rules")
+}
+
+/// 02 §22 — CSV import jobs with mapping, preview, validation, history and rollback.
+model CrmImportJob {
+  id                       String           @id @default(uuid())
+  organization_id          String
+  entity_type              RecordEntityType
+  status                   CrmImportStatus  @default(PENDING)
+  /// Uploaded file (17 Documents); id only.
+  document_id              String?
+  file_name                String?
+  field_mapping            Json?
+  /// Duplicate detection strategy: match fields and merge behaviour.
+  duplicate_strategy       Json?
+  total_rows               Int              @default(0)
+  imported_rows            Int              @default(0)
+  updated_rows             Int              @default(0)
+  skipped_rows             Int              @default(0)
+  error_rows               Int              @default(0)
+  errors                   Json?
+  /// Ids created by this job, kept for rollback.
+  created_record_ids       String[]         @default([])
+  started_by_membership_id String?
+  started_at               DateTime?
+  completed_at             DateTime?
+  rolled_back_at           DateTime?
+  created_at               DateTime         @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  started_by   Membership?  @relation(fields: [started_by_membership_id], references: [id], onDelete: SetNull)
+
+  @@index([organization_id, status])
+  @@map("crm_import_jobs")
+}
+
+// =====================================================================
+// Platform shared concept — document numbering (used by 03 Proposals, 04 Contracts, 08 Finance).
+// =====================================================================
+
+/// Per-organization numbering sequences, e.g. PRO-2026-0001 / CTR-2026-0001 / INV-2026-0001.
+/// Services increment `next_number` inside a transaction; numbers are never reused.
+model NumberSequence {
+  id              String   @id @default(uuid())
+  organization_id String
+  /// proposal | contract | invoice | credit_note | ticket …
+  entity_type     String
+  prefix          String
+  /// Null for sequences that do not reset yearly.
+  year            Int?
+  next_number     Int      @default(1)
+  padding         Int      @default(4)
+  updated_at      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@unique([organization_id, entity_type, prefix, year])
+  @@map("number_sequences")
+}
+
+// =====================================================================
+// 03 AI-Powered Proposal & Quotation Generator — docs/features/03-proposal-quotation-generator.md (LOG-303)
+// Owns: Proposal, versions, sections, line items, payment schedules, templates, internal review,
+// delivery, tracking, customer acceptance, conversion links.
+// Does not own: products catalog and tax rates (08), PDF files (17), signature requests (04),
+// contracts (04), projects (05), invoices/subscriptions (08), emails (11). Referenced by id only.
+// =====================================================================
+
+/// 03 "Proposal Status" — lifecycle of the proposal record (the latest/sent version drives it).
+enum ProposalStatus {
+  DRAFT
+  IN_REVIEW
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  VIEWED
+  CHANGES_REQUESTED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+/// 03 "Proposal Versions" — a version is immutable once sent.
+enum ProposalVersionStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  SENT
+  SUPERSEDED
+}
+
+/// 03 "Proposal Review" — internal approval decision.
+enum ProposalApprovalDecision {
+  PENDING
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+/// 03 "Customer Approval".
+enum ProposalCustomerDecision {
+  ACCEPTED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+/// 03 "Customer Delivery".
+enum ProposalDeliveryChannel {
+  EMAIL
+  CUSTOMER_PORTAL
+  PDF
+  LINK
+}
+
+enum ProposalDeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
+/// 03 "Proposal Tracking" — customer and system events on a proposal.
+enum ProposalEventType {
+  CREATED
+  VERSION_CREATED
+  SUBMITTED_FOR_REVIEW
+  APPROVED
+  SENT
+  VIEWED
+  DOWNLOADED
+  OPTIONAL_ITEM_TOGGLED
+  COMMENTED
+  CHANGES_REQUESTED
+  ACCEPTED
+  REJECTED
+  SIGNED
+  EXPIRED
+  CANCELLED
+  CONVERTED
+}
+
+/// 03 "Reusable Templates" / "Dynamic Proposal Content" — section types.
+enum ProposalSectionType {
+  COVER
+  EXECUTIVE_SUMMARY
+  OVERVIEW
+  REQUIREMENTS
+  SOLUTION
+  SCOPE
+  FEATURES
+  DELIVERABLES
+  PHASES
+  MILESTONES
+  TIMELINE
+  PRICING
+  PAYMENT_SCHEDULE
+  SUPPORT_OPTIONS
+  ASSUMPTIONS
+  EXCLUSIONS
+  WARRANTY
+  TERMS
+  NEXT_STEPS
+  SIGNATURE
+  CUSTOM
+}
+
+/// 03 "Pricing & Quotation Builder" — when a payment schedule item is due.
+enum ProposalPaymentTrigger {
+  ON_ACCEPTANCE
+  ON_SIGNATURE
+  ON_DATE
+  ON_MILESTONE
+  ON_DELIVERY
+  RECURRING
+}
+
+// --- Templates -------------------------------------------------------------------
+
+/// 03 "Reusable Templates" — branded, versioned template per work type. Organization-owned.
+model ProposalTemplate {
+  id                    String    @id @default(uuid())
+  organization_id       String
+  name                  String
+  slug                  String
+  description           String?
+  /// Work type the template targets (website, web app, mobile, custom software, SaaS, maintenance, support, consulting, …).
+  work_type             String?
+  language              String    @default("en")
+  /// Branding overrides; organization branding (01 §15) is the fallback.
+  branding              Json?
+  /// Page layout: cover page, headers/footers, typography, table styles.
+  layout                Json?
+  /// Ordered section blueprint: [{ type, title, body_template, is_required, sort_order }].
+  sections              Json
+  /// Default terms, warranty, assumptions, exclusions, payment terms text.
+  defaults              Json?
+  /// Dynamic variables the template expects (03 "Dynamic Proposal Content").
+  variables             Json?
+  default_validity_days Int       @default(30)
+  is_default            Boolean   @default(false)
+  version               Int       @default(1)
+  archived_at           DateTime?
+  created_by_user_id    String?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  proposals    Proposal[]
+
+  @@unique([organization_id, slug])
+  @@index([organization_id, work_type])
+  @@map("proposal_templates")
+}
+
+// --- Proposal --------------------------------------------------------------------
+
+/// 03 "Proposal Creation" — the proposal record. Content lives in versions; this row carries
+/// identity, relationships, status and snapshots of the current version's totals.
+model Proposal {
+  id                   String         @id @default(uuid())
+  organization_id      String
+  branch_id            String?
+  /// Organization numbering, e.g. PRO-2026-0001 (NumberSequence).
+  number               String
+  title                String
+  status               ProposalStatus @default(DRAFT)
+  template_id          String?
+  language             String         @default("en")
+  currency             String
+  /// CRM references (02). company_id is the Customer the proposal is addressed to.
+  company_id           String?
+  contact_id           String?
+  deal_id              String?
+  owner_membership_id  String?
+  /// Project context the proposal was generated from or for (05); id only.
+  project_id           String?
+  /// Validity of the currently sent version.
+  valid_until          DateTime?      @db.Date
+  /// Version pointers.
+  current_version_id   String?        @unique
+  sent_version_id      String?        @unique
+  accepted_version_id  String?        @unique
+  /// Snapshot of current version totals for list views and dashboards.
+  net_total            Decimal        @default(0) @db.Decimal(18, 2)
+  discount_total       Decimal        @default(0) @db.Decimal(18, 2)
+  tax_total            Decimal        @default(0) @db.Decimal(18, 2)
+  gross_total          Decimal        @default(0) @db.Decimal(18, 2)
+  recurring_monthly    Decimal        @default(0) @db.Decimal(18, 2)
+  recurring_annual     Decimal        @default(0) @db.Decimal(18, 2)
+  /// Whether acceptance must produce a Contract before project/billing creation (03 "Conversion to Project").
+  requires_contract    Boolean        @default(false)
+  /// Public web view (03 "Customer Delivery"): hashed token; expires with valid_until.
+  public_token_hash    String?        @unique
+  /// Conversion links to records owned by other modules (ids only): 04, 05, 08.
+  contract_id          String?
+  converted_project_id String?
+  invoice_id           String?
+  subscription_id      String?
+  converted_at         DateTime?
+  sent_at              DateTime?
+  first_viewed_at      DateTime?
+  last_viewed_at       DateTime?
+  view_count           Int            @default(0)
+  accepted_at          DateTime?
+  rejected_at          DateTime?
+  expired_at           DateTime?
+  cancelled_at         DateTime?
+  archived_at          DateTime?
+  created_by_user_id   String?
+  created_at           DateTime       @default(now())
+  updated_at           DateTime       @updatedAt
+
+  organization      Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  branch            Branch?           @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  template          ProposalTemplate? @relation(fields: [template_id], references: [id], onDelete: SetNull)
+  company           CrmCompany?       @relation(fields: [company_id], references: [id], onDelete: SetNull)
+  contact           CrmContact?       @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+  deal              CrmDeal?          @relation(fields: [deal_id], references: [id], onDelete: SetNull)
+  converted_project Project?          @relation("ProposalConvertedProject", fields: [converted_project_id], references: [id], onDelete: SetNull)
+  owner             Membership?       @relation("ProposalOwner", fields: [owner_membership_id], references: [id], onDelete: SetNull)
+  current_version   ProposalVersion?  @relation("ProposalCurrentVersion", fields: [current_version_id], references: [id], onDelete: SetNull)
+  sent_version      ProposalVersion?  @relation("ProposalSentVersion", fields: [sent_version_id], references: [id], onDelete: SetNull)
+  accepted_version  ProposalVersion?  @relation("ProposalAcceptedVersion", fields: [accepted_version_id], references: [id], onDelete: SetNull)
+
+  versions    ProposalVersion[]
+  deliveries  ProposalDelivery[]
+  events      ProposalEvent[]
+  comments    ProposalComment[]
+  acceptances ProposalAcceptance[]
+  contracts   Contract[]
+  projects    Project[]            @relation("ProjectSourceProposal")
+
+  @@unique([organization_id, number])
+  @@index([organization_id, status])
+  @@index([company_id])
+  @@index([deal_id])
+  @@index([owner_membership_id])
+  @@index([valid_until])
+  @@map("proposals")
+}
+
+/// 03 "Proposal Versions" — every revision. A version that was sent is immutable; acceptance
+/// is always bound to the exact version sent.
+model ProposalVersion {
+  id                 String                @id @default(uuid())
+  proposal_id        String
+  version_number     Int
+  status             ProposalVersionStatus @default(DRAFT)
+  parent_version_id  String?
+  change_summary     String?
+  /// Template version used at generation time.
+  template_version   Int?
+  /// Resolved dynamic variables at generation (03 "Dynamic Proposal Content").
+  variables          Json?
+  /// Structured commercial content not covered by sections: payment terms, validity, support options.
+  payment_terms      String?
+  validity_days      Int?
+  /// Milestones and timeline proposed (operational copies are created in 05 on conversion).
+  milestones         Json?
+  timeline           Json?
+  net_total          Decimal               @default(0) @db.Decimal(18, 2)
+  discount_total     Decimal               @default(0) @db.Decimal(18, 2)
+  tax_total          Decimal               @default(0) @db.Decimal(18, 2)
+  gross_total        Decimal               @default(0) @db.Decimal(18, 2)
+  recurring_monthly  Decimal               @default(0) @db.Decimal(18, 2)
+  recurring_annual   Decimal               @default(0) @db.Decimal(18, 2)
+  /// Generated PDF stored in 17 Documents; id only.
+  pdf_document_id    String?
+  /// Integrity hash of the rendered artifact.
+  content_hash       String?
+  is_ai_generated    Boolean               @default(false)
+  /// Model, prompt reference, sources used, review findings (03 "AI Assistance", "Proposal Review").
+  ai_metadata        Json?
+  locked_at          DateTime?
+  sent_at            DateTime?
+  created_by_user_id String?
+  created_at         DateTime              @default(now())
+  updated_at         DateTime              @updatedAt
+
+  proposal       Proposal          @relation(fields: [proposal_id], references: [id], onDelete: Cascade)
+  parent_version ProposalVersion?  @relation("ProposalVersionLineage", fields: [parent_version_id], references: [id], onDelete: SetNull)
+  child_versions ProposalVersion[] @relation("ProposalVersionLineage")
+
+  current_of         Proposal?          @relation("ProposalCurrentVersion")
+  sent_of            Proposal?          @relation("ProposalSentVersion")
+  accepted_of        Proposal?          @relation("ProposalAcceptedVersion")
+  /// Contracts generated from this exact proposal version (04 §7, §55).
+  contracts          Contract[]
+  signature_requests SignatureRequest[]
+  projects           Project[]          @relation("ProjectSourceProposalVersion")
+
+  sections         ProposalSection[]
+  line_items       ProposalLineItem[]
+  payment_schedule ProposalPaymentScheduleItem[]
+  approvals        ProposalApproval[]
+  deliveries       ProposalDelivery[]
+  events           ProposalEvent[]
+  comments         ProposalComment[]
+  acceptances      ProposalAcceptance[]
+
+  @@unique([proposal_id, version_number])
+  @@index([proposal_id, status])
+  @@map("proposal_versions")
+}
+
+/// Addressable content blocks of a version (03 "AI Proposal Generation" output structure).
+model ProposalSection {
+  id              String              @id @default(uuid())
+  version_id      String
+  type            ProposalSectionType
+  title           String
+  /// Markdown / rich text. Pricing and payment sections render from line items and schedule.
+  body            String?
+  sort_order      Int                 @default(0)
+  is_ai_generated Boolean             @default(false)
+  /// Hidden from the customer-facing render (internal notes inside a section).
+  is_internal     Boolean             @default(false)
+  created_at      DateTime            @default(now())
+  updated_at      DateTime            @updatedAt
+
+  version  ProposalVersion   @relation(fields: [version_id], references: [id], onDelete: Cascade)
+  comments ProposalComment[]
+
+  @@index([version_id, sort_order])
+  @@map("proposal_sections")
+}
+
+/// 03 "Pricing & Quotation Builder" — line items of a version. product_id references the
+/// Finance catalog (08); no FK until 08 exists.
+model ProposalLineItem {
+  id                   String   @id @default(uuid())
+  version_id           String
+  product_id           String?
+  /// Optional grouping label (package / phase).
+  group_name           String?
+  name                 String
+  description          String?
+  quantity             Decimal  @default(1) @db.Decimal(12, 3)
+  unit                 String?
+  unit_price           Decimal  @default(0) @db.Decimal(18, 2)
+  discount_percent     Decimal? @db.Decimal(5, 2)
+  discount_amount      Decimal  @default(0) @db.Decimal(18, 2)
+  tax_percent          Decimal? @db.Decimal(5, 2)
+  net_amount           Decimal  @default(0) @db.Decimal(18, 2)
+  tax_amount           Decimal  @default(0) @db.Decimal(18, 2)
+  gross_amount         Decimal  @default(0) @db.Decimal(18, 2)
+  is_recurring         Boolean  @default(false)
+  /// monthly | quarterly | annual | custom
+  billing_frequency    String?
+  /// Customer may choose this item (03 "Approve specific optional items").
+  is_optional          Boolean  @default(false)
+  /// Whether the customer selected the optional item on acceptance.
+  selected_by_customer Boolean?
+  sort_order           Int      @default(0)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  version ProposalVersion @relation(fields: [version_id], references: [id], onDelete: Cascade)
+
+  @@index([version_id, sort_order])
+  @@map("proposal_line_items")
+}
+
+/// 03 "Pricing & Quotation Builder" — deposits, milestone payments, custom schedules.
+model ProposalPaymentScheduleItem {
+  id             String                 @id @default(uuid())
+  version_id     String
+  name           String
+  trigger        ProposalPaymentTrigger @default(ON_ACCEPTANCE)
+  /// Either a percentage of the gross total or a fixed amount.
+  percentage     Decimal?               @db.Decimal(5, 2)
+  amount         Decimal?               @db.Decimal(18, 2)
+  due_date       DateTime?              @db.Date
+  /// Milestone label this payment is tied to (ON_MILESTONE).
+  milestone_name String?
+  /// For RECURRING: monthly | quarterly | annual.
+  frequency      String?
+  sort_order     Int                    @default(0)
+
+  version ProposalVersion @relation(fields: [version_id], references: [id], onDelete: Cascade)
+
+  @@index([version_id, sort_order])
+  @@map("proposal_payment_schedule_items")
+}
+
+// --- Review, delivery, tracking, acceptance --------------------------------------
+
+/// 03 "Proposal Review" — internal approval bound to an exact version (approval rights: 01 §95).
+model ProposalApproval {
+  id                     String                   @id @default(uuid())
+  version_id             String
+  approver_membership_id String
+  step                   Int                      @default(1)
+  decision               ProposalApprovalDecision @default(PENDING)
+  comment                String?
+  requested_at           DateTime                 @default(now())
+  decided_at             DateTime?
+
+  version  ProposalVersion @relation(fields: [version_id], references: [id], onDelete: Cascade)
+  approver Membership      @relation("ProposalApprover", fields: [approver_membership_id], references: [id], onDelete: Cascade)
+
+  @@unique([version_id, approver_membership_id, step])
+  @@index([approver_membership_id, decision])
+  @@map("proposal_approvals")
+}
+
+/// Internal and customer comments on a proposal or a section. Customer authors are Customer Portal
+/// Users (01 §79) or the addressed contact; internal comments are never shown to customers.
+model ProposalComment {
+  id                   String    @id @default(uuid())
+  proposal_id          String
+  version_id           String?
+  section_id           String?
+  author_membership_id String?
+  author_user_id       String?
+  author_contact_id    String?
+  is_internal          Boolean   @default(true)
+  body                 String
+  resolved_at          DateTime?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  proposal Proposal         @relation(fields: [proposal_id], references: [id], onDelete: Cascade)
+  version  ProposalVersion? @relation(fields: [version_id], references: [id], onDelete: Cascade)
+  section  ProposalSection? @relation(fields: [section_id], references: [id], onDelete: Cascade)
+  author   Membership?      @relation("ProposalCommentAuthor", fields: [author_membership_id], references: [id], onDelete: SetNull)
+
+  @@index([proposal_id, created_at])
+  @@index([section_id])
+  @@map("proposal_comments")
+}
+
+/// 03 "Customer Delivery" — each send of a version through a channel. Emails go through 11.
+model ProposalDelivery {
+  id                   String                  @id @default(uuid())
+  proposal_id          String
+  version_id           String
+  channel              ProposalDeliveryChannel
+  status               ProposalDeliveryStatus  @default(QUEUED)
+  recipient_contact_id String?
+  recipient_email      String?
+  /// Communication record id (11); id only.
+  communication_id     String?
+  sent_by_user_id      String?
+  message              String?
+  sent_at              DateTime?
+  delivered_at         DateTime?
+  failed_reason        String?
+  created_at           DateTime                @default(now())
+
+  proposal  Proposal        @relation(fields: [proposal_id], references: [id], onDelete: Cascade)
+  version   ProposalVersion @relation(fields: [version_id], references: [id], onDelete: Cascade)
+  recipient CrmContact?     @relation(fields: [recipient_contact_id], references: [id], onDelete: SetNull)
+
+  @@index([proposal_id, sent_at])
+  @@map("proposal_deliveries")
+}
+
+/// 03 "Proposal Tracking" — append-only event log of customer activity and lifecycle changes.
+model ProposalEvent {
+  id               String            @id @default(uuid())
+  proposal_id      String
+  version_id       String?
+  type             ProposalEventType
+  /// Internal actor (user id) or customer actor (portal user id / contact id).
+  actor_user_id    String?
+  actor_contact_id String?
+  ip_address       String?
+  user_agent       String?
+  metadata         Json?
+  created_at       DateTime          @default(now())
+
+  proposal Proposal         @relation(fields: [proposal_id], references: [id], onDelete: Cascade)
+  version  ProposalVersion? @relation(fields: [version_id], references: [id], onDelete: Cascade)
+
+  @@index([proposal_id, created_at])
+  @@index([type, created_at])
+  @@map("proposal_events")
+}
+
+/// 03 "Customer Approval" — the customer's decision on an exact version, with the evidence
+/// collected (name, contact, terms confirmation, selected optional items, signature reference).
+model ProposalAcceptance {
+  id                         String                   @id @default(uuid())
+  proposal_id                String
+  version_id                 String
+  decision                   ProposalCustomerDecision
+  /// Customer Portal User (01 §79) when accepted through the portal; id only.
+  customer_user_id           String?
+  contact_id                 String?
+  signer_name                String
+  signer_email               String
+  signer_title               String?
+  terms_accepted             Boolean                  @default(false)
+  /// Ids of optional line items the customer selected.
+  selected_optional_item_ids String[]                 @default([])
+  feedback                   String?
+  /// Signature request id from the e-signature provider abstraction (04 §33–38); id only.
+  signature_request_id       String?
+  signature_metadata         Json?
+  ip_address                 String?
+  user_agent                 String?
+  created_at                 DateTime                 @default(now())
+
+  proposal Proposal        @relation(fields: [proposal_id], references: [id], onDelete: Cascade)
+  version  ProposalVersion @relation(fields: [version_id], references: [id], onDelete: Cascade)
+  contact  CrmContact?     @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+
+  @@index([proposal_id, created_at])
+  @@index([version_id])
+  @@map("proposal_acceptances")
+}
+
+// =====================================================================
+// 04 Contracts — docs/features/04-contracts.md (LOG-349)
+// Owns: contract types, templates and clause library, contract records, parties and signatories,
+// versions and sections, review, change requests, approval, e-signature provider abstraction
+// (also used by 03 Proposals), amendments/renewals lineage, obligations, termination.
+// Does not own: projects (05), documents storage (17), invoices (08), calendar events (19),
+// notifications (14), automation (20). Referenced by id only.
+// =====================================================================
+
+/// 04 §5 — contract lifecycle states.
+enum ContractStatus {
+  DRAFT
+  INTERNAL_REVIEW
+  CUSTOMER_REVIEW
+  APPROVAL_REQUIRED
+  READY_FOR_SIGNATURE
+  PARTIALLY_SIGNED
+  FULLY_SIGNED
+  ACTIVE
+  EXPIRING
+  RENEWED
+  SUPERSEDED
+  TERMINATED
+  EXPIRED
+  CANCELLED
+  ARCHIVED
+}
+
+/// 04 §19–20, §80 — version/document state, separate from contract lifecycle.
+enum ContractVersionStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  LOCKED_FOR_SIGNATURE
+  SIGNED
+  SUPERSEDED
+}
+
+/// 04 §43, §46–48 — how a contract relates to its parent contract.
+enum ContractRelationKind {
+  STANDALONE
+  AMENDMENT
+  RENEWAL
+  SOW
+  CHANGE_ORDER
+  TERMINATION_AGREEMENT
+}
+
+/// 04 §3 — renewal behaviour.
+enum ContractRenewalType {
+  NONE
+  MANUAL
+  AUTOMATIC
+  EVERGREEN
+}
+
+/// 04 §4 — party type.
+enum ContractPartyType {
+  AGENCY
+  CUSTOMER
+  VENDOR
+  PARTNER
+  CONTRACTOR
+  EMPLOYEE
+  OTHER
+}
+
+/// 04 §8, §77 — template governance.
+enum ContractTemplateStatus {
+  DRAFT
+  PUBLISHED
+  DEPRECATED
+}
+
+/// 04 §11–12 — clause status.
+enum ContractClauseStatus {
+  DRAFT
+  ACTIVE
+  DEPRECATED
+}
+
+/// 04 §23 — review decision.
+enum ContractReviewDecision {
+  PENDING
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+/// 04 §27–29 — approval decision.
+enum ContractApprovalDecision {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// 04 §26 — contract change request status.
+enum ContractChangeRequestStatus {
+  REQUESTED
+  UNDER_REVIEW
+  ACCEPTED
+  REJECTED
+  IMPLEMENTED
+  WITHDRAWN
+}
+
+/// 04 §49–50 — obligation types.
+enum ContractObligationType {
+  DELIVERABLE
+  PAYMENT
+  REPORTING
+  RENEWAL_NOTICE
+  SLA
+  SECURITY_REVIEW
+  CUSTOMER_APPROVAL
+  OTHER
+}
+
+enum ContractObligationStatus {
+  OPEN
+  IN_PROGRESS
+  FULFILLED
+  OVERDUE
+  WAIVED
+  CANCELLED
+}
+
+/// 04 §75 — AI-extracted obligations need review before acting.
+enum ExtractionReviewState {
+  PENDING_REVIEW
+  CONFIRMED
+  REJECTED
+}
+
+/// 04 §53 — termination type.
+enum ContractTerminationType {
+  FOR_CONVENIENCE
+  FOR_CAUSE
+  MUTUAL
+  EXPIRY
+  OTHER
+}
+
+/// 04 §74 — explainable risk level; not legal advice.
+enum ContractRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+/// 04 §33 — signature providers behind the abstraction.
+enum SignatureProvider {
+  INTERNAL
+  DOCUSIGN
+  DROPBOX_SIGN
+  ADOBE_SIGN
+  OTHER
+}
+
+/// What a signature request is bound to. The version relationship is immutable (04 §34).
+enum SignatureSubjectType {
+  CONTRACT_VERSION
+  PROPOSAL_VERSION
+}
+
+/// 04 §32 — signing order.
+enum SigningOrder {
+  SEQUENTIAL
+  PARALLEL
+}
+
+/// 04 §35 — signature request states.
+enum SignatureRequestStatus {
+  NOT_SENT
+  SENT
+  DELIVERED
+  VIEWED
+  PARTIALLY_SIGNED
+  FULLY_SIGNED
+  DECLINED
+  EXPIRED
+  CANCELLED
+  FAILED
+}
+
+enum SignerStatus {
+  PENDING
+  SENT
+  DELIVERED
+  VIEWED
+  SIGNED
+  DECLINED
+  BOUNCED
+}
+
+/// 04 §38 — provider events retained for the audit trail.
+enum SignatureEventType {
+  REQUEST_CREATED
+  SENT
+  DELIVERED
+  VIEWED
+  SIGNED
+  DECLINED
+  REMINDER_SENT
+  CANCELLED
+  EXPIRED
+  COMPLETED
+  FAILED
+}
+
+// --- Configuration: types, templates, clauses, approval rules ---------------------
+
+/// 04 §2 — configurable contract types with defaults.
+model ContractType {
+  id                     String              @id @default(uuid())
+  organization_id        String
+  name                   String
+  slug                   String
+  description            String?
+  default_template_id    String?
+  /// Required metadata keys for this type (04 §16 validation).
+  required_metadata      Json?
+  /// Default approval workflow steps when no ContractApprovalRule matches (04 §27).
+  approval_workflow      Json?
+  /// Signature requirements: required parties, signing order, internal/external first.
+  signature_requirements Json?
+  default_renewal_type   ContractRenewalType @default(NONE)
+  default_notice_days    Int?
+  /// Expiration reminder windows in days (04 §52), e.g. [180,120,90,60,30,14,7].
+  reminder_windows_days  Int[]               @default([90, 60, 30, 14, 7])
+  /// Retention in days after closeout (04 §84); null = organization default.
+  retention_days         Int?
+  sort_order             Int                 @default(0)
+  archived_at            DateTime?
+  created_at             DateTime            @default(now())
+  updated_at             DateTime            @updatedAt
+
+  organization     Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  default_template ContractTemplate?  @relation("ContractTypeDefaultTemplate", fields: [default_template_id], references: [id], onDelete: SetNull)
+  templates        ContractTemplate[] @relation("ContractTemplateType")
+  contracts        Contract[]
+
+  @@unique([organization_id, slug])
+  @@map("contract_types")
+}
+
+/// 04 §8, §77 — reusable contractual structure. Content is versioned in ContractTemplateVersion;
+/// changing a template never modifies existing contracts.
+model ContractTemplate {
+  id                  String                 @id @default(uuid())
+  organization_id     String
+  type_id             String?
+  name                String
+  slug                String
+  description         String?
+  language            String                 @default("en")
+  status              ContractTemplateStatus @default(DRAFT)
+  current_version_id  String?                @unique
+  owner_membership_id String?
+  effective_date      DateTime?              @db.Date
+  deprecated_at       DateTime?
+  created_at          DateTime               @default(now())
+  updated_at          DateTime               @updatedAt
+
+  organization      Organization              @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  type              ContractType?             @relation("ContractTemplateType", fields: [type_id], references: [id], onDelete: SetNull)
+  current_version   ContractTemplateVersion?  @relation("ContractTemplateCurrentVersion", fields: [current_version_id], references: [id], onDelete: SetNull)
+  versions          ContractTemplateVersion[]
+  default_for_types ContractType[]            @relation("ContractTypeDefaultTemplate")
+  contracts         Contract[]
+
+  @@unique([organization_id, slug])
+  @@index([organization_id, status])
+  @@map("contract_templates")
+}
+
+/// 04 §8–10, §14 — one immutable template version: sections, variables, conditional clause rules,
+/// signature blocks, required fields, appendices.
+model ContractTemplateVersion {
+  id                 String    @id @default(uuid())
+  template_id        String
+  version_number     Int
+  change_summary     String?
+  /// Ordered sections: [{ key, title, body, clause_key?, conditions?, is_optional, sort_order }].
+  sections           Json
+  /// Variables with source mapping (04 §9): [{ key, label, source, required }].
+  variables          Json?
+  /// Deterministic conditional clause rules (04 §10).
+  conditional_rules  Json?
+  /// Signature blocks per party (04 §31).
+  signature_blocks   Json?
+  required_fields    String[]  @default([])
+  published_at       DateTime?
+  created_by_user_id String?
+  created_at         DateTime  @default(now())
+
+  template   ContractTemplate  @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  current_of ContractTemplate? @relation("ContractTemplateCurrentVersion")
+  versions   ContractVersion[]
+
+  @@unique([template_id, version_number])
+  @@map("contract_template_versions")
+}
+
+/// 04 §11 — clause library entry. Text lives in ContractClauseVersion (04 §12).
+model ContractClause {
+  id                  String               @id @default(uuid())
+  organization_id     String
+  key                 String
+  name                String
+  /// payment | ip | confidentiality | privacy | liability | warranty | termination | renewal | sla | security | governing_law | other
+  category            String
+  description         String?
+  status              ContractClauseStatus @default(DRAFT)
+  /// Usage restrictions (04 §11): allowed contract types, jurisdictions, requires approval.
+  usage_restrictions  Json?
+  owner_membership_id String?
+  current_version_id  String?              @unique
+  effective_date      DateTime?            @db.Date
+  deprecated_at       DateTime?
+  created_at          DateTime             @default(now())
+  updated_at          DateTime             @updatedAt
+
+  organization    Organization            @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  current_version ContractClauseVersion?  @relation("ContractClauseCurrentVersion", fields: [current_version_id], references: [id], onDelete: SetNull)
+  versions        ContractClauseVersion[]
+
+  @@unique([organization_id, key])
+  @@index([organization_id, category])
+  @@map("contract_clauses")
+}
+
+/// 04 §12 — a generated contract keeps the exact clause version used.
+model ContractClauseVersion {
+  id                 String    @id @default(uuid())
+  clause_id          String
+  version_number     Int
+  text               String
+  change_summary     String?
+  effective_date     DateTime? @db.Date
+  deprecated_at      DateTime?
+  created_by_user_id String?
+  created_at         DateTime  @default(now())
+
+  clause     ContractClause    @relation(fields: [clause_id], references: [id], onDelete: Cascade)
+  current_of ContractClause?   @relation("ContractClauseCurrentVersion")
+  sections   ContractSection[]
+
+  @@unique([clause_id, version_number])
+  @@map("contract_clause_versions")
+}
+
+/// 04 §28 — approval requirements by value, type, liability, discount, payment terms, duration,
+/// customer category, risk, custom fields.
+model ContractApprovalRule {
+  id              String   @id @default(uuid())
+  organization_id String
+  name            String
+  /// Predicate on contract metadata.
+  conditions      Json
+  /// Ordered steps: [{ step, approver: { membership_id | role_slug | team_id }, required }].
+  steps           Json
+  priority        Int      @default(0)
+  enabled         Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id, enabled])
+  @@map("contract_approval_rules")
+}
+
+// --- Contract record ------------------------------------------------------------
+
+/// 04 §3 — the structured business record. Document content lives in versions.
+model Contract {
+  id                        String               @id @default(uuid())
+  organization_id           String
+  branch_id                 String?
+  /// Organization numbering, e.g. CTR-2026-0001 (NumberSequence).
+  number                    String
+  title                     String
+  type_id                   String?
+  template_id               String?
+  status                    ContractStatus       @default(DRAFT)
+  relation_kind             ContractRelationKind @default(STANDALONE)
+  /// Original / parent agreement for amendments, renewals, SOWs and change orders (04 §43–48).
+  parent_contract_id        String?
+  /// Sequence inside the parent (Amendment 1, Amendment 2 …).
+  relation_sequence         Int?
+  /// 04 §47 — the contract that replaced this one.
+  superseded_by_contract_id String?              @unique
+  owner_membership_id       String?
+  /// 04 §4 — primary customer (CRM Company, 02). Full party list in ContractParty.
+  primary_company_id        String?
+  /// 04 §7, §55 — source proposal and exact version (03).
+  proposal_id               String?
+  proposal_version_id       String?
+  /// 04 §43 — originating project change request (05); id only.
+  project_change_request_id String?
+  currency                  String?
+  // 04 §51 — independently addressable dates.
+  draft_date                DateTime?            @db.Date
+  approval_date             DateTime?            @db.Date
+  signature_date            DateTime?            @db.Date
+  effective_date            DateTime?            @db.Date
+  start_date                DateTime?            @db.Date
+  end_date                  DateTime?            @db.Date
+  renewal_date              DateTime?            @db.Date
+  notice_deadline           DateTime?            @db.Date
+  expiration_date           DateTime?            @db.Date
+  termination_date          DateTime?            @db.Date
+  renewal_type              ContractRenewalType  @default(NONE)
+  renewal_term_months       Int?
+  notice_days               Int?
+  // 04 §54 — contractual value context; Finance (08) is authoritative for actual billing.
+  total_value               Decimal?             @db.Decimal(18, 2)
+  one_time_value            Decimal?             @db.Decimal(18, 2)
+  recurring_value           Decimal?             @db.Decimal(18, 2)
+  /// monthly | quarterly | annual | milestone | custom
+  billing_frequency         String?
+  payment_terms             String?
+  // 04 §74 — risk scoring.
+  risk_score                Int?
+  risk_level                ContractRiskLevel?
+  risk_factors              Json?
+  /// 04 §61 — portal exposure.
+  customer_visible          Boolean              @default(false)
+  current_version_id        String?              @unique
+  signed_version_id         String?              @unique
+  /// Flags the contract as containing personal-data processing (drives DPA clause, 04 §10).
+  processes_personal_data   Boolean              @default(false)
+  activated_at              DateTime?
+  closed_at                 DateTime?
+  archived_at               DateTime?
+  created_by_user_id        String?
+  created_at                DateTime             @default(now())
+  updated_at                DateTime             @updatedAt
+
+  organization     Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  branch           Branch?           @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  type             ContractType?     @relation(fields: [type_id], references: [id], onDelete: SetNull)
+  template         ContractTemplate? @relation(fields: [template_id], references: [id], onDelete: SetNull)
+  parent           Contract?         @relation("ContractLineage", fields: [parent_contract_id], references: [id], onDelete: SetNull)
+  children         Contract[]        @relation("ContractLineage")
+  superseded_by    Contract?         @relation("ContractSupersession", fields: [superseded_by_contract_id], references: [id], onDelete: SetNull)
+  supersedes       Contract?         @relation("ContractSupersession")
+  owner            Membership?       @relation("ContractOwner", fields: [owner_membership_id], references: [id], onDelete: SetNull)
+  primary_company  CrmCompany?       @relation("ContractPrimaryCompany", fields: [primary_company_id], references: [id], onDelete: SetNull)
+  proposal         Proposal?         @relation(fields: [proposal_id], references: [id], onDelete: SetNull)
+  proposal_version ProposalVersion?  @relation(fields: [proposal_version_id], references: [id], onDelete: SetNull)
+  current_version  ContractVersion?  @relation("ContractCurrentVersion", fields: [current_version_id], references: [id], onDelete: SetNull)
+  signed_version   ContractVersion?  @relation("ContractSignedVersion", fields: [signed_version_id], references: [id], onDelete: SetNull)
+
+  parties            ContractParty[]
+  versions           ContractVersion[]
+  projects           ContractProject[]
+  change_requests    ContractChangeRequest[]
+  obligations        ContractObligation[]
+  termination        ContractTermination?
+  signature_requests SignatureRequest[]
+
+  @@unique([organization_id, number])
+  @@index([organization_id, status])
+  @@index([primary_company_id])
+  @@index([parent_contract_id])
+  @@index([expiration_date])
+  @@index([renewal_date])
+  @@index([notice_deadline])
+  @@map("contracts")
+}
+
+/// 04 §4 — a party to the contract. References a CRM Company (02) without duplicating it;
+/// the agency itself is a party of type AGENCY.
+model ContractParty {
+  id                  String            @id @default(uuid())
+  contract_id         String
+  party_type          ContractPartyType
+  company_id          String?
+  legal_name          String
+  address             Json?
+  registration_number String?
+  vat_number          String?
+  sort_order          Int               @default(0)
+  created_at          DateTime          @default(now())
+
+  contract    Contract            @relation(fields: [contract_id], references: [id], onDelete: Cascade)
+  company     CrmCompany?         @relation(fields: [company_id], references: [id], onDelete: SetNull)
+  signatories ContractSignatory[]
+
+  @@index([contract_id])
+  @@index([company_id])
+  @@map("contract_parties")
+}
+
+/// 04 §4, §31 — a signatory for a party; a party may have several. Internal signatories are Members,
+/// external ones are CRM Contacts or free-text.
+model ContractSignatory {
+  id            String   @id @default(uuid())
+  party_id      String
+  membership_id String?
+  contact_id    String?
+  name          String
+  title         String?
+  email         String
+  is_required   Boolean  @default(true)
+  sort_order    Int      @default(0)
+  created_at    DateTime @default(now())
+
+  party      ContractParty @relation(fields: [party_id], references: [id], onDelete: Cascade)
+  membership Membership?   @relation(fields: [membership_id], references: [id], onDelete: SetNull)
+  contact    CrmContact?   @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+  signers    Signer[]
+
+  @@index([party_id])
+  @@map("contract_signatories")
+}
+
+/// 04 §56 — a contract can reference many projects (05).
+model ContractProject {
+  contract_id String
+  project_id  String
+  /// primary | sow | related
+  role        String   @default("primary")
+  created_at  DateTime @default(now())
+
+  contract Contract @relation(fields: [contract_id], references: [id], onDelete: Cascade)
+  project  Project  @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@id([contract_id, project_id])
+  @@index([project_id])
+  @@map("contract_projects")
+}
+
+// --- Versions ----------------------------------------------------------------------
+
+/// 04 §19–20 — every material draft change creates a version. Signed versions are immutable (04 §39).
+model ContractVersion {
+  id                  String                @id @default(uuid())
+  contract_id         String
+  version_number      Int
+  /// Display label, e.g. "v0.3", "v1.0", "Amendment 1" (04 §19).
+  label               String
+  parent_version_id   String?
+  status              ContractVersionStatus @default(DRAFT)
+  change_summary      String?
+  template_version_id String?
+  /// Resolved variables at generation (04 §9, §17).
+  variables           Json?
+  /// Rendered document in 17 Documents (draft artifact); id only.
+  document_id         String?
+  /// Final signed artifact in 17 Documents (04 §41); id only.
+  signed_document_id  String?
+  /// Integrity hash of the rendered / signed artifact (04 §17, §40).
+  content_hash        String?
+  signed_hash         String?
+  /// Whether the customer may see this version in the portal (04 §24, §61).
+  customer_visible    Boolean               @default(false)
+  locked_at           DateTime?
+  approved_at         DateTime?
+  signed_at           DateTime?
+  created_by_user_id  String?
+  created_at          DateTime              @default(now())
+  updated_at          DateTime              @updatedAt
+
+  contract         Contract                 @relation(fields: [contract_id], references: [id], onDelete: Cascade)
+  parent_version   ContractVersion?         @relation("ContractVersionLineage", fields: [parent_version_id], references: [id], onDelete: SetNull)
+  child_versions   ContractVersion[]        @relation("ContractVersionLineage")
+  template_version ContractTemplateVersion? @relation(fields: [template_version_id], references: [id], onDelete: SetNull)
+
+  current_of Contract? @relation("ContractCurrentVersion")
+  signed_of  Contract? @relation("ContractSignedVersion")
+
+  sections             ContractSection[]
+  reviews              ContractReview[]
+  comments             ContractComment[]
+  approvals            ContractApproval[]
+  signature_requests   SignatureRequest[]
+  change_requests_from ContractChangeRequest[] @relation("ChangeRequestRelatedVersion")
+  change_requests_to   ContractChangeRequest[] @relation("ChangeRequestResultingVersion")
+
+  @@unique([contract_id, version_number])
+  @@index([contract_id, status])
+  @@map("contract_versions")
+}
+
+/// 04 §14 — addressable section of a version; may embed an exact clause version (04 §12).
+model ContractSection {
+  id                String   @id @default(uuid())
+  version_id        String
+  /// Stable key within the contract (parties, definitions, scope, fees, ip, …).
+  key               String
+  title             String
+  body              String?
+  clause_version_id String?
+  /// Appendix / schedule marker.
+  is_appendix       Boolean  @default(false)
+  sort_order        Int      @default(0)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  version         ContractVersion         @relation(fields: [version_id], references: [id], onDelete: Cascade)
+  clause_version  ContractClauseVersion?  @relation(fields: [clause_version_id], references: [id], onDelete: SetNull)
+  comments        ContractComment[]
+  change_requests ContractChangeRequest[]
+  obligations     ContractObligation[]
+
+  @@unique([version_id, key])
+  @@index([version_id, sort_order])
+  @@map("contract_sections")
+}
+
+// --- Review, comments, change requests, approval ----------------------------------
+
+/// 04 §23–24 — a review request references one exact version. Internal reviewers are Members;
+/// customer reviewers are Customer Portal Users (id only) or contacts.
+model ContractReview {
+  id                     String                 @id @default(uuid())
+  version_id             String
+  reviewer_membership_id String?
+  reviewer_user_id       String?
+  is_internal            Boolean                @default(true)
+  decision               ContractReviewDecision @default(PENDING)
+  comment                String?
+  requested_by_user_id   String?
+  requested_at           DateTime               @default(now())
+  due_at                 DateTime?
+  decided_at             DateTime?
+
+  version  ContractVersion @relation(fields: [version_id], references: [id], onDelete: Cascade)
+  reviewer Membership?     @relation("ContractReviewer", fields: [reviewer_membership_id], references: [id], onDelete: Cascade)
+
+  @@index([version_id, decision])
+  @@index([reviewer_membership_id, decision])
+  @@map("contract_reviews")
+}
+
+/// 04 §13, §23–24 — comments on a version or section; internal comments never reach the portal.
+model ContractComment {
+  id                   String    @id @default(uuid())
+  version_id           String
+  section_id           String?
+  author_membership_id String?
+  author_user_id       String?
+  is_internal          Boolean   @default(true)
+  /// Blocks signature until resolved (04 §30).
+  is_blocking          Boolean   @default(false)
+  body                 String
+  resolved_at          DateTime?
+  resolved_by_user_id  String?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  version ContractVersion  @relation(fields: [version_id], references: [id], onDelete: Cascade)
+  section ContractSection? @relation(fields: [section_id], references: [id], onDelete: Cascade)
+  author  Membership?      @relation("ContractCommentAuthor", fields: [author_membership_id], references: [id], onDelete: SetNull)
+
+  @@index([version_id, created_at])
+  @@index([section_id])
+  @@map("contract_comments")
+}
+
+/// 04 §26 — Contract Change Request: a request to change contract language. Never mutates the
+/// current version; an accepted request produces a new version or an amendment.
+model ContractChangeRequest {
+  id                        String                      @id @default(uuid())
+  contract_id               String
+  related_version_id        String?
+  resulting_version_id      String?
+  section_id                String?
+  requester_membership_id   String?
+  requester_user_id         String?
+  requester_contact_id      String?
+  requested_change          String
+  reason                    String?
+  impact                    String?
+  status                    ContractChangeRequestStatus @default(REQUESTED)
+  /// Linked Project Change Request (05 §45); id only.
+  project_change_request_id String?
+  decided_by_user_id        String?
+  decided_at                DateTime?
+  created_at                DateTime                    @default(now())
+  updated_at                DateTime                    @updatedAt
+
+  contract          Contract         @relation(fields: [contract_id], references: [id], onDelete: Cascade)
+  related_version   ContractVersion? @relation("ChangeRequestRelatedVersion", fields: [related_version_id], references: [id], onDelete: SetNull)
+  resulting_version ContractVersion? @relation("ChangeRequestResultingVersion", fields: [resulting_version_id], references: [id], onDelete: SetNull)
+  section           ContractSection? @relation(fields: [section_id], references: [id], onDelete: SetNull)
+
+  @@index([contract_id, status])
+  @@map("contract_change_requests")
+}
+
+/// 04 §27–29 — business approval bound to an exact version. Approval of v1.0 does not approve v1.1.
+model ContractApproval {
+  id                     String                   @id @default(uuid())
+  version_id             String
+  step                   Int                      @default(1)
+  /// Role label for the step (account owner, finance, legal, executive, technical).
+  step_name              String?
+  approver_membership_id String
+  decision               ContractApprovalDecision @default(PENDING)
+  comment                String?
+  rule_id                String?
+  requested_at           DateTime                 @default(now())
+  decided_at             DateTime?
+
+  version  ContractVersion @relation(fields: [version_id], references: [id], onDelete: Cascade)
+  approver Membership      @relation("ContractApprover", fields: [approver_membership_id], references: [id], onDelete: Cascade)
+
+  @@unique([version_id, approver_membership_id, step])
+  @@index([approver_membership_id, decision])
+  @@map("contract_approvals")
+}
+
+// --- E-signature provider abstraction (04 §30–42, §71, §78–79) -------------------
+
+/// 04 §34 — a signature request bound immutably to one subject version (contract or proposal).
+/// Provider-specific data stays in provider_* fields and metadata, never in core contract fields.
+model SignatureRequest {
+  id                            String                 @id @default(uuid())
+  organization_id               String
+  subject_type                  SignatureSubjectType
+  contract_id                   String?
+  contract_version_id           String?
+  proposal_version_id           String?
+  provider                      SignatureProvider      @default(INTERNAL)
+  provider_request_id           String?
+  status                        SignatureRequestStatus @default(NOT_SENT)
+  signing_order                 SigningOrder           @default(SEQUENTIAL)
+  /// 04 §78 — package of document ids (17) in locked order: [{ document_id, title, sort_order }].
+  package_documents             Json?
+  /// 04 §37 — reminder settings: { frequency_days, max_reminders }.
+  reminder_settings             Json?
+  reminders_sent                Int                    @default(0)
+  /// Signed artifact (17) and provider audit certificate (17); ids only.
+  signed_document_id            String?
+  audit_certificate_document_id String?
+  signed_hash                   String?
+  message                       String?
+  created_by_user_id            String?
+  sent_at                       DateTime?
+  expires_at                    DateTime?
+  completed_at                  DateTime?
+  cancelled_at                  DateTime?
+  cancel_reason                 String?
+  metadata                      Json?
+  created_at                    DateTime               @default(now())
+  updated_at                    DateTime               @updatedAt
+
+  organization     Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  contract         Contract?        @relation(fields: [contract_id], references: [id], onDelete: Cascade)
+  contract_version ContractVersion? @relation(fields: [contract_version_id], references: [id], onDelete: Cascade)
+  proposal_version ProposalVersion? @relation(fields: [proposal_version_id], references: [id], onDelete: Cascade)
+  signers          Signer[]
+  events           SignatureEvent[]
+
+  @@unique([provider, provider_request_id])
+  @@index([organization_id, status])
+  @@index([contract_id])
+  @@index([contract_version_id])
+  @@index([proposal_version_id])
+  @@index([expires_at])
+  @@map("signature_requests")
+}
+
+/// 04 §31–32, §36 — a signer on a request with mapped fields and signing position.
+model Signer {
+  id                 String       @id @default(uuid())
+  request_id         String
+  signatory_id       String?
+  name               String
+  email              String
+  title              String?
+  /// Position in sequential signing; equal values sign in parallel.
+  order              Int          @default(1)
+  status             SignerStatus @default(PENDING)
+  /// Mapped fields (04 §31): [{ type: signature|date|initial|text, page, x, y, w, h, required }].
+  fields             Json?
+  /// Signing link token hash for INTERNAL provider; providers supply their own links.
+  access_token_hash  String?      @unique
+  provider_signer_id String?
+  auth_method        String?
+  ip_address         String?
+  user_agent         String?
+  sent_at            DateTime?
+  viewed_at          DateTime?
+  signed_at          DateTime?
+  declined_at        DateTime?
+  decline_reason     String?
+
+  request   SignatureRequest   @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  signatory ContractSignatory? @relation(fields: [signatory_id], references: [id], onDelete: SetNull)
+  events    SignatureEvent[]
+
+  @@index([request_id, order])
+  @@index([email])
+  @@map("signers")
+}
+
+/// 04 §38, §71 — provider and internal events; (provider, provider_event_id) is unique so duplicate
+/// callbacks are ignored.
+model SignatureEvent {
+  id                String             @id @default(uuid())
+  request_id        String
+  signer_id         String?
+  type              SignatureEventType
+  provider          SignatureProvider  @default(INTERNAL)
+  provider_event_id String?
+  occurred_at       DateTime           @default(now())
+  ip_address        String?
+  payload           Json?
+  created_at        DateTime           @default(now())
+
+  request SignatureRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  signer  Signer?          @relation(fields: [signer_id], references: [id], onDelete: SetNull)
+
+  @@unique([provider, provider_event_id])
+  @@index([request_id, occurred_at])
+  @@map("signature_events")
+}
+
+// --- Obligations & termination ----------------------------------------------------
+
+/// 04 §49–50, §75 — operational obligations linked to a contract section; execution may create a
+/// Task (06) rather than duplicating task functionality.
+model ContractObligation {
+  id                        String                   @id @default(uuid())
+  contract_id               String
+  section_id                String?
+  type                      ContractObligationType   @default(OTHER)
+  title                     String
+  description               String?
+  /// Responsible side: a party of the contract and/or an internal Member.
+  responsible_party_id      String?
+  responsible_membership_id String?
+  due_date                  DateTime?                @db.Date
+  /// none | weekly | monthly | quarterly | annual
+  frequency                 String?
+  status                    ContractObligationStatus @default(OPEN)
+  reminder_days_before      Int?
+  /// Related Project (05) and Task (06); ids only.
+  project_id                String?
+  task_id                   String?
+  /// AI extraction provenance (04 §75).
+  is_ai_extracted           Boolean                  @default(false)
+  extraction_confidence     Decimal?                 @db.Decimal(5, 4)
+  review_state              ExtractionReviewState?
+  fulfilled_at              DateTime?
+  created_at                DateTime                 @default(now())
+  updated_at                DateTime                 @updatedAt
+
+  contract Contract         @relation(fields: [contract_id], references: [id], onDelete: Cascade)
+  section  ContractSection? @relation(fields: [section_id], references: [id], onDelete: SetNull)
+  task     Task?            @relation(fields: [task_id], references: [id], onDelete: SetNull)
+
+  @@index([contract_id, status])
+  @@index([due_date])
+  @@map("contract_obligations")
+}
+
+/// 04 §53 — termination record. Never alters the signed document.
+model ContractTermination {
+  contract_id         String                  @id
+  type                ContractTerminationType @default(FOR_CONVENIENCE)
+  reason              String?
+  requesting_party_id String?
+  notice_date         DateTime?               @db.Date
+  effective_date      DateTime                @db.Date
+  approved_by_user_id String?
+  approved_at         DateTime?
+  /// Supporting document (17); id only.
+  document_id         String?
+  notes               String?
+  created_by_user_id  String?
+  created_at          DateTime                @default(now())
+
+  contract Contract @relation(fields: [contract_id], references: [id], onDelete: Cascade)
+
+  @@map("contract_terminations")
+}
+
+// =====================================================================
+// 05 Project Management — docs/features/05-project-management.md (LOG-405)
+// Owns: project types/statuses/templates, Project, membership and roles, branches, stakeholders,
+// objectives, workstreams, milestones, deliverables, acceptance criteria, dependencies, risks,
+// issues/blockers, decisions, status updates, project change requests, gates, reviews, allocation,
+// checklists, escalations, handovers, closeout, relationships, external references.
+// Does not own: Tasks (06), time entries (18), documents (17), messages (12), tickets (13),
+// invoices/expenses (08/09), calendar events (19), employees (10). Referenced by id only.
+// Project notes use the polymorphic notes table (crm_notes, entity_type PROJECT).
+// Project activity and change history (05 §42–43) are written to audit_events.
+// =====================================================================
+
+/// 05 §4 — semantic category of a configurable status.
+enum ProjectStatusCategory {
+  DRAFT
+  PLANNED
+  NOT_STARTED
+  IN_PROGRESS
+  ON_HOLD
+  BLOCKED
+  READY_FOR_COMPLETION
+  COMPLETED
+  CANCELLED
+  ARCHIVED
+}
+
+/// 05 §13
+enum ProjectHealth {
+  HEALTHY
+  AT_RISK
+  BLOCKED
+  CRITICAL
+  UNKNOWN
+}
+
+/// 05 §13–14 — how health / progress are determined.
+enum CalculationMode {
+  MANUAL
+  AUTOMATIC
+  HYBRID
+}
+
+/// 05 §80
+enum ProjectPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+/// 05 §60, §111 — customer exposure of the project.
+enum ProjectVisibility {
+  INTERNAL
+  CUSTOMER_VISIBLE
+}
+
+/// 05 §19–20
+enum ProjectItemStatus {
+  PLANNED
+  IN_PROGRESS
+  AT_RISK
+  COMPLETED
+  CANCELLED
+}
+
+/// 05 §18 — deliverable lifecycle including customer acceptance (05 §47, 07 §7).
+enum DeliverableStatus {
+  PLANNED
+  IN_PROGRESS
+  READY_FOR_REVIEW
+  SUBMITTED
+  CHANGES_REQUESTED
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+/// 05 §47
+enum AcceptanceStatus {
+  PENDING
+  PASSED
+  FAILED
+  WAIVED
+}
+
+/// 05 §21, §27–28 — what a dependency endpoint is.
+enum DependencyItemType {
+  PROJECT
+  WORKSTREAM
+  MILESTONE
+  DELIVERABLE
+  TASK
+  EXTERNAL
+}
+
+/// 05 §27
+enum DependencyType {
+  FINISH_TO_START
+  START_TO_START
+  FINISH_TO_FINISH
+  START_TO_FINISH
+  BLOCKS
+  RELATED
+}
+
+enum DependencyStatus {
+  OPEN
+  RESOLVED
+  CANCELLED
+}
+
+/// 05 §29
+enum RiskStatus {
+  OPEN
+  MONITORING
+  MITIGATED
+  ACCEPTED
+  RESOLVED
+  CLOSED
+}
+
+/// 05 §30–31 — a Project Issue is a delivery problem; a Blocker is an issue preventing progress.
+enum ProjectIssueKind {
+  ISSUE
+  BLOCKER
+}
+
+enum ProjectIssueStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  CANCELLED
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+/// 05 §45 — Project Change Request status (not a Contract Change Request, 04 §26).
+enum ProjectChangeRequestStatus {
+  REQUESTED
+  UNDER_REVIEW
+  ESTIMATING
+  AWAITING_APPROVAL
+  APPROVED
+  REJECTED
+  SCHEDULED
+  IMPLEMENTED
+  CANCELLED
+}
+
+/// 05 §46, §93 — approval and quality gates share one model.
+enum ProjectGateKind {
+  APPROVAL
+  QUALITY
+}
+
+enum ProjectGateStatus {
+  PENDING
+  PASSED
+  FAILED
+  WAIVED
+}
+
+/// 05 §48–49
+enum ProjectReviewType {
+  KICKOFF
+  MILESTONE
+  DELIVERY
+  QUALITY
+  CUSTOMER
+  POST_PROJECT
+  RETROSPECTIVE
+}
+
+/// 05 §105
+enum ProjectRelationType {
+  RELATED
+  DEPENDENCY
+  REPLACEMENT
+  FOLLOW_UP
+  MAINTENANCE_FOR
+  CONTINUATION_OF
+}
+
+/// 05 §101
+enum EscalationStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  CLOSED
+}
+
+/// 05 §72, §102
+enum HandoverStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// --- Configuration ----------------------------------------------------------------
+
+/// 05 §2 — organization-defined project types with defaults.
+model ProjectType {
+  id                      String    @id @default(uuid())
+  organization_id         String
+  name                    String
+  slug                    String
+  description             String?
+  default_template_id     String?
+  /// Workspace sections enabled by default (05 §11).
+  enabled_sections        String[]  @default([])
+  required_fields         String[]  @default([])
+  /// Health rules for AUTOMATIC/HYBRID mode (05 §13).
+  health_rules            Json?
+  /// Completion checklist requirements (05 §71).
+  completion_requirements Json?
+  is_default              Boolean   @default(false)
+  sort_order              Int       @default(0)
+  archived_at             DateTime?
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+
+  organization     Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  default_template ProjectTemplate?  @relation("ProjectTypeDefaultTemplate", fields: [default_template_id], references: [id], onDelete: SetNull)
+  templates        ProjectTemplate[] @relation("ProjectTemplateType")
+  projects         Project[]
+
+  @@unique([organization_id, slug])
+  @@map("project_types")
+}
+
+/// 05 §4 — configurable lifecycle statuses with allowed transitions.
+model ProjectStatus {
+  id                  String                @id @default(uuid())
+  organization_id     String
+  name                String
+  slug                String
+  category            ProjectStatusCategory
+  color               String?
+  sort_order          Int                   @default(0)
+  is_default          Boolean               @default(false)
+  /// Slugs of statuses this one may transition to; null = any.
+  allowed_transitions String[]              @default([])
+  archived_at         DateTime?
+  created_at          DateTime              @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  projects     Project[]
+
+  @@unique([organization_id, slug])
+  @@map("project_statuses")
+}
+
+/// 05 §36–37 — templates with versions; updating a template never modifies existing projects.
+model ProjectTemplate {
+  id                 String    @id @default(uuid())
+  organization_id    String
+  type_id            String?
+  name               String
+  slug               String
+  description        String?
+  current_version_id String?   @unique
+  is_active          Boolean   @default(true)
+  deprecated_at      DateTime?
+  created_by_user_id String?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  organization      Organization             @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  type              ProjectType?             @relation("ProjectTemplateType", fields: [type_id], references: [id], onDelete: SetNull)
+  current_version   ProjectTemplateVersion?  @relation("ProjectTemplateCurrentVersion", fields: [current_version_id], references: [id], onDelete: SetNull)
+  versions          ProjectTemplateVersion[]
+  default_for_types ProjectType[]            @relation("ProjectTypeDefaultTemplate")
+  projects          Project[]
+
+  @@unique([organization_id, slug])
+  @@map("project_templates")
+}
+
+/// 05 §37 — immutable template content: statuses, milestones, workstreams, task structures,
+/// dependencies, roles, required fields, standard documents, checklists, health rules, views.
+model ProjectTemplateVersion {
+  id                 String   @id @default(uuid())
+  template_id        String
+  version_number     Int
+  change_summary     String?
+  structure          Json
+  created_by_user_id String?
+  created_at         DateTime @default(now())
+
+  template   ProjectTemplate  @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  current_of ProjectTemplate? @relation("ProjectTemplateCurrentVersion")
+  projects   Project[]
+
+  @@unique([template_id, version_number])
+  @@map("project_template_versions")
+}
+
+// --- Project ------------------------------------------------------------------------
+
+/// 05 §3, §5–7, §12–15, §80, §106–107, §117 — the project record.
+model Project {
+  id                  String            @id @default(uuid())
+  organization_id     String
+  /// Primary branch (01 §32). Participating branches in ProjectBranch.
+  branch_id           String?
+  parent_project_id   String?
+  name                String
+  /// Optional human project code (05 §6, §114); stable id is `id`.
+  code                String?
+  slug                String
+  description         String?
+  type_id             String?
+  status_id           String?
+  health              ProjectHealth     @default(UNKNOWN)
+  health_mode         CalculationMode   @default(HYBRID)
+  health_reason       String?
+  progress_percent    Int               @default(0)
+  progress_mode       CalculationMode   @default(AUTOMATIC)
+  priority            ProjectPriority   @default(MEDIUM)
+  visibility          ProjectVisibility @default(INTERNAL)
+  /// Customer (CRM Company, 02). Optional: internal projects have none (05 §3, §56).
+  company_id          String?
+  owner_membership_id String?
+  team_id             String?
+  template_id         String?
+  template_version_id String?
+  /// Source proposal and exact version (03), set when created from an accepted proposal (05 §57).
+  proposal_id         String?
+  proposal_version_id String?
+  // 05 §15 — dates.
+  planned_start       DateTime?         @db.Date
+  actual_start        DateTime?         @db.Date
+  target_completion   DateTime?         @db.Date
+  actual_completion   DateTime?         @db.Date
+  review_date         DateTime?         @db.Date
+  internal_deadline   DateTime?         @db.Date
+  customer_deadline   DateTime?         @db.Date
+  /// 05 §51 — planned budget context; actual financials live in 08/09.
+  budget_hours        Decimal?          @db.Decimal(12, 2)
+  budget_amount       Decimal?          @db.Decimal(18, 2)
+  currency            String?
+  icon                String?
+  color               String?
+  /// Messaging project channel (12 §26); id only.
+  channel_id          String?
+  /// Business Docs runbook page (15 §4); id only.
+  runbook_page_id     String?
+  completed_at        DateTime?
+  cancelled_at        DateTime?
+  archived_at         DateTime?
+  reopened_at         DateTime?
+  created_by_user_id  String?
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  organization     Organization            @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  branch           Branch?                 @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  parent           Project?                @relation("ProjectHierarchy", fields: [parent_project_id], references: [id], onDelete: SetNull)
+  children         Project[]               @relation("ProjectHierarchy")
+  type             ProjectType?            @relation(fields: [type_id], references: [id], onDelete: SetNull)
+  status           ProjectStatus?          @relation(fields: [status_id], references: [id], onDelete: SetNull)
+  company          CrmCompany?             @relation(fields: [company_id], references: [id], onDelete: SetNull)
+  owner            Membership?             @relation("ProjectOwner", fields: [owner_membership_id], references: [id], onDelete: SetNull)
+  team             Team?                   @relation(fields: [team_id], references: [id], onDelete: SetNull)
+  template         ProjectTemplate?        @relation(fields: [template_id], references: [id], onDelete: SetNull)
+  template_version ProjectTemplateVersion? @relation(fields: [template_version_id], references: [id], onDelete: SetNull)
+  proposal         Proposal?               @relation("ProjectSourceProposal", fields: [proposal_id], references: [id], onDelete: SetNull)
+  proposal_version ProposalVersion?        @relation("ProjectSourceProposalVersion", fields: [proposal_version_id], references: [id], onDelete: SetNull)
+
+  branches                 ProjectBranch[]
+  members                  ProjectMember[]
+  stakeholders             ProjectStakeholder[]
+  objectives               ProjectObjective[]
+  workstreams              ProjectWorkstream[]
+  milestones               ProjectMilestone[]
+  deliverables             ProjectDeliverable[]
+  dependencies             ProjectDependency[]
+  risks                    ProjectRisk[]
+  issues                   ProjectIssue[]
+  decisions                ProjectDecision[]
+  status_updates           ProjectStatusUpdate[]
+  change_requests          ProjectChangeRequest[]
+  gates                    ProjectGate[]
+  reviews                  ProjectReview[]
+  allocations              ProjectAllocation[]
+  checklists               ProjectChecklist[]
+  escalations              ProjectEscalation[]
+  handovers                ProjectHandover[]
+  closeout                 ProjectCloseout?
+  relations_from           ProjectRelation[]          @relation("ProjectRelationSource")
+  relations_to             ProjectRelation[]          @relation("ProjectRelationTarget")
+  external_refs            ProjectExternalReference[]
+  contracts                ContractProject[]
+  deals                    CrmDeal[]                  @relation("CrmDealProject")
+  converted_from_proposals Proposal[]                 @relation("ProposalConvertedProject")
+  tasks                    Task[]
+  cycles                   Cycle[]
+  releases                 Release[]
+
+  @@unique([organization_id, slug])
+  @@unique([organization_id, code])
+  @@index([organization_id, status_id])
+  @@index([organization_id, health])
+  @@index([company_id])
+  @@index([owner_membership_id])
+  @@index([parent_project_id])
+  @@index([target_completion])
+  @@map("projects")
+}
+
+/// 01 §32–33 — participating branches of a multi-branch project (primary is projects.branch_id).
+model ProjectBranch {
+  project_id String
+  branch_id  String
+  created_at DateTime @default(now())
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  branch  Branch  @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+
+  @@id([project_id, branch_id])
+  @@index([branch_id])
+  @@map("project_branches")
+}
+
+/// 05 §8–9 — internal participants. role_id is a Role of type PROJECT (01 §45).
+model ProjectMember {
+  id                 String    @id @default(uuid())
+  project_id         String
+  membership_id      String
+  role_id            String?
+  /// Free-text role label when no Role is used (Developer, Designer, QA, …).
+  role_label         String?
+  allocation_percent Int?
+  is_active          Boolean   @default(true)
+  joined_at          DateTime  @default(now())
+  left_at            DateTime?
+  created_at         DateTime  @default(now())
+
+  project    Project    @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+  role       Role?      @relation(fields: [role_id], references: [id], onDelete: SetNull)
+
+  @@unique([project_id, membership_id])
+  @@index([membership_id, is_active])
+  @@map("project_members")
+}
+
+/// 05 §53 — external stakeholders: customer contacts (02), vendors, partners, consultants.
+model ProjectStakeholder {
+  id                 String   @id @default(uuid())
+  project_id         String
+  contact_id         String?
+  name               String
+  organization_name  String?
+  email              String?
+  role               String?
+  responsibility     String?
+  /// Whether the stakeholder sees the project in the Customer Portal (via 01 §79 identity).
+  portal_visible     Boolean  @default(false)
+  decision_authority Boolean  @default(false)
+  created_at         DateTime @default(now())
+
+  project Project     @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  contact CrmContact? @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+
+  @@index([project_id])
+  @@map("project_stakeholders")
+}
+
+// --- Planning ----------------------------------------------------------------------
+
+/// 05 §17
+model ProjectObjective {
+  id                  String            @id @default(uuid())
+  project_id          String
+  name                String
+  description         String?
+  owner_membership_id String?
+  target_date         DateTime?         @db.Date
+  success_criteria    String?
+  status              ProjectItemStatus @default(PLANNED)
+  progress_percent    Int               @default(0)
+  sort_order          Int               @default(0)
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  project    Project            @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  milestones ProjectMilestone[]
+
+  @@index([project_id])
+  @@map("project_objectives")
+}
+
+/// 05 §19
+model ProjectWorkstream {
+  id                  String            @id @default(uuid())
+  project_id          String
+  name                String
+  description         String?
+  owner_membership_id String?
+  status              ProjectItemStatus @default(PLANNED)
+  progress_percent    Int               @default(0)
+  planned_start       DateTime?         @db.Date
+  planned_end         DateTime?         @db.Date
+  actual_start        DateTime?         @db.Date
+  actual_end          DateTime?         @db.Date
+  color               String?
+  sort_order          Int               @default(0)
+  archived_at         DateTime?
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  project      Project              @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  milestones   ProjectMilestone[]
+  deliverables ProjectDeliverable[]
+  allocations  ProjectAllocation[]
+  tasks        Task[]
+
+  @@index([project_id])
+  @@map("project_workstreams")
+}
+
+/// 05 §20 — major checkpoints. Task links come from Task Management (06).
+model ProjectMilestone {
+  id                     String            @id @default(uuid())
+  project_id             String
+  workstream_id          String?
+  objective_id           String?
+  name                   String
+  description            String?
+  owner_membership_id    String?
+  status                 ProjectItemStatus @default(PLANNED)
+  planned_date           DateTime?         @db.Date
+  actual_date            DateTime?         @db.Date
+  progress_percent       Int               @default(0)
+  /// Shown in the Customer Portal (05 §60) and projected onto the Calendar (19).
+  customer_visible       Boolean           @default(false)
+  /// Triggers milestone billing in 08 when completed.
+  is_billing_milestone   Boolean           @default(false)
+  /// Proposal milestone this was created from (03), stored as the proposal's milestone key.
+  proposal_milestone_key String?
+  notes                  String?
+  sort_order             Int               @default(0)
+  completed_at           DateTime?
+  created_at             DateTime          @default(now())
+  updated_at             DateTime          @updatedAt
+
+  project             Project                      @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  workstream          ProjectWorkstream?           @relation(fields: [workstream_id], references: [id], onDelete: SetNull)
+  objective           ProjectObjective?            @relation(fields: [objective_id], references: [id], onDelete: SetNull)
+  deliverables        ProjectDeliverable[]
+  acceptance_criteria ProjectAcceptanceCriterion[]
+  gates               ProjectGate[]
+  allocations         ProjectAllocation[]
+  tasks               Task[]
+
+  @@index([project_id, planned_date])
+  @@index([workstream_id])
+  @@map("project_milestones")
+}
+
+/// 05 §18 — tangible outputs. Files are Documents (17); commercial scope stays in 03/04.
+model ProjectDeliverable {
+  id                  String            @id @default(uuid())
+  project_id          String
+  milestone_id        String?
+  workstream_id       String?
+  name                String
+  description         String?
+  owner_membership_id String?
+  status              DeliverableStatus @default(PLANNED)
+  due_date            DateTime?         @db.Date
+  customer_visible    Boolean           @default(false)
+  /// Document ids (17) delivered.
+  document_ids        String[]          @default([])
+  /// Proposal line item / section reference (03) for commercial scope traceability.
+  proposal_reference  String?
+  submitted_at        DateTime?
+  accepted_at         DateTime?
+  /// Customer acceptance evidence: portal user id, contact id, comment (07 §7).
+  acceptance_record   Json?
+  sort_order          Int               @default(0)
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  project             Project                      @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  milestone           ProjectMilestone?            @relation(fields: [milestone_id], references: [id], onDelete: SetNull)
+  workstream          ProjectWorkstream?           @relation(fields: [workstream_id], references: [id], onDelete: SetNull)
+  acceptance_criteria ProjectAcceptanceCriterion[]
+
+  @@index([project_id, status])
+  @@index([milestone_id])
+  @@map("project_deliverables")
+}
+
+/// 05 §47 — acceptance criteria on a deliverable or milestone. Contractual acceptance terms are 04.
+model ProjectAcceptanceCriterion {
+  id                     String           @id @default(uuid())
+  deliverable_id         String?
+  milestone_id           String?
+  requirement            String
+  expected_outcome       String?
+  verification_method    String?
+  status                 AcceptanceStatus @default(PENDING)
+  reviewer_membership_id String?
+  reviewed_at            DateTime?
+  sort_order             Int              @default(0)
+
+  deliverable ProjectDeliverable? @relation(fields: [deliverable_id], references: [id], onDelete: Cascade)
+  milestone   ProjectMilestone?   @relation(fields: [milestone_id], references: [id], onDelete: Cascade)
+
+  @@index([deliverable_id])
+  @@index([milestone_id])
+  @@map("project_acceptance_criteria")
+}
+
+/// 05 §21, §27–28 — dependencies between tasks, milestones, workstreams, deliverables and projects.
+/// Endpoints are typed ids so Task (06) endpoints work without a FK.
+model ProjectDependency {
+  id                  String             @id @default(uuid())
+  project_id          String
+  source_type         DependencyItemType
+  source_id           String
+  target_type         DependencyItemType
+  target_id           String
+  type                DependencyType     @default(FINISH_TO_START)
+  status              DependencyStatus   @default(OPEN)
+  owner_membership_id String?
+  expected_resolution DateTime?          @db.Date
+  lag_days            Int?
+  notes               String?
+  resolved_at         DateTime?
+  created_at          DateTime           @default(now())
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@index([project_id, status])
+  @@index([source_type, source_id])
+  @@index([target_type, target_id])
+  @@map("project_dependencies")
+}
+
+// --- Delivery visibility -------------------------------------------------------------
+
+/// 05 §29
+model ProjectRisk {
+  id                  String     @id @default(uuid())
+  project_id          String
+  title               String
+  description         String?
+  category            String?
+  /// 1–5 scales; severity derived or set.
+  probability         Int?
+  impact              Int?
+  severity            Severity   @default(MEDIUM)
+  status              RiskStatus @default(OPEN)
+  owner_membership_id String?
+  mitigation          String?
+  contingency         String?
+  due_date            DateTime?  @db.Date
+  milestone_id        String?
+  task_id             String?
+  resolved_at         DateTime?
+  created_at          DateTime   @default(now())
+  updated_at          DateTime   @updatedAt
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@index([project_id, status])
+  @@map("project_risks")
+}
+
+/// 05 §30–31 — Project Issues and Blockers (kind). Distinct from Support tickets (13) and Tasks (06).
+model ProjectIssue {
+  id                  String              @id @default(uuid())
+  project_id          String
+  kind                ProjectIssueKind    @default(ISSUE)
+  title               String
+  description         String?
+  severity            Severity            @default(MEDIUM)
+  priority            ProjectPriority     @default(MEDIUM)
+  status              ProjectIssueStatus  @default(OPEN)
+  owner_membership_id String?
+  /// For blockers: what is blocked (typed id).
+  blocked_item_type   DependencyItemType?
+  blocked_item_id     String?
+  milestone_id        String?
+  task_id             String?
+  dependency_id       String?
+  /// Linked support ticket (13) when the issue originated from support; id only.
+  ticket_id           String?
+  identified_at       DateTime            @default(now())
+  target_resolution   DateTime?           @db.Date
+  resolution          String?
+  resolved_at         DateTime?
+  created_at          DateTime            @default(now())
+  updated_at          DateTime            @updatedAt
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  task    Task?   @relation(fields: [task_id], references: [id], onDelete: SetNull)
+
+  @@index([project_id, kind, status])
+  @@map("project_issues")
+}
+
+/// 05 §32 — decision records.
+model ProjectDecision {
+  id                           String   @id @default(uuid())
+  project_id                   String
+  title                        String
+  description                  String?
+  decided_at                   DateTime @default(now())
+  decision_maker_membership_id String?
+  /// Membership ids.
+  participants                 String[] @default([])
+  alternatives_considered      String?
+  selected_option              String?
+  reason                       String?
+  consequences                 String?
+  milestone_id                 String?
+  task_id                      String?
+  document_id                  String?
+  /// Source message permalink (12 §63) when converted from a conversation.
+  source_message_id            String?
+  created_at                   DateTime @default(now())
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@index([project_id, decided_at])
+  @@map("project_decisions")
+}
+
+/// 05 §39 — structured status updates; customer-visible ones appear in the portal (07 §4).
+model ProjectStatusUpdate {
+  id                   String         @id @default(uuid())
+  project_id           String
+  period_start         DateTime?      @db.Date
+  period_end           DateTime?      @db.Date
+  summary              String
+  completed_work       String?
+  current_work         String?
+  upcoming_work        String?
+  progress_percent     Int?
+  health               ProjectHealth?
+  risks_summary        String?
+  blockers_summary     String?
+  decisions_summary    String?
+  required_actions     String?
+  author_membership_id String?
+  customer_visible     Boolean        @default(false)
+  published_at         DateTime?
+  is_ai_generated      Boolean        @default(false)
+  created_at           DateTime       @default(now())
+  updated_at           DateTime       @updatedAt
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@index([project_id, published_at])
+  @@map("project_status_updates")
+}
+
+/// 05 §45 — Project Change Request: changes affecting delivery. Commercial approval stays with
+/// 03/04 (proposal_id, contract_id); a Contract Change Request (04 §26) may be linked.
+model ProjectChangeRequest {
+  id                           String                     @id @default(uuid())
+  project_id                   String
+  number                       Int
+  title                        String
+  description                  String?
+  requester_membership_id      String?
+  requester_contact_id         String?
+  requested_at                 DateTime                   @default(now())
+  priority                     ProjectPriority            @default(MEDIUM)
+  status                       ProjectChangeRequestStatus @default(REQUESTED)
+  scope_impact                 String?
+  timeline_impact_days         Int?
+  resource_impact              String?
+  cost_impact_amount           Decimal?                   @db.Decimal(18, 2)
+  currency                     String?
+  customer_visible             Boolean                    @default(false)
+  approved_by_membership_id    String?
+  approved_by_customer_user_id String?
+  approved_at                  DateTime?
+  rejected_reason              String?
+  deliverable_id               String?
+  task_id                      String?
+  /// Commercial links (03, 04) and the contract change request this originated (04 §26, §43).
+  proposal_id                  String?
+  contract_id                  String?
+  contract_change_request_id   String?
+  implemented_at               DateTime?
+  created_at                   DateTime                   @default(now())
+  updated_at                   DateTime                   @updatedAt
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  task    Task?   @relation(fields: [task_id], references: [id], onDelete: SetNull)
+
+  @@unique([project_id, number])
+  @@index([project_id, status])
+  @@map("project_change_requests")
+}
+
+/// 05 §46, §93 — approval gates (requirements, design, development, QA, security, customer
+/// acceptance, launch, handover) and quality gates (code review, QA, security review, documentation).
+model ProjectGate {
+  id                        String            @id @default(uuid())
+  project_id                String
+  kind                      ProjectGateKind   @default(APPROVAL)
+  name                      String
+  description               String?
+  milestone_id              String?
+  approver_membership_id    String?
+  /// Customer approval gates are decided by a Customer Portal User (01 §79); id only.
+  customer_approver_user_id String?
+  status                    ProjectGateStatus @default(PENDING)
+  blocks_completion         Boolean           @default(false)
+  decision_comment          String?
+  decided_at                DateTime?
+  sort_order                Int               @default(0)
+  created_at                DateTime          @default(now())
+  updated_at                DateTime          @updatedAt
+
+  project   Project           @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  milestone ProjectMilestone? @relation(fields: [milestone_id], references: [id], onDelete: SetNull)
+  approver  Membership?       @relation("ProjectGateApprover", fields: [approver_membership_id], references: [id], onDelete: SetNull)
+
+  @@index([project_id, status])
+  @@map("project_gates")
+}
+
+/// 05 §48–49 — structured reviews and retrospectives. Actions may create Tasks (06).
+model ProjectReview {
+  id                        String            @id @default(uuid())
+  project_id                String
+  type                      ProjectReviewType
+  title                     String
+  held_at                   DateTime?
+  facilitator_membership_id String?
+  /// Membership ids.
+  participants              String[]          @default([])
+  findings                  String?
+  decisions                 String?
+  /// Retrospective fields (05 §49).
+  went_well                 String?
+  went_wrong                String?
+  root_causes               String?
+  lessons                   String?
+  /// Actions: [{ title, owner_membership_id, due_date, task_id? }].
+  actions                   Json?
+  milestone_id              String?
+  created_at                DateTime          @default(now())
+  updated_at                DateTime          @updatedAt
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@index([project_id, type])
+  @@map("project_reviews")
+}
+
+// --- Resources ------------------------------------------------------------------------
+
+/// 05 §51 — planned allocation (the plan). Availability is 10; actuals are 18.
+model ProjectAllocation {
+  id                 String    @id @default(uuid())
+  project_id         String
+  membership_id      String?
+  team_id            String?
+  role_label         String?
+  workstream_id      String?
+  milestone_id       String?
+  planned_hours      Decimal?  @db.Decimal(10, 2)
+  allocation_percent Int?
+  start_date         DateTime? @db.Date
+  end_date           DateTime? @db.Date
+  notes              String?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  project    Project            @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  membership Membership?        @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+  team       Team?              @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  workstream ProjectWorkstream? @relation(fields: [workstream_id], references: [id], onDelete: SetNull)
+  milestone  ProjectMilestone?  @relation(fields: [milestone_id], references: [id], onDelete: SetNull)
+
+  @@index([project_id])
+  @@index([membership_id, start_date, end_date])
+  @@map("project_allocations")
+}
+
+/// 05 §92 — reusable checklists (kickoff, discovery, development, QA, launch, handover, closeout).
+model ProjectChecklist {
+  id         String   @id @default(uuid())
+  project_id String
+  name       String
+  /// kickoff | discovery | development | qa | launch | handover | closeout | custom
+  phase      String?
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+
+  project Project                @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  items   ProjectChecklistItem[]
+
+  @@index([project_id])
+  @@map("project_checklists")
+}
+
+model ProjectChecklistItem {
+  id                         String    @id @default(uuid())
+  checklist_id               String
+  title                      String
+  is_required                Boolean   @default(false)
+  is_completed               Boolean   @default(false)
+  completed_by_membership_id String?
+  completed_at               DateTime?
+  /// Task created from this item (06).
+  task_id                    String?
+  sort_order                 Int       @default(0)
+
+  checklist ProjectChecklist @relation(fields: [checklist_id], references: [id], onDelete: Cascade)
+  task      Task?            @relation(fields: [task_id], references: [id], onDelete: SetNull)
+
+  @@index([checklist_id])
+  @@map("project_checklist_items")
+}
+
+// --- Governance & closeout -------------------------------------------------------------
+
+/// 05 §101
+model ProjectEscalation {
+  id                         String           @id @default(uuid())
+  project_id                 String
+  issue_summary              String
+  /// blocker | delay | budget | scope | customer | resources | contract
+  category                   String?
+  severity                   Severity         @default(HIGH)
+  status                     EscalationStatus @default(OPEN)
+  owner_membership_id        String?
+  escalated_to_membership_id String?
+  escalated_at               DateTime         @default(now())
+  action_taken               String?
+  resolution                 String?
+  resolved_at                DateTime?
+  issue_id                   String?
+  created_at                 DateTime         @default(now())
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@index([project_id, status])
+  @@map("project_escalations")
+}
+
+/// 05 §72, §102 — handovers between teams or to maintenance / support / customer success.
+model ProjectHandover {
+  id                        String         @id @default(uuid())
+  project_id                String
+  /// sales_to_delivery | delivery_to_support | development_to_qa | qa_to_customer | project_to_maintenance | custom
+  type                      String
+  from_team_id              String?
+  to_team_id                String?
+  new_owner_membership_id   String?
+  status                    HandoverStatus @default(PLANNED)
+  scheduled_at              DateTime?
+  completed_at              DateTime?
+  /// Checklist, documentation ids (17), open items, support references, contacts, notes.
+  details                   Json?
+  accepted_by_membership_id String?
+  accepted_at               DateTime?
+  created_at                DateTime       @default(now())
+  updated_at                DateTime       @updatedAt
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@index([project_id, status])
+  @@map("project_handovers")
+}
+
+/// 05 §71, §103 — completion checklist state and closeout record.
+model ProjectCloseout {
+  project_id                      String    @id
+  /// Completion requirement results (05 §71): [{ key, label, required, satisfied, note }].
+  completion_checklist            Json?
+  final_status_summary            String?
+  outstanding_items               String?
+  lessons_learned                 String?
+  customer_outcome                String?
+  /// Financial review reference (08/09); id only.
+  financial_review_ref            String?
+  documentation_document_ids      String[]  @default([])
+  customer_acceptance_recorded_at DateTime?
+  closed_by_membership_id         String?
+  closed_at                       DateTime?
+  updated_at                      DateTime  @updatedAt
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@map("project_closeouts")
+}
+
+/// 05 §105 — non-hierarchical relationships between projects (parent/child uses parent_project_id).
+model ProjectRelation {
+  id                String              @id @default(uuid())
+  source_project_id String
+  target_project_id String
+  type              ProjectRelationType @default(RELATED)
+  notes             String?
+  created_at        DateTime            @default(now())
+
+  source Project @relation("ProjectRelationSource", fields: [source_project_id], references: [id], onDelete: Cascade)
+  target Project @relation("ProjectRelationTarget", fields: [target_project_id], references: [id], onDelete: Cascade)
+
+  @@unique([source_project_id, target_project_id, type])
+  @@index([target_project_id])
+  @@map("project_relations")
+}
+
+/// 05 §86 — references to external systems (GitHub, GitLab, Jira, Linear, deployment, cloud, docs).
+model ProjectExternalReference {
+  id          String   @id @default(uuid())
+  project_id  String
+  /// github | gitlab | jira | linear | notion | google_drive | microsoft_365 | deployment | cloud | other
+  system      String
+  label       String?
+  external_id String?
+  url         String?
+  metadata    Json?
+  created_at  DateTime @default(now())
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@index([project_id, system])
+  @@map("project_external_references")
+}
+
+// =====================================================================
+// 06 Task Management — docs/features/06-task-management.md (LOG-102)
+// Owns: the only Task entity, task statuses/workflows, task types, labels, cycles, dependencies,
+// assignees, watchers, checklists, comments, attachments, polymorphic links to other records,
+// Releases and deployments. "Issue" in the UI means Task.
+// Does not own: Projects/Milestones/Workstreams (05), time entries (18), documents (17),
+// conversations (12), tickets (13), recurrence schedules (20). Referenced by id only.
+// Task activity, version history and audit log are written to audit_events.
+// =====================================================================
+
+/// 06 §3 — semantic category of a configurable task status.
+enum TaskStatusCategory {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  BLOCKED
+  DONE
+  CANCELLED
+}
+
+/// 06 §3
+enum TaskPriority {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+/// 06 §3 — task-to-task dependency kinds.
+enum TaskDependencyType {
+  BLOCKS
+  RELATED
+  DUPLICATE_OF
+}
+
+/// 06 §4 — cycles / sprints.
+enum CycleStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+/// 06 §9
+enum ReleaseStatus {
+  PLANNED
+  IN_PROGRESS
+  RELEASED
+  CANCELLED
+}
+
+enum DeploymentStatus {
+  PENDING
+  IN_PROGRESS
+  SUCCEEDED
+  FAILED
+  ROLLED_BACK
+}
+
+/// 06 §7 — comment visibility.
+enum TaskCommentVisibility {
+  INTERNAL
+  CUSTOMER_VISIBLE
+}
+
+// --- Configuration ----------------------------------------------------------------
+
+/// 06 §3 — configurable statuses with workflow transitions. Scoped to a Team when team_id is set,
+/// otherwise organization-wide.
+model TaskStatus {
+  id                  String             @id @default(uuid())
+  organization_id     String
+  team_id             String?
+  name                String
+  slug                String
+  category            TaskStatusCategory
+  color               String?
+  sort_order          Int                @default(0)
+  is_default          Boolean            @default(false)
+  /// Slugs this status may transition to; empty = any.
+  allowed_transitions String[]           @default([])
+  archived_at         DateTime?
+  created_at          DateTime           @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  team         Team?        @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  tasks        Task[]
+
+  @@unique([organization_id, team_id, slug])
+  @@index([organization_id, category])
+  @@map("task_statuses")
+}
+
+/// 06 §3 — task types (task, bug, feature, improvement, chore, follow-up …).
+model TaskType {
+  id              String    @id @default(uuid())
+  organization_id String
+  name            String
+  slug            String
+  icon            String?
+  color           String?
+  is_default      Boolean   @default(false)
+  /// Default field values and checklist for tasks of this type (06 §3 templates).
+  template        Json?
+  sort_order      Int       @default(0)
+  archived_at     DateTime?
+  created_at      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  tasks        Task[]
+
+  @@unique([organization_id, slug])
+  @@map("task_types")
+}
+
+/// 06 §3 — Linear-style labels. Platform tags (02 §36) also apply to tasks.
+model TaskLabel {
+  id              String    @id @default(uuid())
+  organization_id String
+  name            String
+  slug            String
+  color           String?
+  /// Optional parent for label groups.
+  parent_label_id String?
+  archived_at     DateTime?
+  created_at      DateTime  @default(now())
+
+  organization Organization          @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  parent       TaskLabel?            @relation("TaskLabelGroup", fields: [parent_label_id], references: [id], onDelete: SetNull)
+  children     TaskLabel[]           @relation("TaskLabelGroup")
+  assignments  TaskLabelAssignment[]
+
+  @@unique([organization_id, slug])
+  @@map("task_labels")
+}
+
+/// 06 §4 — cycles / sprints, per team or project.
+model Cycle {
+  id              String      @id @default(uuid())
+  organization_id String
+  team_id         String?
+  project_id      String?
+  number          Int
+  name            String?
+  goal            String?
+  status          CycleStatus @default(PLANNED)
+  starts_at       DateTime    @db.Date
+  ends_at         DateTime    @db.Date
+  completed_at    DateTime?
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  team         Team?        @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  project      Project?     @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  tasks        Task[]
+
+  @@unique([organization_id, team_id, number])
+  @@index([organization_id, status])
+  @@map("cycles")
+}
+
+// --- Task ---------------------------------------------------------------------------
+
+/// 06 §3 — the Task record. Work hierarchy: Organization → Team → Project → Workstream/Milestone →
+/// Task → Subtask. Project is optional for personal and CRM work.
+model Task {
+  id                         String       @id @default(uuid())
+  organization_id            String
+  /// Sequential per organization; shown with the team key (e.g. ENG-123).
+  number                     Int
+  team_id                    String?
+  project_id                 String?
+  workstream_id              String?
+  milestone_id               String?
+  parent_task_id             String?
+  cycle_id                   String?
+  release_id                 String?
+  type_id                    String?
+  status_id                  String?
+  title                      String
+  /// Markdown body.
+  description                String?
+  priority                   TaskPriority @default(NONE)
+  assignee_membership_id     String?
+  reporter_membership_id     String?
+  estimate_points            Decimal?     @db.Decimal(6, 2)
+  estimate_hours             Decimal?     @db.Decimal(8, 2)
+  start_date                 DateTime?    @db.Date
+  due_date                   DateTime?    @db.Date
+  completed_at               DateTime?
+  cancelled_at               DateTime?
+  /// Acceptance criteria as a checklist-like list: [{ text, done }].
+  acceptance_criteria        Json?
+  /// Visible in the Customer Portal (05 §60, 07 §4).
+  customer_visible           Boolean      @default(false)
+  /// Recurring task instance: schedule rule lives in the Automation Engine (20); the template task is linked.
+  automation_rule_id         String?
+  recurring_template_task_id String?
+  is_template                Boolean      @default(false)
+  /// Lexicographic rank for manual ordering in boards/backlog.
+  rank                       String?
+  /// Duplicate detection target (06 §3).
+  duplicate_of_task_id       String?
+  blocked                    Boolean      @default(false)
+  archived_at                DateTime?
+  created_by_user_id         String?
+  created_at                 DateTime     @default(now())
+  updated_at                 DateTime     @updatedAt
+
+  organization        Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  team                Team?              @relation(fields: [team_id], references: [id], onDelete: SetNull)
+  project             Project?           @relation(fields: [project_id], references: [id], onDelete: SetNull)
+  workstream          ProjectWorkstream? @relation(fields: [workstream_id], references: [id], onDelete: SetNull)
+  milestone           ProjectMilestone?  @relation(fields: [milestone_id], references: [id], onDelete: SetNull)
+  parent              Task?              @relation("TaskHierarchy", fields: [parent_task_id], references: [id], onDelete: SetNull)
+  subtasks            Task[]             @relation("TaskHierarchy")
+  cycle               Cycle?             @relation(fields: [cycle_id], references: [id], onDelete: SetNull)
+  release             Release?           @relation(fields: [release_id], references: [id], onDelete: SetNull)
+  type                TaskType?          @relation(fields: [type_id], references: [id], onDelete: SetNull)
+  status              TaskStatus?        @relation(fields: [status_id], references: [id], onDelete: SetNull)
+  assignee            Membership?        @relation("TaskAssignee", fields: [assignee_membership_id], references: [id], onDelete: SetNull)
+  reporter            Membership?        @relation("TaskReporter", fields: [reporter_membership_id], references: [id], onDelete: SetNull)
+  recurring_template  Task?              @relation("TaskRecurringTemplate", fields: [recurring_template_task_id], references: [id], onDelete: SetNull)
+  recurring_instances Task[]             @relation("TaskRecurringTemplate")
+  duplicate_of        Task?              @relation("TaskDuplicate", fields: [duplicate_of_task_id], references: [id], onDelete: SetNull)
+  duplicates          Task[]             @relation("TaskDuplicate")
+
+  assignees         TaskAssignee[]
+  labels            TaskLabelAssignment[]
+  dependencies_from TaskDependency[]      @relation("TaskDependencySource")
+  dependencies_to   TaskDependency[]      @relation("TaskDependencyTarget")
+  checklist_items   TaskChecklistItem[]
+  comments          TaskComment[]
+  attachments       TaskAttachment[]
+  links             TaskLink[]
+  watchers          TaskWatcher[]
+
+  // Back-links from other modules' records that reference this task
+  project_issues          ProjectIssue[]
+  project_change_requests ProjectChangeRequest[]
+  project_checklist_items ProjectChecklistItem[]
+  contract_obligations    ContractObligation[]
+
+  @@unique([organization_id, number])
+  @@index([organization_id, status_id])
+  @@index([project_id, status_id])
+  @@index([assignee_membership_id, status_id])
+  @@index([team_id, cycle_id])
+  @@index([parent_task_id])
+  @@index([milestone_id])
+  @@index([due_date])
+  @@map("tasks")
+}
+
+/// 06 §3 — additional assignees beyond the primary assignee.
+model TaskAssignee {
+  task_id       String
+  membership_id String
+  assigned_at   DateTime @default(now())
+
+  task       Task       @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+
+  @@id([task_id, membership_id])
+  @@index([membership_id])
+  @@map("task_assignees")
+}
+
+model TaskLabelAssignment {
+  task_id  String
+  label_id String
+
+  task  Task      @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  label TaskLabel @relation(fields: [label_id], references: [id], onDelete: Cascade)
+
+  @@id([task_id, label_id])
+  @@index([label_id])
+  @@map("task_label_assignments")
+}
+
+/// 06 §3 — blocks / related / duplicates between tasks, including cross-project links.
+model TaskDependency {
+  id                 String             @id @default(uuid())
+  source_task_id     String
+  target_task_id     String
+  type               TaskDependencyType @default(BLOCKS)
+  created_by_user_id String?
+  created_at         DateTime           @default(now())
+
+  source Task @relation("TaskDependencySource", fields: [source_task_id], references: [id], onDelete: Cascade)
+  target Task @relation("TaskDependencyTarget", fields: [target_task_id], references: [id], onDelete: Cascade)
+
+  @@unique([source_task_id, target_task_id, type])
+  @@index([target_task_id])
+  @@map("task_dependencies")
+}
+
+/// 06 §3 — checklists inside a task.
+model TaskChecklistItem {
+  id                         String    @id @default(uuid())
+  task_id                    String
+  title                      String
+  is_completed               Boolean   @default(false)
+  completed_by_membership_id String?
+  completed_at               DateTime?
+  sort_order                 Int       @default(0)
+
+  task Task @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@index([task_id])
+  @@map("task_checklist_items")
+}
+
+/// 06 §7 — comments with threads, mentions and reactions. Customer-visible comments surface in 07.
+model TaskComment {
+  id                   String                @id @default(uuid())
+  task_id              String
+  parent_comment_id    String?
+  author_membership_id String?
+  /// Customer Portal User (01 §79) when written from the portal; id only.
+  author_user_id       String?
+  visibility           TaskCommentVisibility @default(INTERNAL)
+  body                 String
+  /// Membership ids mentioned.
+  mentions             String[]              @default([])
+  /// { emoji: [membership_id, …] }
+  reactions            Json?
+  edited_at            DateTime?
+  deleted_at           DateTime?
+  created_at           DateTime              @default(now())
+  updated_at           DateTime              @updatedAt
+
+  task    Task          @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  parent  TaskComment?  @relation("TaskCommentThread", fields: [parent_comment_id], references: [id], onDelete: Cascade)
+  replies TaskComment[] @relation("TaskCommentThread")
+  author  Membership?   @relation("TaskCommentAuthor", fields: [author_membership_id], references: [id], onDelete: SetNull)
+
+  @@index([task_id, created_at])
+  @@index([parent_comment_id])
+  @@map("task_comments")
+}
+
+/// 06 §8 — attachments are Documents (17); id only until 17 exists.
+model TaskAttachment {
+  id               String   @id @default(uuid())
+  task_id          String
+  document_id      String
+  added_by_user_id String?
+  created_at       DateTime @default(now())
+
+  task Task @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@unique([task_id, document_id])
+  @@map("task_attachments")
+}
+
+/// 06 §13 — polymorphic link from a task to the record it originated from or serves:
+/// CRM records (02 §14), tickets (13 §4), project change requests (05), customer requests (07),
+/// contract obligations (04 §49), employee onboarding (10).
+model TaskLink {
+  id                 String           @id @default(uuid())
+  task_id            String
+  entity_type        RecordEntityType
+  entity_id          String
+  /// origin | related | blocks | fixes
+  relation           String           @default("related")
+  created_by_user_id String?
+  created_at         DateTime         @default(now())
+
+  task Task @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@unique([task_id, entity_type, entity_id])
+  @@index([entity_type, entity_id])
+  @@map("task_links")
+}
+
+/// Members following a task for notifications (14).
+model TaskWatcher {
+  task_id       String
+  membership_id String
+  created_at    DateTime @default(now())
+
+  task       Task       @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+
+  @@id([task_id, membership_id])
+  @@index([membership_id])
+  @@map("task_watchers")
+}
+
+// --- Releases -----------------------------------------------------------------------
+
+/// 06 §9 — a shippable set of tasks. A Release may map to a Project Milestone (05).
+model Release {
+  id                   String        @id @default(uuid())
+  organization_id      String
+  team_id              String?
+  project_id           String?
+  milestone_id         String?
+  name                 String
+  version              String?
+  status               ReleaseStatus @default(PLANNED)
+  target_date          DateTime?     @db.Date
+  released_at          DateTime?
+  /// Release notes (markdown), publishable to the portal (07) and knowledge base (13 §6).
+  notes                String?
+  notes_document_id    String?
+  customer_visible     Boolean       @default(false)
+  /// Customers affected, derived from linked tickets (13 §4); CRM company ids.
+  affected_company_ids String[]      @default([])
+  created_by_user_id   String?
+  created_at           DateTime      @default(now())
+  updated_at           DateTime      @updatedAt
+
+  organization Organization        @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  team         Team?               @relation(fields: [team_id], references: [id], onDelete: SetNull)
+  project      Project?            @relation(fields: [project_id], references: [id], onDelete: SetNull)
+  tasks        Task[]
+  deployments  ReleaseDeployment[]
+
+  @@index([organization_id, status])
+  @@index([project_id])
+  @@map("releases")
+}
+
+/// 06 §9 — deployment status per environment.
+model ReleaseDeployment {
+  id                  String           @id @default(uuid())
+  release_id          String
+  /// development | staging | production | custom
+  environment         String
+  status              DeploymentStatus @default(PENDING)
+  url                 String?
+  deployed_by_user_id String?
+  deployed_at         DateTime?
+  /// External reference (CI run, GitHub deployment id, …).
+  external_ref        String?
+  notes               String?
+  created_at          DateTime         @default(now())
+
+  release Release @relation(fields: [release_id], references: [id], onDelete: Cascade)
+
+  @@index([release_id, environment])
+  @@map("release_deployments")
+}

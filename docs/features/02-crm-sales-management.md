@@ -1151,4 +1151,35 @@ Organizations should be able to customize:
 
 Customizations should not require changes to the core application.
 
+---
+
+# 37. Default CRM Configuration
+
+> Provisioning hook defined by → [01](./01-users-organizations-permissions.md) §11 "Module default provisioning" · Linear LOG-406.
+
+The CRM has no platform-wide pipelines, statuses or stages. Every organization owns its own configuration rows, created by the CRM's `provisionDefaults` step when the organization is created or when the CRM module is enabled later. The step is idempotent and skips anything that already exists.
+
+Defaults created per organization:
+
+**Pipeline** "Sales" (default) with stages and default probabilities:
+
+| Stage | Probability | Forecast category |
+| -- | -- | -- |
+| New Opportunity | 10 | Pipeline |
+| Discovery | 20 | Pipeline |
+| Qualified | 40 | Best Case |
+| Proposal | 60 | Best Case |
+| Negotiation | 80 | Commit |
+| Verbal Agreement | 90 | Commit |
+| Closed Won | 100 | Closed Won (won) |
+| Closed Lost | 0 | Closed Lost (lost) |
+
+**Lead statuses**: New (default), Contacted, Attempting Contact, Connected, Qualified, Unqualified, Nurture, Converted (converted flag), Lost (lost flag).
+
+**Lifecycle stages**: Lead (default), Marketing Qualified, Sales Qualified, Opportunity, Customer (customer flag), Active Customer (customer flag), Inactive Customer (customer flag), Former Customer.
+
+**Lead sources**: Website, Referral, Existing Customer, Partner, Networking, Event, Cold Outreach, Advertisement, Organic Search, Social Media, Direct, Import, API, Other.
+
+No default custom fields, tags, assignment rules or saved views are created; the organization adds those. The defaults are a starting point: administrators can rename, reorder, archive or replace any of them (§36) without affecting other organizations.
+
 The CRM should provide a flexible foundation that can support different types of software agencies, sales processes, customer structures, and future integrations while maintaining a consistent and unified customer record across the entire Agency Operating System.

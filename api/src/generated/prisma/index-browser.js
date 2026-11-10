@@ -126,6 +126,20 @@ exports.Prisma.UserScalarFieldEnum = {
   phone: 'phone',
   password: 'password',
   role: 'role',
+  status: 'status',
+  first_name: 'first_name',
+  last_name: 'last_name',
+  display_name: 'display_name',
+  profile_photo_url: 'profile_photo_url',
+  locale: 'locale',
+  timezone: 'timezone',
+  language: 'language',
+  email_verified_at: 'email_verified_at',
+  phone_verified_at: 'phone_verified_at',
+  mfa_enabled: 'mfa_enabled',
+  last_login_at: 'last_login_at',
+  default_organization_id: 'default_organization_id',
+  deactivated_at: 'deactivated_at',
   created_at: 'created_at',
   updated_at: 'updated_at'
 };
@@ -136,6 +150,425 @@ exports.Prisma.PasswordResetTokenScalarFieldEnum = {
   user_uuid: 'user_uuid',
   expires_at: 'expires_at',
   used_at: 'used_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.UserAuthMethodScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  type: 'type',
+  identifier: 'identifier',
+  secret_hash: 'secret_hash',
+  label: 'label',
+  metadata: 'metadata',
+  verified_at: 'verified_at',
+  last_used_at: 'last_used_at',
+  disabled_at: 'disabled_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.UserSessionScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  active_organization_id: 'active_organization_id',
+  active_branch_id: 'active_branch_id',
+  token_hash: 'token_hash',
+  device: 'device',
+  browser: 'browser',
+  ip_address: 'ip_address',
+  location_approx: 'location_approx',
+  user_agent: 'user_agent',
+  last_activity_at: 'last_activity_at',
+  expires_at: 'expires_at',
+  revoked_at: 'revoked_at',
+  revoked_reason: 'revoked_reason',
+  created_at: 'created_at'
+};
+
+exports.Prisma.UserPreferenceScalarFieldEnum = {
+  user_id: 'user_id',
+  theme: 'theme',
+  default_organization_id: 'default_organization_id',
+  default_branch_id: 'default_branch_id',
+  default_team_id: 'default_team_id',
+  notification_preferences: 'notification_preferences',
+  dashboard_layout: 'dashboard_layout',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.OrganizationScalarFieldEnum = {
+  id: 'id',
+  legal_name: 'legal_name',
+  display_name: 'display_name',
+  short_name: 'short_name',
+  slug: 'slug',
+  logo_url: 'logo_url',
+  website: 'website',
+  country: 'country',
+  contact_email: 'contact_email',
+  contact_phone: 'contact_phone',
+  address: 'address',
+  tax_identifiers: 'tax_identifiers',
+  status: 'status',
+  default_currency: 'default_currency',
+  default_timezone: 'default_timezone',
+  default_language: 'default_language',
+  default_locale: 'default_locale',
+  date_format: 'date_format',
+  number_format: 'number_format',
+  week_start: 'week_start',
+  working_days: 'working_days',
+  business_hours: 'business_hours',
+  branding: 'branding',
+  settings: 'settings',
+  deletion_requested_at: 'deletion_requested_at',
+  deletion_scheduled_at: 'deletion_scheduled_at',
+  deleted_at: 'deleted_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.OrganizationSecurityPolicyScalarFieldEnum = {
+  organization_id: 'organization_id',
+  password_min_length: 'password_min_length',
+  password_require_symbols: 'password_require_symbols',
+  password_max_age_days: 'password_max_age_days',
+  mfa_policy: 'mfa_policy',
+  sso_required: 'sso_required',
+  session_duration_minutes: 'session_duration_minutes',
+  idle_timeout_minutes: 'idle_timeout_minutes',
+  allowed_email_domains: 'allowed_email_domains',
+  restrict_invitations_to_domains: 'restrict_invitations_to_domains',
+  allowed_ip_ranges: 'allowed_ip_ranges',
+  portal_mfa_policy: 'portal_mfa_policy',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.OrganizationDomainScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  domain: 'domain',
+  status: 'status',
+  verification_token: 'verification_token',
+  verified_at: 'verified_at',
+  allow_discovery: 'allow_discovery',
+  auto_provision: 'auto_provision',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.OrganizationModuleScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  module: 'module',
+  enabled: 'enabled',
+  enabled_at: 'enabled_at',
+  disabled_at: 'disabled_at',
+  settings: 'settings'
+};
+
+exports.Prisma.BranchScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  parent_branch_id: 'parent_branch_id',
+  name: 'name',
+  code: 'code',
+  kind: 'kind',
+  status: 'status',
+  country: 'country',
+  region: 'region',
+  city: 'city',
+  address: 'address',
+  phone: 'phone',
+  email: 'email',
+  path: 'path',
+  depth: 'depth',
+  cost_center_code: 'cost_center_code',
+  currency: 'currency',
+  timezone: 'timezone',
+  locale: 'locale',
+  language: 'language',
+  date_format: 'date_format',
+  week_start: 'week_start',
+  working_days: 'working_days',
+  business_hours: 'business_hours',
+  branding: 'branding',
+  custom_fields: 'custom_fields',
+  archived_at: 'archived_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.BranchManagerScalarFieldEnum = {
+  id: 'id',
+  branch_id: 'branch_id',
+  membership_id: 'membership_id',
+  title: 'title',
+  created_at: 'created_at'
+};
+
+exports.Prisma.BranchHolidayScalarFieldEnum = {
+  id: 'id',
+  branch_id: 'branch_id',
+  name: 'name',
+  date: 'date',
+  recurring: 'recurring',
+  created_at: 'created_at'
+};
+
+exports.Prisma.TeamScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  parent_team_id: 'parent_team_id',
+  branch_id: 'branch_id',
+  name: 'name',
+  slug: 'slug',
+  description: 'description',
+  kind: 'kind',
+  archived_at: 'archived_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.TeamMembershipScalarFieldEnum = {
+  id: 'id',
+  team_id: 'team_id',
+  membership_id: 'membership_id',
+  team_role: 'team_role',
+  is_primary: 'is_primary',
+  started_at: 'started_at',
+  ended_at: 'ended_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.MembershipScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  organization_id: 'organization_id',
+  type: 'type',
+  status: 'status',
+  provisioning_source: 'provisioning_source',
+  external_id: 'external_id',
+  invited_by_user_id: 'invited_by_user_id',
+  default_branch_id: 'default_branch_id',
+  default_team_id: 'default_team_id',
+  job_title: 'job_title',
+  joined_at: 'joined_at',
+  last_active_at: 'last_active_at',
+  suspended_at: 'suspended_at',
+  deactivated_at: 'deactivated_at',
+  offboarding: 'offboarding',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.MembershipBranchScalarFieldEnum = {
+  id: 'id',
+  membership_id: 'membership_id',
+  branch_id: 'branch_id',
+  is_primary: 'is_primary',
+  include_children: 'include_children',
+  started_at: 'started_at',
+  ended_at: 'ended_at'
+};
+
+exports.Prisma.MembershipModuleAccessScalarFieldEnum = {
+  id: 'id',
+  membership_id: 'membership_id',
+  module: 'module',
+  enabled: 'enabled',
+  granted_by_user_id: 'granted_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.PermissionScalarFieldEnum = {
+  id: 'id',
+  key: 'key',
+  module: 'module',
+  resource: 'resource',
+  action: 'action',
+  description: 'description',
+  is_sensitive: 'is_sensitive',
+  is_field_level: 'is_field_level',
+  created_at: 'created_at'
+};
+
+exports.Prisma.RoleScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  slug: 'slug',
+  description: 'description',
+  type: 'type',
+  status: 'status',
+  is_system: 'is_system',
+  template_role_id: 'template_role_id',
+  default_scope: 'default_scope',
+  modules: 'modules',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.RolePermissionScalarFieldEnum = {
+  role_id: 'role_id',
+  permission_id: 'permission_id',
+  effect: 'effect',
+  conditions: 'conditions'
+};
+
+exports.Prisma.RoleAssignmentScalarFieldEnum = {
+  id: 'id',
+  membership_id: 'membership_id',
+  service_account_id: 'service_account_id',
+  role_id: 'role_id',
+  scope_type: 'scope_type',
+  scope_id: 'scope_id',
+  granted_by_user_id: 'granted_by_user_id',
+  reason: 'reason',
+  valid_from: 'valid_from',
+  valid_until: 'valid_until',
+  revoked_at: 'revoked_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.PermissionGrantScalarFieldEnum = {
+  id: 'id',
+  membership_id: 'membership_id',
+  permission_id: 'permission_id',
+  effect: 'effect',
+  scope_type: 'scope_type',
+  scope_id: 'scope_id',
+  granted_by_user_id: 'granted_by_user_id',
+  reason: 'reason',
+  valid_from: 'valid_from',
+  valid_until: 'valid_until',
+  revoked_at: 'revoked_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.DelegationScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  delegator_membership_id: 'delegator_membership_id',
+  delegate_membership_id: 'delegate_membership_id',
+  permission_keys: 'permission_keys',
+  role_ids: 'role_ids',
+  scope_type: 'scope_type',
+  scope_id: 'scope_id',
+  status: 'status',
+  reason: 'reason',
+  starts_at: 'starts_at',
+  ends_at: 'ends_at',
+  revoked_at: 'revoked_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.InvitationScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  email: 'email',
+  type: 'type',
+  branch_id: 'branch_id',
+  team_id: 'team_id',
+  role_id: 'role_id',
+  modules: 'modules',
+  token_hash: 'token_hash',
+  status: 'status',
+  source: 'source',
+  message: 'message',
+  invited_by_user_id: 'invited_by_user_id',
+  expires_at: 'expires_at',
+  accepted_at: 'accepted_at',
+  membership_id: 'membership_id',
+  cancelled_at: 'cancelled_at',
+  rejected_at: 'rejected_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.SsoConfigurationScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  protocol: 'protocol',
+  enabled: 'enabled',
+  config: 'config',
+  auto_provision: 'auto_provision',
+  scim_enabled: 'scim_enabled',
+  scim_token_hash: 'scim_token_hash',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.SsoGroupMappingScalarFieldEnum = {
+  id: 'id',
+  sso_configuration_id: 'sso_configuration_id',
+  external_group: 'external_group',
+  role_id: 'role_id',
+  team_id: 'team_id',
+  branch_id: 'branch_id',
+  modules: 'modules',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ServiceAccountScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  owner_membership_id: 'owner_membership_id',
+  name: 'name',
+  purpose: 'purpose',
+  status: 'status',
+  expires_at: 'expires_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ApiKeyScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  membership_id: 'membership_id',
+  service_account_id: 'service_account_id',
+  name: 'name',
+  key_prefix: 'key_prefix',
+  key_hash: 'key_hash',
+  scopes: 'scopes',
+  expires_at: 'expires_at',
+  last_used_at: 'last_used_at',
+  rotated_from_id: 'rotated_from_id',
+  revoked_at: 'revoked_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.CustomerPortalMembershipScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  customer_id: 'customer_id',
+  user_id: 'user_id',
+  role_id: 'role_id',
+  status: 'status',
+  invited_by_user_id: 'invited_by_user_id',
+  joined_at: 'joined_at',
+  last_active_at: 'last_active_at',
+  deactivated_at: 'deactivated_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.AuditEventScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  actor_type: 'actor_type',
+  actor_user_id: 'actor_user_id',
+  actor_service_account_id: 'actor_service_account_id',
+  event_type: 'event_type',
+  resource_type: 'resource_type',
+  resource_id: 'resource_id',
+  metadata: 'metadata',
+  ip_address: 'ip_address',
+  user_agent: 'user_agent',
   created_at: 'created_at'
 };
 
@@ -151,9 +584,1772 @@ exports.Prisma.DocumentScalarFieldEnum = {
   created_at: 'created_at'
 };
 
+exports.Prisma.CustomFieldGroupScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  description: 'description',
+  sort_order: 'sort_order',
+  created_at: 'created_at'
+};
+
+exports.Prisma.CustomFieldDefinitionScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  group_id: 'group_id',
+  key: 'key',
+  label: 'label',
+  description: 'description',
+  type: 'type',
+  entity_types: 'entity_types',
+  is_shared: 'is_shared',
+  is_required: 'is_required',
+  options: 'options',
+  default_value: 'default_value',
+  validation: 'validation',
+  visibility: 'visibility',
+  is_searchable: 'is_searchable',
+  is_filterable: 'is_filterable',
+  is_sortable: 'is_sortable',
+  sort_order: 'sort_order',
+  archived_at: 'archived_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CustomFieldValueScalarFieldEnum = {
+  id: 'id',
+  definition_id: 'definition_id',
+  entity_type: 'entity_type',
+  entity_id: 'entity_id',
+  value: 'value',
+  value_text: 'value_text',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.TagScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  slug: 'slug',
+  color: 'color',
+  entity_types: 'entity_types',
+  created_at: 'created_at'
+};
+
+exports.Prisma.TaggingScalarFieldEnum = {
+  tag_id: 'tag_id',
+  entity_type: 'entity_type',
+  entity_id: 'entity_id',
+  created_at: 'created_at'
+};
+
+exports.Prisma.SavedViewScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  entity_type: 'entity_type',
+  name: 'name',
+  layout: 'layout',
+  visibility: 'visibility',
+  owner_membership_id: 'owner_membership_id',
+  team_id: 'team_id',
+  filters: 'filters',
+  sorting: 'sorting',
+  grouping: 'grouping',
+  columns: 'columns',
+  search: 'search',
+  is_default: 'is_default',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CrmLeadSourceScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  slug: 'slug',
+  is_default: 'is_default',
+  sort_order: 'sort_order',
+  archived_at: 'archived_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.CrmLeadStatusScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  slug: 'slug',
+  color: 'color',
+  sort_order: 'sort_order',
+  is_default: 'is_default',
+  is_converted: 'is_converted',
+  is_lost: 'is_lost',
+  archived_at: 'archived_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.CrmLifecycleStageScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  slug: 'slug',
+  sort_order: 'sort_order',
+  is_customer: 'is_customer',
+  is_default: 'is_default',
+  archived_at: 'archived_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.CrmLifecycleHistoryScalarFieldEnum = {
+  id: 'id',
+  company_id: 'company_id',
+  contact_id: 'contact_id',
+  stage_id: 'stage_id',
+  changed_by_user_id: 'changed_by_user_id',
+  changed_at: 'changed_at'
+};
+
+exports.Prisma.CrmPipelineScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  slug: 'slug',
+  description: 'description',
+  team_id: 'team_id',
+  is_default: 'is_default',
+  currency: 'currency',
+  archived_at: 'archived_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CrmPipelineStageScalarFieldEnum = {
+  id: 'id',
+  pipeline_id: 'pipeline_id',
+  name: 'name',
+  slug: 'slug',
+  sort_order: 'sort_order',
+  probability: 'probability',
+  forecast_category: 'forecast_category',
+  is_won: 'is_won',
+  is_lost: 'is_lost',
+  stale_after_days: 'stale_after_days',
+  color: 'color',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CrmCompanyScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  parent_company_id: 'parent_company_id',
+  name: 'name',
+  legal_name: 'legal_name',
+  type: 'type',
+  lifecycle_stage_id: 'lifecycle_stage_id',
+  industry: 'industry',
+  company_size: 'company_size',
+  number_of_employees: 'number_of_employees',
+  annual_revenue: 'annual_revenue',
+  currency: 'currency',
+  website: 'website',
+  email: 'email',
+  phone: 'phone',
+  country: 'country',
+  address: 'address',
+  tax_id: 'tax_id',
+  vat_number: 'vat_number',
+  registration_number: 'registration_number',
+  description: 'description',
+  lead_source_id: 'lead_source_id',
+  customer_since: 'customer_since',
+  owner_membership_id: 'owner_membership_id',
+  account_manager_membership_id: 'account_manager_membership_id',
+  success_owner_membership_id: 'success_owner_membership_id',
+  team_id: 'team_id',
+  external_ids: 'external_ids',
+  last_activity_at: 'last_activity_at',
+  next_activity_at: 'next_activity_at',
+  archived_at: 'archived_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CrmCompanyBranchScalarFieldEnum = {
+  id: 'id',
+  company_id: 'company_id',
+  branch_id: 'branch_id',
+  relation_type: 'relation_type',
+  is_primary: 'is_primary',
+  created_at: 'created_at'
+};
+
+exports.Prisma.CrmContactScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  company_id: 'company_id',
+  first_name: 'first_name',
+  last_name: 'last_name',
+  job_title: 'job_title',
+  department: 'department',
+  email: 'email',
+  emails: 'emails',
+  phone: 'phone',
+  mobile: 'mobile',
+  phones: 'phones',
+  website: 'website',
+  linkedin_url: 'linkedin_url',
+  social_profiles: 'social_profiles',
+  roles: 'roles',
+  contact_type: 'contact_type',
+  lifecycle_stage_id: 'lifecycle_stage_id',
+  lead_source_id: 'lead_source_id',
+  owner_membership_id: 'owner_membership_id',
+  timezone: 'timezone',
+  language: 'language',
+  consent: 'consent',
+  description: 'description',
+  last_activity_at: 'last_activity_at',
+  archived_at: 'archived_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CrmLeadScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  branch_id: 'branch_id',
+  name: 'name',
+  company_id: 'company_id',
+  contact_id: 'contact_id',
+  company_name: 'company_name',
+  contact_name: 'contact_name',
+  email: 'email',
+  phone: 'phone',
+  website: 'website',
+  industry: 'industry',
+  estimated_company_size: 'estimated_company_size',
+  estimated_value: 'estimated_value',
+  currency: 'currency',
+  status_id: 'status_id',
+  lead_source_id: 'lead_source_id',
+  owner_membership_id: 'owner_membership_id',
+  qualification: 'qualification',
+  qualification_notes: 'qualification_notes',
+  lead_score: 'lead_score',
+  manual_score: 'manual_score',
+  description: 'description',
+  last_activity_at: 'last_activity_at',
+  next_follow_up_at: 'next_follow_up_at',
+  converted_at: 'converted_at',
+  converted_company_id: 'converted_company_id',
+  converted_contact_id: 'converted_contact_id',
+  converted_deal_id: 'converted_deal_id',
+  lost_reason: 'lost_reason',
+  archived_at: 'archived_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CrmDealScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  branch_id: 'branch_id',
+  pipeline_id: 'pipeline_id',
+  stage_id: 'stage_id',
+  name: 'name',
+  company_id: 'company_id',
+  primary_contact_id: 'primary_contact_id',
+  owner_membership_id: 'owner_membership_id',
+  team_id: 'team_id',
+  status: 'status',
+  value: 'value',
+  recurring_value: 'recurring_value',
+  one_time_value: 'one_time_value',
+  discount_amount: 'discount_amount',
+  tax_amount: 'tax_amount',
+  currency: 'currency',
+  probability: 'probability',
+  forecast_category: 'forecast_category',
+  expected_close_date: 'expected_close_date',
+  actual_close_date: 'actual_close_date',
+  deal_type: 'deal_type',
+  lead_source_id: 'lead_source_id',
+  competitor: 'competitor',
+  lost_reason: 'lost_reason',
+  next_step: 'next_step',
+  description: 'description',
+  proposal_id: 'proposal_id',
+  contract_id: 'contract_id',
+  project_id: 'project_id',
+  stage_entered_at: 'stage_entered_at',
+  last_activity_at: 'last_activity_at',
+  archived_at: 'archived_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CrmDealContactScalarFieldEnum = {
+  deal_id: 'deal_id',
+  contact_id: 'contact_id',
+  role: 'role',
+  created_at: 'created_at'
+};
+
+exports.Prisma.CrmDealLineItemScalarFieldEnum = {
+  id: 'id',
+  deal_id: 'deal_id',
+  product_id: 'product_id',
+  name: 'name',
+  description: 'description',
+  quantity: 'quantity',
+  unit_price: 'unit_price',
+  discount_percent: 'discount_percent',
+  discount_amount: 'discount_amount',
+  tax_percent: 'tax_percent',
+  net_amount: 'net_amount',
+  tax_amount: 'tax_amount',
+  gross_amount: 'gross_amount',
+  is_recurring: 'is_recurring',
+  billing_frequency: 'billing_frequency',
+  sort_order: 'sort_order',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CrmDealStageHistoryScalarFieldEnum = {
+  id: 'id',
+  deal_id: 'deal_id',
+  from_stage_id: 'from_stage_id',
+  to_stage_id: 'to_stage_id',
+  changed_by_user_id: 'changed_by_user_id',
+  changed_at: 'changed_at',
+  duration_seconds: 'duration_seconds'
+};
+
+exports.Prisma.CrmActivityScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  type: 'type',
+  status: 'status',
+  priority: 'priority',
+  title: 'title',
+  description: 'description',
+  company_id: 'company_id',
+  contact_id: 'contact_id',
+  lead_id: 'lead_id',
+  deal_id: 'deal_id',
+  project_id: 'project_id',
+  owner_membership_id: 'owner_membership_id',
+  starts_at: 'starts_at',
+  ends_at: 'ends_at',
+  duration_minutes: 'duration_minutes',
+  location: 'location',
+  meeting_url: 'meeting_url',
+  calendar_event_id: 'calendar_event_id',
+  outcome: 'outcome',
+  automation_rule_id: 'automation_rule_id',
+  completed_at: 'completed_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CrmActivityParticipantScalarFieldEnum = {
+  id: 'id',
+  activity_id: 'activity_id',
+  membership_id: 'membership_id',
+  contact_id: 'contact_id',
+  response: 'response'
+};
+
+exports.Prisma.CrmNoteScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  entity_type: 'entity_type',
+  entity_id: 'entity_id',
+  author_membership_id: 'author_membership_id',
+  body: 'body',
+  is_private: 'is_private',
+  mentions: 'mentions',
+  pinned: 'pinned',
+  edited_at: 'edited_at',
+  edit_history: 'edit_history',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CrmAssignmentRuleScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  entity_type: 'entity_type',
+  conditions: 'conditions',
+  assign_to: 'assign_to',
+  priority: 'priority',
+  enabled: 'enabled',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CrmImportJobScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  entity_type: 'entity_type',
+  status: 'status',
+  document_id: 'document_id',
+  file_name: 'file_name',
+  field_mapping: 'field_mapping',
+  duplicate_strategy: 'duplicate_strategy',
+  total_rows: 'total_rows',
+  imported_rows: 'imported_rows',
+  updated_rows: 'updated_rows',
+  skipped_rows: 'skipped_rows',
+  error_rows: 'error_rows',
+  errors: 'errors',
+  created_record_ids: 'created_record_ids',
+  started_by_membership_id: 'started_by_membership_id',
+  started_at: 'started_at',
+  completed_at: 'completed_at',
+  rolled_back_at: 'rolled_back_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.NumberSequenceScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  entity_type: 'entity_type',
+  prefix: 'prefix',
+  year: 'year',
+  next_number: 'next_number',
+  padding: 'padding',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProposalTemplateScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  slug: 'slug',
+  description: 'description',
+  work_type: 'work_type',
+  language: 'language',
+  branding: 'branding',
+  layout: 'layout',
+  sections: 'sections',
+  defaults: 'defaults',
+  variables: 'variables',
+  default_validity_days: 'default_validity_days',
+  is_default: 'is_default',
+  version: 'version',
+  archived_at: 'archived_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProposalScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  branch_id: 'branch_id',
+  number: 'number',
+  title: 'title',
+  status: 'status',
+  template_id: 'template_id',
+  language: 'language',
+  currency: 'currency',
+  company_id: 'company_id',
+  contact_id: 'contact_id',
+  deal_id: 'deal_id',
+  owner_membership_id: 'owner_membership_id',
+  project_id: 'project_id',
+  valid_until: 'valid_until',
+  current_version_id: 'current_version_id',
+  sent_version_id: 'sent_version_id',
+  accepted_version_id: 'accepted_version_id',
+  net_total: 'net_total',
+  discount_total: 'discount_total',
+  tax_total: 'tax_total',
+  gross_total: 'gross_total',
+  recurring_monthly: 'recurring_monthly',
+  recurring_annual: 'recurring_annual',
+  requires_contract: 'requires_contract',
+  public_token_hash: 'public_token_hash',
+  contract_id: 'contract_id',
+  converted_project_id: 'converted_project_id',
+  invoice_id: 'invoice_id',
+  subscription_id: 'subscription_id',
+  converted_at: 'converted_at',
+  sent_at: 'sent_at',
+  first_viewed_at: 'first_viewed_at',
+  last_viewed_at: 'last_viewed_at',
+  view_count: 'view_count',
+  accepted_at: 'accepted_at',
+  rejected_at: 'rejected_at',
+  expired_at: 'expired_at',
+  cancelled_at: 'cancelled_at',
+  archived_at: 'archived_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProposalVersionScalarFieldEnum = {
+  id: 'id',
+  proposal_id: 'proposal_id',
+  version_number: 'version_number',
+  status: 'status',
+  parent_version_id: 'parent_version_id',
+  change_summary: 'change_summary',
+  template_version: 'template_version',
+  variables: 'variables',
+  payment_terms: 'payment_terms',
+  validity_days: 'validity_days',
+  milestones: 'milestones',
+  timeline: 'timeline',
+  net_total: 'net_total',
+  discount_total: 'discount_total',
+  tax_total: 'tax_total',
+  gross_total: 'gross_total',
+  recurring_monthly: 'recurring_monthly',
+  recurring_annual: 'recurring_annual',
+  pdf_document_id: 'pdf_document_id',
+  content_hash: 'content_hash',
+  is_ai_generated: 'is_ai_generated',
+  ai_metadata: 'ai_metadata',
+  locked_at: 'locked_at',
+  sent_at: 'sent_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProposalSectionScalarFieldEnum = {
+  id: 'id',
+  version_id: 'version_id',
+  type: 'type',
+  title: 'title',
+  body: 'body',
+  sort_order: 'sort_order',
+  is_ai_generated: 'is_ai_generated',
+  is_internal: 'is_internal',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProposalLineItemScalarFieldEnum = {
+  id: 'id',
+  version_id: 'version_id',
+  product_id: 'product_id',
+  group_name: 'group_name',
+  name: 'name',
+  description: 'description',
+  quantity: 'quantity',
+  unit: 'unit',
+  unit_price: 'unit_price',
+  discount_percent: 'discount_percent',
+  discount_amount: 'discount_amount',
+  tax_percent: 'tax_percent',
+  net_amount: 'net_amount',
+  tax_amount: 'tax_amount',
+  gross_amount: 'gross_amount',
+  is_recurring: 'is_recurring',
+  billing_frequency: 'billing_frequency',
+  is_optional: 'is_optional',
+  selected_by_customer: 'selected_by_customer',
+  sort_order: 'sort_order',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProposalPaymentScheduleItemScalarFieldEnum = {
+  id: 'id',
+  version_id: 'version_id',
+  name: 'name',
+  trigger: 'trigger',
+  percentage: 'percentage',
+  amount: 'amount',
+  due_date: 'due_date',
+  milestone_name: 'milestone_name',
+  frequency: 'frequency',
+  sort_order: 'sort_order'
+};
+
+exports.Prisma.ProposalApprovalScalarFieldEnum = {
+  id: 'id',
+  version_id: 'version_id',
+  approver_membership_id: 'approver_membership_id',
+  step: 'step',
+  decision: 'decision',
+  comment: 'comment',
+  requested_at: 'requested_at',
+  decided_at: 'decided_at'
+};
+
+exports.Prisma.ProposalCommentScalarFieldEnum = {
+  id: 'id',
+  proposal_id: 'proposal_id',
+  version_id: 'version_id',
+  section_id: 'section_id',
+  author_membership_id: 'author_membership_id',
+  author_user_id: 'author_user_id',
+  author_contact_id: 'author_contact_id',
+  is_internal: 'is_internal',
+  body: 'body',
+  resolved_at: 'resolved_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProposalDeliveryScalarFieldEnum = {
+  id: 'id',
+  proposal_id: 'proposal_id',
+  version_id: 'version_id',
+  channel: 'channel',
+  status: 'status',
+  recipient_contact_id: 'recipient_contact_id',
+  recipient_email: 'recipient_email',
+  communication_id: 'communication_id',
+  sent_by_user_id: 'sent_by_user_id',
+  message: 'message',
+  sent_at: 'sent_at',
+  delivered_at: 'delivered_at',
+  failed_reason: 'failed_reason',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ProposalEventScalarFieldEnum = {
+  id: 'id',
+  proposal_id: 'proposal_id',
+  version_id: 'version_id',
+  type: 'type',
+  actor_user_id: 'actor_user_id',
+  actor_contact_id: 'actor_contact_id',
+  ip_address: 'ip_address',
+  user_agent: 'user_agent',
+  metadata: 'metadata',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ProposalAcceptanceScalarFieldEnum = {
+  id: 'id',
+  proposal_id: 'proposal_id',
+  version_id: 'version_id',
+  decision: 'decision',
+  customer_user_id: 'customer_user_id',
+  contact_id: 'contact_id',
+  signer_name: 'signer_name',
+  signer_email: 'signer_email',
+  signer_title: 'signer_title',
+  terms_accepted: 'terms_accepted',
+  selected_optional_item_ids: 'selected_optional_item_ids',
+  feedback: 'feedback',
+  signature_request_id: 'signature_request_id',
+  signature_metadata: 'signature_metadata',
+  ip_address: 'ip_address',
+  user_agent: 'user_agent',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ContractTypeScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  slug: 'slug',
+  description: 'description',
+  default_template_id: 'default_template_id',
+  required_metadata: 'required_metadata',
+  approval_workflow: 'approval_workflow',
+  signature_requirements: 'signature_requirements',
+  default_renewal_type: 'default_renewal_type',
+  default_notice_days: 'default_notice_days',
+  reminder_windows_days: 'reminder_windows_days',
+  retention_days: 'retention_days',
+  sort_order: 'sort_order',
+  archived_at: 'archived_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ContractTemplateScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  type_id: 'type_id',
+  name: 'name',
+  slug: 'slug',
+  description: 'description',
+  language: 'language',
+  status: 'status',
+  current_version_id: 'current_version_id',
+  owner_membership_id: 'owner_membership_id',
+  effective_date: 'effective_date',
+  deprecated_at: 'deprecated_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ContractTemplateVersionScalarFieldEnum = {
+  id: 'id',
+  template_id: 'template_id',
+  version_number: 'version_number',
+  change_summary: 'change_summary',
+  sections: 'sections',
+  variables: 'variables',
+  conditional_rules: 'conditional_rules',
+  signature_blocks: 'signature_blocks',
+  required_fields: 'required_fields',
+  published_at: 'published_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ContractClauseScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  key: 'key',
+  name: 'name',
+  category: 'category',
+  description: 'description',
+  status: 'status',
+  usage_restrictions: 'usage_restrictions',
+  owner_membership_id: 'owner_membership_id',
+  current_version_id: 'current_version_id',
+  effective_date: 'effective_date',
+  deprecated_at: 'deprecated_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ContractClauseVersionScalarFieldEnum = {
+  id: 'id',
+  clause_id: 'clause_id',
+  version_number: 'version_number',
+  text: 'text',
+  change_summary: 'change_summary',
+  effective_date: 'effective_date',
+  deprecated_at: 'deprecated_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ContractApprovalRuleScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  conditions: 'conditions',
+  steps: 'steps',
+  priority: 'priority',
+  enabled: 'enabled',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ContractScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  branch_id: 'branch_id',
+  number: 'number',
+  title: 'title',
+  type_id: 'type_id',
+  template_id: 'template_id',
+  status: 'status',
+  relation_kind: 'relation_kind',
+  parent_contract_id: 'parent_contract_id',
+  relation_sequence: 'relation_sequence',
+  superseded_by_contract_id: 'superseded_by_contract_id',
+  owner_membership_id: 'owner_membership_id',
+  primary_company_id: 'primary_company_id',
+  proposal_id: 'proposal_id',
+  proposal_version_id: 'proposal_version_id',
+  project_change_request_id: 'project_change_request_id',
+  currency: 'currency',
+  draft_date: 'draft_date',
+  approval_date: 'approval_date',
+  signature_date: 'signature_date',
+  effective_date: 'effective_date',
+  start_date: 'start_date',
+  end_date: 'end_date',
+  renewal_date: 'renewal_date',
+  notice_deadline: 'notice_deadline',
+  expiration_date: 'expiration_date',
+  termination_date: 'termination_date',
+  renewal_type: 'renewal_type',
+  renewal_term_months: 'renewal_term_months',
+  notice_days: 'notice_days',
+  total_value: 'total_value',
+  one_time_value: 'one_time_value',
+  recurring_value: 'recurring_value',
+  billing_frequency: 'billing_frequency',
+  payment_terms: 'payment_terms',
+  risk_score: 'risk_score',
+  risk_level: 'risk_level',
+  risk_factors: 'risk_factors',
+  customer_visible: 'customer_visible',
+  current_version_id: 'current_version_id',
+  signed_version_id: 'signed_version_id',
+  processes_personal_data: 'processes_personal_data',
+  activated_at: 'activated_at',
+  closed_at: 'closed_at',
+  archived_at: 'archived_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ContractPartyScalarFieldEnum = {
+  id: 'id',
+  contract_id: 'contract_id',
+  party_type: 'party_type',
+  company_id: 'company_id',
+  legal_name: 'legal_name',
+  address: 'address',
+  registration_number: 'registration_number',
+  vat_number: 'vat_number',
+  sort_order: 'sort_order',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ContractSignatoryScalarFieldEnum = {
+  id: 'id',
+  party_id: 'party_id',
+  membership_id: 'membership_id',
+  contact_id: 'contact_id',
+  name: 'name',
+  title: 'title',
+  email: 'email',
+  is_required: 'is_required',
+  sort_order: 'sort_order',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ContractProjectScalarFieldEnum = {
+  contract_id: 'contract_id',
+  project_id: 'project_id',
+  role: 'role',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ContractVersionScalarFieldEnum = {
+  id: 'id',
+  contract_id: 'contract_id',
+  version_number: 'version_number',
+  label: 'label',
+  parent_version_id: 'parent_version_id',
+  status: 'status',
+  change_summary: 'change_summary',
+  template_version_id: 'template_version_id',
+  variables: 'variables',
+  document_id: 'document_id',
+  signed_document_id: 'signed_document_id',
+  content_hash: 'content_hash',
+  signed_hash: 'signed_hash',
+  customer_visible: 'customer_visible',
+  locked_at: 'locked_at',
+  approved_at: 'approved_at',
+  signed_at: 'signed_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ContractSectionScalarFieldEnum = {
+  id: 'id',
+  version_id: 'version_id',
+  key: 'key',
+  title: 'title',
+  body: 'body',
+  clause_version_id: 'clause_version_id',
+  is_appendix: 'is_appendix',
+  sort_order: 'sort_order',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ContractReviewScalarFieldEnum = {
+  id: 'id',
+  version_id: 'version_id',
+  reviewer_membership_id: 'reviewer_membership_id',
+  reviewer_user_id: 'reviewer_user_id',
+  is_internal: 'is_internal',
+  decision: 'decision',
+  comment: 'comment',
+  requested_by_user_id: 'requested_by_user_id',
+  requested_at: 'requested_at',
+  due_at: 'due_at',
+  decided_at: 'decided_at'
+};
+
+exports.Prisma.ContractCommentScalarFieldEnum = {
+  id: 'id',
+  version_id: 'version_id',
+  section_id: 'section_id',
+  author_membership_id: 'author_membership_id',
+  author_user_id: 'author_user_id',
+  is_internal: 'is_internal',
+  is_blocking: 'is_blocking',
+  body: 'body',
+  resolved_at: 'resolved_at',
+  resolved_by_user_id: 'resolved_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ContractChangeRequestScalarFieldEnum = {
+  id: 'id',
+  contract_id: 'contract_id',
+  related_version_id: 'related_version_id',
+  resulting_version_id: 'resulting_version_id',
+  section_id: 'section_id',
+  requester_membership_id: 'requester_membership_id',
+  requester_user_id: 'requester_user_id',
+  requester_contact_id: 'requester_contact_id',
+  requested_change: 'requested_change',
+  reason: 'reason',
+  impact: 'impact',
+  status: 'status',
+  project_change_request_id: 'project_change_request_id',
+  decided_by_user_id: 'decided_by_user_id',
+  decided_at: 'decided_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ContractApprovalScalarFieldEnum = {
+  id: 'id',
+  version_id: 'version_id',
+  step: 'step',
+  step_name: 'step_name',
+  approver_membership_id: 'approver_membership_id',
+  decision: 'decision',
+  comment: 'comment',
+  rule_id: 'rule_id',
+  requested_at: 'requested_at',
+  decided_at: 'decided_at'
+};
+
+exports.Prisma.SignatureRequestScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  subject_type: 'subject_type',
+  contract_id: 'contract_id',
+  contract_version_id: 'contract_version_id',
+  proposal_version_id: 'proposal_version_id',
+  provider: 'provider',
+  provider_request_id: 'provider_request_id',
+  status: 'status',
+  signing_order: 'signing_order',
+  package_documents: 'package_documents',
+  reminder_settings: 'reminder_settings',
+  reminders_sent: 'reminders_sent',
+  signed_document_id: 'signed_document_id',
+  audit_certificate_document_id: 'audit_certificate_document_id',
+  signed_hash: 'signed_hash',
+  message: 'message',
+  created_by_user_id: 'created_by_user_id',
+  sent_at: 'sent_at',
+  expires_at: 'expires_at',
+  completed_at: 'completed_at',
+  cancelled_at: 'cancelled_at',
+  cancel_reason: 'cancel_reason',
+  metadata: 'metadata',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.SignerScalarFieldEnum = {
+  id: 'id',
+  request_id: 'request_id',
+  signatory_id: 'signatory_id',
+  name: 'name',
+  email: 'email',
+  title: 'title',
+  order: 'order',
+  status: 'status',
+  fields: 'fields',
+  access_token_hash: 'access_token_hash',
+  provider_signer_id: 'provider_signer_id',
+  auth_method: 'auth_method',
+  ip_address: 'ip_address',
+  user_agent: 'user_agent',
+  sent_at: 'sent_at',
+  viewed_at: 'viewed_at',
+  signed_at: 'signed_at',
+  declined_at: 'declined_at',
+  decline_reason: 'decline_reason'
+};
+
+exports.Prisma.SignatureEventScalarFieldEnum = {
+  id: 'id',
+  request_id: 'request_id',
+  signer_id: 'signer_id',
+  type: 'type',
+  provider: 'provider',
+  provider_event_id: 'provider_event_id',
+  occurred_at: 'occurred_at',
+  ip_address: 'ip_address',
+  payload: 'payload',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ContractObligationScalarFieldEnum = {
+  id: 'id',
+  contract_id: 'contract_id',
+  section_id: 'section_id',
+  type: 'type',
+  title: 'title',
+  description: 'description',
+  responsible_party_id: 'responsible_party_id',
+  responsible_membership_id: 'responsible_membership_id',
+  due_date: 'due_date',
+  frequency: 'frequency',
+  status: 'status',
+  reminder_days_before: 'reminder_days_before',
+  project_id: 'project_id',
+  task_id: 'task_id',
+  is_ai_extracted: 'is_ai_extracted',
+  extraction_confidence: 'extraction_confidence',
+  review_state: 'review_state',
+  fulfilled_at: 'fulfilled_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ContractTerminationScalarFieldEnum = {
+  contract_id: 'contract_id',
+  type: 'type',
+  reason: 'reason',
+  requesting_party_id: 'requesting_party_id',
+  notice_date: 'notice_date',
+  effective_date: 'effective_date',
+  approved_by_user_id: 'approved_by_user_id',
+  approved_at: 'approved_at',
+  document_id: 'document_id',
+  notes: 'notes',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ProjectTypeScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  slug: 'slug',
+  description: 'description',
+  default_template_id: 'default_template_id',
+  enabled_sections: 'enabled_sections',
+  required_fields: 'required_fields',
+  health_rules: 'health_rules',
+  completion_requirements: 'completion_requirements',
+  is_default: 'is_default',
+  sort_order: 'sort_order',
+  archived_at: 'archived_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectStatusScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  slug: 'slug',
+  category: 'category',
+  color: 'color',
+  sort_order: 'sort_order',
+  is_default: 'is_default',
+  allowed_transitions: 'allowed_transitions',
+  archived_at: 'archived_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ProjectTemplateScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  type_id: 'type_id',
+  name: 'name',
+  slug: 'slug',
+  description: 'description',
+  current_version_id: 'current_version_id',
+  is_active: 'is_active',
+  deprecated_at: 'deprecated_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectTemplateVersionScalarFieldEnum = {
+  id: 'id',
+  template_id: 'template_id',
+  version_number: 'version_number',
+  change_summary: 'change_summary',
+  structure: 'structure',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ProjectScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  branch_id: 'branch_id',
+  parent_project_id: 'parent_project_id',
+  name: 'name',
+  code: 'code',
+  slug: 'slug',
+  description: 'description',
+  type_id: 'type_id',
+  status_id: 'status_id',
+  health: 'health',
+  health_mode: 'health_mode',
+  health_reason: 'health_reason',
+  progress_percent: 'progress_percent',
+  progress_mode: 'progress_mode',
+  priority: 'priority',
+  visibility: 'visibility',
+  company_id: 'company_id',
+  owner_membership_id: 'owner_membership_id',
+  team_id: 'team_id',
+  template_id: 'template_id',
+  template_version_id: 'template_version_id',
+  proposal_id: 'proposal_id',
+  proposal_version_id: 'proposal_version_id',
+  planned_start: 'planned_start',
+  actual_start: 'actual_start',
+  target_completion: 'target_completion',
+  actual_completion: 'actual_completion',
+  review_date: 'review_date',
+  internal_deadline: 'internal_deadline',
+  customer_deadline: 'customer_deadline',
+  budget_hours: 'budget_hours',
+  budget_amount: 'budget_amount',
+  currency: 'currency',
+  icon: 'icon',
+  color: 'color',
+  channel_id: 'channel_id',
+  runbook_page_id: 'runbook_page_id',
+  completed_at: 'completed_at',
+  cancelled_at: 'cancelled_at',
+  archived_at: 'archived_at',
+  reopened_at: 'reopened_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectBranchScalarFieldEnum = {
+  project_id: 'project_id',
+  branch_id: 'branch_id',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ProjectMemberScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  membership_id: 'membership_id',
+  role_id: 'role_id',
+  role_label: 'role_label',
+  allocation_percent: 'allocation_percent',
+  is_active: 'is_active',
+  joined_at: 'joined_at',
+  left_at: 'left_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ProjectStakeholderScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  contact_id: 'contact_id',
+  name: 'name',
+  organization_name: 'organization_name',
+  email: 'email',
+  role: 'role',
+  responsibility: 'responsibility',
+  portal_visible: 'portal_visible',
+  decision_authority: 'decision_authority',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ProjectObjectiveScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  name: 'name',
+  description: 'description',
+  owner_membership_id: 'owner_membership_id',
+  target_date: 'target_date',
+  success_criteria: 'success_criteria',
+  status: 'status',
+  progress_percent: 'progress_percent',
+  sort_order: 'sort_order',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectWorkstreamScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  name: 'name',
+  description: 'description',
+  owner_membership_id: 'owner_membership_id',
+  status: 'status',
+  progress_percent: 'progress_percent',
+  planned_start: 'planned_start',
+  planned_end: 'planned_end',
+  actual_start: 'actual_start',
+  actual_end: 'actual_end',
+  color: 'color',
+  sort_order: 'sort_order',
+  archived_at: 'archived_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectMilestoneScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  workstream_id: 'workstream_id',
+  objective_id: 'objective_id',
+  name: 'name',
+  description: 'description',
+  owner_membership_id: 'owner_membership_id',
+  status: 'status',
+  planned_date: 'planned_date',
+  actual_date: 'actual_date',
+  progress_percent: 'progress_percent',
+  customer_visible: 'customer_visible',
+  is_billing_milestone: 'is_billing_milestone',
+  proposal_milestone_key: 'proposal_milestone_key',
+  notes: 'notes',
+  sort_order: 'sort_order',
+  completed_at: 'completed_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectDeliverableScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  milestone_id: 'milestone_id',
+  workstream_id: 'workstream_id',
+  name: 'name',
+  description: 'description',
+  owner_membership_id: 'owner_membership_id',
+  status: 'status',
+  due_date: 'due_date',
+  customer_visible: 'customer_visible',
+  document_ids: 'document_ids',
+  proposal_reference: 'proposal_reference',
+  submitted_at: 'submitted_at',
+  accepted_at: 'accepted_at',
+  acceptance_record: 'acceptance_record',
+  sort_order: 'sort_order',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectAcceptanceCriterionScalarFieldEnum = {
+  id: 'id',
+  deliverable_id: 'deliverable_id',
+  milestone_id: 'milestone_id',
+  requirement: 'requirement',
+  expected_outcome: 'expected_outcome',
+  verification_method: 'verification_method',
+  status: 'status',
+  reviewer_membership_id: 'reviewer_membership_id',
+  reviewed_at: 'reviewed_at',
+  sort_order: 'sort_order'
+};
+
+exports.Prisma.ProjectDependencyScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  source_type: 'source_type',
+  source_id: 'source_id',
+  target_type: 'target_type',
+  target_id: 'target_id',
+  type: 'type',
+  status: 'status',
+  owner_membership_id: 'owner_membership_id',
+  expected_resolution: 'expected_resolution',
+  lag_days: 'lag_days',
+  notes: 'notes',
+  resolved_at: 'resolved_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ProjectRiskScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  title: 'title',
+  description: 'description',
+  category: 'category',
+  probability: 'probability',
+  impact: 'impact',
+  severity: 'severity',
+  status: 'status',
+  owner_membership_id: 'owner_membership_id',
+  mitigation: 'mitigation',
+  contingency: 'contingency',
+  due_date: 'due_date',
+  milestone_id: 'milestone_id',
+  task_id: 'task_id',
+  resolved_at: 'resolved_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectIssueScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  kind: 'kind',
+  title: 'title',
+  description: 'description',
+  severity: 'severity',
+  priority: 'priority',
+  status: 'status',
+  owner_membership_id: 'owner_membership_id',
+  blocked_item_type: 'blocked_item_type',
+  blocked_item_id: 'blocked_item_id',
+  milestone_id: 'milestone_id',
+  task_id: 'task_id',
+  dependency_id: 'dependency_id',
+  ticket_id: 'ticket_id',
+  identified_at: 'identified_at',
+  target_resolution: 'target_resolution',
+  resolution: 'resolution',
+  resolved_at: 'resolved_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectDecisionScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  title: 'title',
+  description: 'description',
+  decided_at: 'decided_at',
+  decision_maker_membership_id: 'decision_maker_membership_id',
+  participants: 'participants',
+  alternatives_considered: 'alternatives_considered',
+  selected_option: 'selected_option',
+  reason: 'reason',
+  consequences: 'consequences',
+  milestone_id: 'milestone_id',
+  task_id: 'task_id',
+  document_id: 'document_id',
+  source_message_id: 'source_message_id',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ProjectStatusUpdateScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  period_start: 'period_start',
+  period_end: 'period_end',
+  summary: 'summary',
+  completed_work: 'completed_work',
+  current_work: 'current_work',
+  upcoming_work: 'upcoming_work',
+  progress_percent: 'progress_percent',
+  health: 'health',
+  risks_summary: 'risks_summary',
+  blockers_summary: 'blockers_summary',
+  decisions_summary: 'decisions_summary',
+  required_actions: 'required_actions',
+  author_membership_id: 'author_membership_id',
+  customer_visible: 'customer_visible',
+  published_at: 'published_at',
+  is_ai_generated: 'is_ai_generated',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectChangeRequestScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  number: 'number',
+  title: 'title',
+  description: 'description',
+  requester_membership_id: 'requester_membership_id',
+  requester_contact_id: 'requester_contact_id',
+  requested_at: 'requested_at',
+  priority: 'priority',
+  status: 'status',
+  scope_impact: 'scope_impact',
+  timeline_impact_days: 'timeline_impact_days',
+  resource_impact: 'resource_impact',
+  cost_impact_amount: 'cost_impact_amount',
+  currency: 'currency',
+  customer_visible: 'customer_visible',
+  approved_by_membership_id: 'approved_by_membership_id',
+  approved_by_customer_user_id: 'approved_by_customer_user_id',
+  approved_at: 'approved_at',
+  rejected_reason: 'rejected_reason',
+  deliverable_id: 'deliverable_id',
+  task_id: 'task_id',
+  proposal_id: 'proposal_id',
+  contract_id: 'contract_id',
+  contract_change_request_id: 'contract_change_request_id',
+  implemented_at: 'implemented_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectGateScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  kind: 'kind',
+  name: 'name',
+  description: 'description',
+  milestone_id: 'milestone_id',
+  approver_membership_id: 'approver_membership_id',
+  customer_approver_user_id: 'customer_approver_user_id',
+  status: 'status',
+  blocks_completion: 'blocks_completion',
+  decision_comment: 'decision_comment',
+  decided_at: 'decided_at',
+  sort_order: 'sort_order',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectReviewScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  type: 'type',
+  title: 'title',
+  held_at: 'held_at',
+  facilitator_membership_id: 'facilitator_membership_id',
+  participants: 'participants',
+  findings: 'findings',
+  decisions: 'decisions',
+  went_well: 'went_well',
+  went_wrong: 'went_wrong',
+  root_causes: 'root_causes',
+  lessons: 'lessons',
+  actions: 'actions',
+  milestone_id: 'milestone_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectAllocationScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  membership_id: 'membership_id',
+  team_id: 'team_id',
+  role_label: 'role_label',
+  workstream_id: 'workstream_id',
+  milestone_id: 'milestone_id',
+  planned_hours: 'planned_hours',
+  allocation_percent: 'allocation_percent',
+  start_date: 'start_date',
+  end_date: 'end_date',
+  notes: 'notes',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectChecklistScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  name: 'name',
+  phase: 'phase',
+  sort_order: 'sort_order',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ProjectChecklistItemScalarFieldEnum = {
+  id: 'id',
+  checklist_id: 'checklist_id',
+  title: 'title',
+  is_required: 'is_required',
+  is_completed: 'is_completed',
+  completed_by_membership_id: 'completed_by_membership_id',
+  completed_at: 'completed_at',
+  task_id: 'task_id',
+  sort_order: 'sort_order'
+};
+
+exports.Prisma.ProjectEscalationScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  issue_summary: 'issue_summary',
+  category: 'category',
+  severity: 'severity',
+  status: 'status',
+  owner_membership_id: 'owner_membership_id',
+  escalated_to_membership_id: 'escalated_to_membership_id',
+  escalated_at: 'escalated_at',
+  action_taken: 'action_taken',
+  resolution: 'resolution',
+  resolved_at: 'resolved_at',
+  issue_id: 'issue_id',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ProjectHandoverScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  type: 'type',
+  from_team_id: 'from_team_id',
+  to_team_id: 'to_team_id',
+  new_owner_membership_id: 'new_owner_membership_id',
+  status: 'status',
+  scheduled_at: 'scheduled_at',
+  completed_at: 'completed_at',
+  details: 'details',
+  accepted_by_membership_id: 'accepted_by_membership_id',
+  accepted_at: 'accepted_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectCloseoutScalarFieldEnum = {
+  project_id: 'project_id',
+  completion_checklist: 'completion_checklist',
+  final_status_summary: 'final_status_summary',
+  outstanding_items: 'outstanding_items',
+  lessons_learned: 'lessons_learned',
+  customer_outcome: 'customer_outcome',
+  financial_review_ref: 'financial_review_ref',
+  documentation_document_ids: 'documentation_document_ids',
+  customer_acceptance_recorded_at: 'customer_acceptance_recorded_at',
+  closed_by_membership_id: 'closed_by_membership_id',
+  closed_at: 'closed_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectRelationScalarFieldEnum = {
+  id: 'id',
+  source_project_id: 'source_project_id',
+  target_project_id: 'target_project_id',
+  type: 'type',
+  notes: 'notes',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ProjectExternalReferenceScalarFieldEnum = {
+  id: 'id',
+  project_id: 'project_id',
+  system: 'system',
+  label: 'label',
+  external_id: 'external_id',
+  url: 'url',
+  metadata: 'metadata',
+  created_at: 'created_at'
+};
+
+exports.Prisma.TaskStatusScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  team_id: 'team_id',
+  name: 'name',
+  slug: 'slug',
+  category: 'category',
+  color: 'color',
+  sort_order: 'sort_order',
+  is_default: 'is_default',
+  allowed_transitions: 'allowed_transitions',
+  archived_at: 'archived_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.TaskTypeScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  slug: 'slug',
+  icon: 'icon',
+  color: 'color',
+  is_default: 'is_default',
+  template: 'template',
+  sort_order: 'sort_order',
+  archived_at: 'archived_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.TaskLabelScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  slug: 'slug',
+  color: 'color',
+  parent_label_id: 'parent_label_id',
+  archived_at: 'archived_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.CycleScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  team_id: 'team_id',
+  project_id: 'project_id',
+  number: 'number',
+  name: 'name',
+  goal: 'goal',
+  status: 'status',
+  starts_at: 'starts_at',
+  ends_at: 'ends_at',
+  completed_at: 'completed_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.TaskScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  number: 'number',
+  team_id: 'team_id',
+  project_id: 'project_id',
+  workstream_id: 'workstream_id',
+  milestone_id: 'milestone_id',
+  parent_task_id: 'parent_task_id',
+  cycle_id: 'cycle_id',
+  release_id: 'release_id',
+  type_id: 'type_id',
+  status_id: 'status_id',
+  title: 'title',
+  description: 'description',
+  priority: 'priority',
+  assignee_membership_id: 'assignee_membership_id',
+  reporter_membership_id: 'reporter_membership_id',
+  estimate_points: 'estimate_points',
+  estimate_hours: 'estimate_hours',
+  start_date: 'start_date',
+  due_date: 'due_date',
+  completed_at: 'completed_at',
+  cancelled_at: 'cancelled_at',
+  acceptance_criteria: 'acceptance_criteria',
+  customer_visible: 'customer_visible',
+  automation_rule_id: 'automation_rule_id',
+  recurring_template_task_id: 'recurring_template_task_id',
+  is_template: 'is_template',
+  rank: 'rank',
+  duplicate_of_task_id: 'duplicate_of_task_id',
+  blocked: 'blocked',
+  archived_at: 'archived_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.TaskAssigneeScalarFieldEnum = {
+  task_id: 'task_id',
+  membership_id: 'membership_id',
+  assigned_at: 'assigned_at'
+};
+
+exports.Prisma.TaskLabelAssignmentScalarFieldEnum = {
+  task_id: 'task_id',
+  label_id: 'label_id'
+};
+
+exports.Prisma.TaskDependencyScalarFieldEnum = {
+  id: 'id',
+  source_task_id: 'source_task_id',
+  target_task_id: 'target_task_id',
+  type: 'type',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at'
+};
+
+exports.Prisma.TaskChecklistItemScalarFieldEnum = {
+  id: 'id',
+  task_id: 'task_id',
+  title: 'title',
+  is_completed: 'is_completed',
+  completed_by_membership_id: 'completed_by_membership_id',
+  completed_at: 'completed_at',
+  sort_order: 'sort_order'
+};
+
+exports.Prisma.TaskCommentScalarFieldEnum = {
+  id: 'id',
+  task_id: 'task_id',
+  parent_comment_id: 'parent_comment_id',
+  author_membership_id: 'author_membership_id',
+  author_user_id: 'author_user_id',
+  visibility: 'visibility',
+  body: 'body',
+  mentions: 'mentions',
+  reactions: 'reactions',
+  edited_at: 'edited_at',
+  deleted_at: 'deleted_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.TaskAttachmentScalarFieldEnum = {
+  id: 'id',
+  task_id: 'task_id',
+  document_id: 'document_id',
+  added_by_user_id: 'added_by_user_id',
+  created_at: 'created_at'
+};
+
+exports.Prisma.TaskLinkScalarFieldEnum = {
+  id: 'id',
+  task_id: 'task_id',
+  entity_type: 'entity_type',
+  entity_id: 'entity_id',
+  relation: 'relation',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at'
+};
+
+exports.Prisma.TaskWatcherScalarFieldEnum = {
+  task_id: 'task_id',
+  membership_id: 'membership_id',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ReleaseScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  team_id: 'team_id',
+  project_id: 'project_id',
+  milestone_id: 'milestone_id',
+  name: 'name',
+  version: 'version',
+  status: 'status',
+  target_date: 'target_date',
+  released_at: 'released_at',
+  notes: 'notes',
+  notes_document_id: 'notes_document_id',
+  customer_visible: 'customer_visible',
+  affected_company_ids: 'affected_company_ids',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ReleaseDeploymentScalarFieldEnum = {
+  id: 'id',
+  release_id: 'release_id',
+  environment: 'environment',
+  status: 'status',
+  url: 'url',
+  deployed_by_user_id: 'deployed_by_user_id',
+  deployed_at: 'deployed_at',
+  external_ref: 'external_ref',
+  notes: 'notes',
+  created_at: 'created_at'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
+};
+
+exports.Prisma.NullableJsonNullValueInput = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull
+};
+
+exports.Prisma.JsonNullValueInput = {
+  JsonNull: Prisma.JsonNull
 };
 
 exports.Prisma.QueryMode = {
@@ -165,11 +2361,193 @@ exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
 };
+
+exports.Prisma.JsonNullValueFilter = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull,
+  AnyNull: Prisma.AnyNull
+};
 exports.AuthRole = exports.$Enums.AuthRole = {
   USER: 'USER',
   ADMIN: 'ADMIN',
   SUPER_ADMIN: 'SUPER_ADMIN',
   SUPPORT: 'SUPPORT'
+};
+
+exports.UserStatus = exports.$Enums.UserStatus = {
+  INVITED: 'INVITED',
+  PENDING_VERIFICATION: 'PENDING_VERIFICATION',
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  LOCKED: 'LOCKED',
+  DEACTIVATED: 'DEACTIVATED'
+};
+
+exports.AuthMethodType = exports.$Enums.AuthMethodType = {
+  PASSWORD: 'PASSWORD',
+  MAGIC_LINK: 'MAGIC_LINK',
+  PASSKEY: 'PASSKEY',
+  OAUTH: 'OAUTH',
+  SSO: 'SSO',
+  TOTP: 'TOTP',
+  SMS_OTP: 'SMS_OTP',
+  EMAIL_OTP: 'EMAIL_OTP',
+  RECOVERY_CODES: 'RECOVERY_CODES'
+};
+
+exports.OrganizationStatus = exports.$Enums.OrganizationStatus = {
+  SETUP: 'SETUP',
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  READ_ONLY: 'READ_ONLY',
+  ARCHIVED: 'ARCHIVED',
+  PENDING_DELETION: 'PENDING_DELETION',
+  DELETED: 'DELETED'
+};
+
+exports.MfaPolicy = exports.$Enums.MfaPolicy = {
+  OPTIONAL: 'OPTIONAL',
+  REQUIRED_FOR_ADMINS: 'REQUIRED_FOR_ADMINS',
+  REQUIRED_FOR_ALL: 'REQUIRED_FOR_ALL',
+  REQUIRED_FOR_SENSITIVE_MODULES: 'REQUIRED_FOR_SENSITIVE_MODULES'
+};
+
+exports.DomainVerificationStatus = exports.$Enums.DomainVerificationStatus = {
+  PENDING: 'PENDING',
+  VERIFIED: 'VERIFIED',
+  FAILED: 'FAILED',
+  REVOKED: 'REVOKED'
+};
+
+exports.ModuleKey = exports.$Enums.ModuleKey = {
+  CRM: 'CRM',
+  PROPOSALS: 'PROPOSALS',
+  CONTRACTS: 'CONTRACTS',
+  PROJECTS: 'PROJECTS',
+  TASKS: 'TASKS',
+  CUSTOMER_PORTAL: 'CUSTOMER_PORTAL',
+  FINANCE: 'FINANCE',
+  INCOME_EXPENSE: 'INCOME_EXPENSE',
+  EMPLOYEES: 'EMPLOYEES',
+  COMMUNICATION: 'COMMUNICATION',
+  MESSAGING: 'MESSAGING',
+  SUPPORT: 'SUPPORT',
+  NOTIFICATIONS: 'NOTIFICATIONS',
+  BUSINESS_DOCS: 'BUSINESS_DOCS',
+  DOCUMENTS: 'DOCUMENTS',
+  TIME_TRACKING: 'TIME_TRACKING',
+  CALENDAR: 'CALENDAR',
+  AUTOMATION: 'AUTOMATION',
+  ADMINISTRATION: 'ADMINISTRATION'
+};
+
+exports.BranchKind = exports.$Enums.BranchKind = {
+  OPERATIONAL: 'OPERATIONAL',
+  OFFICE: 'OFFICE',
+  REGIONAL_UNIT: 'REGIONAL_UNIT',
+  SUBSIDIARY_REFERENCE: 'SUBSIDIARY_REFERENCE',
+  SERVICE_CENTER: 'SERVICE_CENTER',
+  REMOTE: 'REMOTE'
+};
+
+exports.BranchStatus = exports.$Enums.BranchStatus = {
+  ACTIVE: 'ACTIVE',
+  PLANNED: 'PLANNED',
+  TEMPORARILY_CLOSED: 'TEMPORARILY_CLOSED',
+  SUSPENDED: 'SUSPENDED',
+  ARCHIVED: 'ARCHIVED'
+};
+
+exports.TeamKind = exports.$Enums.TeamKind = {
+  TEAM: 'TEAM',
+  DEPARTMENT: 'DEPARTMENT',
+  BUSINESS_UNIT: 'BUSINESS_UNIT',
+  PROJECT_TEAM: 'PROJECT_TEAM'
+};
+
+exports.MembershipType = exports.$Enums.MembershipType = {
+  INTERNAL: 'INTERNAL',
+  EXTERNAL_COLLABORATOR: 'EXTERNAL_COLLABORATOR',
+  GUEST: 'GUEST'
+};
+
+exports.MembershipStatus = exports.$Enums.MembershipStatus = {
+  INVITED: 'INVITED',
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  DEACTIVATED: 'DEACTIVATED'
+};
+
+exports.ProvisioningSource = exports.$Enums.ProvisioningSource = {
+  MANUAL: 'MANUAL',
+  INVITATION_LINK: 'INVITATION_LINK',
+  BULK_IMPORT: 'BULK_IMPORT',
+  SSO: 'SSO',
+  SCIM: 'SCIM',
+  API: 'API'
+};
+
+exports.RoleType = exports.$Enums.RoleType = {
+  SYSTEM: 'SYSTEM',
+  ORGANIZATION: 'ORGANIZATION',
+  BRANCH: 'BRANCH',
+  TEAM: 'TEAM',
+  PROJECT: 'PROJECT',
+  CUSTOMER_PORTAL: 'CUSTOMER_PORTAL'
+};
+
+exports.RoleStatus = exports.$Enums.RoleStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  DEPRECATED: 'DEPRECATED'
+};
+
+exports.ScopeType = exports.$Enums.ScopeType = {
+  ORGANIZATION: 'ORGANIZATION',
+  BRANCH: 'BRANCH',
+  BRANCH_HIERARCHY: 'BRANCH_HIERARCHY',
+  TEAM: 'TEAM',
+  PROJECT: 'PROJECT',
+  RESOURCE: 'RESOURCE',
+  CUSTOMER: 'CUSTOMER'
+};
+
+exports.PermissionEffect = exports.$Enums.PermissionEffect = {
+  ALLOW: 'ALLOW',
+  DENY: 'DENY'
+};
+
+exports.DelegationStatus = exports.$Enums.DelegationStatus = {
+  SCHEDULED: 'SCHEDULED',
+  ACTIVE: 'ACTIVE',
+  EXPIRED: 'EXPIRED',
+  REVOKED: 'REVOKED'
+};
+
+exports.InvitationStatus = exports.$Enums.InvitationStatus = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  EXPIRED: 'EXPIRED',
+  CANCELLED: 'CANCELLED',
+  REJECTED: 'REJECTED'
+};
+
+exports.SsoProtocol = exports.$Enums.SsoProtocol = {
+  SAML: 'SAML',
+  OIDC: 'OIDC'
+};
+
+exports.ServiceAccountStatus = exports.$Enums.ServiceAccountStatus = {
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  REVOKED: 'REVOKED'
+};
+
+exports.AuditActorType = exports.$Enums.AuditActorType = {
+  USER: 'USER',
+  SERVICE_ACCOUNT: 'SERVICE_ACCOUNT',
+  SYSTEM: 'SYSTEM',
+  PLATFORM_ADMIN: 'PLATFORM_ADMIN'
 };
 
 exports.DocumentType = exports.$Enums.DocumentType = {
@@ -183,10 +2561,773 @@ exports.DocumentType = exports.$Enums.DocumentType = {
   OTHER: 'OTHER'
 };
 
+exports.CustomFieldType = exports.$Enums.CustomFieldType = {
+  TEXT: 'TEXT',
+  LONG_TEXT: 'LONG_TEXT',
+  NUMBER: 'NUMBER',
+  DECIMAL: 'DECIMAL',
+  CURRENCY: 'CURRENCY',
+  PERCENTAGE: 'PERCENTAGE',
+  BOOLEAN: 'BOOLEAN',
+  DATE: 'DATE',
+  DATETIME: 'DATETIME',
+  EMAIL: 'EMAIL',
+  PHONE: 'PHONE',
+  URL: 'URL',
+  DROPDOWN: 'DROPDOWN',
+  MULTI_SELECT: 'MULTI_SELECT',
+  RADIO: 'RADIO',
+  USER: 'USER',
+  TEAM: 'TEAM',
+  COMPANY: 'COMPANY',
+  CONTACT: 'CONTACT',
+  DEAL: 'DEAL',
+  RECORD_REFERENCE: 'RECORD_REFERENCE'
+};
+
+exports.RecordEntityType = exports.$Enums.RecordEntityType = {
+  CRM_COMPANY: 'CRM_COMPANY',
+  CRM_CONTACT: 'CRM_CONTACT',
+  CRM_LEAD: 'CRM_LEAD',
+  CRM_DEAL: 'CRM_DEAL',
+  CRM_ACTIVITY: 'CRM_ACTIVITY',
+  PROJECT: 'PROJECT',
+  TASK: 'TASK',
+  CONTRACT: 'CONTRACT',
+  PROPOSAL: 'PROPOSAL',
+  TICKET: 'TICKET',
+  DOCUMENT: 'DOCUMENT',
+  FINANCIAL_RECORD: 'FINANCIAL_RECORD',
+  EMPLOYEE: 'EMPLOYEE',
+  INVOICE: 'INVOICE'
+};
+
+exports.SavedViewVisibility = exports.$Enums.SavedViewVisibility = {
+  PERSONAL: 'PERSONAL',
+  TEAM: 'TEAM',
+  ORGANIZATION: 'ORGANIZATION'
+};
+
+exports.CrmForecastCategory = exports.$Enums.CrmForecastCategory = {
+  PIPELINE: 'PIPELINE',
+  BEST_CASE: 'BEST_CASE',
+  COMMIT: 'COMMIT',
+  CLOSED_WON: 'CLOSED_WON',
+  CLOSED_LOST: 'CLOSED_LOST'
+};
+
+exports.CrmCompanyType = exports.$Enums.CrmCompanyType = {
+  PROSPECT: 'PROSPECT',
+  CUSTOMER: 'CUSTOMER',
+  PARTNER: 'PARTNER',
+  VENDOR: 'VENDOR',
+  OTHER: 'OTHER'
+};
+
+exports.CrmBranchRelationType = exports.$Enums.CrmBranchRelationType = {
+  OWNER: 'OWNER',
+  SALES: 'SALES',
+  DELIVERY: 'DELIVERY',
+  SUPPORT: 'SUPPORT',
+  BILLING: 'BILLING',
+  OTHER: 'OTHER'
+};
+
+exports.CrmContactRole = exports.$Enums.CrmContactRole = {
+  PRIMARY: 'PRIMARY',
+  DECISION_MAKER: 'DECISION_MAKER',
+  TECHNICAL: 'TECHNICAL',
+  BILLING: 'BILLING',
+  PROJECT_STAKEHOLDER: 'PROJECT_STAKEHOLDER',
+  EXECUTIVE: 'EXECUTIVE'
+};
+
+exports.CrmDealStatus = exports.$Enums.CrmDealStatus = {
+  OPEN: 'OPEN',
+  WON: 'WON',
+  LOST: 'LOST',
+  ABANDONED: 'ABANDONED'
+};
+
+exports.CrmActivityType = exports.$Enums.CrmActivityType = {
+  CALL: 'CALL',
+  MEETING: 'MEETING',
+  FOLLOW_UP: 'FOLLOW_UP',
+  REMINDER: 'REMINDER',
+  APPOINTMENT: 'APPOINTMENT',
+  INTERNAL_COMMENT: 'INTERNAL_COMMENT',
+  EMAIL: 'EMAIL',
+  OTHER: 'OTHER'
+};
+
+exports.CrmActivityStatus = exports.$Enums.CrmActivityStatus = {
+  PLANNED: 'PLANNED',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+  NO_SHOW: 'NO_SHOW'
+};
+
+exports.CrmPriority = exports.$Enums.CrmPriority = {
+  LOW: 'LOW',
+  NORMAL: 'NORMAL',
+  HIGH: 'HIGH',
+  URGENT: 'URGENT'
+};
+
+exports.CrmImportStatus = exports.$Enums.CrmImportStatus = {
+  PENDING: 'PENDING',
+  VALIDATING: 'VALIDATING',
+  PREVIEW: 'PREVIEW',
+  IMPORTING: 'IMPORTING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+  ROLLED_BACK: 'ROLLED_BACK'
+};
+
+exports.ProposalStatus = exports.$Enums.ProposalStatus = {
+  DRAFT: 'DRAFT',
+  IN_REVIEW: 'IN_REVIEW',
+  PENDING_APPROVAL: 'PENDING_APPROVAL',
+  APPROVED: 'APPROVED',
+  SENT: 'SENT',
+  VIEWED: 'VIEWED',
+  CHANGES_REQUESTED: 'CHANGES_REQUESTED',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  EXPIRED: 'EXPIRED',
+  CANCELLED: 'CANCELLED'
+};
+
+exports.ProposalVersionStatus = exports.$Enums.ProposalVersionStatus = {
+  DRAFT: 'DRAFT',
+  IN_REVIEW: 'IN_REVIEW',
+  APPROVED: 'APPROVED',
+  SENT: 'SENT',
+  SUPERSEDED: 'SUPERSEDED'
+};
+
+exports.ProposalSectionType = exports.$Enums.ProposalSectionType = {
+  COVER: 'COVER',
+  EXECUTIVE_SUMMARY: 'EXECUTIVE_SUMMARY',
+  OVERVIEW: 'OVERVIEW',
+  REQUIREMENTS: 'REQUIREMENTS',
+  SOLUTION: 'SOLUTION',
+  SCOPE: 'SCOPE',
+  FEATURES: 'FEATURES',
+  DELIVERABLES: 'DELIVERABLES',
+  PHASES: 'PHASES',
+  MILESTONES: 'MILESTONES',
+  TIMELINE: 'TIMELINE',
+  PRICING: 'PRICING',
+  PAYMENT_SCHEDULE: 'PAYMENT_SCHEDULE',
+  SUPPORT_OPTIONS: 'SUPPORT_OPTIONS',
+  ASSUMPTIONS: 'ASSUMPTIONS',
+  EXCLUSIONS: 'EXCLUSIONS',
+  WARRANTY: 'WARRANTY',
+  TERMS: 'TERMS',
+  NEXT_STEPS: 'NEXT_STEPS',
+  SIGNATURE: 'SIGNATURE',
+  CUSTOM: 'CUSTOM'
+};
+
+exports.ProposalPaymentTrigger = exports.$Enums.ProposalPaymentTrigger = {
+  ON_ACCEPTANCE: 'ON_ACCEPTANCE',
+  ON_SIGNATURE: 'ON_SIGNATURE',
+  ON_DATE: 'ON_DATE',
+  ON_MILESTONE: 'ON_MILESTONE',
+  ON_DELIVERY: 'ON_DELIVERY',
+  RECURRING: 'RECURRING'
+};
+
+exports.ProposalApprovalDecision = exports.$Enums.ProposalApprovalDecision = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  CHANGES_REQUESTED: 'CHANGES_REQUESTED'
+};
+
+exports.ProposalDeliveryChannel = exports.$Enums.ProposalDeliveryChannel = {
+  EMAIL: 'EMAIL',
+  CUSTOMER_PORTAL: 'CUSTOMER_PORTAL',
+  PDF: 'PDF',
+  LINK: 'LINK'
+};
+
+exports.ProposalDeliveryStatus = exports.$Enums.ProposalDeliveryStatus = {
+  QUEUED: 'QUEUED',
+  SENT: 'SENT',
+  DELIVERED: 'DELIVERED',
+  FAILED: 'FAILED'
+};
+
+exports.ProposalEventType = exports.$Enums.ProposalEventType = {
+  CREATED: 'CREATED',
+  VERSION_CREATED: 'VERSION_CREATED',
+  SUBMITTED_FOR_REVIEW: 'SUBMITTED_FOR_REVIEW',
+  APPROVED: 'APPROVED',
+  SENT: 'SENT',
+  VIEWED: 'VIEWED',
+  DOWNLOADED: 'DOWNLOADED',
+  OPTIONAL_ITEM_TOGGLED: 'OPTIONAL_ITEM_TOGGLED',
+  COMMENTED: 'COMMENTED',
+  CHANGES_REQUESTED: 'CHANGES_REQUESTED',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  SIGNED: 'SIGNED',
+  EXPIRED: 'EXPIRED',
+  CANCELLED: 'CANCELLED',
+  CONVERTED: 'CONVERTED'
+};
+
+exports.ProposalCustomerDecision = exports.$Enums.ProposalCustomerDecision = {
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  CHANGES_REQUESTED: 'CHANGES_REQUESTED'
+};
+
+exports.ContractRenewalType = exports.$Enums.ContractRenewalType = {
+  NONE: 'NONE',
+  MANUAL: 'MANUAL',
+  AUTOMATIC: 'AUTOMATIC',
+  EVERGREEN: 'EVERGREEN'
+};
+
+exports.ContractTemplateStatus = exports.$Enums.ContractTemplateStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  DEPRECATED: 'DEPRECATED'
+};
+
+exports.ContractClauseStatus = exports.$Enums.ContractClauseStatus = {
+  DRAFT: 'DRAFT',
+  ACTIVE: 'ACTIVE',
+  DEPRECATED: 'DEPRECATED'
+};
+
+exports.ContractStatus = exports.$Enums.ContractStatus = {
+  DRAFT: 'DRAFT',
+  INTERNAL_REVIEW: 'INTERNAL_REVIEW',
+  CUSTOMER_REVIEW: 'CUSTOMER_REVIEW',
+  APPROVAL_REQUIRED: 'APPROVAL_REQUIRED',
+  READY_FOR_SIGNATURE: 'READY_FOR_SIGNATURE',
+  PARTIALLY_SIGNED: 'PARTIALLY_SIGNED',
+  FULLY_SIGNED: 'FULLY_SIGNED',
+  ACTIVE: 'ACTIVE',
+  EXPIRING: 'EXPIRING',
+  RENEWED: 'RENEWED',
+  SUPERSEDED: 'SUPERSEDED',
+  TERMINATED: 'TERMINATED',
+  EXPIRED: 'EXPIRED',
+  CANCELLED: 'CANCELLED',
+  ARCHIVED: 'ARCHIVED'
+};
+
+exports.ContractRelationKind = exports.$Enums.ContractRelationKind = {
+  STANDALONE: 'STANDALONE',
+  AMENDMENT: 'AMENDMENT',
+  RENEWAL: 'RENEWAL',
+  SOW: 'SOW',
+  CHANGE_ORDER: 'CHANGE_ORDER',
+  TERMINATION_AGREEMENT: 'TERMINATION_AGREEMENT'
+};
+
+exports.ContractRiskLevel = exports.$Enums.ContractRiskLevel = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL'
+};
+
+exports.ContractPartyType = exports.$Enums.ContractPartyType = {
+  AGENCY: 'AGENCY',
+  CUSTOMER: 'CUSTOMER',
+  VENDOR: 'VENDOR',
+  PARTNER: 'PARTNER',
+  CONTRACTOR: 'CONTRACTOR',
+  EMPLOYEE: 'EMPLOYEE',
+  OTHER: 'OTHER'
+};
+
+exports.ContractVersionStatus = exports.$Enums.ContractVersionStatus = {
+  DRAFT: 'DRAFT',
+  IN_REVIEW: 'IN_REVIEW',
+  APPROVED: 'APPROVED',
+  LOCKED_FOR_SIGNATURE: 'LOCKED_FOR_SIGNATURE',
+  SIGNED: 'SIGNED',
+  SUPERSEDED: 'SUPERSEDED'
+};
+
+exports.ContractReviewDecision = exports.$Enums.ContractReviewDecision = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  CHANGES_REQUESTED: 'CHANGES_REQUESTED'
+};
+
+exports.ContractChangeRequestStatus = exports.$Enums.ContractChangeRequestStatus = {
+  REQUESTED: 'REQUESTED',
+  UNDER_REVIEW: 'UNDER_REVIEW',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  IMPLEMENTED: 'IMPLEMENTED',
+  WITHDRAWN: 'WITHDRAWN'
+};
+
+exports.ContractApprovalDecision = exports.$Enums.ContractApprovalDecision = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED'
+};
+
+exports.SignatureSubjectType = exports.$Enums.SignatureSubjectType = {
+  CONTRACT_VERSION: 'CONTRACT_VERSION',
+  PROPOSAL_VERSION: 'PROPOSAL_VERSION'
+};
+
+exports.SignatureProvider = exports.$Enums.SignatureProvider = {
+  INTERNAL: 'INTERNAL',
+  DOCUSIGN: 'DOCUSIGN',
+  DROPBOX_SIGN: 'DROPBOX_SIGN',
+  ADOBE_SIGN: 'ADOBE_SIGN',
+  OTHER: 'OTHER'
+};
+
+exports.SignatureRequestStatus = exports.$Enums.SignatureRequestStatus = {
+  NOT_SENT: 'NOT_SENT',
+  SENT: 'SENT',
+  DELIVERED: 'DELIVERED',
+  VIEWED: 'VIEWED',
+  PARTIALLY_SIGNED: 'PARTIALLY_SIGNED',
+  FULLY_SIGNED: 'FULLY_SIGNED',
+  DECLINED: 'DECLINED',
+  EXPIRED: 'EXPIRED',
+  CANCELLED: 'CANCELLED',
+  FAILED: 'FAILED'
+};
+
+exports.SigningOrder = exports.$Enums.SigningOrder = {
+  SEQUENTIAL: 'SEQUENTIAL',
+  PARALLEL: 'PARALLEL'
+};
+
+exports.SignerStatus = exports.$Enums.SignerStatus = {
+  PENDING: 'PENDING',
+  SENT: 'SENT',
+  DELIVERED: 'DELIVERED',
+  VIEWED: 'VIEWED',
+  SIGNED: 'SIGNED',
+  DECLINED: 'DECLINED',
+  BOUNCED: 'BOUNCED'
+};
+
+exports.SignatureEventType = exports.$Enums.SignatureEventType = {
+  REQUEST_CREATED: 'REQUEST_CREATED',
+  SENT: 'SENT',
+  DELIVERED: 'DELIVERED',
+  VIEWED: 'VIEWED',
+  SIGNED: 'SIGNED',
+  DECLINED: 'DECLINED',
+  REMINDER_SENT: 'REMINDER_SENT',
+  CANCELLED: 'CANCELLED',
+  EXPIRED: 'EXPIRED',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED'
+};
+
+exports.ContractObligationType = exports.$Enums.ContractObligationType = {
+  DELIVERABLE: 'DELIVERABLE',
+  PAYMENT: 'PAYMENT',
+  REPORTING: 'REPORTING',
+  RENEWAL_NOTICE: 'RENEWAL_NOTICE',
+  SLA: 'SLA',
+  SECURITY_REVIEW: 'SECURITY_REVIEW',
+  CUSTOMER_APPROVAL: 'CUSTOMER_APPROVAL',
+  OTHER: 'OTHER'
+};
+
+exports.ContractObligationStatus = exports.$Enums.ContractObligationStatus = {
+  OPEN: 'OPEN',
+  IN_PROGRESS: 'IN_PROGRESS',
+  FULFILLED: 'FULFILLED',
+  OVERDUE: 'OVERDUE',
+  WAIVED: 'WAIVED',
+  CANCELLED: 'CANCELLED'
+};
+
+exports.ExtractionReviewState = exports.$Enums.ExtractionReviewState = {
+  PENDING_REVIEW: 'PENDING_REVIEW',
+  CONFIRMED: 'CONFIRMED',
+  REJECTED: 'REJECTED'
+};
+
+exports.ContractTerminationType = exports.$Enums.ContractTerminationType = {
+  FOR_CONVENIENCE: 'FOR_CONVENIENCE',
+  FOR_CAUSE: 'FOR_CAUSE',
+  MUTUAL: 'MUTUAL',
+  EXPIRY: 'EXPIRY',
+  OTHER: 'OTHER'
+};
+
+exports.ProjectStatusCategory = exports.$Enums.ProjectStatusCategory = {
+  DRAFT: 'DRAFT',
+  PLANNED: 'PLANNED',
+  NOT_STARTED: 'NOT_STARTED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  ON_HOLD: 'ON_HOLD',
+  BLOCKED: 'BLOCKED',
+  READY_FOR_COMPLETION: 'READY_FOR_COMPLETION',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+  ARCHIVED: 'ARCHIVED'
+};
+
+exports.ProjectHealth = exports.$Enums.ProjectHealth = {
+  HEALTHY: 'HEALTHY',
+  AT_RISK: 'AT_RISK',
+  BLOCKED: 'BLOCKED',
+  CRITICAL: 'CRITICAL',
+  UNKNOWN: 'UNKNOWN'
+};
+
+exports.CalculationMode = exports.$Enums.CalculationMode = {
+  MANUAL: 'MANUAL',
+  AUTOMATIC: 'AUTOMATIC',
+  HYBRID: 'HYBRID'
+};
+
+exports.ProjectPriority = exports.$Enums.ProjectPriority = {
+  CRITICAL: 'CRITICAL',
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW'
+};
+
+exports.ProjectVisibility = exports.$Enums.ProjectVisibility = {
+  INTERNAL: 'INTERNAL',
+  CUSTOMER_VISIBLE: 'CUSTOMER_VISIBLE'
+};
+
+exports.ProjectItemStatus = exports.$Enums.ProjectItemStatus = {
+  PLANNED: 'PLANNED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  AT_RISK: 'AT_RISK',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED'
+};
+
+exports.DeliverableStatus = exports.$Enums.DeliverableStatus = {
+  PLANNED: 'PLANNED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  READY_FOR_REVIEW: 'READY_FOR_REVIEW',
+  SUBMITTED: 'SUBMITTED',
+  CHANGES_REQUESTED: 'CHANGES_REQUESTED',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED'
+};
+
+exports.AcceptanceStatus = exports.$Enums.AcceptanceStatus = {
+  PENDING: 'PENDING',
+  PASSED: 'PASSED',
+  FAILED: 'FAILED',
+  WAIVED: 'WAIVED'
+};
+
+exports.DependencyItemType = exports.$Enums.DependencyItemType = {
+  PROJECT: 'PROJECT',
+  WORKSTREAM: 'WORKSTREAM',
+  MILESTONE: 'MILESTONE',
+  DELIVERABLE: 'DELIVERABLE',
+  TASK: 'TASK',
+  EXTERNAL: 'EXTERNAL'
+};
+
+exports.DependencyType = exports.$Enums.DependencyType = {
+  FINISH_TO_START: 'FINISH_TO_START',
+  START_TO_START: 'START_TO_START',
+  FINISH_TO_FINISH: 'FINISH_TO_FINISH',
+  START_TO_FINISH: 'START_TO_FINISH',
+  BLOCKS: 'BLOCKS',
+  RELATED: 'RELATED'
+};
+
+exports.DependencyStatus = exports.$Enums.DependencyStatus = {
+  OPEN: 'OPEN',
+  RESOLVED: 'RESOLVED',
+  CANCELLED: 'CANCELLED'
+};
+
+exports.Severity = exports.$Enums.Severity = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL'
+};
+
+exports.RiskStatus = exports.$Enums.RiskStatus = {
+  OPEN: 'OPEN',
+  MONITORING: 'MONITORING',
+  MITIGATED: 'MITIGATED',
+  ACCEPTED: 'ACCEPTED',
+  RESOLVED: 'RESOLVED',
+  CLOSED: 'CLOSED'
+};
+
+exports.ProjectIssueKind = exports.$Enums.ProjectIssueKind = {
+  ISSUE: 'ISSUE',
+  BLOCKER: 'BLOCKER'
+};
+
+exports.ProjectIssueStatus = exports.$Enums.ProjectIssueStatus = {
+  OPEN: 'OPEN',
+  IN_PROGRESS: 'IN_PROGRESS',
+  RESOLVED: 'RESOLVED',
+  CLOSED: 'CLOSED',
+  CANCELLED: 'CANCELLED'
+};
+
+exports.ProjectChangeRequestStatus = exports.$Enums.ProjectChangeRequestStatus = {
+  REQUESTED: 'REQUESTED',
+  UNDER_REVIEW: 'UNDER_REVIEW',
+  ESTIMATING: 'ESTIMATING',
+  AWAITING_APPROVAL: 'AWAITING_APPROVAL',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  SCHEDULED: 'SCHEDULED',
+  IMPLEMENTED: 'IMPLEMENTED',
+  CANCELLED: 'CANCELLED'
+};
+
+exports.ProjectGateKind = exports.$Enums.ProjectGateKind = {
+  APPROVAL: 'APPROVAL',
+  QUALITY: 'QUALITY'
+};
+
+exports.ProjectGateStatus = exports.$Enums.ProjectGateStatus = {
+  PENDING: 'PENDING',
+  PASSED: 'PASSED',
+  FAILED: 'FAILED',
+  WAIVED: 'WAIVED'
+};
+
+exports.ProjectReviewType = exports.$Enums.ProjectReviewType = {
+  KICKOFF: 'KICKOFF',
+  MILESTONE: 'MILESTONE',
+  DELIVERY: 'DELIVERY',
+  QUALITY: 'QUALITY',
+  CUSTOMER: 'CUSTOMER',
+  POST_PROJECT: 'POST_PROJECT',
+  RETROSPECTIVE: 'RETROSPECTIVE'
+};
+
+exports.EscalationStatus = exports.$Enums.EscalationStatus = {
+  OPEN: 'OPEN',
+  ACKNOWLEDGED: 'ACKNOWLEDGED',
+  RESOLVED: 'RESOLVED',
+  CLOSED: 'CLOSED'
+};
+
+exports.HandoverStatus = exports.$Enums.HandoverStatus = {
+  PLANNED: 'PLANNED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED'
+};
+
+exports.ProjectRelationType = exports.$Enums.ProjectRelationType = {
+  RELATED: 'RELATED',
+  DEPENDENCY: 'DEPENDENCY',
+  REPLACEMENT: 'REPLACEMENT',
+  FOLLOW_UP: 'FOLLOW_UP',
+  MAINTENANCE_FOR: 'MAINTENANCE_FOR',
+  CONTINUATION_OF: 'CONTINUATION_OF'
+};
+
+exports.TaskStatusCategory = exports.$Enums.TaskStatusCategory = {
+  BACKLOG: 'BACKLOG',
+  TODO: 'TODO',
+  IN_PROGRESS: 'IN_PROGRESS',
+  IN_REVIEW: 'IN_REVIEW',
+  BLOCKED: 'BLOCKED',
+  DONE: 'DONE',
+  CANCELLED: 'CANCELLED'
+};
+
+exports.CycleStatus = exports.$Enums.CycleStatus = {
+  PLANNED: 'PLANNED',
+  ACTIVE: 'ACTIVE',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED'
+};
+
+exports.TaskPriority = exports.$Enums.TaskPriority = {
+  NONE: 'NONE',
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  URGENT: 'URGENT'
+};
+
+exports.TaskDependencyType = exports.$Enums.TaskDependencyType = {
+  BLOCKS: 'BLOCKS',
+  RELATED: 'RELATED',
+  DUPLICATE_OF: 'DUPLICATE_OF'
+};
+
+exports.TaskCommentVisibility = exports.$Enums.TaskCommentVisibility = {
+  INTERNAL: 'INTERNAL',
+  CUSTOMER_VISIBLE: 'CUSTOMER_VISIBLE'
+};
+
+exports.ReleaseStatus = exports.$Enums.ReleaseStatus = {
+  PLANNED: 'PLANNED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  RELEASED: 'RELEASED',
+  CANCELLED: 'CANCELLED'
+};
+
+exports.DeploymentStatus = exports.$Enums.DeploymentStatus = {
+  PENDING: 'PENDING',
+  IN_PROGRESS: 'IN_PROGRESS',
+  SUCCEEDED: 'SUCCEEDED',
+  FAILED: 'FAILED',
+  ROLLED_BACK: 'ROLLED_BACK'
+};
+
 exports.Prisma.ModelName = {
   User: 'User',
   PasswordResetToken: 'PasswordResetToken',
-  Document: 'Document'
+  UserAuthMethod: 'UserAuthMethod',
+  UserSession: 'UserSession',
+  UserPreference: 'UserPreference',
+  Organization: 'Organization',
+  OrganizationSecurityPolicy: 'OrganizationSecurityPolicy',
+  OrganizationDomain: 'OrganizationDomain',
+  OrganizationModule: 'OrganizationModule',
+  Branch: 'Branch',
+  BranchManager: 'BranchManager',
+  BranchHoliday: 'BranchHoliday',
+  Team: 'Team',
+  TeamMembership: 'TeamMembership',
+  Membership: 'Membership',
+  MembershipBranch: 'MembershipBranch',
+  MembershipModuleAccess: 'MembershipModuleAccess',
+  Permission: 'Permission',
+  Role: 'Role',
+  RolePermission: 'RolePermission',
+  RoleAssignment: 'RoleAssignment',
+  PermissionGrant: 'PermissionGrant',
+  Delegation: 'Delegation',
+  Invitation: 'Invitation',
+  SsoConfiguration: 'SsoConfiguration',
+  SsoGroupMapping: 'SsoGroupMapping',
+  ServiceAccount: 'ServiceAccount',
+  ApiKey: 'ApiKey',
+  CustomerPortalMembership: 'CustomerPortalMembership',
+  AuditEvent: 'AuditEvent',
+  Document: 'Document',
+  CustomFieldGroup: 'CustomFieldGroup',
+  CustomFieldDefinition: 'CustomFieldDefinition',
+  CustomFieldValue: 'CustomFieldValue',
+  Tag: 'Tag',
+  Tagging: 'Tagging',
+  SavedView: 'SavedView',
+  CrmLeadSource: 'CrmLeadSource',
+  CrmLeadStatus: 'CrmLeadStatus',
+  CrmLifecycleStage: 'CrmLifecycleStage',
+  CrmLifecycleHistory: 'CrmLifecycleHistory',
+  CrmPipeline: 'CrmPipeline',
+  CrmPipelineStage: 'CrmPipelineStage',
+  CrmCompany: 'CrmCompany',
+  CrmCompanyBranch: 'CrmCompanyBranch',
+  CrmContact: 'CrmContact',
+  CrmLead: 'CrmLead',
+  CrmDeal: 'CrmDeal',
+  CrmDealContact: 'CrmDealContact',
+  CrmDealLineItem: 'CrmDealLineItem',
+  CrmDealStageHistory: 'CrmDealStageHistory',
+  CrmActivity: 'CrmActivity',
+  CrmActivityParticipant: 'CrmActivityParticipant',
+  CrmNote: 'CrmNote',
+  CrmAssignmentRule: 'CrmAssignmentRule',
+  CrmImportJob: 'CrmImportJob',
+  NumberSequence: 'NumberSequence',
+  ProposalTemplate: 'ProposalTemplate',
+  Proposal: 'Proposal',
+  ProposalVersion: 'ProposalVersion',
+  ProposalSection: 'ProposalSection',
+  ProposalLineItem: 'ProposalLineItem',
+  ProposalPaymentScheduleItem: 'ProposalPaymentScheduleItem',
+  ProposalApproval: 'ProposalApproval',
+  ProposalComment: 'ProposalComment',
+  ProposalDelivery: 'ProposalDelivery',
+  ProposalEvent: 'ProposalEvent',
+  ProposalAcceptance: 'ProposalAcceptance',
+  ContractType: 'ContractType',
+  ContractTemplate: 'ContractTemplate',
+  ContractTemplateVersion: 'ContractTemplateVersion',
+  ContractClause: 'ContractClause',
+  ContractClauseVersion: 'ContractClauseVersion',
+  ContractApprovalRule: 'ContractApprovalRule',
+  Contract: 'Contract',
+  ContractParty: 'ContractParty',
+  ContractSignatory: 'ContractSignatory',
+  ContractProject: 'ContractProject',
+  ContractVersion: 'ContractVersion',
+  ContractSection: 'ContractSection',
+  ContractReview: 'ContractReview',
+  ContractComment: 'ContractComment',
+  ContractChangeRequest: 'ContractChangeRequest',
+  ContractApproval: 'ContractApproval',
+  SignatureRequest: 'SignatureRequest',
+  Signer: 'Signer',
+  SignatureEvent: 'SignatureEvent',
+  ContractObligation: 'ContractObligation',
+  ContractTermination: 'ContractTermination',
+  ProjectType: 'ProjectType',
+  ProjectStatus: 'ProjectStatus',
+  ProjectTemplate: 'ProjectTemplate',
+  ProjectTemplateVersion: 'ProjectTemplateVersion',
+  Project: 'Project',
+  ProjectBranch: 'ProjectBranch',
+  ProjectMember: 'ProjectMember',
+  ProjectStakeholder: 'ProjectStakeholder',
+  ProjectObjective: 'ProjectObjective',
+  ProjectWorkstream: 'ProjectWorkstream',
+  ProjectMilestone: 'ProjectMilestone',
+  ProjectDeliverable: 'ProjectDeliverable',
+  ProjectAcceptanceCriterion: 'ProjectAcceptanceCriterion',
+  ProjectDependency: 'ProjectDependency',
+  ProjectRisk: 'ProjectRisk',
+  ProjectIssue: 'ProjectIssue',
+  ProjectDecision: 'ProjectDecision',
+  ProjectStatusUpdate: 'ProjectStatusUpdate',
+  ProjectChangeRequest: 'ProjectChangeRequest',
+  ProjectGate: 'ProjectGate',
+  ProjectReview: 'ProjectReview',
+  ProjectAllocation: 'ProjectAllocation',
+  ProjectChecklist: 'ProjectChecklist',
+  ProjectChecklistItem: 'ProjectChecklistItem',
+  ProjectEscalation: 'ProjectEscalation',
+  ProjectHandover: 'ProjectHandover',
+  ProjectCloseout: 'ProjectCloseout',
+  ProjectRelation: 'ProjectRelation',
+  ProjectExternalReference: 'ProjectExternalReference',
+  TaskStatus: 'TaskStatus',
+  TaskType: 'TaskType',
+  TaskLabel: 'TaskLabel',
+  Cycle: 'Cycle',
+  Task: 'Task',
+  TaskAssignee: 'TaskAssignee',
+  TaskLabelAssignment: 'TaskLabelAssignment',
+  TaskDependency: 'TaskDependency',
+  TaskChecklistItem: 'TaskChecklistItem',
+  TaskComment: 'TaskComment',
+  TaskAttachment: 'TaskAttachment',
+  TaskLink: 'TaskLink',
+  TaskWatcher: 'TaskWatcher',
+  Release: 'Release',
+  ReleaseDeployment: 'ReleaseDeployment'
 };
 
 /**
