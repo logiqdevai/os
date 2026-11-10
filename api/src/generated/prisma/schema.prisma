@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AuthRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+  SUPPORT
+}
+
+enum DocumentType {
+  LOGO
+  BANNER
+  IMAGE
+  VIDEO
+  AUDIO
+  PDF
+  DOCUMENT
+  OTHER
+}
+
+model User {
+  id       String  @id @default(uuid())
+  email    String  @unique
+  phone    String? @unique
+  password String
+
+  role       AuthRole
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  password_reset_tokens PasswordResetToken[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([id])
+  @@map("users")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(uuid())
+  token_hash String    @unique
+  user_uuid  String
+  expires_at DateTime
+  used_at    DateTime?
+  created_at DateTime  @default(now())
+
+  user User @relation(fields: [user_uuid], references: [id], onDelete: Cascade)
+
+  @@index([user_uuid])
+  @@index([expires_at])
+  @@map("password_reset_tokens")
+}
+
+model Document {
+  id         String       @id @default(uuid())
+  user_uuid  String
+  filename   String
+  mimetype   String
+  size       Int
+  url        String
+  path       String
+  type       DocumentType @default(LOGO)
+  created_at DateTime     @default(now())
+
+  @@index([user_uuid])
+  @@index([id])
+  @@map("documents")
+}

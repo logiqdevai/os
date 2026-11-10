@@ -1,0 +1,811 @@
+---
+description: Architectural rules, naming conventions, and coding patterns for the shadcn/ui React + TypeScript starters (react-starter, nextjs-app). The HeroUI starter in app/ uses app-code-structure-and-best-practices.mdc instead. Follow when reading, writing, or refactoring app code. Static enum labels/options/descriptions MUST live in config/constants/dropdowns/ — never in features/utils or inline in components.
+globs: react-starter/**, nextjs-app/**
+alwaysApply: false
+---
+
+# AI Agent Rules — React + TypeScript + shadcn/ui Project
+
+## 1. Purpose
+
+This file defines architectural rules, naming conventions, and coding patterns for AI coding agents working in a React + TypeScript project. Follow these rules precisely when reading, writing, or refactoring code.
+
+---
+
+## 2. Project Structure Guidelines
+
+```
+src/
+├── App.tsx                        # Root: Router > QueryProvider > AppRoutes
+├── main.tsx                       # Entry point
+├── index.css                      # Tailwind v4 CSS-first config + design tokens (globals.css in nextjs-app)
+├── routes/
+│   └── routes.ts                  # Centralized Routes object (all frontend paths)
+├── config/
+│   ├── api/
+│   │   ├── axios.ts               # Axios instance with auth interceptor
+│   │   └── routes.ts              # Centralized ApiRoutes object (all API endpoints)
+│   ├── environments/
+│   │   └── index.ts               # Typed and exported env vars
+│   └── constants/                 # Static maps and dropdown options
+│       └── dropdowns/             # Select / dropdown option arrays by domain folder
+├── features/                      # Domain modules (see Feature Module Pattern)
+├── pages/                         # Route-level page components
+├── components/
+│   ├── layout/                    # Layout shells (sidebar, header, etc.)
+│   ├── ui/                        # shadcn/ui base components + custom primitives
+│   └── providers/                 # React context providers
+├── stores/                        # Zustand stores
+├── hooks/                         # Global reusable hooks (not feature-specific)
+├── lib/                           # Pure utility functions (incl. dropdown-option-label.utils.ts)
+├── interfaces/                    # Shared cross-domain interfaces
+└── types/                         # Global TypeScript declarations
+```
+
+### Feature Module Pattern
+
+Every domain feature lives in `src/features/<feature-name>/` and follows this structure:
+
+```
+features/<feature-name>/
+├── hooks/
+│   └── use-<feature-name>.ts         # TanStack Query hooks (useQuery / useMutation)
+├── interfaces/
+│   └── <feature-name>.interfaces.ts  # TypeScript interfaces + DTO types + const enums
+├── services/
+│   └── <feature-name>.services.ts    # Plain async functions wrapping axiosInstance
+└── validation-schemas/               # (optional — only if feature has forms)
+    └── <feature-name>.schema.ts      # Zod schemas + inferred types
+```
+
+Optional `utils/` under a feature is only for **non-UI business helpers** (e.g. payload mappers, link resolution from API shapes). It must **not** contain enum labels, select options, descriptions, or other static display vocabulary — those belong in `config/constants/dropdowns/`.
+
+**Never create `components/` under `features/`.** Features are data-only modules (hooks, services, interfaces, schemas). All React UI lives in `pages/<section>/components/` or `components/ui/`.
+
+### Page Structure
+
+Pages live in `src/pages/<section>/` and may contain nested sub-pages:
+
+```
+pages/<section>/
+├── index.tsx                      # Top-level page component (route entry)
+├── components/                    # Page-local components (not reused elsewhere)
+├── hooks/                         # Page-local hooks (UI state only, no API calls)
+├── pages/                         # Sub-pages (e.g., new-item, edit-item)
+├── utils/                         # Page-local utility functions
+└── validation-schemas/            # Page-local Zod schemas (if not in features/)
+```
+
+**Do:** Put all data-fetching logic in `features/`. Pages import hooks, services, interfaces, and schemas from features.  
+**Don't:** Put API calls, Zod schemas, or React components inside `features/`.  
+**Don't:** Create `features/<feature-name>/components/` — page-local UI belongs in `pages/<section>/components/`.
+
+### Static UI vocabulary (dropdowns, labels, descriptions)
+
+**All static human-readable enum vocabulary belongs in `src/config/constants/dropdowns/`.** This is not limited to `<Select>` / `<DropdownMenu>` data. It includes anything that maps a domain enum/id to display text:
+
+- Filter/toolbar select options (`{ id, label }[]`)
+- Form select options (`{ id, label }[]`)
+- Short descriptions shown in cards or help text (`{ id, description }[]` or `Record<Enum, string>`)
+- Chip/badge/table display labels for enum values
+- `get<Entity><Field>Label()` / `get<Entity><Field>Description()` helpers tied to that vocabulary
+
+**Canonical location:** `src/config/constants/dropdowns/<domain-folder>/<domain>-<context>.options.ts`
+
+Domain folders: `agencies`, `scrapers`, `properties`, `integrations`, `notifications`, `users`, `jobs`, `shared`.
+
+**Never put this data in:**
+
+- `features/**/utils/**` (including `*-label.utils.ts`, `*-description.utils.ts`, `*-options.ts`)
+- `pages/**/components/**` or `pages/**/index.tsx` (no inline `const xLabel: Record<...>` / `const xOptions = [...]`)
+- `pages/**/utils/**`
+- `features/**/components/**`
+- `lib/**` (except the single shared reader below)
+
+`features/` is **data-only** (hooks, services, interfaces, validation-schemas). It must not own display labels, select options, or React UI.
+
+#### File naming
+
+One file per option set, under the matching domain folder. Use a suffix that matches usage:
+
+| Suffix | Purpose | Example |
+| --- | --- | --- |
+| `-filter.options.ts` | Toolbar/filter `<Select>` with `{ id: T \| "all", label }` | `agencies/agency-status-filter.options.ts` |
+| `-form.options.ts` | Form `<Select>` with `{ id: T, label }` — often the **canonical label source** | `integrations/integration-type-form.options.ts` |
+| `-description.options.ts` | Card/help copy keyed by enum | `integrations/integration-type-description.options.ts` |
+| `.options.ts` (no suffix) | Shared static lists not tied to filter/form | `shared/country.options.ts`, `shared/timezone.options.ts` |
+
+**Export naming:** `PascalCase` + `Options` suffix (`AgencyStatusFilterOptions`, `IntegrationTypeFormOptions`).
+
+#### Shapes
+
+- **Filter:** `{ id: T | "all"; label: string }[]` — first entry `{ id: "all", label: "..." }` when applicable
+- **Form:** `{ id: T; label: string }[]`
+- **Description:** `{ id: T; description: string }[]` or `Record<T, string>` when labels are not `{ id, label }[]`
+- Import enum types from `@/features/<feature>/interfaces/` — dropdown files do not redefine enums
+
+#### Canonical source & reuse (mandatory)
+
+When the same enum labels appear in filter + form + chips + tables:
+
+1. Define labels once in `<domain>-form.options.ts` (or the filter file if there is no form select).
+2. `<domain>-filter.options.ts` spreads the form/canonical list: `[{ id: "all", ... }, ...FormOptions]`.
+3. `<domain>-description.options.ts` holds descriptions only — do not duplicate labels there.
+4. **Do not** import dropdown data from `features/**`. Dropdown files may import types from `features/**/interfaces/` only.
+
+#### Label/description getters
+
+- Export `get<Domain><Context>Label()` / `get<Domain><Context>Description()` from the **same** `*.options.ts` file that owns the data.
+- For reading labels from a filter/form options array in chips or tables, use the shared helper  
+  `getDropdownOptionLabel()` from `@/lib/dropdown-option-label.utils.ts` — do **not** copy a local `find()` helper per component.
+- Do **not** create per-domain label utils under `features/` or `pages/`.
+
+#### Chips, badges, and tables
+
+Status/type chips **must** resolve display text from `config/constants/dropdowns/` (via `getDropdownOptionLabel` or a co-located `get*Label`).
+
+**Wrong — label map in a chip component:**
+
+```tsx
+const statusLabel: Record<AgencyStatus, string> = {
+  [AgencyStatuses.ACTIVE]: "Active",
+  ...
+};
+<Badge>{statusLabel[status]}</Badge>
+```
+
+**Correct:**
+
+```tsx
+import { AgencyStatusFilterOptions } from "@/config/constants/dropdowns/agencies/agency-status-filter.options";
+import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
+
+<Badge>{getDropdownOptionLabel(AgencyStatusFilterOptions, status)}</Badge>
+```
+
+Badge/chip color maps (`Record<Enum, string>` of Tailwind classes) may stay in the component — only **text vocabulary** is centralized.
+
+#### Hard bans (agents must not generate)
+
+- `features/<feature>/utils/*-label.utils.ts`
+- `features/<feature>/utils/*-description.utils.ts`
+- `features/<feature>/utils/*-options.ts`
+- `const <name>Options = [...]` or `const <name>Label: Record<...>` in pages/components (except the exceptions below)
+- `features/<feature>/components/**` for any UI, including chips and forms
+- Dropdown files that re-export data from `features/**/utils/**`
+- Duplicating the same `{ id, label }` list in a second file when an existing `*.options.ts` already defines it
+- Using `enumValue.replace(/_/g, " ")` or `role.replace("_", " ")` for user-visible labels when a dropdown options file exists or should exist
+
+#### Allowed exceptions
+
+- **Runtime/API-derived options only** — mapping fetched entities to `{ id, label }` in the component or hook that owns that query (e.g. connection picker built from `useUserIntegrationConnections()`).
+- **Ephemeral action menus** — row action definitions local to a table (`{ id: "delete", label: "Delete" }`) when they are not reused enum vocabulary.
+- **Badge/chip color maps** — visual styling (Tailwind classes) keyed by enum, not display strings.
+
+#### Agent checklist (before finishing any UI task)
+
+1. Adding or changing enum display text? → edit/create `config/constants/dropdowns/<domain>/*.options.ts` first.
+2. Need a label in a chip, table cell, modal title, or card? → import from dropdowns; never add a local `Record<..., string>`.
+3. Filter and form share labels? → one canonical file; filter spreads it.
+4. Tempted to add `features/.../utils/...label...`? → stop; use dropdowns.
+5. New enum value? → update **every** related `*.options.ts` (form, filter, description, chips) in the same change.
+
+---
+
+## 3. Naming Conventions
+
+### Files
+
+- All files: `kebab-case` (e.g., `use-feature-name.ts`, `feature-name.services.ts`)
+- Exception: shadcn/ui components may use `PascalCase.tsx`
+
+### Components
+
+- Function names: `PascalCase`
+- Page components: `<Domain>Page`
+- Modal components: `<Domain>Modal`
+- Form components: `<Domain>Form`
+
+### Hooks
+
+- File: `use-kebab-case.ts`
+- Function: `useCamelCase` (e.g., file `use-feature-name.ts` → exports `useFeatureName`)
+- Query hooks: `useGet<Entity>` or `use<Entity>`
+- Mutation hooks: `useCreate<Entity>`, `useUpdate<Entity>`, `useDelete<Entity>`
+
+### Types and Interfaces
+
+- Interface files: `<feature>.interfaces.ts`
+- Interface names: `PascalCase`, no `I` prefix
+- DTO types: `<Action><Entity>Dto` (e.g., `CreateEntityDto`, `UpdateEntityDto`)
+- Query param types: `<Entity>QueryType` or `<Entity>Query`
+
+### Validation Schemas
+
+- File: `<feature>.schema.ts`
+- Schema names: `camelCase` + `Schema` suffix (e.g., `createEntitySchema`)
+- Inferred types: `<Action><Entity>FormData` or `<Entity>FormValues`
+
+### Zustand Stores
+
+- File: `<domain>.ts` in `src/stores/`
+- Hook export: `use<Domain>Store`
+- State accessor: `get<Domain>StoreState()` (for non-React contexts)
+- Store key constant: `const STORE_KEY = "<domain>"` (kebab-case string)
+
+---
+
+## 4. Component Guidelines
+
+- Page components manage modal open/close state and selected entity identifier
+- Delegate API calls to feature hooks; delegate UI state to page-local hooks
+- Use `FC` type annotation with explicit props interface
+- Default export for pages and layouts; named exports for reusable components
+- shadcn/ui components live in `components/ui/` and must not be modified directly — extend via wrappers
+- Use `variant` prop pattern from `class-variance-authority` (cva) in base UI components
+
+### Shared UI reuse (`components/ui/`)
+
+**Before creating any new UI primitive**, list and read what already exists under `src/components/ui/`. Reuse or extend an existing component instead of duplicating markup in a page. Visual tokens and patterns live in the project's design doc (`nextjs-app/DESIGN.md`, or the repo-root `DESIGN.MD`), mapped to CSS variables in the global stylesheet.
+
+Current shared primitives (extend this list as new ones land). Standard shadcn primitives (`button`, `dialog`, `select`, `dropdown-menu`, `command`, `popover`, `tabs`, `checkbox`, `switch`, `sheet`, `tooltip`, `skeleton`, `table`, …) live in `src/components/ui/` — add missing ones with `npx shadcn@latest add <component>`. Check which starter you are in: not every file exists in both.
+
+| File | Use for | react-starter | nextjs-app |
+| --- | --- | --- | --- |
+| `button.tsx` | All buttons; show pending state on the triggering control (no loading text) | ✓ | ✓ |
+| `password-input.tsx` | Password credential fields | ✓ | add if needed |
+| `form.tsx` | React Hook Form field wrappers (`Form`, `FormField`, `FormItem`, `FormLabel`, `FormControl`, `FormMessage`) | ✓ | use `field.tsx` or add `form` |
+| `toast.tsx` / `toaster.tsx` | Mutation feedback (via `toast()` from `@/hooks/use-toast`) | ✓ | ✓ (`toast.tsx`) |
+| `skeleton.tsx` | Loading placeholders | ✓ | ✓ |
+| `confirmation-dialog.tsx` | Destructive confirmations (delete, disconnect) via shadcn `Dialog` | ✓ | add (copy from react-starter) |
+| `select.tsx` / `select-dropdown.tsx` | Single-value pickers (`select-dropdown` wraps `Select` for forms) | ✓ | `select.tsx` |
+| `table.tsx` | Data tables | ✓ | ✓ |
+| `sheet.tsx` | Side panels (details, logs) | ✓ | ✓ |
+
+**Placement rule:**
+
+- **Used by one page route** → `pages/<section>/components/` (import via `./components/<file>`)
+- **Used by multiple pages in the same section** (e.g. admin list + detail) → `pages/<section>/components/` (shared within that section folder)
+- **Used by multiple pages across sections** → copy into each page's `components/` folder **or** promote to `src/components/ui/` when the component is presentational and identical everywhere
+- **Reused app-wide primitives** (buttons, skeletons, dialogs) → `src/components/ui/`
+
+**Never** place UI in `features/<feature>/components/`. If a form or chip is tied to a domain, colocate it with the page that renders it and import domain types/hooks from `@/features/<feature>/`.
+
+When adding a shared component to `components/ui/`, keep it presentational — no API calls, no feature hooks.
+
+### Loading states — shadcn Skeleton only
+
+While TanStack Query reports `isPending` / `isLoading`, render a **layout-shaped skeleton** — never a text label.
+
+**Do not use:** `"Loading..."`, `"Please wait"`, centered spinner-only placeholders, or any loading copy as the primary loading UI.
+
+**Do use:** `Skeleton` from `@/components/ui/skeleton`, sized to match the final layout (table rows, detail header, form fields, card grid):
+
+```tsx
+import { Skeleton } from "@/components/ui/skeleton";
+
+if (isPending) {
+  return (
+    <div className="flex flex-col gap-3">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <Skeleton key={i} className="h-10 w-full rounded-lg" />
+      ))}
+    </div>
+  );
+}
+```
+
+When the same skeleton layout appears on more than one page, extract it to `src/components/ui/` **after checking no equivalent already exists** (e.g. `table-skeleton.tsx`).
+
+Mutations may still show a pending state on the triggering control (`<Button loading>` in react-starter, `disabled` + spinner otherwise) — that is not a page-level loading label.
+
+### Destructive actions — `ConfirmationDialog`
+
+**Never** delete, disconnect or discard on a bare button press. Always confirm through the shared `ConfirmationDialog` in `components/ui/confirmation-dialog.tsx`.
+
+Pattern:
+
+```tsx
+import { useState } from "react";
+import ConfirmationDialog from "@/components/ui/confirmation-dialog";
+
+const [deleting, setDeleting] = useState<Target | null>(null);
+
+<Button variant="destructive" onClick={() => setDeleting(target)}>Delete</Button>
+
+<ConfirmationDialog
+  isOpen={!!deleting}
+  onClose={() => setDeleting(null)}
+  title="Delete integration target?"
+  description="This action cannot be undone."
+  confirmText="Delete"
+  variant="destructive"
+  onConfirm={() => deleting && deleteTarget.mutate(deleting.id, { onSuccess: () => setDeleting(null) })}
+  isLoading={deleteTarget.isPending}
+/>
+```
+
+Use `confirmText="Disconnect"` for integration disconnect flows. Reuse the same component — do not build one-off alert modals per page.
+
+### shadcn — Dialog
+
+Use `Dialog` from `@/components/ui/dialog` for every modal. Keep open state in the page (`useState`) or, for app-wide dialogs triggered from many places, in a Zustand store.
+
+```tsx
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+<Dialog open={open} onOpenChange={(o) => !mutation.isPending && setOpen(o)}>
+  <DialogContent className="max-w-md">
+    <DialogHeader>
+      <DialogTitle>Title</DialogTitle>
+      <DialogDescription>Short explanation.</DialogDescription>
+    </DialogHeader>
+    {/* body / form */}
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setOpen(false)} disabled={mutation.isPending}>Cancel</Button>
+      <Button type="submit" loading={mutation.isPending}>Save</Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
+
+Rules:
+
+- Every `DialogContent` has a `DialogTitle` (screen readers require it; use `className="sr-only"` if it must be hidden)
+- Block closing (`onOpenChange` guard) while a mutation inside the dialog is in flight
+- For destructive confirms, reuse `ConfirmationDialog`
+- Side panels (logs, details) use `Sheet`; command palettes use `CommandDialog`
+
+### shadcn — Table
+
+Use `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell` from `@/components/ui/table`:
+
+```tsx
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Name</TableHead>
+      <TableHead>Email</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    {rows.map((row) => (
+      <TableRow key={row.id}>
+        <TableCell>{row.name}</TableCell>
+        <TableCell>{row.email}</TableCell>
+      </TableRow>
+    ))}
+  </TableBody>
+</Table>
+```
+
+### Dropdowns — shadcn only (never plain HTML)
+
+Every dropdown, select, or menu **must** use the shared shadcn components. **Never** render a plain HTML `<select>` / `<option>` / `<datalist>`, or hand-roll a dropdown from `<div>`/`<ul>` + state.
+
+| Need                                   | Use                                                              |
+| -------------------------------------- | ---------------------------------------------------------------- |
+| Pick one value (form, filter)          | `@/components/ui/select` (or the `select-dropdown.tsx` wrapper)  |
+| Searchable / type-ahead pick           | `Popover` + `Command` (combobox pattern)                         |
+| Action menu (row actions, kebab, user) | `@/components/ui/dropdown-menu`                                  |
+| Right-click menu                       | `@/components/ui/context-menu`                                   |
+| Command palette                        | `@/components/ui/command` (`CommandDialog`)                      |
+
+Before writing a dropdown, check `components/ui/` for an existing shared wrapper and reuse it. If a primitive is missing, add it with `npx shadcn@latest add <component>`.
+
+### shadcn — Select (accessible name required)
+
+Every `Select` needs an accessible name.
+
+**Form fields — `FormLabel` in the `FormItem`, trigger wrapped in `FormControl`:**
+
+```tsx
+<FormField
+  control={form.control}
+  name="agency_id"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Agency</FormLabel>
+      <Select value={field.value} onValueChange={field.onChange}>
+        <FormControl>
+          <SelectTrigger>
+            <SelectValue placeholder="Choose an agency" />
+          </SelectTrigger>
+        </FormControl>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+```
+
+**Toolbar / filter selects without visible labels — put `aria-label` on the trigger:**
+
+```tsx
+<Select value={status} onValueChange={setStatus}>
+  <SelectTrigger aria-label="Filter by status">
+    <SelectValue />
+  </SelectTrigger>
+  <SelectContent>...</SelectContent>
+</Select>
+```
+
+`SelectItem` values must be non-empty strings — use a sentinel such as `"all"` for "no filter".
+
+---
+
+## 5. Hooks Guidelines
+
+- Feature query hooks live in `features/<feature-name>/hooks/`
+- Page-local hooks live in `pages/<section>/hooks/` and manage UI state only (no API calls)
+- Every mutation hook **must** call `toast()` in both `onSuccess` and `onError`
+- `onSuccess` **must** call `queryClient.invalidateQueries` with the base query key
+- Use `enabled: !!param` for conditional queries that depend on a runtime value
+- Query keys: kebab-case string matching the entity name (e.g., `["entity-name"]`)
+
+---
+
+## 6. State Management Guidelines
+
+Use Zustand for global client state.
+
+- All stores use `devtools` + `persist` middlewares
+- Use `partialize` when only part of the state should be persisted
+- Expose a `get<Domain>StoreState()` function for non-React contexts (e.g., Axios interceptors)
+- Store key is a `const STORE_KEY` string at the top of the store file
+
+---
+
+## 7. Forms and Validation
+
+- Always use `zodResolver` — never manual validation
+- Always use shadcn `Form`, `FormField`, `FormItem`, `FormControl`, `FormLabel`, `FormMessage` components
+- Schema files export both the Zod schema and its inferred type
+- Zod schemas live in `features/<feature-name>/validation-schemas/` or `pages/<section>/validation-schemas/`
+
+---
+
+## 8. Navigation and Routing
+
+**Never hardcode URL strings anywhere in the codebase.** Every frontend path must come from the `Routes` object exported by `@/routes/routes.ts`.
+
+This applies to **all** navigation contexts:
+- `<Link to={Routes.auth.sign_in} />`
+- `<NavLink to={Routes.dashboard.root} />`
+- `<Navigate to={Routes.dashboard.root} replace />`
+- `navigate(Routes.dashboard.leads)`
+- `window.location.href = Routes.auth.sign_in`
+- `fallbackPath` defaults in `ProtectedRoute`
+
+When adding a new route, **always add it to `routes.ts` first**, then reference it via `Routes.*`. Never write string literals like `"/dashboard"`, `"/auth/sign-in"` etc. in component or hook files.
+
+---
+
+## 9. API and Services
+
+- All API endpoints are defined in a single `ApiRoutes` object — never hardcode API path strings
+- All frontend paths are defined in a single `Routes` object in `@/routes/routes.ts` — never hardcode URL strings
+- All HTTP calls go through a shared `axiosInstance` — never use `fetch` or a raw `axios` import
+- Service functions are plain `async` functions — no React hooks inside them
+- Always wrap service calls with `try/catch`; throw a human-readable `new Error("...")` message
+- Return `response.data` directly, not the full Axios response object
+- All env vars are accessed through a typed `environments` object — never use `import.meta.env.*` directly in components or features
+
+---
+
+## 10. Styling Guidelines
+
+- Follow the project's design doc (`nextjs-app/DESIGN.md` or the repo-root `DESIGN.MD`) for colors, typography, status tokens, and component patterns
+- Use Tailwind CSS utility classes — no CSS modules, no inline `style` objects
+- Theme tokens (colors, radius, etc.) defined as CSS variables in `index.css`
+- Dark mode: `data-theme="light|dark"` on `<html>` (see `use-theme.ts`)
+- Conditional classes: always use `cn()` from `@/lib/utils`
+- Use `@/` path alias for all imports — never use relative `../../` paths across folders
+
+---
+
+## 11. TypeScript Guidelines
+
+- Use `const` objects as enums with an extracted union type — do not use the TypeScript `enum` keyword
+- No `I` prefix on interface names
+- Export DTO and form types alongside the schema or interface that defines the shape
+- Use `FC` for page and layout component type annotations with an explicit props interface
+
+---
+
+## 12. Do / Don't Rules
+
+| Do                                                           | Don't                                                |
+| ------------------------------------------------------------ | ---------------------------------------------------- |
+| Use `@/` alias for all imports                               | Use relative `../../` paths across folders           |
+| Import `Routes` from `@/routes/routes.ts` for every link/navigate | Hardcode URL strings like `"/dashboard"` anywhere |
+| Add new paths to `routes.ts` before using them               | Write path literals in `<Link>`, `navigate()`, etc.  |
+| Define all API paths in a central `ApiRoutes` object         | Hardcode API path strings in service files           |
+| Put API calls in `features/<name>/services/`                 | Call `axiosInstance` from components or hooks        |
+| Put page UI in `pages/<section>/components/`                 | Create `features/<name>/components/`                 |
+| Import page components via `./components/<file>`             | Import UI from `@/features/*/components/`            |
+| Use TanStack Query for all server state                      | Use `useState` + `useEffect` for data fetching       |
+| Call `toast()` in every mutation's `onSuccess` and `onError` | Leave mutations silent                               |
+| Use `zodResolver` with React Hook Form                       | Write manual form validation logic                   |
+| Use `cn()` for conditional classnames                        | Concatenate class strings or use `style={}`          |
+| Use shared `lib/` date helpers                               | Call `new Date().toLocaleDateString()` in components |
+| Export inferred Zod types next to schemas                    | Re-define types that duplicate schema shape          |
+| Use const-object enum pattern with extracted union type      | Use the TypeScript `enum` keyword                    |
+| `invalidateQueries` with the base key after mutations        | Target parameterized query keys in mutations         |
+| Access env vars through a typed `environments` object        | Access `import.meta.env.VITE_*` directly             |
+| Extend shadcn/ui components via wrappers                     | Modify files inside `components/ui/` directly        |
+| List `components/ui/` before creating a new primitive      | Duplicate button/form/skeleton markup per page       |
+| Put cross-page shared UI in `components/ui/`                 | Leave reusable atoms inside a single page folder     |
+| Show shadcn `Skeleton` layouts while queries are pending     | Show "Loading..." or spinner-only loading screens      |
+| Extract repeated skeleton layouts to `components/ui/`        | Copy-paste skeleton blocks across list/detail pages    |
+| Confirm deletes/disconnects with `ConfirmationDialog`        | Delete or disconnect immediately without confirmation  |
+| Use page state + `ConfirmationDialog` for destructive UX     | Build a custom confirm modal per page                 |
+| Use shadcn `Dialog` with a `DialogTitle` for every modal       | Build modals from raw divs or omit `DialogTitle`     |
+| Use shadcn `Table` / `TableHeader` / `TableRow` / `TableCell`  | Hand-roll table markup when a data table is needed   |
+| Use shadcn `Select` / `Popover`+`Command` / `DropdownMenu` / `ContextMenu` for every dropdown | Use plain HTML `<select>`/`<option>` or a hand-rolled dropdown |
+| Put `<Label>` inside `<Select>` or use `aria-label`            | Leave `Select` unlabeled or label as sibling only    |
+| Put static select/filter options in `config/constants/dropdowns/` | Define option arrays inline in pages or form components |
+| Put static labels/descriptions/getters in `config/constants/dropdowns/` | Add `*-label.utils.ts` / `*-description.utils.ts` under `features/**/utils/` |
+| Import label/description helpers from `@/config/constants/dropdowns/` | Import display vocabulary from `@/features/**/utils/` |
+| Use `getDropdownOptionLabel()` in chips/tables for enum text | Define `const statusLabel: Record<Enum, string>` in chip components |
+| Keep one canonical `*-form.options.ts`; filter files spread it | Duplicate `{ id, label }` lists across multiple files |
+| Add new enum values to all related `*.options.ts` in the same change | Update only the page and leave dropdown files stale |
+| Reuse an existing `*.options.ts` when labels match           | Duplicate the same option list in another file         |
+| Colocate runtime API-mapped `{ id, label }` with the owning hook/component | Move API-derived pickers into `config/constants/dropdowns/` |
+
+---
+
+## 13. Examples
+
+### Dropdown Options
+
+**Filter options (canonical pattern):**
+
+```ts
+import { AgencyStatuses, type AgencyStatus } from "@/features/agencies/interfaces/agencies.interfaces";
+
+export const AgencyStatusFilterOptions: { id: AgencyStatus | "all"; label: string }[] = [
+  { id: "all", label: "All statuses" },
+  { id: AgencyStatuses.ACTIVE, label: "Active" },
+  { id: AgencyStatuses.DISABLED, label: "Disabled" },
+  { id: AgencyStatuses.ARCHIVED, label: "Archived" },
+];
+```
+
+**Form options as canonical label source; filter spreads it:**
+
+```ts
+// integration-type-form.options.ts
+export const IntegrationTypeFormOptions: { id: IntegrationType; label: string }[] = [
+  { id: IntegrationTypes.OPENAI, label: "OpenAI" },
+  ...
+];
+
+export function getIntegrationTypeLabel(type: IntegrationType | string): string {
+  return IntegrationTypeFormOptions.find((option) => option.id === type)?.label ?? type;
+}
+
+// integrations/integration-type-filter.options.ts
+import { IntegrationTypeFormOptions } from "@/config/constants/dropdowns/integrations/integration-type-form.options";
+
+export const IntegrationTypeFilterOptions: { id: IntegrationType | "all"; label: string }[] = [
+  { id: "all", label: "All types" },
+  ...IntegrationTypeFormOptions,
+];
+```
+
+**Descriptions (separate file, same domain folder):**
+
+```ts
+// integrations/integration-type-description.options.ts
+export const IntegrationTypeDescriptionOptions: { id: IntegrationType; description: string }[] = [
+  { id: IntegrationTypes.OPENAI, description: "Generate and normalize listing content..." },
+  ...
+];
+
+export function getIntegrationTypeDescription(type: IntegrationType | string): string {
+  return IntegrationTypeDescriptionOptions.find((option) => option.id === type)?.description ?? "";
+}
+```
+
+**Chip display text from dropdowns:**
+
+```tsx
+import { AgencyStatusFilterOptions } from "@/config/constants/dropdowns/agencies/agency-status-filter.options";
+import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
+
+<Badge>{getDropdownOptionLabel(AgencyStatusFilterOptions, status)}</Badge>
+```
+
+**Select usage:**
+
+```tsx
+import { AgencyStatusFilterOptions } from "@/config/constants/dropdowns/agencies/agency-status-filter.options";
+
+<Select value={status} onValueChange={setStatus}>
+  <SelectTrigger aria-label="Filter by status">
+    <SelectValue />
+  </SelectTrigger>
+  <SelectContent>
+    {AgencyStatusFilterOptions.map((option) => (
+      <SelectItem key={option.id} value={option.id}>
+        {option.label}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+```
+
+### Const-Object Enum Pattern
+
+```ts
+export const StatusTypes = {
+  ACTIVE: "ACTIVE",
+  INACTIVE: "INACTIVE",
+} as const;
+export type StatusType = (typeof StatusTypes)[keyof typeof StatusTypes];
+```
+
+### Service Function
+
+```ts
+import axiosInstance from "@/config/api/axios";
+import { ApiRoutes } from "@/config/api/routes";
+
+export const getEntities = async (query?: EntityQueryType): Promise<Entity[]> => {
+  try {
+    const response = await axiosInstance.get(ApiRoutes.entities.prefix, { params: query });
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to fetch entities. Please try again.");
+  }
+};
+```
+
+### Query Hook
+
+```ts
+export const useGetEntities = (query?: EntityQueryType) => {
+  return useQuery({
+    queryKey: ["entities", query],
+    queryFn: () => getEntities(query),
+  });
+};
+
+export const useGetEntity = (id: string) => {
+  return useQuery({
+    queryKey: ["entity", id],
+    queryFn: () => getEntity(id),
+    enabled: !!id,
+  });
+};
+```
+
+### Mutation Hook
+
+```ts
+export const useCreateEntity = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createEntity,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["entities"] });
+      toast({ title: "Entity created", description: "...", duration: 2000 });
+    },
+    onError: (error) => {
+      toast({ title: "Could not create entity", description: error.message, variant: "error" });
+    },
+  });
+};
+```
+
+### Zod Schema + Inferred Type
+
+```ts
+import { z } from "zod";
+
+export const createEntitySchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+});
+
+export type CreateEntityFormData = z.infer<typeof createEntitySchema>;
+```
+
+### Form Component Setup
+
+```tsx
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+
+const form = useForm<CreateEntityFormData>({
+  resolver: zodResolver(createEntitySchema),
+  defaultValues: { name: "", description: "" },
+});
+```
+
+### Zustand Store
+
+```ts
+import { create } from "zustand";
+import { devtools, persist } from "zustand/middleware";
+
+const STORE_KEY = "domain-name";
+
+export const useDomainStore = create<DomainStore>()(devtools(persist((set) => ({ ...initialValues, setData: (data) => set((state) => ({ ...state, ...data })) }), { name: STORE_KEY })));
+
+export const getDomainStoreState = () => useDomainStore.getState();
+```
+
+### Navigation — Always Use Routes Object
+
+```ts
+export const Routes = {
+  auth: {
+    sign_in: "/auth/sign-in",
+    sign_up: "/auth/sign-up",
+  },
+  dashboard: {
+    root:      "/dashboard",
+    leads:     "/dashboard/leads",
+    settings:  "/dashboard/settings",
+  },
+};
+```
+
+```tsx
+import { Routes } from "@/routes/routes";
+
+<Link to={Routes.auth.sign_up}>Sign up</Link>
+<NavLink to={Routes.dashboard.leads}>Leads</NavLink>
+<Navigate to={Routes.dashboard.root} replace />
+navigate(Routes.dashboard.root);
+window.location.href = Routes.auth.sign_in;
+```
+
+### Conditional Classnames
+
+```tsx
+import { cn } from "@/lib/utils";
+
+<div className={cn("base-class", isActive && "active-class", className)} />;
+```
+
+### Page Component
+
+```tsx
+import { AgencyForm } from "./components/agency-form";
+import { AgencyStatusChip } from "./components/agency-status-chip";
+import { useAgencies, useCreateAgency } from "@/features/agencies/hooks/use-agencies";
+
+const FeaturePage: FC = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  return (
+    <>
+      <FeatureList
+        onItemClick={(id) => {
+          setSelectedId(id);
+          setIsModalOpen(true);
+        }}
+      />
+      <FeatureModal
+        id={selectedId}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedId(null);
+        }}
+      />
+    </>
+  );
+};
+export default FeaturePage;
+```
