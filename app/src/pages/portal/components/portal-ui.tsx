@@ -34,7 +34,7 @@ export function PortalHeader({ title, description, actions }: { title: string; d
 
 export function PortalCard({ title, action, children, className }: { title?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
     return (
-        <section className={cn("rounded-xl border border-border bg-card", className)}>
+        <section className={cn("min-w-0 rounded-xl border border-border bg-card", className)}>
             {(title || action) && (
                 <div className="flex items-center justify-between gap-2 border-b border-border-soft px-4 py-3">
                     {title && <h2 className="text-[14px] font-medium text-foreground">{title}</h2>}

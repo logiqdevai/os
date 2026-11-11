@@ -208,6 +208,11 @@
   ::placeholder {
     color: var(--ash);
   }
+  /* Grid items default to min-width:auto, so long text, tables or charts inside a card push the grid
+     wider than a phone screen. Let every grid item shrink; content inside truncates or scrolls itself. */
+  .grid > * {
+    min-width: 0;
+  }
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--border-strong) transparent;
