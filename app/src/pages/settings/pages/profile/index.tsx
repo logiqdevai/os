@@ -24,7 +24,7 @@ const AUTO = "__auto";
 export default function ProfileSettingsPage() {
     const session = useSessionData();
     const update = useUpdateProfile();
-    const form = useForm<ProfileSettingsFormValues>({ resolver: zodResolver(profileSettingsSchema) });
+    const form = useForm<ProfileSettingsFormValues>({ resolver: zodResolver(profileSettingsSchema), defaultValues: { first_name: "", last_name: "", display_name: "", profile_photo_url: "", timezone: AUTO, locale: "" } });
     const preview = form.watch();
 
     useEffect(() => {

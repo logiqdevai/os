@@ -49,7 +49,7 @@ export default function OrganizationProfilePage() {
 
     const text = (name: keyof OrganizationProfileFormValues, label: string, props: React.ComponentProps<typeof Input> = {}) => (
         <FormField control={form.control} name={name} render={({ field }) => (
-            <FormItem><FormLabel>{label}</FormLabel><FormControl><Input {...props} {...field} value={field.value as string} /></FormControl><FormMessage /></FormItem>
+            <FormItem><FormLabel>{label}</FormLabel><FormControl><Input {...props} {...field} value={(field.value as string | undefined) ?? ""} /></FormControl><FormMessage /></FormItem>
         )} />
     );
 
