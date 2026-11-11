@@ -2338,6 +2338,355 @@ exports.Prisma.ReleaseDeploymentScalarFieldEnum = {
   created_at: 'created_at'
 };
 
+exports.Prisma.CustomerPortalSettingsScalarFieldEnum = {
+  organization_id: 'organization_id',
+  enabled: 'enabled',
+  custom_domain: 'custom_domain',
+  branding: 'branding',
+  features: 'features',
+  default_role_slug: 'default_role_slug',
+  widget_settings: 'widget_settings',
+  welcome_message: 'welcome_message',
+  support_email: 'support_email',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.BillingProfileScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  company_id: 'company_id',
+  legal_name: 'legal_name',
+  billing_email: 'billing_email',
+  billing_contact_ids: 'billing_contact_ids',
+  billing_address: 'billing_address',
+  shipping_address: 'shipping_address',
+  tax_id: 'tax_id',
+  vat_number: 'vat_number',
+  tax_exempt: 'tax_exempt',
+  currency: 'currency',
+  payment_terms_days: 'payment_terms_days',
+  default_payment_method_id: 'default_payment_method_id',
+  stripe_customer_id: 'stripe_customer_id',
+  custom_pricing: 'custom_pricing',
+  notes: 'notes',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.PaymentMethodScalarFieldEnum = {
+  id: 'id',
+  billing_profile_id: 'billing_profile_id',
+  type: 'type',
+  provider: 'provider',
+  provider_method_id: 'provider_method_id',
+  brand: 'brand',
+  last4: 'last4',
+  exp_month: 'exp_month',
+  exp_year: 'exp_year',
+  bank_details: 'bank_details',
+  is_default: 'is_default',
+  disabled_at: 'disabled_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.ProductScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  slug: 'slug',
+  type: 'type',
+  description: 'description',
+  unit: 'unit',
+  default_tax_rate_id: 'default_tax_rate_id',
+  stripe_product_id: 'stripe_product_id',
+  is_active: 'is_active',
+  archived_at: 'archived_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.PriceScalarFieldEnum = {
+  id: 'id',
+  product_id: 'product_id',
+  name: 'name',
+  currency: 'currency',
+  unit_amount: 'unit_amount',
+  type: 'type',
+  interval: 'interval',
+  interval_count: 'interval_count',
+  trial_days: 'trial_days',
+  setup_fee: 'setup_fee',
+  stripe_price_id: 'stripe_price_id',
+  is_active: 'is_active',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.TaxRateScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  percentage: 'percentage',
+  country: 'country',
+  region: 'region',
+  behavior: 'behavior',
+  is_default: 'is_default',
+  stripe_tax_rate_id: 'stripe_tax_rate_id',
+  is_active: 'is_active',
+  created_at: 'created_at'
+};
+
+exports.Prisma.CouponScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  code: 'code',
+  type: 'type',
+  value: 'value',
+  currency: 'currency',
+  duration: 'duration',
+  duration_months: 'duration_months',
+  max_redemptions: 'max_redemptions',
+  redemptions: 'redemptions',
+  valid_from: 'valid_from',
+  valid_until: 'valid_until',
+  stripe_coupon_id: 'stripe_coupon_id',
+  is_active: 'is_active',
+  created_at: 'created_at'
+};
+
+exports.Prisma.InvoiceScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  branch_id: 'branch_id',
+  number: 'number',
+  status: 'status',
+  billing_profile_id: 'billing_profile_id',
+  company_id: 'company_id',
+  project_id: 'project_id',
+  proposal_id: 'proposal_id',
+  contract_id: 'contract_id',
+  subscription_id: 'subscription_id',
+  revises_invoice_id: 'revises_invoice_id',
+  billing_model: 'billing_model',
+  currency: 'currency',
+  issue_date: 'issue_date',
+  due_date: 'due_date',
+  period_start: 'period_start',
+  period_end: 'period_end',
+  subtotal: 'subtotal',
+  discount_total: 'discount_total',
+  tax_total: 'tax_total',
+  total: 'total',
+  amount_paid: 'amount_paid',
+  amount_due: 'amount_due',
+  coupon_id: 'coupon_id',
+  collection_method: 'collection_method',
+  accepted_methods: 'accepted_methods',
+  notes: 'notes',
+  payment_instructions: 'payment_instructions',
+  footer: 'footer',
+  template_id: 'template_id',
+  pdf_document_id: 'pdf_document_id',
+  stripe_invoice_id: 'stripe_invoice_id',
+  hosted_invoice_url: 'hosted_invoice_url',
+  is_recurring: 'is_recurring',
+  scheduled_send_at: 'scheduled_send_at',
+  sent_at: 'sent_at',
+  paid_at: 'paid_at',
+  voided_at: 'voided_at',
+  cancelled_at: 'cancelled_at',
+  last_reminder_at: 'last_reminder_at',
+  reminder_count: 'reminder_count',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.InvoiceLineItemScalarFieldEnum = {
+  id: 'id',
+  invoice_id: 'invoice_id',
+  product_id: 'product_id',
+  price_id: 'price_id',
+  description: 'description',
+  quantity: 'quantity',
+  unit: 'unit',
+  unit_amount: 'unit_amount',
+  discount_amount: 'discount_amount',
+  tax_rate_id: 'tax_rate_id',
+  tax_percent: 'tax_percent',
+  net_amount: 'net_amount',
+  tax_amount: 'tax_amount',
+  gross_amount: 'gross_amount',
+  milestone_id: 'milestone_id',
+  time_entry_ids: 'time_entry_ids',
+  period_start: 'period_start',
+  period_end: 'period_end',
+  sort_order: 'sort_order'
+};
+
+exports.Prisma.InvoiceReminderScalarFieldEnum = {
+  id: 'id',
+  invoice_id: 'invoice_id',
+  action: 'action',
+  offset_days: 'offset_days',
+  communication_id: 'communication_id',
+  sent_at: 'sent_at'
+};
+
+exports.Prisma.PaymentScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  billing_profile_id: 'billing_profile_id',
+  payment_method_id: 'payment_method_id',
+  provider: 'provider',
+  provider_payment_id: 'provider_payment_id',
+  method_type: 'method_type',
+  status: 'status',
+  currency: 'currency',
+  amount: 'amount',
+  fee_amount: 'fee_amount',
+  net_amount: 'net_amount',
+  refunded_amount: 'refunded_amount',
+  kind: 'kind',
+  reference: 'reference',
+  failure_code: 'failure_code',
+  failure_message: 'failure_message',
+  receipt_document_id: 'receipt_document_id',
+  received_at: 'received_at',
+  recorded_by_user_id: 'recorded_by_user_id',
+  metadata: 'metadata',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.PaymentAllocationScalarFieldEnum = {
+  id: 'id',
+  payment_id: 'payment_id',
+  invoice_id: 'invoice_id',
+  amount: 'amount',
+  created_at: 'created_at'
+};
+
+exports.Prisma.RefundScalarFieldEnum = {
+  id: 'id',
+  payment_id: 'payment_id',
+  provider_refund_id: 'provider_refund_id',
+  status: 'status',
+  amount: 'amount',
+  reason: 'reason',
+  requested_by_user_id: 'requested_by_user_id',
+  processed_at: 'processed_at',
+  created_at: 'created_at'
+};
+
+exports.Prisma.CreditNoteScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  billing_profile_id: 'billing_profile_id',
+  invoice_id: 'invoice_id',
+  number: 'number',
+  status: 'status',
+  currency: 'currency',
+  subtotal: 'subtotal',
+  tax_total: 'tax_total',
+  total: 'total',
+  reason: 'reason',
+  lines: 'lines',
+  pdf_document_id: 'pdf_document_id',
+  stripe_credit_note_id: 'stripe_credit_note_id',
+  issued_at: 'issued_at',
+  applied_at: 'applied_at',
+  voided_at: 'voided_at',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at'
+};
+
+exports.Prisma.SubscriptionScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  billing_profile_id: 'billing_profile_id',
+  company_id: 'company_id',
+  project_id: 'project_id',
+  contract_id: 'contract_id',
+  status: 'status',
+  currency: 'currency',
+  interval: 'interval',
+  interval_count: 'interval_count',
+  collection_method: 'collection_method',
+  coupon_id: 'coupon_id',
+  trial_start: 'trial_start',
+  trial_end: 'trial_end',
+  current_period_start: 'current_period_start',
+  current_period_end: 'current_period_end',
+  started_at: 'started_at',
+  cancel_at: 'cancel_at',
+  cancel_at_period_end: 'cancel_at_period_end',
+  cancelled_at: 'cancelled_at',
+  cancellation_reason: 'cancellation_reason',
+  paused_at: 'paused_at',
+  resume_at: 'resume_at',
+  ended_at: 'ended_at',
+  stripe_subscription_id: 'stripe_subscription_id',
+  period_amount: 'period_amount',
+  metadata: 'metadata',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.SubscriptionItemScalarFieldEnum = {
+  id: 'id',
+  subscription_id: 'subscription_id',
+  product_id: 'product_id',
+  price_id: 'price_id',
+  description: 'description',
+  quantity: 'quantity',
+  unit_amount: 'unit_amount',
+  stripe_item_id: 'stripe_item_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.DunningPolicyScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  is_default: 'is_default',
+  steps: 'steps',
+  max_payment_retries: 'max_payment_retries',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProjectBillingSettingsScalarFieldEnum = {
+  project_id: 'project_id',
+  billing_model: 'billing_model',
+  currency: 'currency',
+  fixed_amount: 'fixed_amount',
+  retainer_interval: 'retainer_interval',
+  hourly_rate: 'hourly_rate',
+  default_product_id: 'default_product_id',
+  auto_invoice_milestones: 'auto_invoice_milestones',
+  auto_invoice_time: 'auto_invoice_time',
+  billing_interval: 'billing_interval',
+  billing_day: 'billing_day',
+  budget_alert_percent: 'budget_alert_percent',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.ProviderWebhookEventScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  provider: 'provider',
+  provider_event_id: 'provider_event_id',
+  event_type: 'event_type',
+  payload: 'payload',
+  received_at: 'received_at',
+  processed_at: 'processed_at',
+  error: 'error'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -3194,6 +3543,132 @@ exports.DeploymentStatus = exports.$Enums.DeploymentStatus = {
   ROLLED_BACK: 'ROLLED_BACK'
 };
 
+exports.PaymentMethodType = exports.$Enums.PaymentMethodType = {
+  CARD: 'CARD',
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  SEPA_DEBIT: 'SEPA_DEBIT',
+  CASH: 'CASH',
+  CHECK: 'CHECK',
+  WALLET: 'WALLET',
+  OTHER: 'OTHER'
+};
+
+exports.PaymentProvider = exports.$Enums.PaymentProvider = {
+  STRIPE: 'STRIPE',
+  MANUAL: 'MANUAL',
+  BANK: 'BANK'
+};
+
+exports.ProductType = exports.$Enums.ProductType = {
+  SERVICE: 'SERVICE',
+  PACKAGE: 'PACKAGE',
+  DEVELOPMENT_HOURS: 'DEVELOPMENT_HOURS',
+  MAINTENANCE_PLAN: 'MAINTENANCE_PLAN',
+  SUPPORT_PLAN: 'SUPPORT_PLAN',
+  SUBSCRIPTION: 'SUBSCRIPTION',
+  LICENSE: 'LICENSE',
+  OTHER: 'OTHER'
+};
+
+exports.PriceType = exports.$Enums.PriceType = {
+  ONE_TIME: 'ONE_TIME',
+  RECURRING: 'RECURRING'
+};
+
+exports.BillingInterval = exports.$Enums.BillingInterval = {
+  DAY: 'DAY',
+  WEEK: 'WEEK',
+  MONTH: 'MONTH',
+  QUARTER: 'QUARTER',
+  YEAR: 'YEAR'
+};
+
+exports.TaxBehavior = exports.$Enums.TaxBehavior = {
+  INCLUSIVE: 'INCLUSIVE',
+  EXCLUSIVE: 'EXCLUSIVE'
+};
+
+exports.DiscountType = exports.$Enums.DiscountType = {
+  PERCENTAGE: 'PERCENTAGE',
+  FIXED: 'FIXED'
+};
+
+exports.CouponDuration = exports.$Enums.CouponDuration = {
+  ONCE: 'ONCE',
+  REPEATING: 'REPEATING',
+  FOREVER: 'FOREVER'
+};
+
+exports.InvoiceStatus = exports.$Enums.InvoiceStatus = {
+  DRAFT: 'DRAFT',
+  SCHEDULED: 'SCHEDULED',
+  OPEN: 'OPEN',
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  PARTIALLY_PAID: 'PARTIALLY_PAID',
+  OVERDUE: 'OVERDUE',
+  REFUNDED: 'REFUNDED',
+  CANCELLED: 'CANCELLED',
+  VOID: 'VOID'
+};
+
+exports.BillingModel = exports.$Enums.BillingModel = {
+  FIXED_PRICE: 'FIXED_PRICE',
+  MILESTONE: 'MILESTONE',
+  TIME_AND_MATERIALS: 'TIME_AND_MATERIALS',
+  RETAINER: 'RETAINER',
+  RECURRING: 'RECURRING',
+  MAINTENANCE: 'MAINTENANCE'
+};
+
+exports.CollectionMethod = exports.$Enums.CollectionMethod = {
+  CHARGE_AUTOMATICALLY: 'CHARGE_AUTOMATICALLY',
+  SEND_INVOICE: 'SEND_INVOICE'
+};
+
+exports.DunningAction = exports.$Enums.DunningAction = {
+  REMINDER: 'REMINDER',
+  RETRY_PAYMENT: 'RETRY_PAYMENT',
+  NOTIFY_OWNER: 'NOTIFY_OWNER',
+  PAUSE_SUBSCRIPTION: 'PAUSE_SUBSCRIPTION',
+  CANCEL_SUBSCRIPTION: 'CANCEL_SUBSCRIPTION',
+  MARK_UNCOLLECTIBLE: 'MARK_UNCOLLECTIBLE'
+};
+
+exports.PaymentStatus = exports.$Enums.PaymentStatus = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  SUCCEEDED: 'SUCCEEDED',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+  REFUNDED: 'REFUNDED',
+  PARTIALLY_REFUNDED: 'PARTIALLY_REFUNDED'
+};
+
+exports.RefundStatus = exports.$Enums.RefundStatus = {
+  PENDING: 'PENDING',
+  SUCCEEDED: 'SUCCEEDED',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED'
+};
+
+exports.CreditNoteStatus = exports.$Enums.CreditNoteStatus = {
+  DRAFT: 'DRAFT',
+  ISSUED: 'ISSUED',
+  APPLIED: 'APPLIED',
+  VOID: 'VOID'
+};
+
+exports.SubscriptionStatus = exports.$Enums.SubscriptionStatus = {
+  INCOMPLETE: 'INCOMPLETE',
+  TRIALING: 'TRIALING',
+  ACTIVE: 'ACTIVE',
+  PAST_DUE: 'PAST_DUE',
+  PAUSED: 'PAUSED',
+  CANCELLED: 'CANCELLED',
+  EXPIRED: 'EXPIRED'
+};
+
 exports.Prisma.ModelName = {
   User: 'User',
   PasswordResetToken: 'PasswordResetToken',
@@ -3327,7 +3802,26 @@ exports.Prisma.ModelName = {
   TaskLink: 'TaskLink',
   TaskWatcher: 'TaskWatcher',
   Release: 'Release',
-  ReleaseDeployment: 'ReleaseDeployment'
+  ReleaseDeployment: 'ReleaseDeployment',
+  CustomerPortalSettings: 'CustomerPortalSettings',
+  BillingProfile: 'BillingProfile',
+  PaymentMethod: 'PaymentMethod',
+  Product: 'Product',
+  Price: 'Price',
+  TaxRate: 'TaxRate',
+  Coupon: 'Coupon',
+  Invoice: 'Invoice',
+  InvoiceLineItem: 'InvoiceLineItem',
+  InvoiceReminder: 'InvoiceReminder',
+  Payment: 'Payment',
+  PaymentAllocation: 'PaymentAllocation',
+  Refund: 'Refund',
+  CreditNote: 'CreditNote',
+  Subscription: 'Subscription',
+  SubscriptionItem: 'SubscriptionItem',
+  DunningPolicy: 'DunningPolicy',
+  ProjectBillingSettings: 'ProjectBillingSettings',
+  ProviderWebhookEvent: 'ProviderWebhookEvent'
 };
 
 /**

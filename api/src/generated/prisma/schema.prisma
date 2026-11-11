@@ -7,6 +7,8 @@
 //   04 Contracts (incl. e-signature provider abstraction) → docs/features/04-contracts.md (LOG-349)
 //   05 Project Management → docs/features/05-project-management.md (LOG-405)
 //   06 Task Management → docs/features/06-task-management.md (LOG-102)
+//   07 Customer Portal (portal settings only) → docs/features/07-customer-portal.md (LOG-103)
+//   08 Financial Management & Stripe (incl. platform products catalog) → docs/features/08-financial-management-stripe-integration.md (LOG-104)
 //
 // Conventions:
 //   - Table names snake_case plural via @@map; columns snake_case.
@@ -466,6 +468,19 @@ model Organization {
   task_statuses            TaskStatus[]
   task_types               TaskType[]
   task_labels              TaskLabel[]
+  // 07 Customer Portal
+  portal_settings          CustomerPortalSettings?
+  // 08 Finance
+  billing_profiles         BillingProfile[]
+  products                 Product[]
+  tax_rates                TaxRate[]
+  coupons                  Coupon[]
+  invoices                 Invoice[]
+  payments                 Payment[]
+  credit_notes             CreditNote[]
+  subscriptions            Subscription[]
+  dunning_policies         DunningPolicy[]
+  provider_webhook_events  ProviderWebhookEvent[]
   tasks                    Task[]
   cycles                   Cycle[]
   releases                 Release[]
@@ -597,6 +612,7 @@ model Branch {
   contracts            Contract[]
   projects             Project[]
   project_branches     ProjectBranch[]
+  invoices             Invoice[]
 
   @@unique([organization_id, code])
   @@index([organization_id])
@@ -1674,6 +1690,9 @@ model CrmCompany {
   primary_contracts    Contract[]            @relation("ContractPrimaryCompany")
   contract_parties     ContractParty[]
   projects             Project[]
+  billing_profiles     BillingProfile[]
+  invoices             Invoice[]
+  subscriptions        Subscription[]
 
   @@index([organization_id, name])
   @@index([organization_id, type])
@@ -1919,7 +1938,8 @@ model CrmDealLineItem {
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 
-  deal CrmDeal @relation(fields: [deal_id], references: [id], onDelete: Cascade)
+  deal    CrmDeal  @relation(fields: [deal_id], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [product_id], references: [id], onDelete: SetNull)
 
   @@index([deal_id])
   @@map("crm_deal_line_items")
@@ -2337,6 +2357,8 @@ model Proposal {
   contact           CrmContact?       @relation(fields: [contact_id], references: [id], onDelete: SetNull)
   deal              CrmDeal?          @relation(fields: [deal_id], references: [id], onDelete: SetNull)
   converted_project Project?          @relation("ProposalConvertedProject", fields: [converted_project_id], references: [id], onDelete: SetNull)
+  invoice           Invoice?          @relation("ProposalInvoice", fields: [invoice_id], references: [id], onDelete: SetNull)
+  subscription      Subscription?     @relation("ProposalSubscription", fields: [subscription_id], references: [id], onDelete: SetNull)
   owner             Membership?       @relation("ProposalOwner", fields: [owner_membership_id], references: [id], onDelete: SetNull)
   current_version   ProposalVersion?  @relation("ProposalCurrentVersion", fields: [current_version_id], references: [id], onDelete: SetNull)
   sent_version      ProposalVersion?  @relation("ProposalSentVersion", fields: [sent_version_id], references: [id], onDelete: SetNull)
@@ -2476,6 +2498,7 @@ model ProposalLineItem {
   updated_at           DateTime @updatedAt
 
   version ProposalVersion @relation(fields: [version_id], references: [id], onDelete: Cascade)
+  product Product?        @relation(fields: [product_id], references: [id], onDelete: SetNull)
 
   @@index([version_id, sort_order])
   @@map("proposal_line_items")
@@ -3094,6 +3117,8 @@ model Contract {
   obligations        ContractObligation[]
   termination        ContractTermination?
   signature_requests SignatureRequest[]
+  invoices           Invoice[]
+  subscriptions      Subscription[]
 
   @@unique([organization_id, number])
   @@index([organization_id, status])
@@ -3920,6 +3945,9 @@ model Project {
   tasks                    Task[]
   cycles                   Cycle[]
   releases                 Release[]
+  invoices                 Invoice[]
+  subscriptions            Subscription[]
+  billing_settings         ProjectBillingSettings?
 
   @@unique([organization_id, slug])
   @@unique([organization_id, code])
@@ -4077,6 +4105,7 @@ model ProjectMilestone {
   gates               ProjectGate[]
   allocations         ProjectAllocation[]
   tasks               Task[]
+  invoice_line_items  InvoiceLineItem[]
 
   @@index([project_id, planned_date])
   @@index([workstream_id])
@@ -5002,4 +5031,728 @@ model ReleaseDeployment {
 
   @@index([release_id, environment])
   @@map("release_deployments")
+}
+
+// =====================================================================
+// 07 Customer Portal — docs/features/07-customer-portal.md (LOG-103)
+// The portal is a surface; identity is 01 §79, requests are 13, billing is 08, documents are 17.
+// Its only schema footprint is per-organization portal configuration.
+// =====================================================================
+
+/// 07 §14, §18 — portal branding, white-label and feature toggles per organization.
+model CustomerPortalSettings {
+  organization_id   String   @id
+  enabled           Boolean  @default(true)
+  /// Custom domain for the portal (white-label); verified through OrganizationDomain.
+  custom_domain     String?  @unique
+  /// Branding overrides on top of organization branding (01 §15).
+  branding          Json?
+  /// Feature toggles: { projects, requests, conversations, documents, proposals, contracts, billing, calendar, vault, ai }.
+  features          Json?
+  /// Default customer role slug assigned to invited portal users (01 §79).
+  default_role_slug String   @default("customer-viewer")
+  /// Embedded widget configuration (support chat, request form) for customer sites (13 §5).
+  widget_settings   Json?
+  welcome_message   String?
+  support_email     String?
+  updated_at        DateTime @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@map("customer_portal_settings")
+}
+
+// =====================================================================
+// 08 Financial Management & Stripe Integration — docs/features/08-financial-management-stripe-integration.md (LOG-104)
+// Owns: billing profiles and payment methods, the platform products & services catalog, prices,
+// tax rates, coupons, invoices and line items, payments, allocations, refunds, credit notes,
+// subscriptions, dunning, project billing settings, provider webhook idempotency.
+// Boundary: 08 bills and collects; 09 owns the ledger. Every invoice/payment here produces an income
+// record in 09. Quotes are Proposals (03). PDFs are Documents (17). Emails go through 11.
+// =====================================================================
+
+/// 08 "Products & Services"
+enum ProductType {
+  SERVICE
+  PACKAGE
+  DEVELOPMENT_HOURS
+  MAINTENANCE_PLAN
+  SUPPORT_PLAN
+  SUBSCRIPTION
+  LICENSE
+  OTHER
+}
+
+/// 08 — one-time vs recurring price.
+enum PriceType {
+  ONE_TIME
+  RECURRING
+}
+
+/// 08 "Subscription Management" / "Recurring Billing"
+enum BillingInterval {
+  DAY
+  WEEK
+  MONTH
+  QUARTER
+  YEAR
+}
+
+/// 08 "Taxes & Discounts"
+enum TaxBehavior {
+  INCLUSIVE
+  EXCLUSIVE
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum CouponDuration {
+  ONCE
+  REPEATING
+  FOREVER
+}
+
+/// 08 "Invoicing" — invoice statuses.
+enum InvoiceStatus {
+  DRAFT
+  SCHEDULED
+  OPEN
+  PENDING
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  REFUNDED
+  CANCELLED
+  VOID
+}
+
+/// 08 "Project Billing"
+enum BillingModel {
+  FIXED_PRICE
+  MILESTONE
+  TIME_AND_MATERIALS
+  RETAINER
+  RECURRING
+  MAINTENANCE
+}
+
+/// 08 "Payments"
+enum PaymentProvider {
+  STRIPE
+  MANUAL
+  BANK
+}
+
+enum PaymentMethodType {
+  CARD
+  BANK_TRANSFER
+  SEPA_DEBIT
+  CASH
+  CHECK
+  WALLET
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum RefundStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum CreditNoteStatus {
+  DRAFT
+  ISSUED
+  APPLIED
+  VOID
+}
+
+/// 08 "Subscription Management"
+enum SubscriptionStatus {
+  INCOMPLETE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  PAUSED
+  CANCELLED
+  EXPIRED
+}
+
+enum CollectionMethod {
+  CHARGE_AUTOMATICALLY
+  SEND_INVOICE
+}
+
+/// 08 "Recurring Billing" — dunning step actions.
+enum DunningAction {
+  REMINDER
+  RETRY_PAYMENT
+  NOTIFY_OWNER
+  PAUSE_SUBSCRIPTION
+  CANCEL_SUBSCRIPTION
+  MARK_UNCOLLECTIBLE
+}
+
+// --- Customer billing --------------------------------------------------------------
+
+/// 08 "Customer Billing" — billing profile of a Customer (CRM Company, 02). Stripe customer lives here.
+model BillingProfile {
+  id                        String   @id @default(uuid())
+  organization_id           String
+  company_id                String
+  legal_name                String
+  billing_email             String?
+  /// CRM contact ids with the BILLING role (02 §3).
+  billing_contact_ids       String[] @default([])
+  billing_address           Json?
+  shipping_address          Json?
+  tax_id                    String?
+  vat_number                String?
+  tax_exempt                Boolean  @default(false)
+  currency                  String
+  /// Net payment terms in days (e.g. 14, 30).
+  payment_terms_days        Int      @default(14)
+  default_payment_method_id String?  @unique
+  stripe_customer_id        String?  @unique
+  /// Customer-specific pricing: { product_id: unit_amount } or coupon reference (08 "Taxes & Discounts").
+  custom_pricing            Json?
+  notes                     String?
+  created_at                DateTime @default(now())
+  updated_at                DateTime @updatedAt
+
+  organization           Organization    @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  company                CrmCompany      @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  default_payment_method PaymentMethod?  @relation("BillingProfileDefaultMethod", fields: [default_payment_method_id], references: [id], onDelete: SetNull)
+  payment_methods        PaymentMethod[]
+  invoices               Invoice[]
+  payments               Payment[]
+  subscriptions          Subscription[]
+  credit_notes           CreditNote[]
+
+  @@unique([organization_id, company_id])
+  @@map("billing_profiles")
+}
+
+/// 08 "Customer Billing" — stored payment methods; card data never stored, only provider tokens.
+model PaymentMethod {
+  id                 String            @id @default(uuid())
+  billing_profile_id String
+  type               PaymentMethodType
+  provider           PaymentProvider   @default(STRIPE)
+  provider_method_id String?
+  brand              String?
+  last4              String?
+  exp_month          Int?
+  exp_year           Int?
+  /// Bank details for transfers (IBAN masked, bank name) when provider is BANK.
+  bank_details       Json?
+  is_default         Boolean           @default(false)
+  disabled_at        DateTime?
+  created_at         DateTime          @default(now())
+
+  billing_profile BillingProfile  @relation(fields: [billing_profile_id], references: [id], onDelete: Cascade)
+  default_for     BillingProfile? @relation("BillingProfileDefaultMethod")
+  payments        Payment[]
+
+  @@unique([provider, provider_method_id])
+  @@index([billing_profile_id])
+  @@map("payment_methods")
+}
+
+// --- Catalog --------------------------------------------------------------------------
+
+/// 08 "Products & Services" — the platform catalog used by 02 deal line items, 03 proposals and 18 rates.
+model Product {
+  id                  String      @id @default(uuid())
+  organization_id     String
+  name                String
+  slug                String
+  type                ProductType @default(SERVICE)
+  description         String?
+  /// Unit label (hour, month, project, seat).
+  unit                String?
+  default_tax_rate_id String?
+  stripe_product_id   String?     @unique
+  is_active           Boolean     @default(true)
+  archived_at         DateTime?
+  created_at          DateTime    @default(now())
+  updated_at          DateTime    @updatedAt
+
+  organization        Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  default_tax_rate    TaxRate?           @relation(fields: [default_tax_rate_id], references: [id], onDelete: SetNull)
+  prices              Price[]
+  invoice_line_items  InvoiceLineItem[]
+  subscription_items  SubscriptionItem[]
+  deal_line_items     CrmDealLineItem[]
+  proposal_line_items ProposalLineItem[]
+
+  @@unique([organization_id, slug])
+  @@index([organization_id, is_active])
+  @@map("products")
+}
+
+/// 08 — a price of a product: one-time or recurring, per currency.
+model Price {
+  id              String           @id @default(uuid())
+  product_id      String
+  name            String?
+  currency        String
+  unit_amount     Decimal          @db.Decimal(18, 2)
+  type            PriceType        @default(ONE_TIME)
+  interval        BillingInterval?
+  interval_count  Int?
+  trial_days      Int?
+  /// Setup fee charged on first subscription invoice.
+  setup_fee       Decimal?         @db.Decimal(18, 2)
+  stripe_price_id String?          @unique
+  is_active       Boolean          @default(true)
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+
+  product            Product            @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  invoice_line_items InvoiceLineItem[]
+  subscription_items SubscriptionItem[]
+
+  @@index([product_id, is_active])
+  @@map("prices")
+}
+
+/// 08 "Taxes & Discounts" — tax rates incl. VAT and regional rules.
+model TaxRate {
+  id                 String      @id @default(uuid())
+  organization_id    String
+  name               String
+  percentage         Decimal     @db.Decimal(5, 2)
+  country            String?
+  region             String?
+  behavior           TaxBehavior @default(EXCLUSIVE)
+  is_default         Boolean     @default(false)
+  stripe_tax_rate_id String?     @unique
+  is_active          Boolean     @default(true)
+  created_at         DateTime    @default(now())
+
+  organization Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  products     Product[]
+  line_items   InvoiceLineItem[]
+
+  @@index([organization_id, is_active])
+  @@map("tax_rates")
+}
+
+/// 08 "Taxes & Discounts" — percentage or fixed discounts, reusable as coupons.
+model Coupon {
+  id               String         @id @default(uuid())
+  organization_id  String
+  name             String
+  code             String?
+  type             DiscountType
+  value            Decimal        @db.Decimal(18, 2)
+  currency         String?
+  duration         CouponDuration @default(ONCE)
+  duration_months  Int?
+  max_redemptions  Int?
+  redemptions      Int            @default(0)
+  valid_from       DateTime?
+  valid_until      DateTime?
+  stripe_coupon_id String?        @unique
+  is_active        Boolean        @default(true)
+  created_at       DateTime       @default(now())
+
+  organization  Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  invoices      Invoice[]
+  subscriptions Subscription[]
+
+  @@unique([organization_id, code])
+  @@map("coupons")
+}
+
+// --- Invoicing ----------------------------------------------------------------------
+
+/// 08 "Invoicing" — the invoice. Numbering via NumberSequence (INV-2026-0001).
+model Invoice {
+  id                   String              @id @default(uuid())
+  organization_id      String
+  branch_id            String?
+  number               String
+  status               InvoiceStatus       @default(DRAFT)
+  billing_profile_id   String
+  company_id           String
+  /// Origins (ids with relations where the module exists).
+  project_id           String?
+  proposal_id          String?
+  contract_id          String?
+  subscription_id      String?
+  /// Revision lineage (08 "Invoice revisions").
+  revises_invoice_id   String?             @unique
+  billing_model        BillingModel?
+  currency             String
+  issue_date           DateTime?           @db.Date
+  due_date             DateTime?           @db.Date
+  /// For recurring/period invoices.
+  period_start         DateTime?           @db.Date
+  period_end           DateTime?           @db.Date
+  subtotal             Decimal             @default(0) @db.Decimal(18, 2)
+  discount_total       Decimal             @default(0) @db.Decimal(18, 2)
+  tax_total            Decimal             @default(0) @db.Decimal(18, 2)
+  total                Decimal             @default(0) @db.Decimal(18, 2)
+  amount_paid          Decimal             @default(0) @db.Decimal(18, 2)
+  amount_due           Decimal             @default(0) @db.Decimal(18, 2)
+  coupon_id            String?
+  collection_method    CollectionMethod    @default(SEND_INVOICE)
+  /// Accepted payment method types for this invoice.
+  accepted_methods     PaymentMethodType[] @default([CARD, BANK_TRANSFER])
+  notes                String?
+  payment_instructions String?
+  footer               String?
+  /// Template / branding override; organization branding (01 §15) is the fallback.
+  template_id          String?
+  /// Generated PDF (17); id only.
+  pdf_document_id      String?
+  stripe_invoice_id    String?             @unique
+  hosted_invoice_url   String?
+  is_recurring         Boolean             @default(false)
+  scheduled_send_at    DateTime?
+  sent_at              DateTime?
+  paid_at              DateTime?
+  voided_at            DateTime?
+  cancelled_at         DateTime?
+  last_reminder_at     DateTime?
+  reminder_count       Int                 @default(0)
+  created_by_user_id   String?
+  created_at           DateTime            @default(now())
+  updated_at           DateTime            @updatedAt
+
+  organization    Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  branch          Branch?        @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  billing_profile BillingProfile @relation(fields: [billing_profile_id], references: [id], onDelete: Restrict)
+  company         CrmCompany     @relation(fields: [company_id], references: [id], onDelete: Restrict)
+  project         Project?       @relation(fields: [project_id], references: [id], onDelete: SetNull)
+  contract        Contract?      @relation(fields: [contract_id], references: [id], onDelete: SetNull)
+  subscription    Subscription?  @relation(fields: [subscription_id], references: [id], onDelete: SetNull)
+  coupon          Coupon?        @relation(fields: [coupon_id], references: [id], onDelete: SetNull)
+  revises         Invoice?       @relation("InvoiceRevision", fields: [revises_invoice_id], references: [id], onDelete: SetNull)
+  revised_by      Invoice?       @relation("InvoiceRevision")
+
+  line_items   InvoiceLineItem[]
+  allocations  PaymentAllocation[]
+  credit_notes CreditNote[]
+  reminders    InvoiceReminder[]
+  proposals    Proposal[]          @relation("ProposalInvoice")
+
+  @@unique([organization_id, number])
+  @@index([organization_id, status])
+  @@index([company_id, status])
+  @@index([due_date])
+  @@index([project_id])
+  @@map("invoices")
+}
+
+/// 08 "Invoicing" — line items; milestone and time entries link project billing (05 §20, 18 §7).
+model InvoiceLineItem {
+  id              String    @id @default(uuid())
+  invoice_id      String
+  product_id      String?
+  price_id        String?
+  description     String
+  quantity        Decimal   @default(1) @db.Decimal(12, 3)
+  unit            String?
+  unit_amount     Decimal   @default(0) @db.Decimal(18, 2)
+  discount_amount Decimal   @default(0) @db.Decimal(18, 2)
+  tax_rate_id     String?
+  tax_percent     Decimal?  @db.Decimal(5, 2)
+  net_amount      Decimal   @default(0) @db.Decimal(18, 2)
+  tax_amount      Decimal   @default(0) @db.Decimal(18, 2)
+  gross_amount    Decimal   @default(0) @db.Decimal(18, 2)
+  milestone_id    String?
+  /// Time entry ids (18) billed by this line; marked invoiced in 18.
+  time_entry_ids  String[]  @default([])
+  period_start    DateTime? @db.Date
+  period_end      DateTime? @db.Date
+  sort_order      Int       @default(0)
+
+  invoice   Invoice           @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  product   Product?          @relation(fields: [product_id], references: [id], onDelete: SetNull)
+  price     Price?            @relation(fields: [price_id], references: [id], onDelete: SetNull)
+  tax_rate  TaxRate?          @relation(fields: [tax_rate_id], references: [id], onDelete: SetNull)
+  milestone ProjectMilestone? @relation(fields: [milestone_id], references: [id], onDelete: SetNull)
+
+  @@index([invoice_id, sort_order])
+  @@map("invoice_line_items")
+}
+
+/// 08 "Automation" — reminder / dunning actions sent for an invoice. Delivery is 11/14.
+model InvoiceReminder {
+  id               String        @id @default(uuid())
+  invoice_id       String
+  action           DunningAction @default(REMINDER)
+  /// Days relative to due date (negative = before).
+  offset_days      Int?
+  communication_id String?
+  sent_at          DateTime      @default(now())
+
+  invoice Invoice @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+
+  @@index([invoice_id, sent_at])
+  @@map("invoice_reminders")
+}
+
+// --- Payments -------------------------------------------------------------------------
+
+/// 08 "Payments" — a payment received (online or manually recorded). Allocations split it across invoices.
+model Payment {
+  id                  String            @id @default(uuid())
+  organization_id     String
+  billing_profile_id  String?
+  payment_method_id   String?
+  provider            PaymentProvider   @default(STRIPE)
+  provider_payment_id String?
+  method_type         PaymentMethodType @default(CARD)
+  status              PaymentStatus     @default(PENDING)
+  currency            String
+  amount              Decimal           @db.Decimal(18, 2)
+  fee_amount          Decimal           @default(0) @db.Decimal(18, 2)
+  net_amount          Decimal?          @db.Decimal(18, 2)
+  refunded_amount     Decimal           @default(0) @db.Decimal(18, 2)
+  /// deposit | milestone | invoice | subscription | one_time
+  kind                String?
+  reference           String?
+  failure_code        String?
+  failure_message     String?
+  /// Receipt document (17); id only.
+  receipt_document_id String?
+  received_at         DateTime?
+  recorded_by_user_id String?
+  metadata            Json?
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  organization    Organization        @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  billing_profile BillingProfile?     @relation(fields: [billing_profile_id], references: [id], onDelete: SetNull)
+  payment_method  PaymentMethod?      @relation(fields: [payment_method_id], references: [id], onDelete: SetNull)
+  allocations     PaymentAllocation[]
+  refunds         Refund[]
+
+  @@unique([provider, provider_payment_id])
+  @@index([organization_id, status])
+  @@index([billing_profile_id])
+  @@index([received_at])
+  @@map("payments")
+}
+
+/// Partial and multi-invoice payments (08 "Partial payments").
+model PaymentAllocation {
+  id         String   @id @default(uuid())
+  payment_id String
+  invoice_id String
+  amount     Decimal  @db.Decimal(18, 2)
+  created_at DateTime @default(now())
+
+  payment Payment @relation(fields: [payment_id], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+
+  @@unique([payment_id, invoice_id])
+  @@index([invoice_id])
+  @@map("payment_allocations")
+}
+
+/// 08 "Payments" — refunds against a payment.
+model Refund {
+  id                   String       @id @default(uuid())
+  payment_id           String
+  provider_refund_id   String?
+  status               RefundStatus @default(PENDING)
+  amount               Decimal      @db.Decimal(18, 2)
+  reason               String?
+  requested_by_user_id String?
+  processed_at         DateTime?
+  created_at           DateTime     @default(now())
+
+  payment Payment @relation(fields: [payment_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider_refund_id])
+  @@index([payment_id])
+  @@map("refunds")
+}
+
+/// 08 "Invoicing" — credit notes issued against an invoice. Numbered via NumberSequence.
+model CreditNote {
+  id                    String           @id @default(uuid())
+  organization_id       String
+  billing_profile_id    String
+  invoice_id            String?
+  number                String
+  status                CreditNoteStatus @default(DRAFT)
+  currency              String
+  subtotal              Decimal          @default(0) @db.Decimal(18, 2)
+  tax_total             Decimal          @default(0) @db.Decimal(18, 2)
+  total                 Decimal          @default(0) @db.Decimal(18, 2)
+  reason                String?
+  /// Line items mirrored from the invoice: [{ description, quantity, unit_amount, tax_percent, amount }].
+  lines                 Json?
+  pdf_document_id       String?
+  stripe_credit_note_id String?          @unique
+  issued_at             DateTime?
+  applied_at            DateTime?
+  voided_at             DateTime?
+  created_by_user_id    String?
+  created_at            DateTime         @default(now())
+
+  organization    Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  billing_profile BillingProfile @relation(fields: [billing_profile_id], references: [id], onDelete: Restrict)
+  invoice         Invoice?       @relation(fields: [invoice_id], references: [id], onDelete: SetNull)
+
+  @@unique([organization_id, number])
+  @@index([invoice_id])
+  @@map("credit_notes")
+}
+
+// --- Subscriptions ------------------------------------------------------------------------
+
+/// 08 "Subscription Management" — multiple active subscriptions per customer.
+model Subscription {
+  id                     String             @id @default(uuid())
+  organization_id        String
+  billing_profile_id     String
+  company_id             String
+  project_id             String?
+  contract_id            String?
+  status                 SubscriptionStatus @default(INCOMPLETE)
+  currency               String
+  interval               BillingInterval    @default(MONTH)
+  interval_count         Int                @default(1)
+  collection_method      CollectionMethod   @default(CHARGE_AUTOMATICALLY)
+  coupon_id              String?
+  trial_start            DateTime?
+  trial_end              DateTime?
+  current_period_start   DateTime?
+  current_period_end     DateTime?
+  started_at             DateTime?
+  /// Scheduled cancellation at period end (08 "Scheduled cancellations").
+  cancel_at              DateTime?
+  cancel_at_period_end   Boolean            @default(false)
+  cancelled_at           DateTime?
+  cancellation_reason    String?
+  paused_at              DateTime?
+  resume_at              DateTime?
+  ended_at               DateTime?
+  stripe_subscription_id String?            @unique
+  /// Snapshot of recurring total per period.
+  period_amount          Decimal            @default(0) @db.Decimal(18, 2)
+  metadata               Json?
+  created_by_user_id     String?
+  created_at             DateTime           @default(now())
+  updated_at             DateTime           @updatedAt
+
+  organization    Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  billing_profile BillingProfile     @relation(fields: [billing_profile_id], references: [id], onDelete: Restrict)
+  company         CrmCompany         @relation(fields: [company_id], references: [id], onDelete: Restrict)
+  project         Project?           @relation(fields: [project_id], references: [id], onDelete: SetNull)
+  contract        Contract?          @relation(fields: [contract_id], references: [id], onDelete: SetNull)
+  coupon          Coupon?            @relation(fields: [coupon_id], references: [id], onDelete: SetNull)
+  items           SubscriptionItem[]
+  invoices        Invoice[]
+  proposals       Proposal[]         @relation("ProposalSubscription")
+
+  @@index([organization_id, status])
+  @@index([company_id, status])
+  @@index([current_period_end])
+  @@map("subscriptions")
+}
+
+/// 08 — plan lines of a subscription (upgrades/downgrades change items, history in audit_events).
+model SubscriptionItem {
+  id              String   @id @default(uuid())
+  subscription_id String
+  product_id      String?
+  price_id        String?
+  description     String?
+  quantity        Decimal  @default(1) @db.Decimal(12, 3)
+  unit_amount     Decimal  @db.Decimal(18, 2)
+  stripe_item_id  String?  @unique
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  subscription Subscription @relation(fields: [subscription_id], references: [id], onDelete: Cascade)
+  product      Product?     @relation(fields: [product_id], references: [id], onDelete: SetNull)
+  price        Price?       @relation(fields: [price_id], references: [id], onDelete: SetNull)
+
+  @@index([subscription_id])
+  @@map("subscription_items")
+}
+
+/// 08 "Recurring Billing" — dunning policy; steps are scheduled by the Automation Engine (20).
+model DunningPolicy {
+  id                  String   @id @default(uuid())
+  organization_id     String
+  name                String
+  is_default          Boolean  @default(false)
+  /// [{ offset_days, action: DunningAction, template_key? }], offset relative to due date.
+  steps               Json
+  max_payment_retries Int      @default(3)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@unique([organization_id, name])
+  @@map("dunning_policies")
+}
+
+/// 08 "Project Billing" — how a project is billed (05 §63 consumes the result).
+model ProjectBillingSettings {
+  project_id              String           @id
+  billing_model           BillingModel     @default(FIXED_PRICE)
+  currency                String?
+  /// Fixed price / retainer amount per period.
+  fixed_amount            Decimal?         @db.Decimal(18, 2)
+  retainer_interval       BillingInterval?
+  /// Default hourly rate for time and materials; overrides catalog/employee rates.
+  hourly_rate             Decimal?         @db.Decimal(18, 2)
+  /// Default product used for T&M lines.
+  default_product_id      String?
+  /// Create an invoice automatically when a billing milestone completes (05 §20).
+  auto_invoice_milestones Boolean          @default(false)
+  /// Automatically bill approved billable time at period end.
+  auto_invoice_time       Boolean          @default(false)
+  billing_interval        BillingInterval?
+  billing_day             Int?
+  /// Budget alert threshold (percent of budget_amount in 05).
+  budget_alert_percent    Int?
+  updated_at              DateTime         @updatedAt
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@map("project_billing_settings")
+}
+
+/// Idempotent processing of provider webhooks (Stripe today; signature providers also use SignatureEvent).
+model ProviderWebhookEvent {
+  id                String    @id @default(uuid())
+  organization_id   String?
+  provider          String
+  provider_event_id String
+  event_type        String
+  payload           Json
+  received_at       DateTime  @default(now())
+  processed_at      DateTime?
+  error             String?
+
+  organization Organization? @relation(fields: [organization_id], references: [id], onDelete: SetNull)
+
+  @@unique([provider, provider_event_id])
+  @@index([provider, processed_at])
+  @@map("provider_webhook_events")
 }
