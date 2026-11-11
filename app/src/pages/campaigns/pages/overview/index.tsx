@@ -15,7 +15,7 @@ import { DailySendsChart } from "../../components/daily-sends-chart";
 
 function ProviderRow({ label, icon: Icon, status }: { label: string; icon: typeof Mail; status: ProviderChannelStatus }) {
     return (
-        <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-3">
+        <div className="flex min-w-0 items-start gap-3 rounded-lg border border-border bg-card p-3">
             <div className="grid size-8 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground"><Icon className="size-4" /></div>
             <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 text-[13px] font-medium text-foreground">
