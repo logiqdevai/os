@@ -18,6 +18,8 @@ import { paginate, skipTake } from '@/shared/utils/pagination/pagination.utils';
 import { BulkNotificationDto, NotificationQuery, NotificationState, ReadAllNotificationsDto, UpdateNotificationDto } from './dto/notification.dto';
 import { NotifyContext, NotifyInput, NotifyRecipient } from './interfaces/notify.interface';
 import { humanizeEventKey, memberUserSelect } from './utils/system-context';
+import { NotificationRulesService } from './delivery/notification-rules.service';
+import { NotificationDeliveryService } from './delivery/notification-delivery.service';
 
 type EventTypeRow = { id: string; key: string; mandatory_by_default: boolean; category: NotificationCategory; priority: NotificationPriority };
 
@@ -42,6 +44,8 @@ export class NotificationsService {
         private readonly prisma: PrismaService,
         private readonly audit: AuditService,
         private readonly events: EventsService,
+        private readonly rules: NotificationRulesService,
+        private readonly delivery: NotificationDeliveryService,
     ) { }
 
     // ---------------------------------------------------------------- inbox (own rows only)
@@ -240,6 +244,15 @@ export class NotificationsService {
         const mandatory = !!input.is_mandatory || type.mandatory_by_default;
         const priority = input.priority ?? type.priority;
         if (!mandatory) list = await this.applyPreferences(orgId, list, type.id, input, priority);
+        // Organization delivery rules (14 §9): suppress / deduplicate / throttle / coalesce. Mandatory events are never filtered.
+        if (!mandatory && list.length) {
+            const keep = await this.rules.applyInApp(
+                { organization_id: orgId, event_type_id: type.id, event_key: input.event_key, module: input.module, entity_type: input.entity_type, entity_id: input.entity_id, actor_membership_id: ctx.membership_id },
+                list.map((r) => r.membership_id),
+                { title: input.title, body: input.body, link: input.link },
+            );
+            list = list.filter((r) => keep.has(r.membership_id));
+        }
         if (!list.length) return { event_id: null, created: 0 };
 
         const idempotency_key = input.idempotency_key ?? randomUUID();
@@ -313,6 +326,8 @@ export class NotificationsService {
             where: { id: event.id },
             data: { status: NotificationEventStatus.PROCESSED, processed_at: now, notification_count: { increment: res.count } },
         });
+        // Other channels (email now): preferences, quiet hours, digests and the org's own provider decide per recipient.
+        if (res.count) this.delivery.planAsync(orgId, event.id);
         if (mandatory && res.count) {
             this.audit.recordAsync(ctx as OrgContext, 'notification.mandatory_delivered', { resource_type: 'notification_event', resource_id: event.id, metadata: { event_key: input.event_key, count: res.count } });
         }
