@@ -56,7 +56,7 @@ These principles recur across the feature specs.
    - 01 owns identity, Organizations, Branches, Teams, Members, roles, permissions, Customer Portal identity, branding and isolation.
    - 02 CRM owns Companies, Contacts, Leads, Deals, Activities, the Customer 360 view and the platform custom field model.
    - 03 Proposals owns proposals and quotations (the only "offer" or "quote" record).
-   - 04 Contracts owns agreements and the e-signature provider abstraction.
+   - 04 Contracts owns agreements and the platform's own e-signature service.
    - 05 Projects owns delivery context: milestones, deliverables, workstreams, risks, project issues, project change requests, planned allocation.
    - 06 Task Management owns the only Task entity and Releases.
    - 07 Customer Portal owns the customer-facing surface only.
@@ -156,7 +156,7 @@ Canonical terms for all specs, Linear issues and code. Synonyms in the right col
 - **Bring your own keys:** every organization connects its own accounts in Admin → Integrations (launch set: OpenAI, Resend, Twilio, Stripe, Viva Wallet; more providers are added one by one) (01 §156–§161). Credentials are stored encrypted per organization and are write-only; no tenant provider key lives in the platform `.env`, which keeps infrastructure secrets only (01 §160). Modules resolve a connection by category and never read a provider key themselves.
 - **Payments:** provider abstraction with several connections per organization (Stripe and Viva Wallet at launch; PayPal, Mollie, Adyen later). See 08 "Payment Providers".
 - **Email and SMS:** providers behind the Communication Center, using the organization's own accounts. Local API development uses platform-provided connections seeded from `.env.staging` (01 §160).
-- **E-signature:** provider abstraction (for example DocuSign, Dropbox Sign, Adobe Acrobat Sign).
+- **E-signature:** built in-house (04 §33): single-use signing links, identity verification, consent, drawn/typed/uploaded signatures, audit trail and certificate. No third-party signature provider.
 - **AI:** one shared AI integration layer used by every module (drafting, classification, extraction, retrieval over 15 Business Docs and 13 knowledge base, automation AI steps). Models are configurable per capability behind the layer; Support (13) specifies the JEV model from Typesafe AI for classification and the support agent.
 - **Calendar sync:** Google Calendar, Microsoft 365 (19).
 - **Storage providers:** Google Drive, Microsoft 365, S3-compatible behind the storage abstraction (17).

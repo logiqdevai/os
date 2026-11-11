@@ -267,36 +267,15 @@ enum AccessReviewDecision {
   MODIFIED
 }
 
-/// 01 §157 — third-party services an organization connects with its own credentials. Providers that already have a
-/// domain enum (PaymentProvider 08, CommProviderKind 11, SignatureProvider 04, DocumentStorageProvider 17) are mirrored
-/// here; the domain row points at its IntegrationConnection. Add a provider = a value here + an entry in
-/// api/src/shared/constants/integration-providers.ts + an adapter in the owning module.
+/// 01 §157 — third-party services an organization connects with its own credentials. LAUNCH SET ONLY: to support another provider add a value
+/// here, an entry in api/src/shared/constants/integration-providers.ts and an adapter in the owning module. The domain enums PaymentProvider (08) and
+/// CommProviderKind (11) already reserve more providers; they stay reserved until their adapter and value are added here.
 enum IntegrationProvider {
   OPENAI
-  ANTHROPIC
-  GOOGLE_GEMINI
   RESEND
-  SENDGRID
-  POSTMARK
-  MAILGUN
-  AWS_SES
-  SMTP
   TWILIO
-  VONAGE
-  MESSAGEBIRD
   STRIPE
   VIVA_WALLET
-  PAYPAL
-  MOLLIE
-  ADYEN
-  DOCUSIGN
-  DROPBOX_SIGN
-  ADOBE_SIGN
-  S3_COMPATIBLE
-  GOOGLE_MAPS
-  GOOGLE_WORKSPACE
-  MICROSOFT_365
-  ZOOM
 }
 
 /// 01 §157 — what a connection is used for. Modules resolve a connection by category (+ default, branch).
@@ -305,10 +284,6 @@ enum IntegrationCategory {
   EMAIL
   SMS
   PAYMENTS
-  E_SIGNATURE
-  STORAGE
-  MAPS
-  WORKSPACE
 }
 
 /// 01 §157 — PENDING = saved but not verified yet; ACTIVE = verified and usable; ERROR = last verification or call failed
@@ -781,6 +756,12 @@ model Organization {
   payment_provider_connections     PaymentProviderConnection[]
   payment_provider_objects         PaymentProviderObject[]
 
+  crm_sales_targets       CrmSalesTarget[]
+  crm_forecast_snapshots  CrmForecastSnapshot[]
+  crm_dashboard_layouts   CrmDashboardLayout[]
+  crm_lead_scoring_rules  CrmLeadScoringRule[]
+  proposal_approval_rules ProposalApprovalRule[]
+
   @@index([status])
   @@map("organizations")
 }
@@ -1040,6 +1021,10 @@ model Team {
   department_wiki_spaces        WikiSpace[]        @relation("WikiSpaceDepartment")
   department_wiki_checklists    WikiChecklist[]    @relation("WikiChecklistDepartment")
 
+  crm_sales_targets      CrmSalesTarget[]
+  crm_forecast_snapshots CrmForecastSnapshot[]
+  crm_dashboard_layouts  CrmDashboardLayout[]
+
   @@unique([organization_id, slug])
   @@index([organization_id])
   @@index([parent_team_id])
@@ -1125,6 +1110,15 @@ model Membership {
   owned_contacts                      CrmContact[]                     @relation("CrmContactOwner")
   owned_leads                         CrmLead[]                        @relation("CrmLeadOwner")
   owned_deals                         CrmDeal[]                        @relation("CrmDealOwner")
+  secondary_owned_deals               CrmDeal[]                        @relation("CrmDealSecondaryOwner")
+  project_managed_deals               CrmDeal[]                        @relation("CrmDealProjectManager")
+  secondary_owned_leads               CrmLead[]                        @relation("CrmLeadSecondaryOwner")
+  secondary_owned_contacts            CrmContact[]                     @relation("CrmContactSecondaryOwner")
+  secondary_owned_companies           CrmCompany[]                     @relation("CrmCompanySecondaryOwner")
+  project_managed_companies           CrmCompany[]                     @relation("CrmCompanyProjectManager")
+  crm_sales_targets                   CrmSalesTarget[]                 @relation("CrmSalesTargetOwner")
+  crm_forecast_snapshots              CrmForecastSnapshot[]            @relation("CrmForecastSnapshotOwner")
+  reviewed_contract_ai_findings       ContractAiFinding[]              @relation("ContractAiFindingReviewer")
   owned_activities                    CrmActivity[]                    @relation("CrmActivityOwner")
   authored_notes                      CrmNote[]                        @relation("CrmNoteAuthor")
   // 03 Proposals
@@ -1397,6 +1391,8 @@ model Role {
   message_mentions     MessageMention[]
   wiki_checklists      WikiChecklist[]
 
+  crm_dashboard_layouts CrmDashboardLayout[]
+
   @@unique([organization_id, slug])
   @@index([organization_id, type])
   @@map("roles")
@@ -1578,8 +1574,7 @@ model RoleVersion {
 /// 01 §157 — one connected third-party service of an organization (OpenAI, Resend, Stripe, Twilio ...) with the
 /// organization's OWN credentials, so provider keys do not live in the platform .env (01 §160). Secrets are write-only:
 /// envelope-encrypted under the organization's VaultKey (17 §12), never returned by any API, never logged, never copied
-/// into audit metadata (01 §158). Domain tables (08 PaymentProviderConnection, 11 CommProviderAccount, 17 DocumentStorageConnection,
-/// 04 SignatureRequest) point here instead of storing credentials.
+/// into audit metadata (01 §158). Domain tables (08 PaymentProviderConnection, 11 CommProviderAccount) point here instead of storing credentials.
 model IntegrationConnection {
   id                       String                      @id @default(uuid())
   organization_id          String
@@ -1627,8 +1622,6 @@ model IntegrationConnection {
   usage                        IntegrationUsageDaily[]
   payment_provider_connections PaymentProviderConnection[]
   comm_provider_accounts       CommProviderAccount[]
-  document_storage_connections DocumentStorageConnection[]
-  signature_requests           SignatureRequest[]
 
   @@unique([organization_id, name])
   @@index([organization_id, category, status])
@@ -2173,6 +2166,20 @@ enum CrmForecastCategory {
   CLOSED_LOST
 }
 
+/// 02 §11 — period a sales target covers.
+enum CrmTargetPeriod {
+  MONTH
+  QUARTER
+  YEAR
+}
+
+/// 02 §11, §33 — what a sales target measures.
+enum CrmTargetMetric {
+  REVENUE_WON
+  PIPELINE_CREATED
+  DEALS_WON
+}
+
 enum CrmDealStatus {
   OPEN
   WON
@@ -2305,6 +2312,9 @@ model CrmPipeline {
   stages       CrmPipelineStage[]
   deals        CrmDeal[]
 
+  sales_targets      CrmSalesTarget[]
+  forecast_snapshots CrmForecastSnapshot[]
+
   @@unique([organization_id, slug])
   @@map("crm_pipelines")
 }
@@ -2369,6 +2379,9 @@ model CrmCompany {
   owner_membership_id           String?
   account_manager_membership_id String?
   success_owner_membership_id   String?
+  /// 02 §20 — secondary owner and the project manager responsible for the customer's delivery work.
+  secondary_owner_membership_id String?
+  project_manager_membership_id String?
   team_id                       String?
   /// External system identifiers (02 §27). The billing profile itself is owned by 08.
   external_ids                  Json?
@@ -2387,6 +2400,8 @@ model CrmCompany {
   owner           Membership?        @relation("CrmCompanyOwner", fields: [owner_membership_id], references: [id], onDelete: SetNull)
   account_manager Membership?        @relation("CrmCompanyAccountManager", fields: [account_manager_membership_id], references: [id], onDelete: SetNull)
   success_owner   Membership?        @relation("CrmCompanySuccessOwner", fields: [success_owner_membership_id], references: [id], onDelete: SetNull)
+  secondary_owner Membership?        @relation("CrmCompanySecondaryOwner", fields: [secondary_owner_membership_id], references: [id], onDelete: SetNull)
+  project_manager Membership?        @relation("CrmCompanyProjectManager", fields: [project_manager_membership_id], references: [id], onDelete: SetNull)
   team            Team?              @relation(fields: [team_id], references: [id], onDelete: SetNull)
 
   contacts                       CrmContact[]
@@ -2451,43 +2466,46 @@ model CrmCompanyBranch {
 
 /// 02 §3 — a person at a Company. Not a platform User (01 §4).
 model CrmContact {
-  id                  String           @id @default(uuid())
-  organization_id     String
-  company_id          String?
-  first_name          String
-  last_name           String?
-  job_title           String?
-  department          String?
+  id                            String           @id @default(uuid())
+  organization_id               String
+  company_id                    String?
+  first_name                    String
+  last_name                     String?
+  job_title                     String?
+  department                    String?
   /// Primary email; additional addresses in `emails`.
-  email               String?
-  emails              Json?
-  phone               String?
-  mobile              String?
-  phones              Json?
-  website             String?
-  linkedin_url        String?
-  social_profiles     Json?
-  roles               CrmContactRole[] @default([])
-  contact_type        String?
-  lifecycle_stage_id  String?
-  lead_source_id      String?
-  owner_membership_id String?
-  timezone            String?
-  language            String?
+  email                         String?
+  emails                        Json?
+  phone                         String?
+  mobile                        String?
+  phones                        Json?
+  website                       String?
+  linkedin_url                  String?
+  social_profiles               Json?
+  roles                         CrmContactRole[] @default([])
+  contact_type                  String?
+  lifecycle_stage_id            String?
+  lead_source_id                String?
+  owner_membership_id           String?
+  /// 02 §20 — secondary owner.
+  secondary_owner_membership_id String?
+  timezone                      String?
+  language                      String?
   /// Marketing consent per channel (consumed by 11 Communication Center).
-  consent             Json?
-  description         String?
-  last_activity_at    DateTime?
-  archived_at         DateTime?
-  created_by_user_id  String?
-  created_at          DateTime         @default(now())
-  updated_at          DateTime         @updatedAt
+  consent                       Json?
+  description                   String?
+  last_activity_at              DateTime?
+  archived_at                   DateTime?
+  created_by_user_id            String?
+  created_at                    DateTime         @default(now())
+  updated_at                    DateTime         @updatedAt
 
   organization    Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   company         CrmCompany?        @relation(fields: [company_id], references: [id], onDelete: SetNull)
   lifecycle_stage CrmLifecycleStage? @relation(fields: [lifecycle_stage_id], references: [id], onDelete: SetNull)
   lead_source     CrmLeadSource?     @relation(fields: [lead_source_id], references: [id], onDelete: SetNull)
   owner           Membership?        @relation("CrmContactOwner", fields: [owner_membership_id], references: [id], onDelete: SetNull)
+  secondary_owner Membership?        @relation("CrmContactSecondaryOwner", fields: [secondary_owner_membership_id], references: [id], onDelete: SetNull)
 
   leads                           CrmLead[]
   primary_deals                   CrmDeal[]                            @relation("CrmDealPrimaryContact")
@@ -2523,42 +2541,44 @@ model CrmContact {
 
 /// 02 §4–7 — prospect before qualification. Conversion links to the created records (02 §7).
 model CrmLead {
-  id                     String    @id @default(uuid())
-  organization_id        String
-  branch_id              String?
-  name                   String
-  company_id             String?
-  contact_id             String?
+  id                            String    @id @default(uuid())
+  organization_id               String
+  branch_id                     String?
+  name                          String
+  company_id                    String?
+  contact_id                    String?
   /// Free-text company/contact details captured before records exist.
-  company_name           String?
-  contact_name           String?
-  email                  String?
-  phone                  String?
-  website                String?
-  industry               String?
-  estimated_company_size String?
-  estimated_value        Decimal?  @db.Decimal(18, 2)
-  currency               String?
-  status_id              String?
-  lead_source_id         String?
-  owner_membership_id    String?
+  company_name                  String?
+  contact_name                  String?
+  email                         String?
+  phone                         String?
+  website                       String?
+  industry                      String?
+  estimated_company_size        String?
+  estimated_value               Decimal?  @db.Decimal(18, 2)
+  currency                      String?
+  status_id                     String?
+  lead_source_id                String?
+  owner_membership_id           String?
+  /// 02 §20 — secondary owner.
+  secondary_owner_membership_id String?
   /// 02 §6 — qualification criteria and answers.
-  qualification          Json?
-  qualification_notes    String?
-  lead_score             Int?
-  manual_score           Int?
-  description            String?
-  last_activity_at       DateTime?
-  next_follow_up_at      DateTime?
-  converted_at           DateTime?
-  converted_company_id   String?
-  converted_contact_id   String?
-  converted_deal_id      String?
-  lost_reason            String?
-  archived_at            DateTime?
-  created_by_user_id     String?
-  created_at             DateTime  @default(now())
-  updated_at             DateTime  @updatedAt
+  qualification                 Json?
+  qualification_notes           String?
+  lead_score                    Int?
+  manual_score                  Int?
+  description                   String?
+  last_activity_at              DateTime?
+  next_follow_up_at             DateTime?
+  converted_at                  DateTime?
+  converted_company_id          String?
+  converted_contact_id          String?
+  converted_deal_id             String?
+  lost_reason                   String?
+  archived_at                   DateTime?
+  created_by_user_id            String?
+  created_at                    DateTime  @default(now())
+  updated_at                    DateTime  @updatedAt
 
   organization      Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   branch            Branch?        @relation(fields: [branch_id], references: [id], onDelete: SetNull)
@@ -2567,6 +2587,7 @@ model CrmLead {
   status            CrmLeadStatus? @relation(fields: [status_id], references: [id], onDelete: SetNull)
   lead_source       CrmLeadSource? @relation(fields: [lead_source_id], references: [id], onDelete: SetNull)
   owner             Membership?    @relation("CrmLeadOwner", fields: [owner_membership_id], references: [id], onDelete: SetNull)
+  secondary_owner   Membership?    @relation("CrmLeadSecondaryOwner", fields: [secondary_owner_membership_id], references: [id], onDelete: SetNull)
   converted_company CrmCompany?    @relation("LeadConvertedCompany", fields: [converted_company_id], references: [id], onDelete: SetNull)
   converted_contact CrmContact?    @relation("LeadConvertedContact", fields: [converted_contact_id], references: [id], onDelete: SetNull)
   converted_deal    CrmDeal?       @relation("LeadConvertedDeal", fields: [converted_deal_id], references: [id], onDelete: SetNull)
@@ -2580,43 +2601,46 @@ model CrmLead {
 
 /// 02 §9 — deal / opportunity. Totals derive from line items when any exist (02 §10).
 model CrmDeal {
-  id                  String              @id @default(uuid())
-  organization_id     String
-  branch_id           String?
-  pipeline_id         String
-  stage_id            String
-  name                String
-  company_id          String?
-  primary_contact_id  String?
-  owner_membership_id String?
-  team_id             String?
-  status              CrmDealStatus       @default(OPEN)
-  value               Decimal             @default(0) @db.Decimal(18, 2)
-  recurring_value     Decimal             @default(0) @db.Decimal(18, 2)
-  one_time_value      Decimal             @default(0) @db.Decimal(18, 2)
-  discount_amount     Decimal             @default(0) @db.Decimal(18, 2)
-  tax_amount          Decimal             @default(0) @db.Decimal(18, 2)
-  currency            String
-  probability         Int?
-  forecast_category   CrmForecastCategory @default(PIPELINE)
-  expected_close_date DateTime?           @db.Date
-  actual_close_date   DateTime?           @db.Date
-  deal_type           String?
-  lead_source_id      String?
-  competitor          String?
-  lost_reason         String?
-  next_step           String?
-  description         String?
+  id                            String              @id @default(uuid())
+  organization_id               String
+  branch_id                     String?
+  pipeline_id                   String
+  stage_id                      String
+  name                          String
+  company_id                    String?
+  primary_contact_id            String?
+  owner_membership_id           String?
+  /// 02 §20 — secondary owner (covers for the owner, shares credit) and the project manager who will deliver the deal.
+  secondary_owner_membership_id String?
+  project_manager_membership_id String?
+  team_id                       String?
+  status                        CrmDealStatus       @default(OPEN)
+  value                         Decimal             @default(0) @db.Decimal(18, 2)
+  recurring_value               Decimal             @default(0) @db.Decimal(18, 2)
+  one_time_value                Decimal             @default(0) @db.Decimal(18, 2)
+  discount_amount               Decimal             @default(0) @db.Decimal(18, 2)
+  tax_amount                    Decimal             @default(0) @db.Decimal(18, 2)
+  currency                      String
+  probability                   Int?
+  forecast_category             CrmForecastCategory @default(PIPELINE)
+  expected_close_date           DateTime?           @db.Date
+  actual_close_date             DateTime?           @db.Date
+  deal_type                     String?
+  lead_source_id                String?
+  competitor                    String?
+  lost_reason                   String?
+  next_step                     String?
+  description                   String?
   /// References to records owned by other modules (ids only): 03, 04, 05.
-  proposal_id         String?
-  contract_id         String?
-  project_id          String?
-  stage_entered_at    DateTime            @default(now())
-  last_activity_at    DateTime?
-  archived_at         DateTime?
-  created_by_user_id  String?
-  created_at          DateTime            @default(now())
-  updated_at          DateTime            @updatedAt
+  proposal_id                   String?
+  contract_id                   String?
+  project_id                    String?
+  stage_entered_at              DateTime            @default(now())
+  last_activity_at              DateTime?
+  archived_at                   DateTime?
+  created_by_user_id            String?
+  created_at                    DateTime            @default(now())
+  updated_at                    DateTime            @updatedAt
 
   organization    Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   branch          Branch?          @relation(fields: [branch_id], references: [id], onDelete: SetNull)
@@ -2625,6 +2649,8 @@ model CrmDeal {
   company         CrmCompany?      @relation(fields: [company_id], references: [id], onDelete: SetNull)
   primary_contact CrmContact?      @relation("CrmDealPrimaryContact", fields: [primary_contact_id], references: [id], onDelete: SetNull)
   owner           Membership?      @relation("CrmDealOwner", fields: [owner_membership_id], references: [id], onDelete: SetNull)
+  secondary_owner Membership?      @relation("CrmDealSecondaryOwner", fields: [secondary_owner_membership_id], references: [id], onDelete: SetNull)
+  project_manager Membership?      @relation("CrmDealProjectManager", fields: [project_manager_membership_id], references: [id], onDelete: SetNull)
   team            Team?            @relation(fields: [team_id], references: [id], onDelete: SetNull)
   lead_source     CrmLeadSource?   @relation(fields: [lead_source_id], references: [id], onDelete: SetNull)
   project         Project?         @relation("CrmDealProject", fields: [project_id], references: [id], onDelete: SetNull)
@@ -2823,6 +2849,111 @@ model CrmAssignmentRule {
 
   @@index([organization_id, entity_type, enabled])
   @@map("crm_assignment_rules")
+}
+
+/// 02 §11, §33 — sales target for pipeline coverage and attainment. Scope: the whole organization (owner and team null), a team, or one
+/// person; optionally one pipeline. Coverage = open pipeline / target; attainment = actual / target.
+model CrmSalesTarget {
+  id                  String          @id @default(uuid())
+  organization_id     String
+  pipeline_id         String?
+  /// Individual target; null with team_id null = organization-wide.
+  owner_membership_id String?
+  team_id             String?
+  period              CrmTargetPeriod
+  period_start        DateTime        @db.Date
+  period_end          DateTime        @db.Date
+  metric              CrmTargetMetric @default(REVENUE_WON)
+  amount              Decimal         @db.Decimal(14, 2)
+  currency            String
+  created_by_user_id  String?
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  pipeline     CrmPipeline? @relation(fields: [pipeline_id], references: [id], onDelete: SetNull)
+  owner        Membership?  @relation("CrmSalesTargetOwner", fields: [owner_membership_id], references: [id], onDelete: Cascade)
+  team         Team?        @relation(fields: [team_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id, period_start])
+  @@index([owner_membership_id])
+  @@index([team_id])
+  @@map("crm_sales_targets")
+}
+
+/// 02 §33 — periodic forecast snapshot (written by a daily job) so forecast accuracy can compare what was forecast with what closed.
+/// One row per pipeline and scope (organization, team or owner) and forecast period.
+model CrmForecastSnapshot {
+  id                  String   @id @default(uuid())
+  organization_id     String
+  pipeline_id         String
+  owner_membership_id String?
+  team_id             String?
+  snapshot_date       DateTime @db.Date
+  period_start        DateTime @db.Date
+  period_end          DateTime @db.Date
+  pipeline_amount     Decimal  @default(0) @db.Decimal(14, 2)
+  best_case_amount    Decimal  @default(0) @db.Decimal(14, 2)
+  commit_amount       Decimal  @default(0) @db.Decimal(14, 2)
+  closed_won_amount   Decimal  @default(0) @db.Decimal(14, 2)
+  weighted_amount     Decimal  @default(0) @db.Decimal(14, 2)
+  deal_count          Int      @default(0)
+  currency            String
+  created_at          DateTime @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  pipeline     CrmPipeline  @relation(fields: [pipeline_id], references: [id], onDelete: Cascade)
+  owner        Membership?  @relation("CrmForecastSnapshotOwner", fields: [owner_membership_id], references: [id], onDelete: Cascade)
+  team         Team?        @relation(fields: [team_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id, pipeline_id, snapshot_date])
+  @@index([organization_id, period_start])
+  @@map("crm_forecast_snapshots")
+}
+
+/// 02 §32 — dashboard layout by role or team: which widgets and in which order. role_id and team_id both null = organization default.
+/// A person's own arrangement stays in UserPreference.dashboard_layout and wins over these.
+model CrmDashboardLayout {
+  id                 String   @id @default(uuid())
+  organization_id    String
+  name               String
+  role_id            String?
+  team_id            String?
+  /// Ordered widgets: [{ key, size, filters }].
+  widgets            Json
+  is_default         Boolean  @default(false)
+  created_by_user_id String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  role         Role?        @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  team         Team?        @relation(fields: [team_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id, role_id])
+  @@index([organization_id, team_id])
+  @@map("crm_dashboard_layouts")
+}
+
+/// 02 §6 — configurable lead-scoring rule: when the conditions match, the points are added to CrmLead.lead_score (manual_score stays separate).
+model CrmLeadScoringRule {
+  id              String   @id @default(uuid())
+  organization_id String
+  name            String
+  description     String?
+  /// Conditions over lead fields, source, activity and engagement, e.g. [{ field, operator, value }].
+  conditions      Json
+  /// Points added (negative to subtract).
+  points          Int
+  enabled         Boolean  @default(true)
+  sort_order      Int      @default(0)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id, enabled])
+  @@map("crm_lead_scoring_rules")
 }
 
 /// 02 §22 — CSV import jobs with mapping, preview, validation, history and rollback.
@@ -3283,6 +3414,8 @@ model ProposalApproval {
   approver_membership_id String
   step                   Int                      @default(1)
   decision               ProposalApprovalDecision @default(PENDING)
+  /// 03 "Proposal Review" — the ProposalApprovalRule that requested this step; null = requested manually.
+  rule_id                String?
   comment                String?
   requested_at           DateTime                 @default(now())
   decided_at             DateTime?
@@ -3293,6 +3426,27 @@ model ProposalApproval {
   @@unique([version_id, approver_membership_id, step])
   @@index([approver_membership_id, decision])
   @@map("proposal_approvals")
+}
+
+/// 03 "Proposal Review" — approval rule: when the conditions match a proposal version (value, discount, margin, customer, type ...), the
+/// steps are requested in order. Mirrors ContractApprovalRule (04 §28). Evaluated when a version is submitted for review.
+model ProposalApprovalRule {
+  id              String   @id @default(uuid())
+  organization_id String
+  name            String
+  /// Conditions, e.g. [{ field: "discount_percent", operator: ">", value: 10 }, { field: "gross_total", operator: ">=", value: 100000 }].
+  conditions      Json
+  /// Ordered approval steps: [{ step, name, approver: { membership_id | role_id | team_id } }].
+  steps           Json
+  priority        Int      @default(100)
+  enabled         Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id, enabled, priority])
+  @@map("proposal_approval_rules")
 }
 
 /// Internal and customer comments on a proposal or a section. Customer authors are Customer Portal
@@ -3554,13 +3708,23 @@ enum ContractRiskLevel {
   CRITICAL
 }
 
-/// 04 §33 — signature providers behind the abstraction.
-enum SignatureProvider {
-  INTERNAL
-  DOCUSIGN
-  DROPBOX_SIGN
-  ADOBE_SIGN
-  OTHER
+/// 04 §73 — what an AI contract review flagged.
+enum ContractAiFindingKind {
+  MISSING_CLAUSE
+  CONFLICTING_DATES
+  UNUSUAL_PAYMENT_TERMS
+  LIABILITY_DIFFERENCE
+  TERMINATION_DIFFERENCE
+  SCOPE_INCONSISTENCY
+  RENEWAL_PROVISION
+  NON_STANDARD_CLAUSE
+}
+
+/// 04 §73 — a human's handling of an AI finding. Findings are recommendations: OPEN until someone accepts or dismisses them.
+enum ContractAiFindingStatus {
+  OPEN
+  ACCEPTED
+  DISMISSED
 }
 
 /// What a signature request is bound to. The version relationship is immutable (04 §34).
@@ -3573,6 +3737,13 @@ enum SignatureSubjectType {
 enum SigningOrder {
   SEQUENTIAL
   PARALLEL
+}
+
+/// 04 §36 — how the signer provided the signature in the platform's own signing flow.
+enum SignatureType {
+  DRAWN
+  TYPED
+  UPLOADED
 }
 
 /// 04 §35 — signature request states.
@@ -3998,6 +4169,8 @@ model ContractVersion {
   document             Document?               @relation("ContractVersionDocument", fields: [document_id], references: [id], onDelete: SetNull)
   signed_document      Document?               @relation("ContractVersionSignedDocument", fields: [signed_document_id], references: [id], onDelete: SetNull)
 
+  ai_findings ContractAiFinding[]
+
   @@unique([contract_id, version_number])
   @@index([contract_id, status])
   @@map("contract_versions")
@@ -4023,6 +4196,8 @@ model ContractSection {
   comments        ContractComment[]
   change_requests ContractChangeRequest[]
   obligations     ContractObligation[]
+
+  ai_findings ContractAiFinding[]
 
   @@unique([version_id, key])
   @@index([version_id, sort_order])
@@ -4077,6 +4252,33 @@ model ContractComment {
   @@index([version_id, created_at])
   @@index([section_id])
   @@map("contract_comments")
+}
+
+/// 04 §73 — one finding of an AI contract review. Always an AI-generated recommendation pointing at a section; it never edits the contract text.
+model ContractAiFinding {
+  id                        String                  @id @default(uuid())
+  version_id                String
+  section_id                String?
+  kind                      ContractAiFindingKind
+  severity                  ContractRiskLevel
+  message                   String
+  recommendation            String?
+  status                    ContractAiFindingStatus @default(OPEN)
+  /// Model that produced the finding and the review run it belongs to (traceability).
+  model                     String?
+  review_run_id             String?
+  confidence                Decimal?                @db.Decimal(5, 4)
+  reviewed_by_membership_id String?
+  reviewed_at               DateTime?
+  resolution_note           String?
+  created_at                DateTime                @default(now())
+
+  version     ContractVersion  @relation(fields: [version_id], references: [id], onDelete: Cascade)
+  section     ContractSection? @relation(fields: [section_id], references: [id], onDelete: SetNull)
+  reviewed_by Membership?      @relation("ContractAiFindingReviewer", fields: [reviewed_by_membership_id], references: [id], onDelete: SetNull)
+
+  @@index([version_id, status])
+  @@map("contract_ai_findings")
 }
 
 /// 04 §26 — Contract Change Request: a request to change contract language. Never mutates the
@@ -4143,10 +4345,6 @@ model SignatureRequest {
   contract_id                   String?
   contract_version_id           String?
   proposal_version_id           String?
-  provider                      SignatureProvider      @default(INTERNAL)
-  /// 01 §157 — the e-signature account (DOCUSIGN, DROPBOX_SIGN, ADOBE_SIGN) used to send this request; null for INTERNAL.
-  integration_connection_id     String?
-  provider_request_id           String?
   status                        SignatureRequestStatus @default(NOT_SENT)
   signing_order                 SigningOrder           @default(SEQUENTIAL)
   /// 04 §78 — package of document ids (17) in locked order: [{ document_id, title, sort_order }].
@@ -4154,7 +4352,7 @@ model SignatureRequest {
   /// 04 §37 — reminder settings: { frequency_days, max_reminders }.
   reminder_settings             Json?
   reminders_sent                Int                    @default(0)
-  /// Signed artifact (17) and provider audit certificate (17); ids only.
+  /// Signed artifact (17) and the audit certificate (17) generated by the platform; ids only.
   signed_document_id            String?
   audit_certificate_document_id String?
   signed_hash                   String?
@@ -4169,51 +4367,54 @@ model SignatureRequest {
   created_at                    DateTime               @default(now())
   updated_at                    DateTime               @updatedAt
 
-  organization               Organization           @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  integration_connection     IntegrationConnection? @relation(fields: [integration_connection_id], references: [id], onDelete: SetNull)
-  contract                   Contract?              @relation(fields: [contract_id], references: [id], onDelete: Cascade)
-  contract_version           ContractVersion?       @relation(fields: [contract_version_id], references: [id], onDelete: Cascade)
-  proposal_version           ProposalVersion?       @relation(fields: [proposal_version_id], references: [id], onDelete: Cascade)
+  organization               Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  contract                   Contract?          @relation(fields: [contract_id], references: [id], onDelete: Cascade)
+  contract_version           ContractVersion?   @relation(fields: [contract_version_id], references: [id], onDelete: Cascade)
+  proposal_version           ProposalVersion?   @relation(fields: [proposal_version_id], references: [id], onDelete: Cascade)
   signers                    Signer[]
   events                     SignatureEvent[]
-  employee_documents         EmployeeDocument[]     @relation("EmployeeDocumentSignatureRequest")
-  signed_document            Document?              @relation("SignatureRequestSignedDocument", fields: [signed_document_id], references: [id], onDelete: SetNull)
-  audit_certificate_document Document?              @relation("SignatureRequestAuditCertificate", fields: [audit_certificate_document_id], references: [id], onDelete: SetNull)
+  employee_documents         EmployeeDocument[] @relation("EmployeeDocumentSignatureRequest")
+  signed_document            Document?          @relation("SignatureRequestSignedDocument", fields: [signed_document_id], references: [id], onDelete: SetNull)
+  audit_certificate_document Document?          @relation("SignatureRequestAuditCertificate", fields: [audit_certificate_document_id], references: [id], onDelete: SetNull)
 
-  @@unique([provider, provider_request_id])
   @@index([organization_id, status])
   @@index([contract_id])
   @@index([contract_version_id])
   @@index([proposal_version_id])
   @@index([expires_at])
-  @@index([integration_connection_id])
   @@map("signature_requests")
 }
 
 /// 04 §31–32, §36 — a signer on a request with mapped fields and signing position.
 model Signer {
-  id                 String       @id @default(uuid())
-  request_id         String
-  signatory_id       String?
-  name               String
-  email              String
-  title              String?
+  id                    String         @id @default(uuid())
+  request_id            String
+  signatory_id          String?
+  name                  String
+  email                 String
+  title                 String?
   /// Position in sequential signing; equal values sign in parallel.
-  order              Int          @default(1)
-  status             SignerStatus @default(PENDING)
+  order                 Int            @default(1)
+  status                SignerStatus   @default(PENDING)
   /// Mapped fields (04 §31): [{ type: signature|date|initial|text, page, x, y, w, h, required }].
-  fields             Json?
-  /// Signing link token hash for INTERNAL provider; providers supply their own links.
-  access_token_hash  String?      @unique
-  provider_signer_id String?
-  auth_method        String?
-  ip_address         String?
-  user_agent         String?
-  sent_at            DateTime?
-  viewed_at          DateTime?
-  signed_at          DateTime?
-  declined_at        DateTime?
-  decline_reason     String?
+  fields                Json?
+  /// Hash of the single-use signing link token (the raw token is only in the link sent to the signer).
+  access_token_hash     String?        @unique
+  auth_method           String?
+  /// Custom e-signature (04 §36): how the signature was given, the stored signature image (17, id only), the consent text version the signer accepted,
+  /// and when the signer's identity was verified (one-time code by email or SMS, auth_method).
+  signature_type        SignatureType?
+  signature_document_id String?
+  consent_text_version  String?
+  consent_accepted_at   DateTime?
+  identity_verified_at  DateTime?
+  ip_address            String?
+  user_agent            String?
+  sent_at               DateTime?
+  viewed_at             DateTime?
+  signed_at             DateTime?
+  declined_at           DateTime?
+  decline_reason        String?
 
   request   SignatureRequest   @relation(fields: [request_id], references: [id], onDelete: Cascade)
   signatory ContractSignatory? @relation(fields: [signatory_id], references: [id], onDelete: SetNull)
@@ -4227,21 +4428,18 @@ model Signer {
 /// 04 §38, §71 — provider and internal events; (provider, provider_event_id) is unique so duplicate
 /// callbacks are ignored.
 model SignatureEvent {
-  id                String             @id @default(uuid())
-  request_id        String
-  signer_id         String?
-  type              SignatureEventType
-  provider          SignatureProvider  @default(INTERNAL)
-  provider_event_id String?
-  occurred_at       DateTime           @default(now())
-  ip_address        String?
-  payload           Json?
-  created_at        DateTime           @default(now())
+  id          String             @id @default(uuid())
+  request_id  String
+  signer_id   String?
+  type        SignatureEventType
+  occurred_at DateTime           @default(now())
+  ip_address  String?
+  payload     Json?
+  created_at  DateTime           @default(now())
 
   request SignatureRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
   signer  Signer?          @relation(fields: [signer_id], references: [id], onDelete: SetNull)
 
-  @@unique([provider, provider_event_id])
   @@index([request_id, occurred_at])
   @@map("signature_events")
 }
@@ -15498,35 +15696,33 @@ model DocumentCategory {
 /// 17 §16 — external storage provider connection (Google Drive, Microsoft 365, S3-compatible) behind the
 /// storage abstraction. The Document record stays in this module; only bytes live in the provider.
 model DocumentStorageConnection {
-  id                        String                          @id @default(uuid())
-  organization_id           String
-  provider                  DocumentStorageProvider
-  name                      String
-  status                    DocumentStorageConnectionStatus @default(PENDING)
+  id                   String                          @id @default(uuid())
+  organization_id      String
+  provider             DocumentStorageProvider
+  name                 String
+  status               DocumentStorageConnectionStatus @default(PENDING)
   /// Bucket / drive / site identifier and root prefix.
-  root_identifier           String?
-  root_path                 String?
-  region                    String?
-  endpoint_url              String?
-  /// 01 §157 — the organization's own credentials (access keys / OAuth app) for this provider. Secrets never live on this row.
-  integration_connection_id String?
+  root_identifier      String?
+  root_path            String?
+  region               String?
+  endpoint_url         String?
+  /// Reference to encrypted credentials (vault key id + ciphertext); never plain text.
+  credentials_ref      String?
   /// Non-secret provider options.
-  config                    Json?
-  is_default                Boolean                         @default(false)
-  last_checked_at           DateTime?
-  last_error                String?
-  connected_by_user_id      String?
-  disconnected_at           DateTime?
-  created_at                DateTime                        @default(now())
-  updated_at                DateTime                        @updatedAt
+  config               Json?
+  is_default           Boolean                         @default(false)
+  last_checked_at      DateTime?
+  last_error           String?
+  connected_by_user_id String?
+  disconnected_at      DateTime?
+  created_at           DateTime                        @default(now())
+  updated_at           DateTime                        @updatedAt
 
-  organization           Organization           @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  integration_connection IntegrationConnection? @relation(fields: [integration_connection_id], references: [id], onDelete: SetNull)
-  versions               DocumentVersion[]
+  organization Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  versions     DocumentVersion[]
 
   @@index([organization_id, provider])
   @@index([organization_id, is_default])
-  @@index([integration_connection_id])
   @@map("document_storage_connections")
 }
 

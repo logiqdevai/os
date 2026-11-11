@@ -861,6 +861,8 @@ exports.Prisma.CrmCompanyScalarFieldEnum = {
   owner_membership_id: 'owner_membership_id',
   account_manager_membership_id: 'account_manager_membership_id',
   success_owner_membership_id: 'success_owner_membership_id',
+  secondary_owner_membership_id: 'secondary_owner_membership_id',
+  project_manager_membership_id: 'project_manager_membership_id',
   team_id: 'team_id',
   external_ids: 'external_ids',
   last_activity_at: 'last_activity_at',
@@ -901,6 +903,7 @@ exports.Prisma.CrmContactScalarFieldEnum = {
   lifecycle_stage_id: 'lifecycle_stage_id',
   lead_source_id: 'lead_source_id',
   owner_membership_id: 'owner_membership_id',
+  secondary_owner_membership_id: 'secondary_owner_membership_id',
   timezone: 'timezone',
   language: 'language',
   consent: 'consent',
@@ -931,6 +934,7 @@ exports.Prisma.CrmLeadScalarFieldEnum = {
   status_id: 'status_id',
   lead_source_id: 'lead_source_id',
   owner_membership_id: 'owner_membership_id',
+  secondary_owner_membership_id: 'secondary_owner_membership_id',
   qualification: 'qualification',
   qualification_notes: 'qualification_notes',
   lead_score: 'lead_score',
@@ -959,6 +963,8 @@ exports.Prisma.CrmDealScalarFieldEnum = {
   company_id: 'company_id',
   primary_contact_id: 'primary_contact_id',
   owner_membership_id: 'owner_membership_id',
+  secondary_owner_membership_id: 'secondary_owner_membership_id',
+  project_manager_membership_id: 'project_manager_membership_id',
   team_id: 'team_id',
   status: 'status',
   value: 'value',
@@ -1087,6 +1093,68 @@ exports.Prisma.CrmAssignmentRuleScalarFieldEnum = {
   assign_to: 'assign_to',
   priority: 'priority',
   enabled: 'enabled',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CrmSalesTargetScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  pipeline_id: 'pipeline_id',
+  owner_membership_id: 'owner_membership_id',
+  team_id: 'team_id',
+  period: 'period',
+  period_start: 'period_start',
+  period_end: 'period_end',
+  metric: 'metric',
+  amount: 'amount',
+  currency: 'currency',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CrmForecastSnapshotScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  pipeline_id: 'pipeline_id',
+  owner_membership_id: 'owner_membership_id',
+  team_id: 'team_id',
+  snapshot_date: 'snapshot_date',
+  period_start: 'period_start',
+  period_end: 'period_end',
+  pipeline_amount: 'pipeline_amount',
+  best_case_amount: 'best_case_amount',
+  commit_amount: 'commit_amount',
+  closed_won_amount: 'closed_won_amount',
+  weighted_amount: 'weighted_amount',
+  deal_count: 'deal_count',
+  currency: 'currency',
+  created_at: 'created_at'
+};
+
+exports.Prisma.CrmDashboardLayoutScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  role_id: 'role_id',
+  team_id: 'team_id',
+  widgets: 'widgets',
+  is_default: 'is_default',
+  created_by_user_id: 'created_by_user_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.CrmLeadScoringRuleScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  description: 'description',
+  conditions: 'conditions',
+  points: 'points',
+  enabled: 'enabled',
+  sort_order: 'sort_order',
   created_at: 'created_at',
   updated_at: 'updated_at'
 };
@@ -1280,9 +1348,22 @@ exports.Prisma.ProposalApprovalScalarFieldEnum = {
   approver_membership_id: 'approver_membership_id',
   step: 'step',
   decision: 'decision',
+  rule_id: 'rule_id',
   comment: 'comment',
   requested_at: 'requested_at',
   decided_at: 'decided_at'
+};
+
+exports.Prisma.ProposalApprovalRuleScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  conditions: 'conditions',
+  steps: 'steps',
+  priority: 'priority',
+  enabled: 'enabled',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
 };
 
 exports.Prisma.ProposalCommentScalarFieldEnum = {
@@ -1596,6 +1677,24 @@ exports.Prisma.ContractCommentScalarFieldEnum = {
   updated_at: 'updated_at'
 };
 
+exports.Prisma.ContractAiFindingScalarFieldEnum = {
+  id: 'id',
+  version_id: 'version_id',
+  section_id: 'section_id',
+  kind: 'kind',
+  severity: 'severity',
+  message: 'message',
+  recommendation: 'recommendation',
+  status: 'status',
+  model: 'model',
+  review_run_id: 'review_run_id',
+  confidence: 'confidence',
+  reviewed_by_membership_id: 'reviewed_by_membership_id',
+  reviewed_at: 'reviewed_at',
+  resolution_note: 'resolution_note',
+  created_at: 'created_at'
+};
+
 exports.Prisma.ContractChangeRequestScalarFieldEnum = {
   id: 'id',
   contract_id: 'contract_id',
@@ -1636,8 +1735,6 @@ exports.Prisma.SignatureRequestScalarFieldEnum = {
   contract_id: 'contract_id',
   contract_version_id: 'contract_version_id',
   proposal_version_id: 'proposal_version_id',
-  provider: 'provider',
-  provider_request_id: 'provider_request_id',
   status: 'status',
   signing_order: 'signing_order',
   package_documents: 'package_documents',
@@ -1669,8 +1766,12 @@ exports.Prisma.SignerScalarFieldEnum = {
   status: 'status',
   fields: 'fields',
   access_token_hash: 'access_token_hash',
-  provider_signer_id: 'provider_signer_id',
   auth_method: 'auth_method',
+  signature_type: 'signature_type',
+  signature_document_id: 'signature_document_id',
+  consent_text_version: 'consent_text_version',
+  consent_accepted_at: 'consent_accepted_at',
+  identity_verified_at: 'identity_verified_at',
   ip_address: 'ip_address',
   user_agent: 'user_agent',
   sent_at: 'sent_at',
@@ -1685,8 +1786,6 @@ exports.Prisma.SignatureEventScalarFieldEnum = {
   request_id: 'request_id',
   signer_id: 'signer_id',
   type: 'type',
-  provider: 'provider',
-  provider_event_id: 'provider_event_id',
   occurred_at: 'occurred_at',
   ip_address: 'ip_address',
   payload: 'payload',
@@ -8469,6 +8568,18 @@ exports.CrmPriority = exports.$Enums.CrmPriority = {
   URGENT: 'URGENT'
 };
 
+exports.CrmTargetPeriod = exports.$Enums.CrmTargetPeriod = {
+  MONTH: 'MONTH',
+  QUARTER: 'QUARTER',
+  YEAR: 'YEAR'
+};
+
+exports.CrmTargetMetric = exports.$Enums.CrmTargetMetric = {
+  REVENUE_WON: 'REVENUE_WON',
+  PIPELINE_CREATED: 'PIPELINE_CREATED',
+  DEALS_WON: 'DEALS_WON'
+};
+
 exports.CrmImportStatus = exports.$Enums.CrmImportStatus = {
   PENDING: 'PENDING',
   VALIDATING: 'VALIDATING',
@@ -8678,6 +8789,23 @@ exports.ContractReviewDecision = exports.$Enums.ContractReviewDecision = {
   CHANGES_REQUESTED: 'CHANGES_REQUESTED'
 };
 
+exports.ContractAiFindingKind = exports.$Enums.ContractAiFindingKind = {
+  MISSING_CLAUSE: 'MISSING_CLAUSE',
+  CONFLICTING_DATES: 'CONFLICTING_DATES',
+  UNUSUAL_PAYMENT_TERMS: 'UNUSUAL_PAYMENT_TERMS',
+  LIABILITY_DIFFERENCE: 'LIABILITY_DIFFERENCE',
+  TERMINATION_DIFFERENCE: 'TERMINATION_DIFFERENCE',
+  SCOPE_INCONSISTENCY: 'SCOPE_INCONSISTENCY',
+  RENEWAL_PROVISION: 'RENEWAL_PROVISION',
+  NON_STANDARD_CLAUSE: 'NON_STANDARD_CLAUSE'
+};
+
+exports.ContractAiFindingStatus = exports.$Enums.ContractAiFindingStatus = {
+  OPEN: 'OPEN',
+  ACCEPTED: 'ACCEPTED',
+  DISMISSED: 'DISMISSED'
+};
+
 exports.ContractChangeRequestStatus = exports.$Enums.ContractChangeRequestStatus = {
   REQUESTED: 'REQUESTED',
   UNDER_REVIEW: 'UNDER_REVIEW',
@@ -8696,14 +8824,6 @@ exports.ContractApprovalDecision = exports.$Enums.ContractApprovalDecision = {
 exports.SignatureSubjectType = exports.$Enums.SignatureSubjectType = {
   CONTRACT_VERSION: 'CONTRACT_VERSION',
   PROPOSAL_VERSION: 'PROPOSAL_VERSION'
-};
-
-exports.SignatureProvider = exports.$Enums.SignatureProvider = {
-  INTERNAL: 'INTERNAL',
-  DOCUSIGN: 'DOCUSIGN',
-  DROPBOX_SIGN: 'DROPBOX_SIGN',
-  ADOBE_SIGN: 'ADOBE_SIGN',
-  OTHER: 'OTHER'
 };
 
 exports.SignatureRequestStatus = exports.$Enums.SignatureRequestStatus = {
@@ -8732,6 +8852,12 @@ exports.SignerStatus = exports.$Enums.SignerStatus = {
   SIGNED: 'SIGNED',
   DECLINED: 'DECLINED',
   BOUNCED: 'BOUNCED'
+};
+
+exports.SignatureType = exports.$Enums.SignatureType = {
+  DRAWN: 'DRAWN',
+  TYPED: 'TYPED',
+  UPLOADED: 'UPLOADED'
 };
 
 exports.SignatureEventType = exports.$Enums.SignatureEventType = {
@@ -11263,6 +11389,10 @@ exports.Prisma.ModelName = {
   CrmActivityParticipant: 'CrmActivityParticipant',
   CrmNote: 'CrmNote',
   CrmAssignmentRule: 'CrmAssignmentRule',
+  CrmSalesTarget: 'CrmSalesTarget',
+  CrmForecastSnapshot: 'CrmForecastSnapshot',
+  CrmDashboardLayout: 'CrmDashboardLayout',
+  CrmLeadScoringRule: 'CrmLeadScoringRule',
   CrmImportJob: 'CrmImportJob',
   NumberSequence: 'NumberSequence',
   ProposalTemplate: 'ProposalTemplate',
@@ -11272,6 +11402,7 @@ exports.Prisma.ModelName = {
   ProposalLineItem: 'ProposalLineItem',
   ProposalPaymentScheduleItem: 'ProposalPaymentScheduleItem',
   ProposalApproval: 'ProposalApproval',
+  ProposalApprovalRule: 'ProposalApprovalRule',
   ProposalComment: 'ProposalComment',
   ProposalDelivery: 'ProposalDelivery',
   ProposalEvent: 'ProposalEvent',
@@ -11290,6 +11421,7 @@ exports.Prisma.ModelName = {
   ContractSection: 'ContractSection',
   ContractReview: 'ContractReview',
   ContractComment: 'ContractComment',
+  ContractAiFinding: 'ContractAiFinding',
   ContractChangeRequest: 'ContractChangeRequest',
   ContractApproval: 'ContractApproval',
   SignatureRequest: 'SignatureRequest',

@@ -108,6 +108,11 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'crm.records.export', module: ModuleKey.CRM, resource: 'records', action: 'export', is_sensitive: true },
   { key: 'crm.dashboards.read', module: ModuleKey.CRM, resource: 'dashboards', action: 'read' },
   { key: 'crm.forecast.read', module: ModuleKey.CRM, resource: 'forecast', action: 'read' },
+  // 02 §11, §32, §33: sales targets (pipeline coverage, attainment), dashboard layouts by role/team, lead-scoring rules.
+  { key: 'crm.targets.read', module: ModuleKey.CRM, resource: 'targets', action: 'read' },
+  { key: 'crm.targets.manage', module: ModuleKey.CRM, resource: 'targets', action: 'manage', is_sensitive: true },
+  { key: 'crm.dashboards.manage', module: ModuleKey.CRM, resource: 'dashboards', action: 'manage' },
+  { key: 'crm.scoring_rules.manage', module: ModuleKey.CRM, resource: 'scoring_rules', action: 'manage' },
   // Platform custom fields, tags and saved views are defined by 02 §24–29.
   { key: 'platform.custom_fields.manage', module: ModuleKey.ADMINISTRATION, resource: 'custom_fields', action: 'manage', is_sensitive: true },
   { key: 'platform.tags.manage', module: ModuleKey.ADMINISTRATION, resource: 'tags', action: 'manage' },
@@ -155,6 +160,7 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'proposals.comments.internal.read', module: ModuleKey.PROPOSALS, resource: 'comments.internal', action: 'read' },
   { key: 'proposals.analytics.read', module: ModuleKey.PROPOSALS, resource: 'analytics', action: 'read' },
   { key: 'proposals.ai.generate', module: ModuleKey.PROPOSALS, resource: 'ai', action: 'generate' },
+  { key: 'proposals.approval_rules.manage', module: ModuleKey.PROPOSALS, resource: 'approval_rules', action: 'manage', is_sensitive: true },
   // --- 08 Finance ---------------------------------------------------------------------
   ...crud(ModuleKey.FINANCE, 'finance', 'invoices', ['approve', 'send', 'void'], ['approve', 'void']),
   { key: 'finance.payments.read', module: ModuleKey.FINANCE, resource: 'payments', action: 'read', is_sensitive: true },

@@ -31,37 +31,37 @@ The Communication Center should serve as the agency's primary communication hub,
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Providers & sender identities** | | | |
-| `CommProviderAccount` | `comm_provider_accounts` | [L9807](../../api/prisma/schema.prisma#L9807) | 11 "Email Management", "SMS Management" — a configured delivery provider account (API key stored encrypted / as a secret reference). One default per channel … |
-| `CommSenderDomain` | `comm_sender_domains` | [L9838](../../api/prisma/schema.prisma#L9838) | 11 "Email Management" — a sending domain with DNS verification (SPF / DKIM / DMARC / return-path). Distinct from organization_domains (01 §70), which are log… |
-| `CommSenderIdentity` | `comm_sender_identities` | [L9870](../../api/prisma/schema.prisma#L9870) | 11 "Email Management", "SMS Management" — a verified from-address (email) or sender number / alphanumeric sender id (SMS). May be scoped to a Branch (01 §120… |
-| `CommSignature` | `comm_signatures` | [L9908](../../api/prisma/schema.prisma#L9908) | 11 "Email Management" — email signatures; organization-wide when membership_id is null, personal otherwise. |
+| `CommProviderAccount` | `comm_provider_accounts` | [L10037](../../api/prisma/schema.prisma#L10037) | 11 "Email Management", "SMS Management" — a configured delivery provider account (API key stored encrypted / as a secret reference). One default per channel … |
+| `CommSenderDomain` | `comm_sender_domains` | [L10068](../../api/prisma/schema.prisma#L10068) | 11 "Email Management" — a sending domain with DNS verification (SPF / DKIM / DMARC / return-path). Distinct from organization_domains (01 §70), which are log… |
+| `CommSenderIdentity` | `comm_sender_identities` | [L10100](../../api/prisma/schema.prisma#L10100) | 11 "Email Management", "SMS Management" — a verified from-address (email) or sender number / alphanumeric sender id (SMS). May be scoped to a Branch (01 §120… |
+| `CommSignature` | `comm_signatures` | [L10138](../../api/prisma/schema.prisma#L10138) | 11 "Email Management" — email signatures; organization-wide when membership_id is null, personal otherwise. |
 | **Templates** | | | |
-| `CommTemplate` | `comm_templates` | [L9931](../../api/prisma/schema.prisma#L9931) | 11 "Communication Templates" — reusable email / SMS template. Content lives in versions; the published version is pointed to by current_version_id. Variables… |
-| `CommTemplateVersion` | `comm_template_versions` | [L9982](../../api/prisma/schema.prisma#L9982) | 11 "Communication Templates" — immutable content snapshot per version: subject, preheader, HTML body, plain-text body, editor design JSON. Conditional conten… |
-| `CommTemplateTranslation` | `comm_template_translations` | [L10019](../../api/prisma/schema.prisma#L10019) | 11 "Communication Templates" — multiple languages: a localized subject/body for a template version, selected by recipient language (02 CrmContact.language, 0… |
+| `CommTemplate` | `comm_templates` | [L10161](../../api/prisma/schema.prisma#L10161) | 11 "Communication Templates" — reusable email / SMS template. Content lives in versions; the published version is pointed to by current_version_id. Variables… |
+| `CommTemplateVersion` | `comm_template_versions` | [L10212](../../api/prisma/schema.prisma#L10212) | 11 "Communication Templates" — immutable content snapshot per version: subject, preheader, HTML body, plain-text body, editor design JSON. Conditional conten… |
+| `CommTemplateTranslation` | `comm_template_translations` | [L10249](../../api/prisma/schema.prisma#L10249) | 11 "Communication Templates" — multiple languages: a localized subject/body for a template version, selected by recipient language (02 CrmContact.language, 0… |
 | **Messages** | | | |
-| `CommThread` | `comm_threads` | [L10045](../../api/prisma/schema.prisma#L10045) | 11 "Email Management", "Conversation threads" — groups outbound emails and their inbound replies (captured by 13 and linked by support_conversation_id) under… |
-| `CommMessage` | `comm_messages` | [L10081](../../api/prisma/schema.prisma#L10081) | 11 "Email Management", "SMS Management", "Communication History", "Scheduling", "Delivery Tracking" — one outbound email or SMS to one primary recipient (cc/… |
-| `CommMessageRecipient` | `comm_message_recipients` | [L10243](../../api/prisma/schema.prisma#L10243) | 11 "Email Management" — every recipient of a message (the primary TO is duplicated here so per-recipient delivery status is uniform), plus cc / bcc. |
-| `CommMessageAttachment` | `comm_message_attachments` | [L10278](../../api/prisma/schema.prisma#L10278) | 11 "Email Management" — file attachments and inline images. Files are Documents (17); id only. |
-| `CommMessageLink` | `comm_message_links` | [L10303](../../api/prisma/schema.prisma#L10303) | 11 "Customer Communication", "Communication History" — polymorphic link from a message to the records it concerns (CRM_COMPANY / CRM_CONTACT / PROJECT / INVO… |
-| `CommDeliveryEvent` | `comm_delivery_events` | [L10321](../../api/prisma/schema.prisma#L10321) | 11 "Delivery Tracking" — append-only provider events (webhooks and sync). Idempotent through provider_webhook_events (08) and the (provider, provider_event_i… |
-| `CommTrackedLink` | `comm_tracked_links` | [L10359](../../api/prisma/schema.prisma#L10359) | 11 "Delivery Tracking", "Analytics & Reporting" — rewritten links for click tracking, per message (one-off sends) or per campaign (shared across its messages). |
+| `CommThread` | `comm_threads` | [L10275](../../api/prisma/schema.prisma#L10275) | 11 "Email Management", "Conversation threads" — groups outbound emails and their inbound replies (captured by 13 and linked by support_conversation_id) under… |
+| `CommMessage` | `comm_messages` | [L10311](../../api/prisma/schema.prisma#L10311) | 11 "Email Management", "SMS Management", "Communication History", "Scheduling", "Delivery Tracking" — one outbound email or SMS to one primary recipient (cc/… |
+| `CommMessageRecipient` | `comm_message_recipients` | [L10473](../../api/prisma/schema.prisma#L10473) | 11 "Email Management" — every recipient of a message (the primary TO is duplicated here so per-recipient delivery status is uniform), plus cc / bcc. |
+| `CommMessageAttachment` | `comm_message_attachments` | [L10508](../../api/prisma/schema.prisma#L10508) | 11 "Email Management" — file attachments and inline images. Files are Documents (17); id only. |
+| `CommMessageLink` | `comm_message_links` | [L10533](../../api/prisma/schema.prisma#L10533) | 11 "Customer Communication", "Communication History" — polymorphic link from a message to the records it concerns (CRM_COMPANY / CRM_CONTACT / PROJECT / INVO… |
+| `CommDeliveryEvent` | `comm_delivery_events` | [L10551](../../api/prisma/schema.prisma#L10551) | 11 "Delivery Tracking" — append-only provider events (webhooks and sync). Idempotent through provider_webhook_events (08) and the (provider, provider_event_i… |
+| `CommTrackedLink` | `comm_tracked_links` | [L10589](../../api/prisma/schema.prisma#L10589) | 11 "Delivery Tracking", "Analytics & Reporting" — rewritten links for click tracking, per message (one-off sends) or per campaign (shared across its messages). |
 | **Recipients, segments, consent & suppression** | | | |
-| `CommRecipientList` | `comm_recipient_lists` | [L10386](../../api/prisma/schema.prisma#L10386) | 11 "Recipients" — a static recipient list of CRM contacts and/or members. Dynamic audiences are Segments. |
-| `CommRecipientListMember` | `comm_recipient_list_members` | [L10409](../../api/prisma/schema.prisma#L10409) | 11 "Recipients" — list membership: a CRM contact, a member, or an external address. |
-| `Segment` | `segments` | [L10434](../../api/prisma/schema.prisma#L10434) | 11 "Customer Segmentation" — a saved filter over CRM companies/contacts (02 §29 saved views, §24 custom fields, §36 tags) combined with billing state (08) an… |
-| `CommConsent` | `comm_consents` | [L10468](../../api/prisma/schema.prisma#L10468) | 11 "Recipients" — consent / opt-in / unsubscribe state per CRM contact and channel, with evidence. Source of truth for marketing sends; CrmContact.consent (0… |
-| `CommSuppression` | `comm_suppressions` | [L10500](../../api/prisma/schema.prisma#L10500) | 11 "Recipients", "Delivery Tracking" — suppression list: addresses that must not be contacted on a channel (unsubscribes, hard bounces, complaints, manual). … |
+| `CommRecipientList` | `comm_recipient_lists` | [L10616](../../api/prisma/schema.prisma#L10616) | 11 "Recipients" — a static recipient list of CRM contacts and/or members. Dynamic audiences are Segments. |
+| `CommRecipientListMember` | `comm_recipient_list_members` | [L10639](../../api/prisma/schema.prisma#L10639) | 11 "Recipients" — list membership: a CRM contact, a member, or an external address. |
+| `Segment` | `segments` | [L10664](../../api/prisma/schema.prisma#L10664) | 11 "Customer Segmentation" — a saved filter over CRM companies/contacts (02 §29 saved views, §24 custom fields, §36 tags) combined with billing state (08) an… |
+| `CommConsent` | `comm_consents` | [L10698](../../api/prisma/schema.prisma#L10698) | 11 "Recipients" — consent / opt-in / unsubscribe state per CRM contact and channel, with evidence. Source of truth for marketing sends; CrmContact.consent (0… |
+| `CommSuppression` | `comm_suppressions` | [L10730](../../api/prisma/schema.prisma#L10730) | 11 "Recipients", "Delivery Tracking" — suppression list: addresses that must not be contacted on a channel (unsubscribes, hard bounces, complaints, manual). … |
 | **Campaigns** | | | |
-| `Campaign` | `campaigns` | [L10539](../../api/prisma/schema.prisma#L10539) | 11 "Marketing Campaigns", "Scheduling", "Internal Collaboration", "Analytics & Reporting" — a bulk email or SMS send to an audience built from lists and segm… |
-| `CampaignAudience` | `campaign_audiences` | [L10647](../../api/prisma/schema.prisma#L10647) | 11 "Marketing Campaigns", "Customer Segmentation" — audience sources of a campaign: recipient lists and segments, included or excluded. Resolved into Campaig… |
-| `CampaignRecipient` | `campaign_recipients` | [L10668](../../api/prisma/schema.prisma#L10668) | 11 "Marketing Campaigns", "Delivery Tracking" — resolved audience: one row per recipient per campaign (per run for recurring campaigns). Links to the CommMes… |
-| `CampaignRun` | `campaign_runs` | [L10703](../../api/prisma/schema.prisma#L10703) | 11 "Scheduling" — one execution of a campaign (recurring campaigns have many; one-off campaigns one). |
-| `CampaignApproval` | `campaign_approvals` | [L10730](../../api/prisma/schema.prisma#L10730) | 11 "Internal Collaboration" — campaign review / approval by a member before sending. |
+| `Campaign` | `campaigns` | [L10769](../../api/prisma/schema.prisma#L10769) | 11 "Marketing Campaigns", "Scheduling", "Internal Collaboration", "Analytics & Reporting" — a bulk email or SMS send to an audience built from lists and segm… |
+| `CampaignAudience` | `campaign_audiences` | [L10877](../../api/prisma/schema.prisma#L10877) | 11 "Marketing Campaigns", "Customer Segmentation" — audience sources of a campaign: recipient lists and segments, included or excluded. Resolved into Campaig… |
+| `CampaignRecipient` | `campaign_recipients` | [L10898](../../api/prisma/schema.prisma#L10898) | 11 "Marketing Campaigns", "Delivery Tracking" — resolved audience: one row per recipient per campaign (per run for recurring campaigns). Links to the CommMes… |
+| `CampaignRun` | `campaign_runs` | [L10933](../../api/prisma/schema.prisma#L10933) | 11 "Scheduling" — one execution of a campaign (recurring campaigns have many; one-off campaigns one). |
+| `CampaignApproval` | `campaign_approvals` | [L10960](../../api/prisma/schema.prisma#L10960) | 11 "Internal Collaboration" — campaign review / approval by a member before sending. |
 | **Analytics & AI** | | | |
-| `CommDailyStat` | `comm_daily_stats` | [L10751](../../api/prisma/schema.prisma#L10751) | 11 "Analytics & Reporting" — daily rollup per organization / channel / kind (and per campaign) used for sent counts, open / click / reply / bounce / delivery… |
-| `CommAiGeneration` | `comm_ai_generations` | [L10782](../../api/prisma/schema.prisma#L10782) | 11 "AI Communication Assistant" — a request to the assistant and its output (draft, rewrite, translation, subject lines, summary). Linked to the message / te… |
+| `CommDailyStat` | `comm_daily_stats` | [L10981](../../api/prisma/schema.prisma#L10981) | 11 "Analytics & Reporting" — daily rollup per organization / channel / kind (and per campaign) used for sent counts, open / click / reply / bounce / delivery… |
+| `CommAiGeneration` | `comm_ai_generations` | [L11012](../../api/prisma/schema.prisma#L11012) | 11 "AI Communication Assistant" — a request to the assistant and its output (draft, rewrite, translation, subject lines, summary). Linked to the message / te… |
 
 **Owned enums (26):** `CommChannel`, `CommMessageKind`, `CommMessageSource`, `CommMessageStatus`, `CommDeliveryEventType`, `CommBounceType`, `CommRecipientKind`, `CommRecipientRole`, `CommRecipientStatus`, `CommTemplateCategory`, `CommTemplateKind`, `CommTemplateStatus`, `CommTemplateVersionStatus`, `CommProviderKind`, `CommProviderAccountStatus`, `CommSenderDomainStatus`, `CommSenderIdentityStatus`, `CampaignStatus`, `CampaignApprovalDecision`, `CampaignAudienceMode`, `CampaignRunStatus`, `SegmentEntityType`, `CommConsentStatus`, `CommConsentSource`, `CommSuppressionReason`, `CommAiTaskKind`
 
@@ -90,13 +90,13 @@ The Communication Center should serve as the agency's primary communication hub,
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `CrmContact.consent` ([02](./02-crm-sales-management.md), [L2425](../../api/prisma/schema.prisma#L2425)) — Marketing consent per channel (consumed by 11 Communication Center).
-- `ProposalDelivery.communication_id` ([03](./03-proposal-quotation-generator.md), [L3297](../../api/prisma/schema.prisma#L3297)) — Communication record id (11); id only.
-- `SupportChannel.sender_identity_id` ([13](./13-customer-support-communication-hub.md), [L12476](../../api/prisma/schema.prisma#L12476)) — 11 SenderIdentity used for outbound replies from this channel; id only.
-- `SupportCsatRating.token` ([13](./13-customer-support-communication-hub.md), [L13143](../../api/prisma/schema.prisma#L13143)) — Opaque token for the rating link in emails (11).
-- `NotificationDelivery.comm_message_id` ([14](./14-notifications-activity-center.md), [L13774](../../api/prisma/schema.prisma#L13774)) — 11 CommMessage id for EMAIL / SMS deliveries.
-- `NotificationOrgSettings.email_sender_identity_id` ([14](./14-notifications-activity-center.md), [L13872](../../api/prisma/schema.prisma#L13872)) — 11 SenderIdentity used for notification emails / SMS.
-- `NotificationDigest.comm_message_id` ([14](./14-notifications-activity-center.md), [L14064](../../api/prisma/schema.prisma#L14064)) — 11 CommMessage id of the sent digest (EMAIL / SMS).
+- `CrmContact.consent` ([02](./02-crm-sales-management.md), [L2468](../../api/prisma/schema.prisma#L2468)) — Marketing consent per channel (consumed by 11 Communication Center).
+- `ProposalDelivery.communication_id` ([03](./03-proposal-quotation-generator.md), [L3479](../../api/prisma/schema.prisma#L3479)) — Communication record id (11); id only.
+- `SupportChannel.sender_identity_id` ([13](./13-customer-support-communication-hub.md), [L12706](../../api/prisma/schema.prisma#L12706)) — 11 SenderIdentity used for outbound replies from this channel; id only.
+- `SupportCsatRating.token` ([13](./13-customer-support-communication-hub.md), [L13373](../../api/prisma/schema.prisma#L13373)) — Opaque token for the rating link in emails (11).
+- `NotificationDelivery.comm_message_id` ([14](./14-notifications-activity-center.md), [L14004](../../api/prisma/schema.prisma#L14004)) — 11 CommMessage id for EMAIL / SMS deliveries.
+- `NotificationOrgSettings.email_sender_identity_id` ([14](./14-notifications-activity-center.md), [L14102](../../api/prisma/schema.prisma#L14102)) — 11 SenderIdentity used for notification emails / SMS.
+- `NotificationDigest.comm_message_id` ([14](./14-notifications-activity-center.md), [L14294](../../api/prisma/schema.prisma#L14294)) — 11 CommMessage id of the sent digest (EMAIL / SMS).
 
 <!-- schema-refs:end -->
 
@@ -136,7 +136,7 @@ Definition of done for each resource of this module: permission keys in the cata
 ## Email Management
 
 <!-- schema-section:start -->
-> **Schema:** `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L10081)) · `CommMessageAttachment` ([comm_message_attachments](../../api/prisma/schema.prisma#L10278)) · `CommMessageRecipient` ([comm_message_recipients](../../api/prisma/schema.prisma#L10243)) · `CommProviderAccount` ([comm_provider_accounts](../../api/prisma/schema.prisma#L9807)) · `CommSenderDomain` ([comm_sender_domains](../../api/prisma/schema.prisma#L9838)) · `CommSenderIdentity` ([comm_sender_identities](../../api/prisma/schema.prisma#L9870)) · `CommSignature` ([comm_signatures](../../api/prisma/schema.prisma#L9908)) · `CommThread` ([comm_threads](../../api/prisma/schema.prisma#L10045)) · enum `CommChannel` ([L9531](../../api/prisma/schema.prisma#L9531)) · enum `CommProviderKind` ([L9679](../../api/prisma/schema.prisma#L9679)) · enum `CommRecipientRole` ([L9601](../../api/prisma/schema.prisma#L9601)) · enum `CommSenderDomainStatus` ([L9699](../../api/prisma/schema.prisma#L9699)) · enum `CommSenderIdentityStatus` ([L9707](../../api/prisma/schema.prisma#L9707))
+> **Schema:** `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L10311)) · `CommMessageAttachment` ([comm_message_attachments](../../api/prisma/schema.prisma#L10508)) · `CommMessageRecipient` ([comm_message_recipients](../../api/prisma/schema.prisma#L10473)) · `CommProviderAccount` ([comm_provider_accounts](../../api/prisma/schema.prisma#L10037)) · `CommSenderDomain` ([comm_sender_domains](../../api/prisma/schema.prisma#L10068)) · `CommSenderIdentity` ([comm_sender_identities](../../api/prisma/schema.prisma#L10100)) · `CommSignature` ([comm_signatures](../../api/prisma/schema.prisma#L10138)) · `CommThread` ([comm_threads](../../api/prisma/schema.prisma#L10275)) · enum `CommChannel` ([L9761](../../api/prisma/schema.prisma#L9761)) · enum `CommProviderKind` ([L9909](../../api/prisma/schema.prisma#L9909)) · enum `CommRecipientRole` ([L9831](../../api/prisma/schema.prisma#L9831)) · enum `CommSenderDomainStatus` ([L9929](../../api/prisma/schema.prisma#L9929)) · enum `CommSenderIdentityStatus` ([L9937](../../api/prisma/schema.prisma#L9937))
 <!-- schema-section:end -->
 
 > **Provider credentials (email and SMS).** An organization sends with its own provider accounts. At launch: Resend for email and Twilio for SMS; the other `CommProviderKind` values (SendGrid, Postmark, Mailgun, Amazon SES, SMTP, Vonage, MessageBird) are reserved until their adapter and an Integration provider value are added. The API keys and webhook secrets are entered in Admin → Integrations (01 §156–§161) and stored encrypted in an Integration Connection of category Email or SMS. A `CommProviderAccount` points at that connection and holds only the channel, defaults, sender domains and identities. No provider key is read from the platform `.env` for organization messages (01 §160), and a channel with no Active connection shows "connect a provider" instead of sending.
@@ -169,7 +169,7 @@ Support professional email communication including:
 ## SMS Management
 
 <!-- schema-section:start -->
-> **Schema:** `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L10081)) · `CommProviderAccount` ([comm_provider_accounts](../../api/prisma/schema.prisma#L9807)) · `CommSenderIdentity` ([comm_sender_identities](../../api/prisma/schema.prisma#L9870)) · enum `CommChannel` ([L9531](../../api/prisma/schema.prisma#L9531)) · enum `CommSenderIdentityStatus` ([L9707](../../api/prisma/schema.prisma#L9707))
+> **Schema:** `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L10311)) · `CommProviderAccount` ([comm_provider_accounts](../../api/prisma/schema.prisma#L10037)) · `CommSenderIdentity` ([comm_sender_identities](../../api/prisma/schema.prisma#L10100)) · enum `CommChannel` ([L9761](../../api/prisma/schema.prisma#L9761)) · enum `CommSenderIdentityStatus` ([L9937](../../api/prisma/schema.prisma#L9937))
 <!-- schema-section:end -->
 
 Support SMS communication including:
@@ -190,7 +190,7 @@ Support SMS communication including:
 ## Communication Templates
 
 <!-- schema-section:start -->
-> **Schema:** `CommTemplate` ([comm_templates](../../api/prisma/schema.prisma#L9931)) · `CommTemplateTranslation` ([comm_template_translations](../../api/prisma/schema.prisma#L10019)) · `CommTemplateVersion` ([comm_template_versions](../../api/prisma/schema.prisma#L9982)) · enum `CommTemplateCategory` ([L9623](../../api/prisma/schema.prisma#L9623)) · enum `CommTemplateKind` ([L9658](../../api/prisma/schema.prisma#L9658)) · enum `CommTemplateVersionStatus` ([L9672](../../api/prisma/schema.prisma#L9672))
+> **Schema:** `CommTemplate` ([comm_templates](../../api/prisma/schema.prisma#L10161)) · `CommTemplateTranslation` ([comm_template_translations](../../api/prisma/schema.prisma#L10249)) · `CommTemplateVersion` ([comm_template_versions](../../api/prisma/schema.prisma#L10212)) · enum `CommTemplateCategory` ([L9853](../../api/prisma/schema.prisma#L9853)) · enum `CommTemplateKind` ([L9888](../../api/prisma/schema.prisma#L9888)) · enum `CommTemplateVersionStatus` ([L9902](../../api/prisma/schema.prisma#L9902))
 <!-- schema-section:end -->
 
 Provide reusable templates for common communications.
@@ -226,7 +226,7 @@ Templates should support:
 ## Customer Communication
 
 <!-- schema-section:start -->
-> **Schema:** `CommMessageLink` ([comm_message_links](../../api/prisma/schema.prisma#L10303))
+> **Schema:** `CommMessageLink` ([comm_message_links](../../api/prisma/schema.prisma#L10533))
 <!-- schema-section:end -->
 
 Allow agencies to communicate directly with customers regarding:
@@ -252,7 +252,7 @@ All communication should be linked to the relevant customer and project for comp
 ## Marketing Campaigns
 
 <!-- schema-section:start -->
-> **Schema:** `Campaign` ([campaigns](../../api/prisma/schema.prisma#L10539)) · `CampaignAudience` ([campaign_audiences](../../api/prisma/schema.prisma#L10647)) · `CampaignRecipient` ([campaign_recipients](../../api/prisma/schema.prisma#L10668)) · enum `CampaignAudienceMode` ([L9735](../../api/prisma/schema.prisma#L9735)) · enum `CampaignStatus` ([L9715](../../api/prisma/schema.prisma#L9715))
+> **Schema:** `Campaign` ([campaigns](../../api/prisma/schema.prisma#L10769)) · `CampaignAudience` ([campaign_audiences](../../api/prisma/schema.prisma#L10877)) · `CampaignRecipient` ([campaign_recipients](../../api/prisma/schema.prisma#L10898)) · enum `CampaignAudienceMode` ([L9965](../../api/prisma/schema.prisma#L9965)) · enum `CampaignStatus` ([L9945](../../api/prisma/schema.prisma#L9945))
 <!-- schema-section:end -->
 
 Support marketing communication through:
@@ -273,7 +273,7 @@ Support marketing communication through:
 ## Recipients
 
 <!-- schema-section:start -->
-> **Schema:** `CommConsent` ([comm_consents](../../api/prisma/schema.prisma#L10468)) · `CommRecipientList` ([comm_recipient_lists](../../api/prisma/schema.prisma#L10386)) · `CommRecipientListMember` ([comm_recipient_list_members](../../api/prisma/schema.prisma#L10409)) · `CommSuppression` ([comm_suppressions](../../api/prisma/schema.prisma#L10500)) · enum `CommBounceType` ([L9587](../../api/prisma/schema.prisma#L9587)) · enum `CommConsentSource` ([L9765](../../api/prisma/schema.prisma#L9765)) · enum `CommConsentStatus` ([L9757](../../api/prisma/schema.prisma#L9757)) · enum `CommRecipientKind` ([L9593](../../api/prisma/schema.prisma#L9593)) · enum `CommSuppressionReason` ([L9776](../../api/prisma/schema.prisma#L9776))
+> **Schema:** `CommConsent` ([comm_consents](../../api/prisma/schema.prisma#L10698)) · `CommRecipientList` ([comm_recipient_lists](../../api/prisma/schema.prisma#L10616)) · `CommRecipientListMember` ([comm_recipient_list_members](../../api/prisma/schema.prisma#L10639)) · `CommSuppression` ([comm_suppressions](../../api/prisma/schema.prisma#L10730)) · enum `CommBounceType` ([L9817](../../api/prisma/schema.prisma#L9817)) · enum `CommConsentSource` ([L9995](../../api/prisma/schema.prisma#L9995)) · enum `CommConsentStatus` ([L9987](../../api/prisma/schema.prisma#L9987)) · enum `CommRecipientKind` ([L9823](../../api/prisma/schema.prisma#L9823)) · enum `CommSuppressionReason` ([L10006](../../api/prisma/schema.prisma#L10006))
 <!-- schema-section:end -->
 
 > Defined by → [02 CRM](./02-crm-sales-management.md) §2–3 (Companies, Contacts), §3 contact roles · Linear LOG-404.
@@ -289,7 +289,7 @@ Recipients are CRM Contacts (customers, leads, billing and technical contacts, s
 ## Customer Segmentation
 
 <!-- schema-section:start -->
-> **Schema:** `CampaignAudience` ([campaign_audiences](../../api/prisma/schema.prisma#L10647)) · `Segment` ([segments](../../api/prisma/schema.prisma#L10434)) · enum `SegmentEntityType` ([L9750](../../api/prisma/schema.prisma#L9750))
+> **Schema:** `CampaignAudience` ([campaign_audiences](../../api/prisma/schema.prisma#L10877)) · `Segment` ([segments](../../api/prisma/schema.prisma#L10664)) · enum `SegmentEntityType` ([L9980](../../api/prisma/schema.prisma#L9980))
 <!-- schema-section:end -->
 
 Segments are saved filters over CRM Companies and Contacts (02 §29 saved views and §24 custom fields) combined with billing state from 08 and project state from 05. Criteria such as:
@@ -313,7 +313,7 @@ Segments are saved filters over CRM Companies and Contacts (02 §29 saved views 
 ## Automation
 
 <!-- schema-section:start -->
-> **Schema:** `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L10081)): `automation_rule_id`
+> **Schema:** `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L10311)): `automation_rule_id`
 <!-- schema-section:end -->
 
 > Engine defined by → [20 Automation Engine](./20-automation-engine.md) · Linear LOG-410. This module exposes "send email from template" and "send SMS from template" as actions and does not run its own rules engine.
@@ -341,7 +341,7 @@ Triggers come from platform events published to 20.
 ## Scheduling
 
 <!-- schema-section:start -->
-> **Schema:** `Campaign` ([campaigns](../../api/prisma/schema.prisma#L10539)) · `CampaignRun` ([campaign_runs](../../api/prisma/schema.prisma#L10703)) · `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L10081)) · enum `CampaignRunStatus` ([L9741](../../api/prisma/schema.prisma#L9741)) · enum `CampaignStatus` ([L9715](../../api/prisma/schema.prisma#L9715)) · enum `CommMessageStatus` ([L9557](../../api/prisma/schema.prisma#L9557))
+> **Schema:** `Campaign` ([campaigns](../../api/prisma/schema.prisma#L10769)) · `CampaignRun` ([campaign_runs](../../api/prisma/schema.prisma#L10933)) · `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L10311)) · enum `CampaignRunStatus` ([L9971](../../api/prisma/schema.prisma#L9971)) · enum `CampaignStatus` ([L9945](../../api/prisma/schema.prisma#L9945)) · enum `CommMessageStatus` ([L9787](../../api/prisma/schema.prisma#L9787))
 <!-- schema-section:end -->
 
 Allow users to:
@@ -360,7 +360,7 @@ Allow users to:
 ## Delivery Tracking
 
 <!-- schema-section:start -->
-> **Schema:** `CampaignRecipient` ([campaign_recipients](../../api/prisma/schema.prisma#L10668)) · `CommDeliveryEvent` ([comm_delivery_events](../../api/prisma/schema.prisma#L10321)) · `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L10081)) · `CommSuppression` ([comm_suppressions](../../api/prisma/schema.prisma#L10500)) · `CommTrackedLink` ([comm_tracked_links](../../api/prisma/schema.prisma#L10359)) · enum `CommDeliveryEventType` ([L9571](../../api/prisma/schema.prisma#L9571)) · enum `CommMessageStatus` ([L9557](../../api/prisma/schema.prisma#L9557)) · enum `CommRecipientStatus` ([L9608](../../api/prisma/schema.prisma#L9608))
+> **Schema:** `CampaignRecipient` ([campaign_recipients](../../api/prisma/schema.prisma#L10898)) · `CommDeliveryEvent` ([comm_delivery_events](../../api/prisma/schema.prisma#L10551)) · `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L10311)) · `CommSuppression` ([comm_suppressions](../../api/prisma/schema.prisma#L10730)) · `CommTrackedLink` ([comm_tracked_links](../../api/prisma/schema.prisma#L10589)) · enum `CommDeliveryEventType` ([L9801](../../api/prisma/schema.prisma#L9801)) · enum `CommMessageStatus` ([L9787](../../api/prisma/schema.prisma#L9787)) · enum `CommRecipientStatus` ([L9838](../../api/prisma/schema.prisma#L9838))
 <!-- schema-section:end -->
 
 Track communication performance including:
@@ -388,7 +388,7 @@ Track communication performance including:
 ## Communication History
 
 <!-- schema-section:start -->
-> **Schema:** `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L10081)): `search_vector` · `CommMessageLink` ([comm_message_links](../../api/prisma/schema.prisma#L10303)) · enum `CommMessageKind` ([L9538](../../api/prisma/schema.prisma#L9538)) · enum `CommMessageSource` ([L9547](../../api/prisma/schema.prisma#L9547))
+> **Schema:** `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L10311)): `search_vector` · `CommMessageLink` ([comm_message_links](../../api/prisma/schema.prisma#L10533)) · enum `CommMessageKind` ([L9768](../../api/prisma/schema.prisma#L9768)) · enum `CommMessageSource` ([L9777](../../api/prisma/schema.prisma#L9777))
 <!-- schema-section:end -->
 
 Maintain complete outbound communication records for every customer. Entries are contributed to the Customer 360 timeline (02 §18). Inbound replies to support addresses are captured by 13 and linked to the same customer.
@@ -411,7 +411,7 @@ Include:
 ## Internal Collaboration
 
 <!-- schema-section:start -->
-> **Schema:** `Campaign` ([campaigns](../../api/prisma/schema.prisma#L10539)) · `CampaignApproval` ([campaign_approvals](../../api/prisma/schema.prisma#L10730)) · enum `CampaignApprovalDecision` ([L9728](../../api/prisma/schema.prisma#L9728)) · enum `CampaignStatus` ([L9715](../../api/prisma/schema.prisma#L9715))
+> **Schema:** `Campaign` ([campaigns](../../api/prisma/schema.prisma#L10769)) · `CampaignApproval` ([campaign_approvals](../../api/prisma/schema.prisma#L10960)) · enum `CampaignApprovalDecision` ([L9958](../../api/prisma/schema.prisma#L9958)) · enum `CampaignStatus` ([L9945](../../api/prisma/schema.prisma#L9945))
 <!-- schema-section:end -->
 
 Allow employees to:
@@ -426,7 +426,7 @@ Allow employees to:
 ## Notification Delivery Provider
 
 <!-- schema-section:start -->
-> **Schema:** enum `CommMessageKind` ([L9538](../../api/prisma/schema.prisma#L9538)) · enum `CommTemplateKind` ([L9658](../../api/prisma/schema.prisma#L9658))
+> **Schema:** enum `CommMessageKind` ([L9768](../../api/prisma/schema.prisma#L9768)) · enum `CommTemplateKind` ([L9888](../../api/prisma/schema.prisma#L9888))
 <!-- schema-section:end -->
 
 > Notification engine defined by → [14 Notifications & Activity Center](./14-notifications-activity-center.md) · Linear LOG-403.
@@ -438,7 +438,7 @@ This module does not define notification events, preferences or an inbox. It pro
 ## Analytics & Reporting
 
 <!-- schema-section:start -->
-> **Schema:** `Campaign` ([campaigns](../../api/prisma/schema.prisma#L10539)) · `CommDailyStat` ([comm_daily_stats](../../api/prisma/schema.prisma#L10751)) · `CommTrackedLink` ([comm_tracked_links](../../api/prisma/schema.prisma#L10359))
+> **Schema:** `Campaign` ([campaigns](../../api/prisma/schema.prisma#L10769)) · `CommDailyStat` ([comm_daily_stats](../../api/prisma/schema.prisma#L10981)) · `CommTrackedLink` ([comm_tracked_links](../../api/prisma/schema.prisma#L10589))
 <!-- schema-section:end -->
 
 Provide communication analytics including:
@@ -459,7 +459,7 @@ Support exporting communication reports.
 ## AI Communication Assistant
 
 <!-- schema-section:start -->
-> **Schema:** `CommAiGeneration` ([comm_ai_generations](../../api/prisma/schema.prisma#L10782)) · `CommTemplate` ([comm_templates](../../api/prisma/schema.prisma#L9931)): `ai_generation_id` · enum `CommAiTaskKind` ([L9787](../../api/prisma/schema.prisma#L9787))
+> **Schema:** `CommAiGeneration` ([comm_ai_generations](../../api/prisma/schema.prisma#L11012)) · `CommTemplate` ([comm_templates](../../api/prisma/schema.prisma#L10161)): `ai_generation_id` · enum `CommAiTaskKind` ([L10017](../../api/prisma/schema.prisma#L10017))
 <!-- schema-section:end -->
 
 Integrate AI throughout the Communication Center to improve efficiency and consistency.
