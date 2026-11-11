@@ -29,3 +29,14 @@ After any change to `api/prisma/schema.prisma`, run `node docs/scripts/sync-feat
 ## Local development
 
 For local API work, use `.env.staging` (`npm run start:staging` in `api/`), not `.env.local` — `.env.local` has empty/placeholder integration keys (e.g. `RESEND_API_KEY`), so flows like email sending fail locally with it. `.env.staging` has working keys.
+
+## Development stage — no real data, clean fixes only (all of `api/**`, `app/**`, `docs/**`)
+
+This project is in **development with no real data**. Every database (local, staging) holds only seed or test data and can be wiped at any time.
+
+- Prefer the **clean, correct fix** over a workaround. Do big refactors when they are the right fix: rename or drop tables and columns, split or merge models, change enums and types, restructure relations.
+- Never keep legacy columns, compatibility shims, dual-write code, "deprecated" fields, backfill scripts or data-preserving migration steps just to protect existing rows. Delete the old thing.
+- Destructive migrations are fine. Do not add guards for existing data unless the user asks. Resetting the database and re-seeding is an acceptable way to apply a change.
+- Do not add feature flags, fallbacks or "temporary" code paths to avoid a schema change. Change the schema.
+- Still keep the schema, migrations, generated client, seed (`api/prisma/seed/**`), feature specs and mockups consistent with each other in the same change.
+- This stops applying once the user says the product has real customers or production data.
