@@ -40,43 +40,43 @@ self-service.
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Settings** | | | |
-| `SupportSettings` | `support_settings` | [L12258](../../api/prisma/schema.prisma#L12258) | 13 §2, §3, §7 — per-organization support configuration: ticket numbering, auto-close / inactivity periods, CSAT, AI thresholds and approval requirements. Rul… |
+| `SupportSettings` | `support_settings` | [L12388](../../api/prisma/schema.prisma#L12388) | 13 §2, §3, §7 — per-organization support configuration: ticket numbering, auto-close / inactivity periods, CSAT, AI thresholds and approval requirements. Rul… |
 | **Inboxes & channels** | | | |
-| `SupportInbox` | `support_inboxes` | [L12306](../../api/prisma/schema.prisma#L12306) | 13 §1 — team / shared inbox. Conversations and tickets are routed into an inbox; an inbox can belong to a Team (01 §42) and to a Branch for branch-level supp… |
-| `SupportChannel` | `support_channels` | [L12346](../../api/prisma/schema.prisma#L12346) | 13 §1, §5 — a connected channel feeding an inbox: inbound email address, website/in-app widget, live chat, portal request form, API. Widget appearance lives … |
+| `SupportInbox` | `support_inboxes` | [L12436](../../api/prisma/schema.prisma#L12436) | 13 §1 — team / shared inbox. Conversations and tickets are routed into an inbox; an inbox can belong to a Team (01 §42) and to a Branch for branch-level supp… |
+| `SupportChannel` | `support_channels` | [L12476](../../api/prisma/schema.prisma#L12476) | 13 §1, §5 — a connected channel feeding an inbox: inbound email address, website/in-app widget, live chat, portal request form, API. Widget appearance lives … |
 | **Conversations** | | | |
-| `SupportConversation` | `support_conversations` | [L12384](../../api/prisma/schema.prisma#L12384) | 13 §1, §14 — the communication thread between a customer and the team (chat, email, widget, portal). Identity resolves to a CRM Contact/Company (02) and/or a… |
-| `SupportConversationParticipant` | `support_conversation_participants` | [L12470](../../api/prisma/schema.prisma#L12470) | 13 §1 — internal members collaborating on a conversation (assignee, collaborators, @mentioned); `last_read_at` drives agent-side read receipts and unread cou… |
-| `SupportMessage` | `support_messages` | [L12487](../../api/prisma/schema.prisma#L12487) | 13 §1, §2, §3 — one message in a conversation: customer message, agent reply, private internal note, AI agent answer or system event. Outbound email replies … |
-| `SupportMessageAttachment` | `support_message_attachments` | [L12548](../../api/prisma/schema.prisma#L12548) | 13 §1 — file and image attachments on a message are Documents (17 §2). |
+| `SupportConversation` | `support_conversations` | [L12514](../../api/prisma/schema.prisma#L12514) | 13 §1, §14 — the communication thread between a customer and the team (chat, email, widget, portal). Identity resolves to a CRM Contact/Company (02) and/or a… |
+| `SupportConversationParticipant` | `support_conversation_participants` | [L12600](../../api/prisma/schema.prisma#L12600) | 13 §1 — internal members collaborating on a conversation (assignee, collaborators, @mentioned); `last_read_at` drives agent-side read receipts and unread cou… |
+| `SupportMessage` | `support_messages` | [L12617](../../api/prisma/schema.prisma#L12617) | 13 §1, §2, §3 — one message in a conversation: customer message, agent reply, private internal note, AI agent answer or system event. Outbound email replies … |
+| `SupportMessageAttachment` | `support_message_attachments` | [L12678](../../api/prisma/schema.prisma#L12678) | 13 §1 — file and image attachments on a message are Documents (17 §2). |
 | **Ticket configuration** | | | |
-| `TicketStatus` | `ticket_statuses` | [L12568](../../api/prisma/schema.prisma#L12568) | 13 §2, §13 — configurable ticket statuses with workflow transitions (organization-wide). |
-| `TicketCategory` | `ticket_categories` | [L12598](../../api/prisma/schema.prisma#L12598) | 13 §2, §3 — custom ticket categories (hierarchical) with routing defaults used by AI categorization and automation rules (20). |
+| `TicketStatus` | `ticket_statuses` | [L12698](../../api/prisma/schema.prisma#L12698) | 13 §2, §13 — configurable ticket statuses with workflow transitions (organization-wide). |
+| `TicketCategory` | `ticket_categories` | [L12728](../../api/prisma/schema.prisma#L12728) | 13 §2, §3 — custom ticket categories (hierarchical) with routing defaults used by AI categorization and automation rules (20). |
 | **SLA** | | | |
-| `SlaPolicy` | `sla_policies` | [L12635](../../api/prisma/schema.prisma#L12635) | 13 §2, §7 — SLA policy: response/resolution targets per priority, business-hours handling and escalation. Timers and auto-escalation are executed by 20 sched… |
-| `SlaPolicyTarget` | `sla_policy_targets` | [L12667](../../api/prisma/schema.prisma#L12667) | 13 §2 — targets per priority within a policy (minutes; null = not tracked). |
+| `SlaPolicy` | `sla_policies` | [L12765](../../api/prisma/schema.prisma#L12765) | 13 §2, §7 — SLA policy: response/resolution targets per priority, business-hours handling and escalation. Timers and auto-escalation are executed by 20 sched… |
+| `SlaPolicyTarget` | `sla_policy_targets` | [L12797](../../api/prisma/schema.prisma#L12797) | 13 §2 — targets per priority within a policy (minutes; null = not tracked). |
 | **Ticket** | | | |
-| `Ticket` | `tickets` | [L12687](../../api/prisma/schema.prisma#L12687) | 13 §2, §5, §14 — the structured support case: priority, SLA, status, ownership, resolution. Requester is a CRM Contact/Company (02) and/or a Customer Portal … |
-| `TicketConversation` | `ticket_conversations` | [L12827](../../api/prisma/schema.prisma#L12827) | 13 §14 — additional conversations attached to a ticket (one conversation ↔ many tickets and vice versa). |
-| `TicketStatusHistory` | `ticket_status_history` | [L12841](../../api/prisma/schema.prisma#L12841) | 13 §2, §9 — queryable status history for resolution-time, SLA and agent metrics. |
-| `TicketSlaTimer` | `ticket_sla_timers` | [L12869](../../api/prisma/schema.prisma#L12869) | 13 §2, §7 — one SLA timer per metric per ticket; paused while the status pauses SLA. The due reminder / breach check is a 20 ScheduledJob. |
-| `TicketRelation` | `ticket_relations` | [L12900](../../api/prisma/schema.prisma#L12900) | 13 §2, §3 — related / duplicate / blocking / same-incident relationships between tickets. |
-| `TicketTaskLink` | `ticket_task_links` | [L12922](../../api/prisma/schema.prisma#L12922) | 13 §4, §14 — permanent link between a ticket and a Task (06): many tickets ↔ many tasks. Creation is idempotent via `idempotency_key`; status sync follows Su… |
-| `TicketFollower` | `ticket_followers` | [L12949](../../api/prisma/schema.prisma#L12949) | 13 §2, §10 — members following a ticket for notifications (14). |
-| `TicketAttachment` | `ticket_attachments` | [L12963](../../api/prisma/schema.prisma#L12963) | 13 §2, §5 — attachments on a ticket (beyond message attachments) are Documents (17); id only. |
-| `SupportIncident` | `support_incidents` | [L12984](../../api/prisma/schema.prisma#L12984) | 13 §3, §9 — a grouped incident / recurring problem spanning several tickets (detected by AI or declared by an agent). Tickets point at it via Ticket.incident… |
+| `Ticket` | `tickets` | [L12817](../../api/prisma/schema.prisma#L12817) | 13 §2, §5, §14 — the structured support case: priority, SLA, status, ownership, resolution. Requester is a CRM Contact/Company (02) and/or a Customer Portal … |
+| `TicketConversation` | `ticket_conversations` | [L12957](../../api/prisma/schema.prisma#L12957) | 13 §14 — additional conversations attached to a ticket (one conversation ↔ many tickets and vice versa). |
+| `TicketStatusHistory` | `ticket_status_history` | [L12971](../../api/prisma/schema.prisma#L12971) | 13 §2, §9 — queryable status history for resolution-time, SLA and agent metrics. |
+| `TicketSlaTimer` | `ticket_sla_timers` | [L12999](../../api/prisma/schema.prisma#L12999) | 13 §2, §7 — one SLA timer per metric per ticket; paused while the status pauses SLA. The due reminder / breach check is a 20 ScheduledJob. |
+| `TicketRelation` | `ticket_relations` | [L13030](../../api/prisma/schema.prisma#L13030) | 13 §2, §3 — related / duplicate / blocking / same-incident relationships between tickets. |
+| `TicketTaskLink` | `ticket_task_links` | [L13052](../../api/prisma/schema.prisma#L13052) | 13 §4, §14 — permanent link between a ticket and a Task (06): many tickets ↔ many tasks. Creation is idempotent via `idempotency_key`; status sync follows Su… |
+| `TicketFollower` | `ticket_followers` | [L13079](../../api/prisma/schema.prisma#L13079) | 13 §2, §10 — members following a ticket for notifications (14). |
+| `TicketAttachment` | `ticket_attachments` | [L13093](../../api/prisma/schema.prisma#L13093) | 13 §2, §5 — attachments on a ticket (beyond message attachments) are Documents (17); id only. |
+| `SupportIncident` | `support_incidents` | [L13114](../../api/prisma/schema.prisma#L13114) | 13 §3, §9 — a grouped incident / recurring problem spanning several tickets (detected by AI or declared by an agent). Tickets point at it via Ticket.incident… |
 | **CSAT** | | | |
-| `SupportCsatRating` | `support_csat_ratings` | [L13013](../../api/prisma/schema.prisma#L13013) | 13 §9 — customer satisfaction rating requested on resolution (ticket or conversation). |
+| `SupportCsatRating` | `support_csat_ratings` | [L13143](../../api/prisma/schema.prisma#L13143) | 13 §9 — customer satisfaction rating requested on resolution (ticket or conversation). |
 | **Canned responses** | | | |
-| `SupportCannedResponse` | `support_canned_responses` | [L13048](../../api/prisma/schema.prisma#L13048) | 13 §1 — saved replies / response templates / macros with optional field actions. |
+| `SupportCannedResponse` | `support_canned_responses` | [L13178](../../api/prisma/schema.prisma#L13178) | 13 §1 — saved replies / response templates / macros with optional field actions. |
 | **Knowledge base** | | | |
-| `KnowledgeCategory` | `knowledge_categories` | [L13083](../../api/prisma/schema.prisma#L13083) | 13 §6 — categories / collections of the customer-facing help center (hierarchical). |
-| `KnowledgeArticle` | `knowledge_articles` | [L13111](../../api/prisma/schema.prisma#L13111) | 13 §6 — help-center article (rich text, versions, feedback). Public articles are served by the help center and the portal (07); INTERNAL ones only to agents.… |
-| `KnowledgeArticleVersion` | `knowledge_article_versions` | [L13170](../../api/prisma/schema.prisma#L13170) | 13 §6 — immutable article version history. |
-| `KnowledgeArticleFeedback` | `knowledge_article_feedback` | [L13189](../../api/prisma/schema.prisma#L13189) | 13 §6 — ratings and feedback on an article from portal users, anonymous visitors or agents. |
+| `KnowledgeCategory` | `knowledge_categories` | [L13213](../../api/prisma/schema.prisma#L13213) | 13 §6 — categories / collections of the customer-facing help center (hierarchical). |
+| `KnowledgeArticle` | `knowledge_articles` | [L13241](../../api/prisma/schema.prisma#L13241) | 13 §6 — help-center article (rich text, versions, feedback). Public articles are served by the help center and the portal (07); INTERNAL ones only to agents.… |
+| `KnowledgeArticleVersion` | `knowledge_article_versions` | [L13300](../../api/prisma/schema.prisma#L13300) | 13 §6 — immutable article version history. |
+| `KnowledgeArticleFeedback` | `knowledge_article_feedback` | [L13319](../../api/prisma/schema.prisma#L13319) | 13 §6 — ratings and feedback on an article from portal users, anonymous visitors or agents. |
 | **AI** | | | |
-| `SupportAiSession` | `support_ai_sessions` | [L13216](../../api/prisma/schema.prisma#L13216) | 13 §3 — an AI support-agent session on a conversation: first-line answers from the knowledge base and authorized data, information collection, ticket creatio… |
-| `SupportAiSuggestion` | `support_ai_suggestions` | [L13251](../../api/prisma/schema.prisma#L13251) | 13 §3 — one AI output awaiting / past human review: classification, priority, assignment, reply draft, summary, translation, article recommendation, duplicat… |
+| `SupportAiSession` | `support_ai_sessions` | [L13346](../../api/prisma/schema.prisma#L13346) | 13 §3 — an AI support-agent session on a conversation: first-line answers from the knowledge base and authorized data, information collection, ticket creatio… |
+| `SupportAiSuggestion` | `support_ai_suggestions` | [L13381](../../api/prisma/schema.prisma#L13381) | 13 §3 — one AI output awaiting / past human review: classification, priority, assignment, reply draft, summary, translation, article recommendation, duplicat… |
 
 **Owned enums (21):** `SupportChannelType`, `SupportConversationStatus`, `SupportMessageKind`, `SupportMessageDeliveryStatus`, `SupportParticipantRole`, `TicketPriority`, `TicketStatusCategory`, `TicketType`, `TicketSource`, `TicketRelationType`, `TicketTaskLinkKind`, `SlaMetric`, `SlaTimerStatus`, `SupportSentiment`, `KnowledgeArticleStatus`, `KnowledgeVisibility`, `SupportCannedResponseScope`, `SupportAiSessionStatus`, `SupportAiSuggestionKind`, `SupportAiSuggestionStatus`, `SupportIncidentStatus`
 
@@ -105,19 +105,19 @@ self-service.
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `ProjectIssue.ticket_id` ([05](./05-project-management.md), [L4871](../../api/prisma/schema.prisma#L4871)) — Linked support ticket (13) when the issue originated from support; id only.
-- `Release.notes` ([06](./06-task-management.md), [L5728](../../api/prisma/schema.prisma#L5728)) — Release notes (markdown), publishable to the portal (07) and knowledge base (13 §6).
-- `Release.affected_company_ids` ([06](./06-task-management.md), [L5728](../../api/prisma/schema.prisma#L5728)) — Customers affected, derived from linked tickets (13 §4); CRM company ids.
-- `CustomerPortalSettings.widget_settings` ([07](./07-customer-portal.md), [L5789](../../api/prisma/schema.prisma#L5789)) — Embedded widget configuration (support chat, request form) for customer sites (13 §5).
-- `CommThread.support_conversation_id` ([11](./11-communication-center.md), [L9915](../../api/prisma/schema.prisma#L9915)) — 13 SupportConversation holding inbound replies; id only.
-- `Channel.entity_type` ([12](./12-messaging-team-communication.md), [L11094](../../api/prisma/schema.prisma#L11094)) — 12 §7, §25 — associated business record for RECORD conversations (task, deal, ticket (13), proposal …).
-- `WikiPage.customer_visible` ([15](./15-notion-business-docs.md), [L14360](../../api/prisma/schema.prisma#L14360)) — 15 §4 — exposed through the Customer Portal (07) / help center (13 §6). Audited (15 §9).
-- `WikiPage.help_center_article_id` ([15](./15-notion-business-docs.md), [L14360](../../api/prisma/schema.prisma#L14360)) — 13 §6 KnowledgeArticle view published from this page (13 owns the article; the page is the source); id only.
-- `CustomForm.opens_at` ([15](./15-notion-business-docs.md), [L14755](../../api/prisma/schema.prisma#L14755)) — Automatic 06 Task / 13 Ticket creation is configured in 20 rules; this is the default hint shown there.
-- `WikiAiIndexEntry.knowledge_article_id` ([15](./15-notion-business-docs.md), [L14935](../../api/prisma/schema.prisma#L14935)) — 13 §6 — source help-center article when source_type = KNOWLEDGE_ARTICLE; only PUBLISHED articles are indexed.
-- `TimeEntry.ticket_id` ([18](./18-time-tracking.md), [L16495](../../api/prisma/schema.prisma#L16495)) — Support ticket (13 §4); id only.
-- `Timer.ticket_id` ([18](./18-time-tracking.md), [L16620](../../api/prisma/schema.prisma#L16620)) — Support ticket (13 §4); id only.
-- `TimeSuggestion.ticket_id` ([18](./18-time-tracking.md), [L16702](../../api/prisma/schema.prisma#L16702)) — Support ticket (13); id only.
+- `ProjectIssue.ticket_id` ([05](./05-project-management.md), [L4999](../../api/prisma/schema.prisma#L4999)) — Linked support ticket (13) when the issue originated from support; id only.
+- `Release.notes` ([06](./06-task-management.md), [L5856](../../api/prisma/schema.prisma#L5856)) — Release notes (markdown), publishable to the portal (07) and knowledge base (13 §6).
+- `Release.affected_company_ids` ([06](./06-task-management.md), [L5856](../../api/prisma/schema.prisma#L5856)) — Customers affected, derived from linked tickets (13 §4); CRM company ids.
+- `CustomerPortalSettings.widget_settings` ([07](./07-customer-portal.md), [L5917](../../api/prisma/schema.prisma#L5917)) — Embedded widget configuration (support chat, request form) for customer sites (13 §5).
+- `CommThread.support_conversation_id` ([11](./11-communication-center.md), [L10045](../../api/prisma/schema.prisma#L10045)) — 13 SupportConversation holding inbound replies; id only.
+- `Channel.entity_type` ([12](./12-messaging-team-communication.md), [L11224](../../api/prisma/schema.prisma#L11224)) — 12 §7, §25 — associated business record for RECORD conversations (task, deal, ticket (13), proposal …).
+- `WikiPage.customer_visible` ([15](./15-notion-business-docs.md), [L14490](../../api/prisma/schema.prisma#L14490)) — 15 §4 — exposed through the Customer Portal (07) / help center (13 §6). Audited (15 §9).
+- `WikiPage.help_center_article_id` ([15](./15-notion-business-docs.md), [L14490](../../api/prisma/schema.prisma#L14490)) — 13 §6 KnowledgeArticle view published from this page (13 owns the article; the page is the source); id only.
+- `CustomForm.opens_at` ([15](./15-notion-business-docs.md), [L14885](../../api/prisma/schema.prisma#L14885)) — Automatic 06 Task / 13 Ticket creation is configured in 20 rules; this is the default hint shown there.
+- `WikiAiIndexEntry.knowledge_article_id` ([15](./15-notion-business-docs.md), [L15065](../../api/prisma/schema.prisma#L15065)) — 13 §6 — source help-center article when source_type = KNOWLEDGE_ARTICLE; only PUBLISHED articles are indexed.
+- `TimeEntry.ticket_id` ([18](./18-time-tracking.md), [L16626](../../api/prisma/schema.prisma#L16626)) — Support ticket (13 §4); id only.
+- `Timer.ticket_id` ([18](./18-time-tracking.md), [L16751](../../api/prisma/schema.prisma#L16751)) — Support ticket (13 §4); id only.
+- `TimeSuggestion.ticket_id` ([18](./18-time-tracking.md), [L16833](../../api/prisma/schema.prisma#L16833)) — Support ticket (13); id only.
 
 <!-- schema-refs:end -->
 
@@ -160,7 +160,7 @@ Definition of done for each resource of this module: permission keys in the cata
 ## 1. Unified Inbox & Conversations
 
 <!-- schema-section:start -->
-> **Schema:** `SupportCannedResponse` ([support_canned_responses](../../api/prisma/schema.prisma#L13048)) · `SupportChannel` ([support_channels](../../api/prisma/schema.prisma#L12346)) · `SupportConversation` ([support_conversations](../../api/prisma/schema.prisma#L12384)): `customer_last_read_at`, `merged_into_conversation_id`, `snoozed_until`, `split_from_conversation_id` · `SupportConversationParticipant` ([support_conversation_participants](../../api/prisma/schema.prisma#L12470)) · `SupportInbox` ([support_inboxes](../../api/prisma/schema.prisma#L12306)): `signature` · `SupportMessage` ([support_messages](../../api/prisma/schema.prisma#L12487)): `canned_response_id`, `mentions`, `organization_id`, `read_by_customer_at`, `search_vector` · `SupportMessageAttachment` ([support_message_attachments](../../api/prisma/schema.prisma#L12548)) · `SupportSettings` ([support_settings](../../api/prisma/schema.prisma#L12258)): `default_signature` · `Ticket` ([tickets](../../api/prisma/schema.prisma#L12687)): `search_vector` · enum `SupportCannedResponseScope` ([L12201](../../api/prisma/schema.prisma#L12201)) · enum `SupportChannelType` ([L12061](../../api/prisma/schema.prisma#L12061)) · enum `SupportConversationStatus` ([L12072](../../api/prisma/schema.prisma#L12072)) · enum `SupportMessageDeliveryStatus` ([L12089](../../api/prisma/schema.prisma#L12089)) · enum `SupportMessageKind` ([L12080](../../api/prisma/schema.prisma#L12080)) · enum `SupportParticipantRole` ([L12098](../../api/prisma/schema.prisma#L12098))
+> **Schema:** `SupportCannedResponse` ([support_canned_responses](../../api/prisma/schema.prisma#L13178)) · `SupportChannel` ([support_channels](../../api/prisma/schema.prisma#L12476)) · `SupportConversation` ([support_conversations](../../api/prisma/schema.prisma#L12514)): `customer_last_read_at`, `merged_into_conversation_id`, `snoozed_until`, `split_from_conversation_id` · `SupportConversationParticipant` ([support_conversation_participants](../../api/prisma/schema.prisma#L12600)) · `SupportInbox` ([support_inboxes](../../api/prisma/schema.prisma#L12436)): `signature` · `SupportMessage` ([support_messages](../../api/prisma/schema.prisma#L12617)): `canned_response_id`, `mentions`, `organization_id`, `read_by_customer_at`, `search_vector` · `SupportMessageAttachment` ([support_message_attachments](../../api/prisma/schema.prisma#L12678)) · `SupportSettings` ([support_settings](../../api/prisma/schema.prisma#L12388)): `default_signature` · `Ticket` ([tickets](../../api/prisma/schema.prisma#L12817)): `search_vector` · enum `SupportCannedResponseScope` ([L12331](../../api/prisma/schema.prisma#L12331)) · enum `SupportChannelType` ([L12191](../../api/prisma/schema.prisma#L12191)) · enum `SupportConversationStatus` ([L12202](../../api/prisma/schema.prisma#L12202)) · enum `SupportMessageDeliveryStatus` ([L12219](../../api/prisma/schema.prisma#L12219)) · enum `SupportMessageKind` ([L12210](../../api/prisma/schema.prisma#L12210)) · enum `SupportParticipantRole` ([L12228](../../api/prisma/schema.prisma#L12228))
 <!-- schema-section:end -->
 
 Create an Intercom-style unified inbox where all customer conversations
@@ -198,7 +198,7 @@ and conversation history.
 ## 2. Support Ticket Management
 
 <!-- schema-section:start -->
-> **Schema:** `SlaPolicy` ([sla_policies](../../api/prisma/schema.prisma#L12635)) · `SlaPolicyTarget` ([sla_policy_targets](../../api/prisma/schema.prisma#L12667)) · `SupportInbox` ([support_inboxes](../../api/prisma/schema.prisma#L12306)): `default_assignee_membership_id`, `routing_strategy` · `SupportMessage` ([support_messages](../../api/prisma/schema.prisma#L12487)) · `SupportSettings` ([support_settings](../../api/prisma/schema.prisma#L12258)) · `Ticket` ([tickets](../../api/prisma/schema.prisma#L12687)): `number`, `search_vector` · `TicketAttachment` ([ticket_attachments](../../api/prisma/schema.prisma#L12963)) · `TicketCategory` ([ticket_categories](../../api/prisma/schema.prisma#L12598)) · `TicketFollower` ([ticket_followers](../../api/prisma/schema.prisma#L12949)) · `TicketRelation` ([ticket_relations](../../api/prisma/schema.prisma#L12900)) · `TicketSlaTimer` ([ticket_sla_timers](../../api/prisma/schema.prisma#L12869)) · `TicketStatus` ([ticket_statuses](../../api/prisma/schema.prisma#L12568)): `pauses_sla` · `TicketStatusHistory` ([ticket_status_history](../../api/prisma/schema.prisma#L12841)) · enum `SlaMetric` ([L12162](../../api/prisma/schema.prisma#L12162)) · enum `SlaTimerStatus` ([L12169](../../api/prisma/schema.prisma#L12169)) · enum `SupportMessageKind` ([L12080](../../api/prisma/schema.prisma#L12080)) · enum `TicketPriority` ([L12105](../../api/prisma/schema.prisma#L12105)) · enum `TicketRelationType` ([L12148](../../api/prisma/schema.prisma#L12148)) · enum `TicketSource` ([L12135](../../api/prisma/schema.prisma#L12135)) · enum `TicketStatusCategory` ([L12113](../../api/prisma/schema.prisma#L12113))
+> **Schema:** `SlaPolicy` ([sla_policies](../../api/prisma/schema.prisma#L12765)) · `SlaPolicyTarget` ([sla_policy_targets](../../api/prisma/schema.prisma#L12797)) · `SupportInbox` ([support_inboxes](../../api/prisma/schema.prisma#L12436)): `default_assignee_membership_id`, `routing_strategy` · `SupportMessage` ([support_messages](../../api/prisma/schema.prisma#L12617)) · `SupportSettings` ([support_settings](../../api/prisma/schema.prisma#L12388)) · `Ticket` ([tickets](../../api/prisma/schema.prisma#L12817)): `number`, `search_vector` · `TicketAttachment` ([ticket_attachments](../../api/prisma/schema.prisma#L13093)) · `TicketCategory` ([ticket_categories](../../api/prisma/schema.prisma#L12728)) · `TicketFollower` ([ticket_followers](../../api/prisma/schema.prisma#L13079)) · `TicketRelation` ([ticket_relations](../../api/prisma/schema.prisma#L13030)) · `TicketSlaTimer` ([ticket_sla_timers](../../api/prisma/schema.prisma#L12999)) · `TicketStatus` ([ticket_statuses](../../api/prisma/schema.prisma#L12698)): `pauses_sla` · `TicketStatusHistory` ([ticket_status_history](../../api/prisma/schema.prisma#L12971)) · enum `SlaMetric` ([L12292](../../api/prisma/schema.prisma#L12292)) · enum `SlaTimerStatus` ([L12299](../../api/prisma/schema.prisma#L12299)) · enum `SupportMessageKind` ([L12210](../../api/prisma/schema.prisma#L12210)) · enum `TicketPriority` ([L12235](../../api/prisma/schema.prisma#L12235)) · enum `TicketRelationType` ([L12278](../../api/prisma/schema.prisma#L12278)) · enum `TicketSource` ([L12265](../../api/prisma/schema.prisma#L12265)) · enum `TicketStatusCategory` ([L12243](../../api/prisma/schema.prisma#L12243))
 <!-- schema-section:end -->
 
 Implement a complete ticket management system integrated with the
@@ -235,7 +235,7 @@ Organization, Project, and Task entities wherever applicable.
 ## 3. AI-Powered Support (JEV -- Typesafe AI Model)
 
 <!-- schema-section:start -->
-> **Schema:** `SupportAiSession` ([support_ai_sessions](../../api/prisma/schema.prisma#L13216)) · `SupportAiSuggestion` ([support_ai_suggestions](../../api/prisma/schema.prisma#L13251)) · `SupportChannel` ([support_channels](../../api/prisma/schema.prisma#L12346)): `ai_agent_enabled` · `SupportConversation` ([support_conversations](../../api/prisma/schema.prisma#L12384)): `ai_summary`, `language` · `SupportIncident` ([support_incidents](../../api/prisma/schema.prisma#L12984)) · `SupportMessage` ([support_messages](../../api/prisma/schema.prisma#L12487)): `ai_suggestion_id`, `language` · `SupportSettings` ([support_settings](../../api/prisma/schema.prisma#L12258)): `ai_agent_enabled`, `ai_auto_classify_threshold`, `ai_handover_after_turns`, `ai_model`, `ai_require_task_approval` · `Ticket` ([tickets](../../api/prisma/schema.prisma#L12687)): `ai_complexity` · `TicketCategory` ([ticket_categories](../../api/prisma/schema.prisma#L12598)): `ai_hints` · `TicketRelation` ([ticket_relations](../../api/prisma/schema.prisma#L12900)): `detected_by_ai` · `TicketTaskLink` ([ticket_task_links](../../api/prisma/schema.prisma#L12922)): `ai_suggestion_id` · enum `SupportAiSessionStatus` ([L12208](../../api/prisma/schema.prisma#L12208)) · enum `SupportAiSuggestionKind` ([L12217](../../api/prisma/schema.prisma#L12217)) · enum `SupportAiSuggestionStatus` ([L12238](../../api/prisma/schema.prisma#L12238)) · enum `SupportIncidentStatus` ([L12247](../../api/prisma/schema.prisma#L12247)) · enum `SupportSentiment` ([L12178](../../api/prisma/schema.prisma#L12178)) · enum `TicketRelationType` ([L12148](../../api/prisma/schema.prisma#L12148)) · enum `TicketType` ([L12123](../../api/prisma/schema.prisma#L12123))
+> **Schema:** `SupportAiSession` ([support_ai_sessions](../../api/prisma/schema.prisma#L13346)) · `SupportAiSuggestion` ([support_ai_suggestions](../../api/prisma/schema.prisma#L13381)) · `SupportChannel` ([support_channels](../../api/prisma/schema.prisma#L12476)): `ai_agent_enabled` · `SupportConversation` ([support_conversations](../../api/prisma/schema.prisma#L12514)): `ai_summary`, `language` · `SupportIncident` ([support_incidents](../../api/prisma/schema.prisma#L13114)) · `SupportMessage` ([support_messages](../../api/prisma/schema.prisma#L12617)): `ai_suggestion_id`, `language` · `SupportSettings` ([support_settings](../../api/prisma/schema.prisma#L12388)): `ai_agent_enabled`, `ai_auto_classify_threshold`, `ai_handover_after_turns`, `ai_model`, `ai_require_task_approval` · `Ticket` ([tickets](../../api/prisma/schema.prisma#L12817)): `ai_complexity` · `TicketCategory` ([ticket_categories](../../api/prisma/schema.prisma#L12728)): `ai_hints` · `TicketRelation` ([ticket_relations](../../api/prisma/schema.prisma#L13030)): `detected_by_ai` · `TicketTaskLink` ([ticket_task_links](../../api/prisma/schema.prisma#L13052)): `ai_suggestion_id` · enum `SupportAiSessionStatus` ([L12338](../../api/prisma/schema.prisma#L12338)) · enum `SupportAiSuggestionKind` ([L12347](../../api/prisma/schema.prisma#L12347)) · enum `SupportAiSuggestionStatus` ([L12368](../../api/prisma/schema.prisma#L12368)) · enum `SupportIncidentStatus` ([L12377](../../api/prisma/schema.prisma#L12377)) · enum `SupportSentiment` ([L12308](../../api/prisma/schema.prisma#L12308)) · enum `TicketRelationType` ([L12278](../../api/prisma/schema.prisma#L12278)) · enum `TicketType` ([L12253](../../api/prisma/schema.prisma#L12253))
 <!-- schema-section:end -->
 
 Integrate the JEV model from Typesafe AI as the primary AI intelligence
@@ -306,7 +306,7 @@ permissions, human approval, and audit logging.
 ## 4. Automatic Ticket-to-Task & Issue Creation
 
 <!-- schema-section:start -->
-> **Schema:** `SupportSettings` ([support_settings](../../api/prisma/schema.prisma#L12258)): `ai_require_task_approval`, `default_task_type_id`, `task_priority_mapping`, `task_status_sync_mapping` · `TicketCategory` ([ticket_categories](../../api/prisma/schema.prisma#L12598)): `default_project_id` · `TicketStatusHistory` ([ticket_status_history](../../api/prisma/schema.prisma#L12841)): `changed_via` · `TicketTaskLink` ([ticket_task_links](../../api/prisma/schema.prisma#L12922)): `idempotency_key`, `last_synced_task_status`, `sync_status` · enum `TicketTaskLinkKind` ([L12156](../../api/prisma/schema.prisma#L12156)) — other modules: `Release` ([releases](../../api/prisma/schema.prisma#L5728)): `affected_company_ids` ([06](./06-task-management.md)) · `TaskLink` ([task_links](../../api/prisma/schema.prisma#L5671)) ([06](./06-task-management.md)) · `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L16495)): `ticket_id` ([18](./18-time-tracking.md)) · `Timer` ([timers](../../api/prisma/schema.prisma#L16620)): `ticket_id` ([18](./18-time-tracking.md))
+> **Schema:** `SupportSettings` ([support_settings](../../api/prisma/schema.prisma#L12388)): `ai_require_task_approval`, `default_task_type_id`, `task_priority_mapping`, `task_status_sync_mapping` · `TicketCategory` ([ticket_categories](../../api/prisma/schema.prisma#L12728)): `default_project_id` · `TicketStatusHistory` ([ticket_status_history](../../api/prisma/schema.prisma#L12971)): `changed_via` · `TicketTaskLink` ([ticket_task_links](../../api/prisma/schema.prisma#L13052)): `idempotency_key`, `last_synced_task_status`, `sync_status` · enum `TicketTaskLinkKind` ([L12286](../../api/prisma/schema.prisma#L12286)) — other modules: `Release` ([releases](../../api/prisma/schema.prisma#L5856)): `affected_company_ids` ([06](./06-task-management.md)) · `TaskLink` ([task_links](../../api/prisma/schema.prisma#L5799)) ([06](./06-task-management.md)) · `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L16626)): `ticket_id` ([18](./18-time-tracking.md)) · `Timer` ([timers](../../api/prisma/schema.prisma#L16751)): `ticket_id` ([18](./18-time-tracking.md))
 <!-- schema-section:end -->
 
 This is a critical integration with the existing Task Manager.
@@ -366,7 +366,7 @@ inside Support.
 ## 5. Customer Portal Integration
 
 <!-- schema-section:start -->
-> **Schema:** `SupportChannel` ([support_channels](../../api/prisma/schema.prisma#L12346)) · `Ticket` ([tickets](../../api/prisma/schema.prisma#L12687)): `customer_visible` · `TicketAttachment` ([ticket_attachments](../../api/prisma/schema.prisma#L12963)): `added_by_user_id` · `TicketStatus` ([ticket_statuses](../../api/prisma/schema.prisma#L12568)): `customer_label` · enum `SupportChannelType` ([L12061](../../api/prisma/schema.prisma#L12061)) · enum `TicketType` ([L12123](../../api/prisma/schema.prisma#L12123)) — other modules: `CustomerPortalSettings` ([customer_portal_settings](../../api/prisma/schema.prisma#L5789)): `widget_settings` ([07](./07-customer-portal.md))
+> **Schema:** `SupportChannel` ([support_channels](../../api/prisma/schema.prisma#L12476)) · `Ticket` ([tickets](../../api/prisma/schema.prisma#L12817)): `customer_visible` · `TicketAttachment` ([ticket_attachments](../../api/prisma/schema.prisma#L13093)): `added_by_user_id` · `TicketStatus` ([ticket_statuses](../../api/prisma/schema.prisma#L12698)): `customer_label` · enum `SupportChannelType` ([L12191](../../api/prisma/schema.prisma#L12191)) · enum `TicketType` ([L12253](../../api/prisma/schema.prisma#L12253)) — other modules: `CustomerPortalSettings` ([customer_portal_settings](../../api/prisma/schema.prisma#L5917)): `widget_settings` ([07](./07-customer-portal.md))
 <!-- schema-section:end -->
 
 > Surface defined by → [07 Customer Portal](./07-customer-portal.md) §5 · Linear LOG-103. Identity defined by → 01 §79.
@@ -397,7 +397,7 @@ permissions, and data isolation.
 ## 6. Knowledge Base & Help Center
 
 <!-- schema-section:start -->
-> **Schema:** `KnowledgeArticle` ([knowledge_articles](../../api/prisma/schema.prisma#L13111)): `ai_generated`, `is_faq`, `search_vector`, `view_count` · `KnowledgeArticleFeedback` ([knowledge_article_feedback](../../api/prisma/schema.prisma#L13189)) · `KnowledgeArticleVersion` ([knowledge_article_versions](../../api/prisma/schema.prisma#L13170)) · `KnowledgeCategory` ([knowledge_categories](../../api/prisma/schema.prisma#L13083)) · `SupportIncident` ([support_incidents](../../api/prisma/schema.prisma#L12984)): `knowledge_article_id` · enum `KnowledgeArticleStatus` ([L12186](../../api/prisma/schema.prisma#L12186)) · enum `KnowledgeVisibility` ([L12194](../../api/prisma/schema.prisma#L12194)) — other modules: `Release` ([releases](../../api/prisma/schema.prisma#L5728)): `notes` ([06](./06-task-management.md)) · `WikiAiIndexEntry` ([wiki_ai_index_entries](../../api/prisma/schema.prisma#L14935)): `knowledge_article_id` ([15](./15-notion-business-docs.md)) · `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L14360)): `customer_visible`, `help_center_article_id` ([15](./15-notion-business-docs.md))
+> **Schema:** `KnowledgeArticle` ([knowledge_articles](../../api/prisma/schema.prisma#L13241)): `ai_generated`, `is_faq`, `search_vector`, `view_count` · `KnowledgeArticleFeedback` ([knowledge_article_feedback](../../api/prisma/schema.prisma#L13319)) · `KnowledgeArticleVersion` ([knowledge_article_versions](../../api/prisma/schema.prisma#L13300)) · `KnowledgeCategory` ([knowledge_categories](../../api/prisma/schema.prisma#L13213)) · `SupportIncident` ([support_incidents](../../api/prisma/schema.prisma#L13114)): `knowledge_article_id` · enum `KnowledgeArticleStatus` ([L12316](../../api/prisma/schema.prisma#L12316)) · enum `KnowledgeVisibility` ([L12324](../../api/prisma/schema.prisma#L12324)) — other modules: `Release` ([releases](../../api/prisma/schema.prisma#L5856)): `notes` ([06](./06-task-management.md)) · `WikiAiIndexEntry` ([wiki_ai_index_entries](../../api/prisma/schema.prisma#L15065)): `knowledge_article_id` ([15](./15-notion-business-docs.md)) · `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L14490)): `customer_visible`, `help_center_article_id` ([15](./15-notion-business-docs.md))
 <!-- schema-section:end -->
 
 Build an integrated knowledge management system.
@@ -424,7 +424,7 @@ customer-facing answers.
 ## 7. Automation & Workflows
 
 <!-- schema-section:start -->
-> **Schema:** `SlaPolicy` ([sla_policies](../../api/prisma/schema.prisma#L12635)): `at_risk_threshold_percent`, `escalation_rule_ids` · `SupportInbox` ([support_inboxes](../../api/prisma/schema.prisma#L12306)): `auto_reply_body` · `SupportSettings` ([support_settings](../../api/prisma/schema.prisma#L12258)): `auto_close_after_days`, `inactivity_after_hours`, `reopen_window_days` · `Ticket` ([tickets](../../api/prisma/schema.prisma#L12687)): `auto_close_at` · `TicketSlaTimer` ([ticket_sla_timers](../../api/prisma/schema.prisma#L12869)) · `TicketStatusHistory` ([ticket_status_history](../../api/prisma/schema.prisma#L12841)): `changed_via` · enum `SlaTimerStatus` ([L12169](../../api/prisma/schema.prisma#L12169))
+> **Schema:** `SlaPolicy` ([sla_policies](../../api/prisma/schema.prisma#L12765)): `at_risk_threshold_percent`, `escalation_rule_ids` · `SupportInbox` ([support_inboxes](../../api/prisma/schema.prisma#L12436)): `auto_reply_body` · `SupportSettings` ([support_settings](../../api/prisma/schema.prisma#L12388)): `auto_close_after_days`, `inactivity_after_hours`, `reopen_window_days` · `Ticket` ([tickets](../../api/prisma/schema.prisma#L12817)): `auto_close_at` · `TicketSlaTimer` ([ticket_sla_timers](../../api/prisma/schema.prisma#L12999)) · `TicketStatusHistory` ([ticket_status_history](../../api/prisma/schema.prisma#L12971)): `changed_via` · enum `SlaTimerStatus` ([L12299](../../api/prisma/schema.prisma#L12299))
 <!-- schema-section:end -->
 
 > Engine defined by → [20 Automation Engine](./20-automation-engine.md) · Linear LOG-410. Support declares its triggers (ticket created, SLA at risk, inactivity, AI classification completed) and actions (assign, route, respond, close, reopen, create task) and registers SLA timers and auto-close as scheduled jobs. It does not implement its own rules runtime.
@@ -485,7 +485,7 @@ switching between disconnected modules.
 ## 9. Support Analytics & Reporting
 
 <!-- schema-section:start -->
-> **Schema:** `KnowledgeArticle` ([knowledge_articles](../../api/prisma/schema.prisma#L13111)): `view_count` · `SupportAiSuggestion` ([support_ai_suggestions](../../api/prisma/schema.prisma#L13251)): `was_correct` · `SupportCsatRating` ([support_csat_ratings](../../api/prisma/schema.prisma#L13013)) · `SupportIncident` ([support_incidents](../../api/prisma/schema.prisma#L12984)) · `SupportMessage` ([support_messages](../../api/prisma/schema.prisma#L12487)): `is_first_response` · `SupportSettings` ([support_settings](../../api/prisma/schema.prisma#L12258)): `csat_enabled` · `Ticket` ([tickets](../../api/prisma/schema.prisma#L12687)): `resolved_by_ai` · `TicketStatusHistory` ([ticket_status_history](../../api/prisma/schema.prisma#L12841)) · enum `SupportIncidentStatus` ([L12247](../../api/prisma/schema.prisma#L12247))
+> **Schema:** `KnowledgeArticle` ([knowledge_articles](../../api/prisma/schema.prisma#L13241)): `view_count` · `SupportAiSuggestion` ([support_ai_suggestions](../../api/prisma/schema.prisma#L13381)): `was_correct` · `SupportCsatRating` ([support_csat_ratings](../../api/prisma/schema.prisma#L13143)) · `SupportIncident` ([support_incidents](../../api/prisma/schema.prisma#L13114)) · `SupportMessage` ([support_messages](../../api/prisma/schema.prisma#L12617)): `is_first_response` · `SupportSettings` ([support_settings](../../api/prisma/schema.prisma#L12388)): `csat_enabled` · `Ticket` ([tickets](../../api/prisma/schema.prisma#L12817)): `resolved_by_ai` · `TicketStatusHistory` ([ticket_status_history](../../api/prisma/schema.prisma#L12971)) · enum `SupportIncidentStatus` ([L12377](../../api/prisma/schema.prisma#L12377))
 <!-- schema-section:end -->
 
 Provide dashboards and reports for support operations.
@@ -520,7 +520,7 @@ and ticket category.
 ## 10. Notifications & Communication
 
 <!-- schema-section:start -->
-> **Schema:** `TicketFollower` ([ticket_followers](../../api/prisma/schema.prisma#L12949)) · enum `SupportMessageDeliveryStatus` ([L12089](../../api/prisma/schema.prisma#L12089))
+> **Schema:** `TicketFollower` ([ticket_followers](../../api/prisma/schema.prisma#L13079)) · enum `SupportMessageDeliveryStatus` ([L12219](../../api/prisma/schema.prisma#L12219))
 <!-- schema-section:end -->
 
 > Engine defined by → [14 Notifications & Activity Center](./14-notifications-activity-center.md) · Linear LOG-403. Outbound email replies are sent through [11 Communication Center](./11-communication-center.md).
@@ -545,7 +545,7 @@ channels.
 ## 11. Integrations & Shared Application Entities
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L18855)) ([20](./20-automation-engine.md))
+> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L18986)) ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 The Support module must be fully interconnected with the rest of the
@@ -597,7 +597,7 @@ modules.
 ## 13. Architecture & Implementation Requirements
 
 <!-- schema-section:start -->
-> **Schema:** `TicketStatus` ([ticket_statuses](../../api/prisma/schema.prisma#L12568)) · `TicketTaskLink` ([ticket_task_links](../../api/prisma/schema.prisma#L12922)): `idempotency_key` · enum `TicketStatusCategory` ([L12113](../../api/prisma/schema.prisma#L12113)) — other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1273)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** `TicketStatus` ([ticket_statuses](../../api/prisma/schema.prisma#L12698)) · `TicketTaskLink` ([ticket_task_links](../../api/prisma/schema.prisma#L13052)): `idempotency_key` · enum `TicketStatusCategory` ([L12243](../../api/prisma/schema.prisma#L12243)) — other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1319)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 * Treat Support as a first-class application module.
@@ -625,7 +625,7 @@ modules.
 ## 14. Core Data Model & Relationship Principles
 
 <!-- schema-section:start -->
-> **Schema:** `SupportConversation` ([support_conversations](../../api/prisma/schema.prisma#L12384)) · `Ticket` ([tickets](../../api/prisma/schema.prisma#L12687)) · `TicketConversation` ([ticket_conversations](../../api/prisma/schema.prisma#L12827)) · `TicketTaskLink` ([ticket_task_links](../../api/prisma/schema.prisma#L12922))
+> **Schema:** `SupportConversation` ([support_conversations](../../api/prisma/schema.prisma#L12514)) · `Ticket` ([tickets](../../api/prisma/schema.prisma#L12817)) · `TicketConversation` ([ticket_conversations](../../api/prisma/schema.prisma#L12957)) · `TicketTaskLink` ([ticket_task_links](../../api/prisma/schema.prisma#L13052))
 <!-- schema-section:end -->
 
 Keep three distinct concepts:

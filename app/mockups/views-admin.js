@@ -30,7 +30,7 @@
   const en = (v) => { const t = String(v).toLowerCase().replace(/_/g, " "); return t.charAt(0).toUpperCase() + t.slice(1); };
   const E = (v, c) => '<span class="badge ' + (c || "") + '" title="' + v + '">' + en(v) + "</span>";
   const ES = (v, c) => '<span class="badge ' + (c || "") + '" title="' + v + '"><span class="dot"></span>' + en(v) + "</span>";
-  const MC = { ACTIVE: "green", PUBLISHED: "green", VERIFIED: "green", ACCEPTED: "green", COMPLETED: "green", CERTIFIED: "green", PENDING: "blue", INVITED: "blue", SCHEDULED: "blue", IN_PROGRESS: "blue", MODIFIED: "yellow", DRAFT: "yellow", PLANNED: "blue", PENDING_VERIFICATION: "yellow", SUSPENDED: "red", LOCKED: "red", REVOKED: "red", FAILED: "red", CANCELLED: "", EXPIRED: "", DEPRECATED: "", DEACTIVATED: "", REJECTED: "red", ARCHIVED: "", TEMPORARILY_CLOSED: "yellow" };
+  const MC = { ACTIVE: "green", PUBLISHED: "green", VERIFIED: "green", ACCEPTED: "green", COMPLETED: "green", CERTIFIED: "green", PENDING: "blue", INVITED: "blue", SCHEDULED: "blue", IN_PROGRESS: "blue", MODIFIED: "yellow", DRAFT: "yellow", PLANNED: "blue", PENDING_VERIFICATION: "yellow", SUSPENDED: "red", ERROR: "red", LOCKED: "red", REVOKED: "red", FAILED: "red", CANCELLED: "", EXPIRED: "", DEPRECATED: "", DEACTIVATED: "", REJECTED: "red", ARCHIVED: "", TEMPORARILY_CLOSED: "yellow" };
   const S = (v) => ES(v, MC[v] || "");
   /* @impl head(): page header = shadcn-style PageHeader (h1, description, primary actions right). Actions are gated individually by permission. */
   const head = (t, p, a) => '<div class="a-head"><div><h1>' + t + "</h1>" + (p ? "<p>" + p + "</p>" : "") + '</div><div class="acts">' + (a || "") + "</div></div>";
@@ -843,8 +843,147 @@
       dm(["Organization · legal_name, display_name, short_name, slug, logo_url, website, country, contact_email, contact_phone, address, tax_identifiers, status, default_currency, default_timezone, default_language, default_locale, date_format, number_format, week_start, working_days, business_hours, branding"], []) + "</div>";
   }
 
+  /* =====================================================================================================================
+     INTEGRATIONS (spec §156–§161) — organizations bring their OWN provider keys (OpenAI, Resend, Stripe, Twilio ...)
+     @route  /admin/integrations?category=&status=&q=
+     @perm   VIEW organizations.integrations.read (connections, status, key HINTS, usage; never a secret) · ACTION connect / replace key / edit limits / set default / enable / disable /
+             disconnect: organizations.integrations.manage* (sensitive). Connect, replace key and disconnect additionally need a RECENT MFA confirmation (step-up auth).
+             Branch-scoped admins see and manage only connections restricted to their branches.
+     @api    GET /integrations?category=&status=&q= · GET /integrations/providers (the registry, see @data) · POST /integrations {provider, name, mode, secrets{}, config{}, usage_limits, branch_id, make_default}
+             (verifies against the provider BEFORE activating; returns metadata only) · POST /integrations/:id/verify · PUT /integrations/:id/secrets {field: value} (replace, write-only) ·
+             PATCH /integrations/:id {name, config, usage_limits, branch_id} · POST /integrations/:id/enable|disable|default · DELETE /integrations/:id (disconnect: destroys the secret)
+     @mcp    organizations_integrations_read (metadata only) · organizations_integrations_manage* (connect/rotate/disconnect are sensitive: ALWAYS a human confirmation, never an AI agent alone)
+     @data   IntegrationConnection (provider, category, name, status, mode, credential_source, secret_hints, config, capabilities, usage_limits, is_default, branch_id, last_verified_at, last_used_at,
+             last_error, last_error_at, rotated_at, expires_at) · IntegrationUsageDaily (usage over 30 days) · domain links: PaymentProviderConnection (08), CommProviderAccount (11) -> "Used by".
+             The FORM FIELDS come from api/src/shared/constants/integration-providers.ts (INTEGRATION_PROVIDERS[provider].secrets / .config): render them from that registry, do not hard-code per provider.
+     @ui     Card/Table grouped by category, ToggleGroup (category filter), Badge (status, mode, "Included with plan"), DropdownMenu (row actions), Dialog+Form (connect; react-hook-form + zod built from
+             the registry), password Input (autocomplete=off, no paste restrictions, show/hide toggle off by default), AlertDialog (disable/disconnect lists the dependent records), Tooltip, CopyButton
+     @states loading · empty (new org: checklist of the categories the enabled modules need) · error per connection (sanitized provider error + Test again) · no-access · verification running
+     @audit  integration.connected | integration.updated | integration.secret_rotated | integration.verified | integration.verification_failed | integration.enabled | integration.disabled |
+             integration.default_changed | integration.disconnected   (NEVER put a secret, ciphertext or hint in metadata; only ids, provider, category, mode, status and the names of the fields that changed)
+     @note   SECRETS ARE WRITE-ONLY. The API returns `secret_hints` ("sk-...a3f9": prefix + last 4 at most) and, per field, whether it is set. There is no reveal. Replacing a secret verifies the new one first and then
+             swaps it atomically (the old secret is destroyed). A connection becomes ACTIVE only after a successful verification call; until then it is PENDING and nothing may use it.
+             NO SILENT FALLBACK to a platform key (§159/§160): with no ACTIVE connection a module shows "Connect <category> in Admin > Integrations" and disables the dependent actions.
+             credential_source PLATFORM = key supplied by Logiqdev (plan/trial/local seed): shown as "Included with plan", no key hint, cannot be edited, only replaced by the organization's own connection.
+             Defaults: at most ONE default per organization + category + mode (enforced in the service); a branch-restricted connection beats an organization-wide one for that branch (§159).
+             Test vs live: show a prominent TEST badge; test connections can never be the default for live payments.
+             Tool integrations (GitHub, Linear, Slack ...) are managed in Messaging (12) and only LINKED from here. Per-member OAuth (calendar) stays in Calendar (19).
+     ===================================================================================================================== */
+  const CAT = [["AI", "AI", "sparkles"], ["EMAIL", "Email", "mail"], ["SMS", "SMS", "sms"], ["PAYMENTS", "Payments", "dollar"]];
+  /* provider, label, tile text, tile tone, category, name, IntegrationMode, credential_source, IntegrationStatus, key hint, is_default, branch, last verified, last used, usage 30d, last_error */
+  const IC = [
+    ["OPENAI", "OpenAI", "OA", "green", "AI", "OpenAI production", "LIVE", "ORGANIZATION", "ACTIVE", "sk-…a3f9", 1, "Organization", "2h ago", "4m ago", "1.2M tokens · ≈ $18.40", ""],
+    ["RESEND", "Resend", "Re", "blue", "EMAIL", "Resend (campaigns)", "LIVE", "ORGANIZATION", "ERROR", "re_…8c21", 1, "Organization", "3d ago", "2h ago", "8,214 emails", "401 Invalid API key"],
+    ["RESEND", "Resend", "Re", "blue", "EMAIL", "Athens notifications", "LIVE", "ORGANIZATION", "ACTIVE", "re_…19fe", 0, "Athens", "1d ago", "1d ago", "312 emails", ""],
+    ["TWILIO", "Twilio", "Tw", "red", "SMS", "Twilio SMS (trial)", "LIVE", "PLATFORM", "ACTIVE", "Included", 1, "Organization", "—", "5h ago", "412 messages", ""],
+    ["STRIPE", "Stripe", "St", "purple", "PAYMENTS", "Stripe EU live", "LIVE", "ORGANIZATION", "ACTIVE", "sk_live_…x9Qa", 1, "Organization", "1h ago", "12m ago", "€48.2k processed", ""],
+    ["STRIPE", "Stripe", "St", "purple", "PAYMENTS", "Stripe EU test", "TEST", "ORGANIZATION", "PENDING", "sk_test_…41bd", 0, "Organization", "Never", "Never", "—", ""],
+  ];
+  const pv = (t, tone) => '<span class="pv ' + (tone || "") + '">' + t + "</span>";
+
+  function integrations() {
+    /* @impl Connected list, one section per IntegrationCategory. Row = IntegrationConnection. Whole row opens /admin/integrations/:id. Columns map to fields (see @data). "Key" = secret_hints of the
+         PRIMARY secret field only. Usage = IntegrationUsageDaily summed over 30 days (units meaning depends on the category: tokens, messages, minor currency units). The red error line = last_error
+         (sanitized provider message) with last_error_at; it appears only while status = ERROR. */
+    const sections = CAT.map((c) => {
+      const rows = IC.filter((r) => r[4] === c[0]);
+      if (!rows.length) {
+        /* @impl Empty category row: tells the admin what this category enables and what happens WITHOUT a connection (no fallback to a platform key, 01 §159). */
+        const empty = "Not connected: the features that need this stay switched off until you connect a provider.";
+        return '<div class="cat-h">' + I(c[2], 13) + c[1] + '</div><div class="rowx"><div class="grow"><b class="muted" style="font-weight:400">' + empty + "</b></div>" + btn("Connect", "plus", "sm") + "</div>";
+      }
+      return '<div class="cat-h">' + I(c[2], 13) + c[1] + "</div>" + rows.map((r) =>
+        '<div class="rowx clk" style="cursor:pointer" onclick="location.hash=\'#admin/integration\'">' + pv(r[2], r[3]) +
+        '<div class="grow"><b>' + r[5] + (r[10] ? ' <span class="badge">Default</span>' : "") + (r[6] === "TEST" ? ' <span class="badge yellow">Test</span>' : "") + (r[7] === "PLATFORM" ? ' <span class="badge purple">Included with plan</span>' : "") + (r[11] !== "Organization" ? ' <span class="badge">Branch · ' + r[11] + "</span>" : "") + "</b><small>" + r[1] + " · key " + r[9] + " · verified " + r[12] + " · last used " + r[13] + " · " + r[14] + "</small>" + (r[8] === "ERROR" ? '<div class="err-line">' + r[15] + " · 2h ago</div>" : "") + "</div>" + S(r[8]) + more + "</div>").join("");
+    }).join("");
+
+    /* @impl Available catalog: providers from INTEGRATION_PROVIDERS that the org has not connected yet, grouped/filtered by category. "Connect" opens the connect Dialog for that provider. */
+    const av = [["VIVA_WALLET", "Viva Wallet", "VW", "Payments"]];
+
+    return '<div class="a-page">' + head("Integrations", "Connect your own accounts for AI, email, SMS, payments and more. Keys are encrypted, write-only and used only for your organization (§156).", btn("Add integration", "plus", "primary")) +
+      /* @impl Info Alert (dismissible per user): states the BYO-key principle and that nothing falls back to a shared platform key. Link "How credentials are protected" -> help article (§158). */
+      '<div class="callout" style="margin-bottom:14px">' + I("lock", 16) + "<div><b>Your keys, your costs.</b> Logiqdev OS calls these providers with the accounts you connect here. Secrets are encrypted per organization and can never be viewed again after saving; replace them any time. If a category has no connection, the features that need it stay switched off instead of using a shared key.</div></div>" +
+      '<div class="g-main"><div class="stack">' +
+      /* @impl Filter bar: category ToggleGroup (values = IntegrationCategory), status select (IntegrationStatus), search by name/provider. Sync to the query string. */
+      '<div class="toolbar">' + search("Search integrations…") + '<div class="seg"><button class="on">All</button><button>AI</button><button>Email</button><button>SMS</button><button>Payments</button></div><button class="btn">Status</button></div>' +
+      '<div class="cd"><div class="cd-h"><b>Connected</b><span class="r muted">IntegrationConnection · ' + IC.length + " connections</span></div><div class=\"cd-b flush\">" + sections + "</div></div>" +
+      cd("<b>Available</b><span class='r muted'>more providers are added as their adapters ship</span>", '<div class="prov-grid">' + av.map((a) => '<div class="prov">' + pv(a[2]) + "<div><b>" + a[1] + "</b><small>" + a[3] + "</small></div>" + btn("Connect", "", "sm") + "</div>").join("") + "</div>", 1) +
+      callout("link", "<b>Tool integrations</b> (GitHub, GitLab, Jira, Linear, Notion, Slack) are managed in Messaging settings. <a style='text-decoration:underline'>Open Messaging integrations</a>") +
+      "</div><div class=\"stack\">" +
+      /* @impl CONNECT FORM (Dialog in production; shown as a card here). Generated from INTEGRATION_PROVIDERS['OPENAI']: secrets[] -> write-only password inputs (required ones validated for format, e.g. prefix "sk-"),
+           config[] -> plain inputs/selects. Generic fields on every provider: Name (unique per org), Mode (only when hasTestMode), Branch (optional), Usage limits (only when supportsUsageLimits), "Make default".
+           Submit = "Test and save": POST /integrations verifies with the provider (OpenAI: GET /v1/models) and ONLY THEN activates. Show the provider error inline on failure and keep the dialog open.
+           The key field clears itself after submit and is never kept in React state longer than needed, never put in the URL, localStorage, logs or analytics. */
+      cd("<b>Connect OpenAI</b><span class='r'><span class='badge green'>AI</span></span>",
+        fld("Name", '<div class="inp ink">OpenAI production</div>') +
+        fld("Mode", '<div class="seg"><button class="on">Live</button><button>Test</button></div>') +
+        fld("API key <span class='sens'>*</span>", '<div class="pwd">••••••••••••••••<span style="margin-left:auto;letter-spacing:0;color:var(--ash)">' + I("lock", 13) + "</span></div><div class='sub-note'>Stored encrypted. You will see only “sk-…a3f9” afterwards.</div>") +
+        fld("Organization ID (optional)", '<div class="inp">org-…</div>') + fld("Default model", sel("gpt-4.1", "sparkles")) +
+        fld("Monthly spend limit", '<div class="inp">$ 30.00</div><div class="sub-note">Notifies admins at 80% and 100%; features degrade at 100%.</div>') +
+        fld("Available to", sel("Entire organization", "building")) +
+        '<div class="setting" style="padding:6px 0;border:0"><div class="grow"><b>Make default for AI</b><small>Modules resolve the default connection of a category</small></div>' + sw(1) + "</div>" +
+        '<div style="display:flex;gap:8px;margin-top:10px">' + btn("Cancel", "") + '<button class="btn primary" style="flex:1">' + I("check", 14) + " Test and save</button></div>") +
+      /* @impl Coverage card = the RESOLUTION result per category (§159): which ACTIVE connection each category resolves to right now, and which modules depend on it. A category that an ENABLED module needs
+           but that resolves to nothing (or to an ERROR connection) is flagged red. Data: resolveConnection(org, category) for each category + OrganizationModule to know which modules are enabled. */
+      cd("<b>What modules will use</b><span class='r muted'>resolution per category</span>",
+        '<div class="rowx"><div class="grow"><b>AI</b><small>Support agent, Docs, Proposals, Automation</small></div><span class="muted">OpenAI production</span></div>' +
+        '<div class="rowx"><div class="grow"><b>Email</b><small>Campaigns, notifications, invoices</small></div><span class="badge red">Resend: error</span></div>' +
+        '<div class="rowx"><div class="grow"><b>SMS</b><small>Campaigns, reminders</small></div><span class="muted">Twilio SMS</span></div>' +
+        '<div class="rowx"><div class="grow"><b>Payments</b><small>Billing, client portal checkout</small></div><span class="muted">Stripe EU live</span></div>' +
+        '<div class="rowx"><div class="grow"><b>Payments (test)</b><small>Sandbox checkout</small></div><span class="muted">Stripe EU test: pending</span></div>', 1) +
+      "</div></div>" +
+      dm(["IntegrationConnection · provider, category, name, status, mode, credential_source, secret_hints, config, capabilities, usage_limits, is_default, branch_id, last_verified_at, last_used_at, last_error, last_error_at", "IntegrationUsageDaily · requests, failures, units, cost_micros (30-day sums)", "api/src/shared/constants/integration-providers.ts · INTEGRATION_PROVIDERS (form fields, verification), MIGRATED_ENV_KEYS"], ["Secrets are never read by the UI: only secret_hints and per-field set/unset", "Tool integrations (12 MessagingIntegration) are separate and only linked"]) + "</div>";
+  }
+
+  /* =====================================================================================================================
+     INTEGRATION DETAIL (spec §157–§158, §161) — one connection (Stripe EU live shown)
+     @route  /admin/integrations/:connectionId?tab=overview|credentials|configuration|webhook|usage|activity
+     @perm   VIEW organizations.integrations.read · replace key / edit configuration / enable / disable / disconnect / set default: organizations.integrations.manage* (+ recent MFA for secrets)
+     @api    GET /integrations/:id (metadata, hints, capabilities, "used by") · PUT /integrations/:id/secrets · PATCH /integrations/:id · POST /integrations/:id/verify|enable|disable|default · DELETE /integrations/:id ·
+             GET /integrations/:id/usage?from=&to= · GET /integrations/:id/webhook-events?cursor= · GET /audit-events?resource_type=integration_connection&resource_id=
+     @mcp    organizations_integrations_read · organizations_integrations_manage* (human confirmation)
+     @data   IntegrationConnection (all fields) · IntegrationUsageDaily · ProviderWebhookEvent (08, recent deliveries; matched by webhook_token) · AuditEvent (activity) ·
+             PaymentProviderConnection (08) rows pointing here ("Used by": routing, currencies, priority) · registry entry INTEGRATION_PROVIDERS[provider]
+     @ui     Tabs, Card, Table, Badge, Dialog (replace key: one field per secret, password inputs), AlertDialog (disable / disconnect), CopyButton (callback URL), DropdownMenu
+     @states loading · not found · error banner with sanitized provider message · no-access · verifying
+     @audit  integration.secret_rotated | integration.verified | integration.verification_failed | integration.updated | integration.disabled | integration.enabled | integration.disconnected | integration.default_changed
+     @note   Credentials tab never shows values. Each secret field shows: set/unset, hint, and Replace. Replacing triggers re-verification. The webhook callback URL is
+             {API_URL}/webhooks/integrations/{webhook_token}: unguessable, per connection, and the ONLY way an inbound provider event is tied to this organization. Inbound events are signature-verified with the
+             stored webhook secret, de-duplicated (ProviderWebhookEvent) and handed to the owning module (08 for Stripe). Disconnect lists dependent records first and destroys the ciphertext.
+             Account id / country / capabilities shown in Overview are `capabilities` from the LAST verification (stale-while-error), not live calls from the browser.
+     ===================================================================================================================== */
+  function integration() {
+    const ev = [["invoice.paid", "Processed", "12m ago"], ["payment_intent.succeeded", "Processed", "12m ago"], ["charge.refunded", "Processed", "3h ago"], ["customer.subscription.updated", "Duplicate (ignored)", "5h ago"]];
+    const us = [["Nov 10", 212, 0, "€4,820", "—"], ["Nov 9", 188, 1, "€3,940", "—"], ["Nov 8", 64, 0, "€1,210", "—"], ["Nov 7", 301, 0, "€7,880", "—"]];
+    return '<div class="a-page">' +
+      /* @impl Header card: provider tile, connection name, status, mode, default/platform badges, branch scope. Actions: Test connection (POST verify), Replace keys (Dialog), Disable/Enable, Disconnect (AlertDialog). */
+      '<div class="cd" style="margin-bottom:14px"><div class="hdr-card">' + pv("St", "purple") + '<div class="nm"><h2>Stripe EU live ' + S("ACTIVE") + E("LIVE", "green") + '<span class="badge">Default</span></h2><div class="muted">Payments · Stripe · organization-wide · connected Mar 2025 by Petros R.</div></div>' + btn("Test connection", "zap") + btn("Disable", "") + btn("Disconnect", "x") + "</div></div>" +
+      '<div class="tabset">' + tabs([["o", "Overview"], ["c", "Credentials"], ["f", "Configuration"], ["w", "Webhook"], ["u", "Usage"], ["a", "Activity"]], "o") +
+      /* @impl Overview: health (status, last_verified_at, last_used_at, last_error), `capabilities` from the last verification, and "Used by" = domain rows pointing at this connection. */
+      pane("o", 1, '<div class="g2">' + cd("<b>Health</b>", kv("Status", S("ACTIVE")) + kv("Last verified", "1h ago (GET /v1/account)") + kv("Last used", "12m ago") + kv("Last error", muted("none")) + kv("Expires", muted("no expiry")) + kv("Last key change", "41 days ago · Petros R.")) +
+        cd("<b>Discovered at verification</b><span class='r muted'>capabilities</span>", kv("Account ID", '<span class="key">acct_1Q…Yz</span>') + kv("Country · default currency", "GR · EUR") + kv("Charges enabled", "Yes") + kv("Payouts enabled", "Yes") + kv("Supports", "Cards, SEPA, wallets, refunds, subscriptions")) + "</div>" +
+        cd("<b>Used by</b><span class='r muted'>domain rows pointing at this connection</span>", '<div class="rowx"><div class="grow"><b>Billing · payment connection “Stripe EU”</b><small>PaymentProviderConnection · EUR · priority 100 · default · all methods</small></div><a style="text-decoration:underline">Open in Billing</a></div><div class="rowx"><div class="grow"><b>Client portal checkout</b><small>Pays invoices through the default payments connection</small></div></div>', 1)) +
+      /* @impl Credentials: one row per field of INTEGRATION_PROVIDERS[provider].secrets. NO values: state + hint + Replace (Dialog with a password input, then re-verification). The Replace/Add actions
+           require recent MFA. */
+      pane("c", 0, '<div class="callout" style="margin-bottom:12px">' + I("lock", 16) + "<div><b>Secrets are write-only.</b> They are encrypted under your organization key and cannot be viewed again. To change one, replace it: the new value is verified, then swaps the old one atomically.</div></div>" +
+        '<div class="cd"><div class="cd-b flush"><div class="secret-row"><div class="grow"><b>Secret key</b><small>secret_key · sk_live_…</small></div><span class="key">sk_live_…x9Qa</span>' + E("Set", "green") + btn("Replace", "key", "sm") + '</div><div class="secret-row"><div class="grow"><b>Webhook signing secret</b><small>webhook_signing_secret · whsec_…</small></div><span class="key">whsec_…2b1c</span>' + E("Set", "green") + btn("Replace", "key", "sm") + "</div></div></div>") +
+      /* @impl Configuration: non-secret fields (INTEGRATION_PROVIDERS[provider].config) saved with PATCH. publishable_key is NOT a secret (shown in the checkout). Branch scope = branch_id (organization-wide when empty).
+           Usage limits = usage_limits JSON; only shown when the provider supports them (Stripe does not: fees are charged by Stripe, not metered here). */
+      pane("f", 0, '<div class="g2">' + cd("<b>Settings</b>", fld("Name", '<div class="inp ink">Stripe EU live</div>') + fld("Publishable key", '<div class="inp ink">pk_live_51Q…KdA</div>') + fld("Statement descriptor", '<div class="inp ink">LOGIQDEV</div>') + fld("Account ID (from verification)", '<div class="inp">acct_1Q…Yz</div>')) +
+        cd("<b>Availability</b>", fld("Available to", sel("Entire organization", "building")) + '<div class="setting" style="padding:6px 0;border:0"><div class="grow"><b>Default for Payments (live)</b><small>One default per category and mode</small></div>' + sw(1) + "</div>" + callout("shield", "Test connections can never be the default for live payments.", "warn")) + "</div>") +
+      /* @impl Webhook: callback URL = {API_URL}/webhooks/integrations/{webhook_token} (copy button). Recent deliveries from ProviderWebhookEvent (event type, outcome: Processed | Duplicate | Failed, time) with a "Resend / replay"
+           action for failed ones. The signing secret is configured on the Credentials tab. Only shown when the provider has `webhook: true`. */
+      pane("w", 0, cd("<b>Callback URL</b>", '<div class="pwd" style="letter-spacing:0;color:var(--ink)"><span class="key">https://api.logiqdev.example/webhooks/integrations/wh_9f3a1c…</span><span style="margin-left:auto">' + btn("Copy", "", "sm") + "</span></div><div class='sub-note' style='margin-top:6px'>Add this URL in your provider dashboard. Events are verified with the signing secret, de-duplicated and handed to Billing.</div>") + '<div style="height:12px"></div>' +
+        '<div class="panel" style="margin-top:0"><table><thead><tr><th>Event</th><th>Outcome</th><th>Received</th></tr></thead><tbody>' + ev.map((e) => '<tr><td class="key">' + e[0] + "</td><td>" + (e[1].startsWith("Processed") ? E("Processed", "green") : E("Duplicate", "")) + '</td><td class="muted">' + e[2] + "</td></tr>").join("") + "</tbody></table></div>") +
+      /* @impl Usage: IntegrationUsageDaily rows (date, requests, failures, units, cost). Units for PAYMENTS = minor currency units processed (shown formatted). Chart (requests + failures per day) above the table in production. */
+      pane("u", 0, '<div class="panel" style="margin-top:0"><table><thead><tr><th>Day</th><th class="num">Requests</th><th class="num">Failures</th><th>Processed</th><th>Est. cost</th></tr></thead><tbody>' + us.map((u) => "<tr><td>" + u[0] + '</td><td class="num">' + u[1] + '</td><td class="num">' + u[2] + "</td><td>" + u[3] + '</td><td class="muted">' + u[4] + "</td></tr>").join("") + "</tbody></table></div>") +
+      /* @impl Activity: AuditEvent rows with resource_type integration_connection and this id. The events never contain secrets or hints, only "secret_key rotated". */
+      pane("a", 0, cd("<b>Recent activity</b><span class='r muted'>AuditEvent</span>", '<div class="tl"><div class="ev"><b class="key">integration.verified</b><small>System · 1h ago</small></div><div class="ev"><b class="key">integration.secret_rotated</b><small>secret_key · Petros R. · 41 days ago</small></div><div class="ev"><b class="key">integration.default_changed</b><small>Petros R. · Mar 2025</small></div><div class="ev"><b class="key">integration.connected</b><small>Petros R. · Mar 2025</small></div></div>')) + "</div>" +
+      dm(["IntegrationConnection · status, mode, secret_hints, config, capabilities, webhook_token, is_default, branch_id, last_verified_at, last_used_at, rotated_at", "IntegrationUsageDaily · requests, failures, units, cost_micros", "PaymentProviderConnection (08) · integration_connection_id", "ProviderWebhookEvent (08) · recent deliveries", "AuditEvent · integration.*"], ["The secret values: never read, by design"]) + "</div>";
+  }
+
   /* Router map: sub-page key (hash "#admin/<key>") -> screen. Production: one route per entry under /admin (see @route on each screen). `service` is the API-keys page opened on the service-accounts tab. */
-  const MAP = { overview, members, member, roles, role, catalog, matrix, simulate, branches, teams, invitations, security, sso, sessions, apikeys, service: () => apikeys("service"), audit, modules, delegations, profile, reviews };
-  const CRUMB = { member: "Anna Meyer", role: "Project Manager", service: "Service accounts" };
+  const MAP = { overview, members, member, roles, role, catalog, matrix, simulate, branches, teams, invitations, security, sso, sessions, apikeys, service: () => apikeys("service"), audit, modules, delegations, profile, reviews, integrations, integration };
+  const CRUMB = { member: "Anna Meyer", role: "Project Manager", service: "Service accounts", integration: "Stripe EU live" };
   window.VIEWS.admin = { html: function (s) { return (MAP[s || "overview"] || MAP.overview)(s); }, crumb: function (s) { return CRUMB[s] || ""; } };
 })();

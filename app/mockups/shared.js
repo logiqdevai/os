@@ -10,7 +10,7 @@
  *       pin=Pin  inbox=Inbox  filter=Filter  send=Send  hash=Hash  box=Archive/Box  help=CircleHelp  at=AtSign
  *       smile=Smile  clip=Paperclip  phone=Phone  tag=Tag  link=Link  lock=Lock  sun=Sun  moon=Moon  reply=Reply
  *       archive=Archive  flag=Flag  bot=Bot  chart=LineChart  sms=MessageSquareText  video=Video  edit=SquarePen
- *       sort=ArrowUpDown  snooze=AlarmClock  bold=Bold  list=List  key=KeyRound  minus=Minus  building=Building2
+ *       plug=Plug  sort=ArrowUpDown  snooze=AlarmClock  bold=Bold  list=List  key=KeyRound  minus=Minus  building=Building2
  *   - Theme: production uses the app's theme provider (next-themes / shadcn). The mock default is DARK (DESIGN.MD is
  *     dark-first); persist the user's choice in `UserPreference.theme` (string) so it follows them across devices.
  *   - Avatar: shadcn `Avatar` with `AvatarImage` (User.profile_photo_url) and an initials `AvatarFallback`.
@@ -80,6 +80,7 @@
     list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
     key: "M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4",
     minus: "M5 12h14",
+    plug: "M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z",
     building: "M4 21V3h10v18M14 9h6v12M8 7h2M8 11h2M8 15h2",
     time: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2",
   };

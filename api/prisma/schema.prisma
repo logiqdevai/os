@@ -267,6 +267,48 @@ enum AccessReviewDecision {
   MODIFIED
 }
 
+/// 01 §157 — third-party services an organization connects with its own credentials. LAUNCH SET ONLY: to support another provider add a value
+/// here, an entry in api/src/shared/constants/integration-providers.ts and an adapter in the owning module. The domain enums PaymentProvider (08) and
+/// CommProviderKind (11) already reserve more providers; they stay reserved until their adapter and value are added here.
+enum IntegrationProvider {
+  OPENAI
+  RESEND
+  TWILIO
+  STRIPE
+  VIVA_WALLET
+}
+
+/// 01 §157 — what a connection is used for. Modules resolve a connection by category (+ default, branch).
+enum IntegrationCategory {
+  AI
+  EMAIL
+  SMS
+  PAYMENTS
+}
+
+/// 01 §157 — PENDING = saved but not verified yet; ACTIVE = verified and usable; ERROR = last verification or call failed
+/// (see last_error); DISABLED = switched off by an admin (secret kept); DISCONNECTED = secret destroyed.
+enum IntegrationStatus {
+  PENDING
+  ACTIVE
+  ERROR
+  DISABLED
+  DISCONNECTED
+}
+
+/// 01 §157 — provider environment of the credentials (Stripe test/live, sandbox accounts).
+enum IntegrationMode {
+  LIVE
+  TEST
+}
+
+/// 01 §160 — ORGANIZATION = the organization's own key (default). PLATFORM = Logiqdev-provided key from the platform
+/// environment, only for organizations Logiqdev explicitly enables (plan, trial, local development seeds).
+enum IntegrationCredentialSource {
+  ORGANIZATION
+  PLATFORM
+}
+
 /// 01 §99–100, §139 — who performed an audited action.
 enum AuditActorType {
   USER
@@ -485,21 +527,23 @@ model Organization {
   created_at            DateTime  @default(now())
   updated_at            DateTime  @updatedAt
 
-  security_policy      OrganizationSecurityPolicy?
-  domains              OrganizationDomain[]
-  modules              OrganizationModule[]
-  branches             Branch[]
-  teams                Team[]
-  memberships          Membership[]
-  roles                Role[]
-  invitations          Invitation[]
-  sso_configurations   SsoConfiguration[]
-  service_accounts     ServiceAccount[]
-  api_keys             ApiKey[]
-  access_reviews       AccessReview[]
-  delegations          Delegation[]
-  customer_memberships CustomerPortalMembership[]
-  audit_events         AuditEvent[]
+  security_policy         OrganizationSecurityPolicy?
+  domains                 OrganizationDomain[]
+  modules                 OrganizationModule[]
+  branches                Branch[]
+  teams                   Team[]
+  memberships             Membership[]
+  roles                   Role[]
+  invitations             Invitation[]
+  sso_configurations      SsoConfiguration[]
+  service_accounts        ServiceAccount[]
+  api_keys                ApiKey[]
+  access_reviews          AccessReview[]
+  integration_connections IntegrationConnection[]
+  integration_usage       IntegrationUsageDaily[]
+  delegations             Delegation[]
+  customer_memberships    CustomerPortalMembership[]
+  audit_events            AuditEvent[]
 
   // 02 CRM
   crm_companies                    CrmCompany[]
@@ -832,6 +876,7 @@ model Branch {
   parent                       Branch?                     @relation("BranchHierarchy", fields: [parent_branch_id], references: [id], onDelete: Restrict)
   children                     Branch[]                    @relation("BranchHierarchy")
   managers                     BranchManager[]
+  integration_connections      IntegrationConnection[]
   holidays                     BranchHoliday[]
   memberships                  MembershipBranch[]
   teams                        Team[]
@@ -1032,20 +1077,21 @@ model Membership {
   user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
 
-  branches                  MembershipBranch[]
-  teams                     TeamMembership[]
-  managed_branches          BranchManager[]
-  module_access             MembershipModuleAccess[]
-  role_assignments          RoleAssignment[]
-  permission_grants         PermissionGrant[]
-  api_keys                  ApiKey[]
-  created_access_reviews    AccessReview[]           @relation("AccessReviewCreator")
-  access_review_subjects    AccessReviewItem[]       @relation("AccessReviewSubject")
-  access_review_assignments AccessReviewItem[]       @relation("AccessReviewReviewer")
-  published_role_versions   RoleVersion[]            @relation("RoleVersionPublisher")
-  delegations_given         Delegation[]             @relation("DelegationDelegator")
-  delegations_received      Delegation[]             @relation("DelegationDelegate")
-  owned_service_accounts    ServiceAccount[]
+  branches                        MembershipBranch[]
+  teams                           TeamMembership[]
+  managed_branches                BranchManager[]
+  module_access                   MembershipModuleAccess[]
+  role_assignments                RoleAssignment[]
+  permission_grants               PermissionGrant[]
+  api_keys                        ApiKey[]
+  created_access_reviews          AccessReview[]           @relation("AccessReviewCreator")
+  access_review_subjects          AccessReviewItem[]       @relation("AccessReviewSubject")
+  access_review_assignments       AccessReviewItem[]       @relation("AccessReviewReviewer")
+  published_role_versions         RoleVersion[]            @relation("RoleVersionPublisher")
+  created_integration_connections IntegrationConnection[]  @relation("IntegrationConnectionCreator")
+  delegations_given               Delegation[]             @relation("DelegationDelegator")
+  delegations_received            Delegation[]             @relation("DelegationDelegate")
+  owned_service_accounts          ServiceAccount[]
 
   // 02 CRM ownership (02 §20)
   owned_companies                     CrmCompany[]                     @relation("CrmCompanyOwner")
@@ -1502,6 +1548,88 @@ model RoleVersion {
 
   @@unique([role_id, version])
   @@map("role_versions")
+}
+
+/// 01 §157 — one connected third-party service of an organization (OpenAI, Resend, Stripe, Twilio ...) with the
+/// organization's OWN credentials, so provider keys do not live in the platform .env (01 §160). Secrets are write-only:
+/// envelope-encrypted under the organization's VaultKey (17 §12), never returned by any API, never logged, never copied
+/// into audit metadata (01 §158). Domain tables (08 PaymentProviderConnection, 11 CommProviderAccount) point here instead of storing credentials.
+model IntegrationConnection {
+  id                       String                      @id @default(uuid())
+  organization_id          String
+  provider                 IntegrationProvider
+  category                 IntegrationCategory
+  /// Label shown to admins ("OpenAI production", "Stripe EU test"). Unique per organization.
+  name                     String
+  status                   IntegrationStatus           @default(PENDING)
+  mode                     IntegrationMode             @default(LIVE)
+  credential_source        IntegrationCredentialSource @default(ORGANIZATION)
+  /// base64 ciphertext (nonce + tag included) of ALL secret fields as one JSON object, e.g. { "api_key": "...", "webhook_secret": "..." }.
+  /// Null for PLATFORM-source rows. Field names per provider: api/src/shared/constants/integration-providers.ts.
+  secret_ciphertext        String?
+  vault_key_id             String?
+  /// Non-reversible per-field hints for lists, e.g. { "api_key": "sk-...a3f9" } (prefix + last 4 characters at most).
+  secret_hints             Json?
+  /// Non-secret settings per provider (default model, region, from address, publishable key, account id ...).
+  config                   Json?
+  /// Result of the last verification: { account_id, account_name, models, domains, country, capabilities ... }.
+  capabilities             Json?
+  /// Organization-set guardrails, e.g. { monthly_spend_limit_usd, requests_per_minute }; enforced by the integration layer before calling the provider.
+  usage_limits             Json?
+  /// Public, unguessable id used in the callback URL of providers that send webhooks; resolves organization + secret without exposing ids.
+  webhook_token            String?                     @unique
+  /// At most one default per organization, category and mode (enforced by the service). Modules resolve a connection by category + default (01 §159).
+  is_default               Boolean                     @default(false)
+  /// 01 §34 — restrict the connection to one branch; null = whole organization.
+  branch_id                String?
+  expires_at               DateTime?
+  rotated_at               DateTime?
+  last_verified_at         DateTime?
+  last_used_at             DateTime?
+  last_error               String?
+  last_error_at            DateTime?
+  created_by_membership_id String?
+  connected_at             DateTime?
+  disconnected_at          DateTime?
+  created_at               DateTime                    @default(now())
+  updated_at               DateTime                    @updatedAt
+
+  organization                 Organization                @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  vault_key                    VaultKey?                   @relation(fields: [vault_key_id], references: [id], onDelete: Restrict)
+  branch                       Branch?                     @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  created_by                   Membership?                 @relation("IntegrationConnectionCreator", fields: [created_by_membership_id], references: [id], onDelete: SetNull)
+  usage                        IntegrationUsageDaily[]
+  payment_provider_connections PaymentProviderConnection[]
+  comm_provider_accounts       CommProviderAccount[]
+
+  @@unique([organization_id, name])
+  @@index([organization_id, category, status])
+  @@index([organization_id, provider])
+  @@map("integration_connections")
+}
+
+/// 01 §157 — daily usage of one connection for the usage view and spend guardrails. Written only by the integration layer.
+model IntegrationUsageDaily {
+  id                        String   @id @default(uuid())
+  organization_id           String
+  integration_connection_id String
+  date                      DateTime @db.Date
+  requests                  Int      @default(0)
+  failures                  Int      @default(0)
+  /// Provider units consumed; meaning depends on the category: tokens (AI), messages (EMAIL, SMS), minor currency units processed (PAYMENTS).
+  units                     BigInt   @default(0)
+  /// Estimated cost in millionths of cost_currency when the provider price is known; null otherwise.
+  cost_micros               BigInt?
+  cost_currency             String?
+  /// Breakdown, e.g. AI: { input_tokens, output_tokens, by_model }.
+  breakdown                 Json?
+
+  organization           Organization          @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  integration_connection IntegrationConnection @relation(fields: [integration_connection_id], references: [id], onDelete: Cascade)
+
+  @@unique([integration_connection_id, date])
+  @@index([organization_id, date])
+  @@map("integration_usage_daily")
 }
 
 // =====================================================================
@@ -6649,57 +6777,59 @@ model ProjectBillingSettings {
 /// branch, test and live). Resolves incoming provider webhooks (ProviderWebhookEvent) to an organization and holds the
 /// per-tenant provider identity; secrets live behind credentials_ref (envelope encryption, 17 §12), never in plain text.
 model PaymentProviderConnection {
-  id                       String                          @id @default(uuid())
-  organization_id          String
-  provider                 PaymentProvider
+  id                        String                          @id @default(uuid())
+  organization_id           String
+  provider                  PaymentProvider
   /// Label shown to admins and, when several are offered, to customers at checkout ("Stripe EU", "Viva Wallet GR").
-  display_name             String
-  status                   PaymentProviderConnectionStatus @default(PENDING)
+  display_name              String
+  status                    PaymentProviderConnectionStatus @default(PENDING)
   /// Provider-side account identifier (Stripe acct_…, Viva Wallet merchant id, PayPal merchant id).
-  provider_account_id      String?
+  provider_account_id       String?
   /// live | test
-  mode                     String                          @default("live")
-  /// Reference to encrypted credentials (API keys, OAuth tokens, webhook signing secret); never plain text.
-  credentials_ref          String?
+  mode                      String                          @default("live")
+  /// 01 §157 — the organization's own credentials for this provider account (API keys, webhook signing secret). Secrets never live on this row.
+  integration_connection_id String?
   /// Non-secret provider options (statement descriptor, automatic tax, Viva Wallet source code, checkout branding).
-  config                   Json?
+  config                    Json?
   /// What the adapter supports for this account, refreshed on connect and on health checks:
   /// { recurring, saved_methods, refunds, partial_refunds, provider_invoices, provider_subscriptions, payouts }.
-  capabilities             Json?
+  capabilities              Json?
   /// Routing (08 "Payment Providers"): currencies and method types this connection collects; empty = everything the
   /// provider supports. Lower priority wins among matching connections; is_default breaks the remaining tie.
-  currencies               String[]                        @default([])
-  method_types             PaymentMethodType[]             @default([])
-  priority                 Int                             @default(100)
+  currencies                String[]                        @default([])
+  method_types              PaymentMethodType[]             @default([])
+  priority                  Int                             @default(100)
   /// At most one default per organization and mode (enforced by the service).
-  is_default               Boolean                         @default(false)
+  is_default                Boolean                         @default(false)
   /// 01 §34 — limit the connection to one branch; null = whole organization.
-  branch_id                String?
+  branch_id                 String?
   /// 09 — ledger payment method that payouts and fees of this connection are booked against.
-  ledger_payment_method_id String?
-  connected_by_user_id     String?
-  connected_at             DateTime?
-  disconnected_at          DateTime?
-  last_checked_at          DateTime?
-  last_error               String?
-  created_at               DateTime                        @default(now())
-  updated_at               DateTime                        @updatedAt
+  ledger_payment_method_id  String?
+  connected_by_user_id      String?
+  connected_at              DateTime?
+  disconnected_at           DateTime?
+  last_checked_at           DateTime?
+  last_error                String?
+  created_at                DateTime                        @default(now())
+  updated_at                DateTime                        @updatedAt
 
-  organization          Organization            @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  branch                Branch?                 @relation(fields: [branch_id], references: [id], onDelete: SetNull)
-  ledger_payment_method LedgerPaymentMethod?    @relation(fields: [ledger_payment_method_id], references: [id], onDelete: SetNull)
-  provider_objects      PaymentProviderObject[]
-  payment_methods       PaymentMethod[]
-  payments              Payment[]
-  invoices              Invoice[]
-  credit_notes          CreditNote[]
-  subscriptions         Subscription[]
-  preferred_by_profiles BillingProfile[]        @relation("BillingProfilePreferredProvider")
-  webhook_events        ProviderWebhookEvent[]
+  organization           Organization            @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  integration_connection IntegrationConnection?  @relation(fields: [integration_connection_id], references: [id], onDelete: SetNull)
+  branch                 Branch?                 @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  ledger_payment_method  LedgerPaymentMethod?    @relation(fields: [ledger_payment_method_id], references: [id], onDelete: SetNull)
+  provider_objects       PaymentProviderObject[]
+  payment_methods        PaymentMethod[]
+  payments               Payment[]
+  invoices               Invoice[]
+  credit_notes           CreditNote[]
+  subscriptions          Subscription[]
+  preferred_by_profiles  BillingProfile[]        @relation("BillingProfilePreferredProvider")
+  webhook_events         ProviderWebhookEvent[]
 
   @@unique([provider, provider_account_id, mode])
   @@index([organization_id, provider])
   @@index([organization_id, status])
+  @@index([integration_connection_id])
   @@map("payment_provider_connections")
 }
 
@@ -9675,31 +9805,31 @@ enum CommAiTaskKind {
 /// 11 "Email Management", "SMS Management" — a configured delivery provider account (API key stored
 /// encrypted / as a secret reference). One default per channel per organization.
 model CommProviderAccount {
-  id                 String                    @id @default(uuid())
-  organization_id    String
-  channel            CommChannel
-  provider           CommProviderKind
-  name               String
-  status             CommProviderAccountStatus @default(ACTIVE)
-  is_default         Boolean                   @default(false)
-  /// Encrypted credentials or secret-manager reference; never plain text.
-  credentials        Json?
+  id                        String                    @id @default(uuid())
+  organization_id           String
+  channel                   CommChannel
+  provider                  CommProviderKind
+  name                      String
+  status                    CommProviderAccountStatus @default(ACTIVE)
+  is_default                Boolean                   @default(false)
+  /// 01 §157 — the organization's own credentials (API key, webhook secret) for this provider. Secrets never live on this row.
+  integration_connection_id String?
   /// Provider-specific settings (region, SMTP host/port, messaging service sid, tracking options…).
-  settings           Json?
-  /// Secret used to verify inbound provider webhooks (events land in provider_webhook_events, 08).
-  webhook_secret     String?
-  last_error         String?
-  last_used_at       DateTime?
-  created_by_user_id String?
-  created_at         DateTime                  @default(now())
-  updated_at         DateTime                  @updatedAt
+  settings                  Json?
+  last_error                String?
+  last_used_at              DateTime?
+  created_by_user_id        String?
+  created_at                DateTime                  @default(now())
+  updated_at                DateTime                  @updatedAt
 
-  organization      Organization         @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  sender_domains    CommSenderDomain[]
-  sender_identities CommSenderIdentity[]
-  messages          CommMessage[]
+  organization           Organization           @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  integration_connection IntegrationConnection? @relation(fields: [integration_connection_id], references: [id], onDelete: SetNull)
+  sender_domains         CommSenderDomain[]
+  sender_identities      CommSenderIdentity[]
+  messages               CommMessage[]
 
   @@index([organization_id, channel, status])
+  @@index([integration_connection_id])
   @@map("comm_provider_accounts")
 }
 
@@ -16050,8 +16180,9 @@ model VaultKey {
   retired_at      DateTime?
   created_at      DateTime       @default(now())
 
-  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  entries      VaultEntry[]
+  organization            Organization            @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  entries                 VaultEntry[]
+  integration_connections IntegrationConnection[]
 
   @@unique([organization_id, version])
   @@index([organization_id, status])

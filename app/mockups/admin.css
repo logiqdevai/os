@@ -127,3 +127,19 @@ tr.clk { cursor: pointer; }
 
 /* Inline decision toggles inside table cells (access reviews): keep buttons on one line */
 td .seg { flex-wrap: nowrap; } .seg button { white-space: nowrap; }
+
+/* Integrations (01 s156-s161)
+   @impl .pv = provider tile. Production: official brand SVG per provider (respect each brand's usage guidelines) with an initials fallback; never hotlink logos.
+   .secret-row = one secret field: label, write-only state, hint, Replace action. The real input appears only in the "Replace" dialog and is type=password autocomplete=off. */
+.pv { width: 34px; height: 34px; border-radius: 9px; display: inline-grid; place-items: center; flex: none; font-size: 12px; font-weight: 600; background: var(--card); color: var(--ink); border: 1px solid var(--hairline); }
+.pv.green { background: var(--green-soft); color: var(--green); border-color: transparent; } .pv.blue { background: var(--blue-soft); color: var(--blue); border-color: transparent; }
+.pv.purple { background: var(--purple-soft); color: var(--purple); border-color: transparent; } .pv.yellow { background: var(--yellow-soft); color: var(--yellow); border-color: transparent; }
+.pv.red { background: var(--red-soft); color: var(--red); border-color: transparent; }
+.cat-h { display: flex; align-items: center; gap: 8px; padding: 14px 16px 8px; color: var(--ash); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; font-weight: 500; }
+.err-line { color: var(--red); font-size: 12px; margin-top: 2px; }
+.secret-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--hairline-soft); } .secret-row:last-child { border-bottom: 0; }
+.secret-row .grow { flex: 1; min-width: 0; } .secret-row b { color: var(--ink); font-weight: 500; display: block; } .secret-row small { color: var(--ash); }
+.pwd { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border: 1px solid var(--hairline); background: var(--elevated); border-radius: var(--r-md); color: var(--ash); letter-spacing: 2px; }
+.prov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; padding: 14px 16px; }
+.prov { display: flex; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--hairline); border-radius: var(--r-md); background: var(--surface); } .prov:hover { border-color: var(--hairline-strong); background: var(--elevated); }
+.prov b { color: var(--ink); font-weight: 500; display: block; line-height: 1.25; } .prov small { color: var(--ash); font-size: 12px; } .prov .btn { margin-left: auto; }

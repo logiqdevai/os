@@ -521,6 +521,50 @@ exports.Prisma.RoleVersionScalarFieldEnum = {
   published_at: 'published_at'
 };
 
+exports.Prisma.IntegrationConnectionScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  provider: 'provider',
+  category: 'category',
+  name: 'name',
+  status: 'status',
+  mode: 'mode',
+  credential_source: 'credential_source',
+  secret_ciphertext: 'secret_ciphertext',
+  vault_key_id: 'vault_key_id',
+  secret_hints: 'secret_hints',
+  config: 'config',
+  capabilities: 'capabilities',
+  usage_limits: 'usage_limits',
+  webhook_token: 'webhook_token',
+  is_default: 'is_default',
+  branch_id: 'branch_id',
+  expires_at: 'expires_at',
+  rotated_at: 'rotated_at',
+  last_verified_at: 'last_verified_at',
+  last_used_at: 'last_used_at',
+  last_error: 'last_error',
+  last_error_at: 'last_error_at',
+  created_by_membership_id: 'created_by_membership_id',
+  connected_at: 'connected_at',
+  disconnected_at: 'disconnected_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.IntegrationUsageDailyScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  integration_connection_id: 'integration_connection_id',
+  date: 'date',
+  requests: 'requests',
+  failures: 'failures',
+  units: 'units',
+  cost_micros: 'cost_micros',
+  cost_currency: 'cost_currency',
+  breakdown: 'breakdown'
+};
+
 exports.Prisma.InvitationScalarFieldEnum = {
   id: 'id',
   organization_id: 'organization_id',
@@ -2824,7 +2868,7 @@ exports.Prisma.PaymentProviderConnectionScalarFieldEnum = {
   status: 'status',
   provider_account_id: 'provider_account_id',
   mode: 'mode',
-  credentials_ref: 'credentials_ref',
+  integration_connection_id: 'integration_connection_id',
   config: 'config',
   capabilities: 'capabilities',
   currencies: 'currencies',
@@ -4016,9 +4060,8 @@ exports.Prisma.CommProviderAccountScalarFieldEnum = {
   name: 'name',
   status: 'status',
   is_default: 'is_default',
-  credentials: 'credentials',
+  integration_connection_id: 'integration_connection_id',
   settings: 'settings',
-  webhook_secret: 'webhook_secret',
   last_error: 'last_error',
   last_used_at: 'last_used_at',
   created_by_user_id: 'created_by_user_id',
@@ -8219,6 +8262,39 @@ exports.AccessReviewDecision = exports.$Enums.AccessReviewDecision = {
   MODIFIED: 'MODIFIED'
 };
 
+exports.IntegrationProvider = exports.$Enums.IntegrationProvider = {
+  OPENAI: 'OPENAI',
+  RESEND: 'RESEND',
+  TWILIO: 'TWILIO',
+  STRIPE: 'STRIPE',
+  VIVA_WALLET: 'VIVA_WALLET'
+};
+
+exports.IntegrationCategory = exports.$Enums.IntegrationCategory = {
+  AI: 'AI',
+  EMAIL: 'EMAIL',
+  SMS: 'SMS',
+  PAYMENTS: 'PAYMENTS'
+};
+
+exports.IntegrationStatus = exports.$Enums.IntegrationStatus = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+  ERROR: 'ERROR',
+  DISABLED: 'DISABLED',
+  DISCONNECTED: 'DISCONNECTED'
+};
+
+exports.IntegrationMode = exports.$Enums.IntegrationMode = {
+  LIVE: 'LIVE',
+  TEST: 'TEST'
+};
+
+exports.IntegrationCredentialSource = exports.$Enums.IntegrationCredentialSource = {
+  ORGANIZATION: 'ORGANIZATION',
+  PLATFORM: 'PLATFORM'
+};
+
 exports.InvitationAudience = exports.$Enums.InvitationAudience = {
   MEMBER: 'MEMBER',
   CUSTOMER_PORTAL: 'CUSTOMER_PORTAL'
@@ -11154,6 +11230,8 @@ exports.Prisma.ModelName = {
   AccessReview: 'AccessReview',
   AccessReviewItem: 'AccessReviewItem',
   RoleVersion: 'RoleVersion',
+  IntegrationConnection: 'IntegrationConnection',
+  IntegrationUsageDaily: 'IntegrationUsageDaily',
   Invitation: 'Invitation',
   SsoConfiguration: 'SsoConfiguration',
   SsoGroupMapping: 'SsoGroupMapping',

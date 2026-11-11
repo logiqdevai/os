@@ -31,54 +31,54 @@ The module should provide managers and administrators with complete visibility i
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Settings** | | | |
-| `EmployeeHrSettings` | `employee_hr_settings` | [L8147](../../api/prisma/schema.prisma#L8147) | 10 "Employee Self-Service", "Attendance & Working Hours", "Capacity & Workload", "Leave Management" — organization-wide HR configuration (one row per organiz… |
+| `EmployeeHrSettings` | `employee_hr_settings` | [L8277](../../api/prisma/schema.prisma#L8277) | 10 "Employee Self-Service", "Attendance & Working Hours", "Capacity & Workload", "Leave Management" — organization-wide HR configuration (one row per organiz… |
 | **Employee** | | | |
-| `Employee` | `employees` | [L8191](../../api/prisma/schema.prisma#L8191) | 10 "Employee Profiles", "Organization Structure", "Roles & Responsibilities", "Employee Availability", "Employee Directory" — the HR record, 1:1 with a Membe… |
-| `EmployeeEmergencyContact` | `employee_emergency_contacts` | [L8312](../../api/prisma/schema.prisma#L8312) | 10 "Employee Profiles" — emergency contacts. |
-| `EmployeePosition` | `employee_positions` | [L8333](../../api/prisma/schema.prisma#L8333) | 10 "Roles & Responsibilities", "Organization Structure" — effective-dated position history (title, department, branch, manager, seniority, employment type). … |
+| `Employee` | `employees` | [L8321](../../api/prisma/schema.prisma#L8321) | 10 "Employee Profiles", "Organization Structure", "Roles & Responsibilities", "Employee Availability", "Employee Directory" — the HR record, 1:1 with a Membe… |
+| `EmployeeEmergencyContact` | `employee_emergency_contacts` | [L8442](../../api/prisma/schema.prisma#L8442) | 10 "Employee Profiles" — emergency contacts. |
+| `EmployeePosition` | `employee_positions` | [L8463](../../api/prisma/schema.prisma#L8463) | 10 "Roles & Responsibilities", "Organization Structure" — effective-dated position history (title, department, branch, manager, seniority, employment type). … |
 | **Compensation** | | | |
-| `EmployeeCompensation` | `employee_compensations` | [L8367](../../api/prisma/schema.prisma#L8367) | 10 "Compensation" — effective-dated compensation record (01 §81 source of truth; 01 §60 field-level permission). cost_rate_hourly is consumed by 18 Time Trac… |
-| `EmployeeCompensationComponent` | `employee_compensation_components` | [L8408](../../api/prisma/schema.prisma#L8408) | 10 "Compensation" — employer costs (social contributions, insurance, benefits), allowances and bonus / commission scheme lines. Either a fixed amount or a pe… |
+| `EmployeeCompensation` | `employee_compensations` | [L8497](../../api/prisma/schema.prisma#L8497) | 10 "Compensation" — effective-dated compensation record (01 §81 source of truth; 01 §60 field-level permission). cost_rate_hourly is consumed by 18 Time Trac… |
+| `EmployeeCompensationComponent` | `employee_compensation_components` | [L8538](../../api/prisma/schema.prisma#L8538) | 10 "Compensation" — employer costs (social contributions, insurance, benefits), allowances and bonus / commission scheme lines. Either a fixed amount or a pe… |
 | **Skills** | | | |
-| `Skill` | `skills` | [L8435](../../api/prisma/schema.prisma#L8435) | 10 "Skills Management" — organization skill catalogue (technical skills, languages, frameworks, platforms, specializations). Searchable for project staffing. |
-| `EmployeeSkill` | `employee_skills` | [L8461](../../api/prisma/schema.prisma#L8461) | 10 "Skills Management", "Roles & Responsibilities" — skill per employee with proficiency, experience and primary/secondary flag. |
-| `EmployeeCertification` | `employee_certifications` | [L8486](../../api/prisma/schema.prisma#L8486) | 10 "Skills Management", "Employee Profiles" — certifications; the certificate file is a 17 Document. |
-| `EmployeeTraining` | `employee_trainings` | [L8511](../../api/prisma/schema.prisma#L8511) | 10 "Skills Management" — professional training records. |
-| `EmployeeLanguage` | `employee_languages` | [L8540](../../api/prisma/schema.prisma#L8540) | 10 "Employee Profiles" — spoken languages. |
+| `Skill` | `skills` | [L8565](../../api/prisma/schema.prisma#L8565) | 10 "Skills Management" — organization skill catalogue (technical skills, languages, frameworks, platforms, specializations). Searchable for project staffing. |
+| `EmployeeSkill` | `employee_skills` | [L8591](../../api/prisma/schema.prisma#L8591) | 10 "Skills Management", "Roles & Responsibilities" — skill per employee with proficiency, experience and primary/secondary flag. |
+| `EmployeeCertification` | `employee_certifications` | [L8616](../../api/prisma/schema.prisma#L8616) | 10 "Skills Management", "Employee Profiles" — certifications; the certificate file is a 17 Document. |
+| `EmployeeTraining` | `employee_trainings` | [L8641](../../api/prisma/schema.prisma#L8641) | 10 "Skills Management" — professional training records. |
+| `EmployeeLanguage` | `employee_languages` | [L8670](../../api/prisma/schema.prisma#L8670) | 10 "Employee Profiles" — spoken languages. |
 | **Working hours & availability** | | | |
-| `EmployeeWorkSchedule` | `employee_work_schedules` | [L8559](../../api/prisma/schema.prisma#L8559) | 10 "Attendance & Working Hours", "Capacity & Workload" — effective-dated working schedule (fixed, flexible or shift). Defines expected hours and therefore ca… |
-| `EmployeeWorkScheduleDay` | `employee_work_schedule_days` | [L8582](../../api/prisma/schema.prisma#L8582) | 10 "Attendance & Working Hours" — one row per working weekday of a schedule. |
-| `EmployeeAvailabilityEntry` | `employee_availability_entries` | [L8603](../../api/prisma/schema.prisma#L8603) | 10 "Employee Availability" — time-boxed availability states (remote day, training, business travel, busy, leave projection). Approved leave and holidays crea… |
+| `EmployeeWorkSchedule` | `employee_work_schedules` | [L8689](../../api/prisma/schema.prisma#L8689) | 10 "Attendance & Working Hours", "Capacity & Workload" — effective-dated working schedule (fixed, flexible or shift). Defines expected hours and therefore ca… |
+| `EmployeeWorkScheduleDay` | `employee_work_schedule_days` | [L8712](../../api/prisma/schema.prisma#L8712) | 10 "Attendance & Working Hours" — one row per working weekday of a schedule. |
+| `EmployeeAvailabilityEntry` | `employee_availability_entries` | [L8733](../../api/prisma/schema.prisma#L8733) | 10 "Employee Availability" — time-boxed availability states (remote day, training, business travel, busy, leave projection). Approved leave and holidays crea… |
 | **Leave** | | | |
-| `LeaveType` | `leave_types` | [L8632](../../api/prisma/schema.prisma#L8632) | 10 "Leave Management" — configurable leave types (vacation, sick, personal, maternity, paternity, unpaid, …). |
-| `LeavePolicy` | `leave_policies` | [L8668](../../api/prisma/schema.prisma#L8668) | 10 "Leave Management" — entitlement and accrual rules for a leave type, optionally restricted to a branch (local law) or employment types. Assigned to employ… |
-| `EmployeeLeavePolicy` | `employee_leave_policies` | [L8709](../../api/prisma/schema.prisma#L8709) | 10 "Leave Management" — explicit policy assignment per employee (overrides defaults). |
-| `LeaveBalance` | `leave_balances` | [L8727](../../api/prisma/schema.prisma#L8727) | 10 "Leave Management" — balance per employee, leave type and balance period. available = entitled + accrued + carried_over + adjusted − used − pending. |
-| `LeaveBalanceTransaction` | `leave_balance_transactions` | [L8758](../../api/prisma/schema.prisma#L8758) | 10 "Leave Management" — ledger of balance movements (accruals, usage, adjustments, carry-over, expiry). |
-| `LeaveRequest` | `leave_requests` | [L8780](../../api/prisma/schema.prisma#L8780) | 10 "Leave Management" — a leave / time-off request with approval workflow (01 §95 approval right; 20 workflow), half-day support, conflict detection and cale… |
-| `LeaveRequestDay` | `leave_request_days` | [L8836](../../api/prisma/schema.prisma#L8836) | 10 "Leave Management" — per-day breakdown of a request (half days, hours) for the leave calendar, team availability and capacity. |
-| `LeaveRequestApproval` | `leave_request_approvals` | [L8851](../../api/prisma/schema.prisma#L8851) | 10 "Leave Management" — approval steps (manager, HR, custom chain from 20). |
-| `CompanyHoliday` | `company_holidays` | [L8871](../../api/prisma/schema.prisma#L8871) | 10 "Leave Management" — organization-wide public and company holidays. Branch-specific holidays are BranchHoliday (01 §122); both reduce capacity and are pro… |
+| `LeaveType` | `leave_types` | [L8762](../../api/prisma/schema.prisma#L8762) | 10 "Leave Management" — configurable leave types (vacation, sick, personal, maternity, paternity, unpaid, …). |
+| `LeavePolicy` | `leave_policies` | [L8798](../../api/prisma/schema.prisma#L8798) | 10 "Leave Management" — entitlement and accrual rules for a leave type, optionally restricted to a branch (local law) or employment types. Assigned to employ… |
+| `EmployeeLeavePolicy` | `employee_leave_policies` | [L8839](../../api/prisma/schema.prisma#L8839) | 10 "Leave Management" — explicit policy assignment per employee (overrides defaults). |
+| `LeaveBalance` | `leave_balances` | [L8857](../../api/prisma/schema.prisma#L8857) | 10 "Leave Management" — balance per employee, leave type and balance period. available = entitled + accrued + carried_over + adjusted − used − pending. |
+| `LeaveBalanceTransaction` | `leave_balance_transactions` | [L8888](../../api/prisma/schema.prisma#L8888) | 10 "Leave Management" — ledger of balance movements (accruals, usage, adjustments, carry-over, expiry). |
+| `LeaveRequest` | `leave_requests` | [L8910](../../api/prisma/schema.prisma#L8910) | 10 "Leave Management" — a leave / time-off request with approval workflow (01 §95 approval right; 20 workflow), half-day support, conflict detection and cale… |
+| `LeaveRequestDay` | `leave_request_days` | [L8966](../../api/prisma/schema.prisma#L8966) | 10 "Leave Management" — per-day breakdown of a request (half days, hours) for the leave calendar, team availability and capacity. |
+| `LeaveRequestApproval` | `leave_request_approvals` | [L8981](../../api/prisma/schema.prisma#L8981) | 10 "Leave Management" — approval steps (manager, HR, custom chain from 20). |
+| `CompanyHoliday` | `company_holidays` | [L9001](../../api/prisma/schema.prisma#L9001) | 10 "Leave Management" — organization-wide public and company holidays. Branch-specific holidays are BranchHoliday (01 §122); both reduce capacity and are pro… |
 | **Attendance** | | | |
-| `AttendanceRecord` | `attendance_records` | [L8894](../../api/prisma/schema.prisma#L8894) | 10 "Attendance & Working Hours" — one record per employee per calendar day aggregating clock sessions, breaks, overtime and lateness against the work schedul… |
-| `AttendanceSession` | `attendance_sessions` | [L8933](../../api/prisma/schema.prisma#L8933) | 10 "Attendance & Working Hours" — a clock-in / clock-out pair; several per day are allowed. |
-| `AttendanceBreak` | `attendance_breaks` | [L8956](../../api/prisma/schema.prisma#L8956) | 10 "Attendance & Working Hours" — breaks inside a session. |
-| `AttendanceSummary` | `attendance_summaries` | [L8972](../../api/prisma/schema.prisma#L8972) | 10 "Attendance & Working Hours", "Dashboards & Reporting" — materialized weekly / monthly attendance summary per employee (recomputed by a scheduled job, 20). |
+| `AttendanceRecord` | `attendance_records` | [L9024](../../api/prisma/schema.prisma#L9024) | 10 "Attendance & Working Hours" — one record per employee per calendar day aggregating clock sessions, breaks, overtime and lateness against the work schedul… |
+| `AttendanceSession` | `attendance_sessions` | [L9063](../../api/prisma/schema.prisma#L9063) | 10 "Attendance & Working Hours" — a clock-in / clock-out pair; several per day are allowed. |
+| `AttendanceBreak` | `attendance_breaks` | [L9086](../../api/prisma/schema.prisma#L9086) | 10 "Attendance & Working Hours" — breaks inside a session. |
+| `AttendanceSummary` | `attendance_summaries` | [L9102](../../api/prisma/schema.prisma#L9102) | 10 "Attendance & Working Hours", "Dashboards & Reporting" — materialized weekly / monthly attendance summary per employee (recomputed by a scheduled job, 20). |
 | **Capacity** | | | |
-| `EmployeeCapacityPeriod` | `employee_capacity_periods` | [L9004](../../api/prisma/schema.prisma#L9004) | 10 "Capacity & Workload" — materialized capacity per employee and period: expected hours from the work schedule minus leave and holidays (owned here), with s… |
+| `EmployeeCapacityPeriod` | `employee_capacity_periods` | [L9134](../../api/prisma/schema.prisma#L9134) | 10 "Capacity & Workload" — materialized capacity per employee and period: expected hours from the work schedule minus leave and holidays (owned here), with s… |
 | **Performance** | | | |
-| `PerformanceReviewCycle` | `performance_review_cycles` | [L9040](../../api/prisma/schema.prisma#L9040) | 10 "Performance Management" — a review cycle (e.g. "H1 2026") grouping reviews with a shared template. |
-| `PerformanceReview` | `performance_reviews` | [L9063](../../api/prisma/schema.prisma#L9063) | 10 "Performance Management" — a performance review (self assessment + manager assessment + ratings). |
-| `PerformanceGoal` | `performance_goals` | [L9118](../../api/prisma/schema.prisma#L9118) | 10 "Performance Management" — goals, objectives and key results (objective → key results via parent_goal_id), optionally tied to a review or a Project (05). |
-| `PerformanceGoalUpdate` | `performance_goal_updates` | [L9162](../../api/prisma/schema.prisma#L9162) | 10 "Performance Management" — progress check-ins on a goal (ongoing tracking). |
-| `PerformanceFeedback` | `performance_feedback` | [L9180](../../api/prisma/schema.prisma#L9180) | 10 "Performance Management" — manager feedback, employee (upward / self) feedback, peer feedback, performance notes, achievements and recognition history. Co… |
-| `PerformanceImprovementPlan` | `performance_improvement_plans` | [L9215](../../api/prisma/schema.prisma#L9215) | 10 "Performance Management" — improvement plans (PIP) with check-ins and measurable items. |
-| `PerformanceImprovementPlanItem` | `performance_improvement_plan_items` | [L9251](../../api/prisma/schema.prisma#L9251) | 10 "Performance Management" — measurable items of an improvement plan. |
+| `PerformanceReviewCycle` | `performance_review_cycles` | [L9170](../../api/prisma/schema.prisma#L9170) | 10 "Performance Management" — a review cycle (e.g. "H1 2026") grouping reviews with a shared template. |
+| `PerformanceReview` | `performance_reviews` | [L9193](../../api/prisma/schema.prisma#L9193) | 10 "Performance Management" — a performance review (self assessment + manager assessment + ratings). |
+| `PerformanceGoal` | `performance_goals` | [L9248](../../api/prisma/schema.prisma#L9248) | 10 "Performance Management" — goals, objectives and key results (objective → key results via parent_goal_id), optionally tied to a review or a Project (05). |
+| `PerformanceGoalUpdate` | `performance_goal_updates` | [L9292](../../api/prisma/schema.prisma#L9292) | 10 "Performance Management" — progress check-ins on a goal (ongoing tracking). |
+| `PerformanceFeedback` | `performance_feedback` | [L9310](../../api/prisma/schema.prisma#L9310) | 10 "Performance Management" — manager feedback, employee (upward / self) feedback, peer feedback, performance notes, achievements and recognition history. Co… |
+| `PerformanceImprovementPlan` | `performance_improvement_plans` | [L9345](../../api/prisma/schema.prisma#L9345) | 10 "Performance Management" — improvement plans (PIP) with check-ins and measurable items. |
+| `PerformanceImprovementPlanItem` | `performance_improvement_plan_items` | [L9381](../../api/prisma/schema.prisma#L9381) | 10 "Performance Management" — measurable items of an improvement plan. |
 | **Documents & notes** | | | |
-| `EmployeeDocument` | `employee_documents` | [L9275](../../api/prisma/schema.prisma#L9275) | 10 "Employee Documents" — HR document index per employee (contracts, NDAs, IDs, signed agreements, HR forms). The file is a 17 Document (employee scope, 17 §… |
-| `EmployeeHrNote` | `employee_hr_notes` | [L9320](../../api/prisma/schema.prisma#L9320) | 10 "Internal Notes" — private HR notes (performance observations, meeting notes, HR comments, warnings) with role-based visibility (01 §60). Kept separate fr… |
+| `EmployeeDocument` | `employee_documents` | [L9405](../../api/prisma/schema.prisma#L9405) | 10 "Employee Documents" — HR document index per employee (contracts, NDAs, IDs, signed agreements, HR forms). The file is a 17 Document (employee scope, 17 §… |
+| `EmployeeHrNote` | `employee_hr_notes` | [L9450](../../api/prisma/schema.prisma#L9450) | 10 "Internal Notes" — private HR notes (performance observations, meeting notes, HR comments, warnings) with role-based visibility (01 §60). Kept separate fr… |
 | **Self-service** | | | |
-| `EmployeeProfileChangeRequest` | `employee_profile_change_requests` | [L9365](../../api/prisma/schema.prisma#L9365) | 10 "Employee Self-Service" — profile changes submitted by the employee that need HR approval (EmployeeHrSettings.profile_changes_require_approval). Direct ed… |
+| `EmployeeProfileChangeRequest` | `employee_profile_change_requests` | [L9495](../../api/prisma/schema.prisma#L9495) | 10 "Employee Self-Service" — profile changes submitted by the employee that need HR approval (EmployeeHrSettings.profile_changes_require_approval). Direct ed… |
 
 **Owned enums (43):** `EmploymentStatus`, `EmploymentType`, `EmployeePayType`, `CompensationComponentKind`, `CompensationFrequency`, `EmployeeSeniorityLevel`, `EmployeePositionChangeReason`, `EmployeeWorkLocation`, `EmployeeAvailabilityStatus`, `EmployeeAvailabilitySource`, `EmployeeScheduleType`, `LeaveCategory`, `LeaveAccrualMethod`, `LeaveRequestStatus`, `LeaveDayPart`, `LeaveApprovalDecision`, `LeaveBalanceTransactionType`, `CompanyHolidayKind`, `AttendanceStatus`, `AttendanceSource`, `AttendanceBreakKind`, `EmployeePeriodType`, `EmployeeCapacityStatus`, `PerformanceReviewType`, `PerformanceReviewCycleStatus`, `PerformanceReviewStatus`, `PerformanceGoalKind`, `PerformanceGoalStatus`, `PerformanceFeedbackKind`, `PerformanceFeedbackVisibility`, `PerformanceImprovementPlanStatus`, `PerformanceImprovementItemStatus`, `SkillCategory`, `SkillProficiency`, `LanguageProficiency`, `EmployeeTrainingStatus`, `EmployeeDocumentCategory`, `EmployeeDocumentStatus`, `HrNoteCategory`, `HrNoteVisibility`, `HrNoteSeverity`, `EmployeeChangeRequestStatus`, `LeaveApproverStrategy`
 
@@ -104,18 +104,18 @@ The module should provide managers and administrators with complete visibility i
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `LedgerRecord.employee_id` ([09](./09-income-expense-management.md), [L7096](../../api/prisma/schema.prisma#L7096)) — 10 Employee — related employee (employee expenses, payroll); id only.
-- `PayrollSchedule.employee_id` ([09](./09-income-expense-management.md), [L7460](../../api/prisma/schema.prisma#L7460)) — 10 Employee; id only.
-- `PayrollEntry.employee_id` ([09](./09-income-expense-management.md), [L7507](../../api/prisma/schema.prisma#L7507)) — 10 Employee; id only.
-- `WikiChecklistRun.employee_id` ([15](./15-notion-business-docs.md), [L14693](../../api/prisma/schema.prisma#L14693)) — Employees (10) Employee record of the subject; id only.
-- `Folder.employee_id` ([17](./17-documents-file-management.md), [L15431](../../api/prisma/schema.prisma#L15431)) — 10 Employee for EMPLOYEE scope (HR documents); id only.
-- `Document.employee_id` ([17](./17-documents-file-management.md), [L15498](../../api/prisma/schema.prisma#L15498)) — 10 Employee for EMPLOYEE scope (HR documents); id only.
-- `TimeTrackingSettings.attendance_prefill_enabled` ([18](./18-time-tracking.md), [L16315](../../api/prisma/schema.prisma#L16315)) — Attendance (10) pre-fills the daily total (18 §9).
-- `TimeTrackingSettings.default_expected_hours_per_week` ([18](./18-time-tracking.md), [L16315](../../api/prisma/schema.prisma#L16315)) — Fallback expected hours per week when 10 Employees has no working-hours record.
-- `BillingRate.source_compensation_id` ([18](./18-time-tracking.md), [L16448](../../api/prisma/schema.prisma#L16448)) — 10 Employee compensation record this COST rate was synced from; id only.
-- `TimeEntry.employee_id` ([18](./18-time-tracking.md), [L16495](../../api/prisma/schema.prisma#L16495)) — 10 Employee record of the member at the time of logging; id only.
-- `TimeEntry.attendance_record_id` ([18](./18-time-tracking.md), [L16495](../../api/prisma/schema.prisma#L16495)) — Attendance record (10) that pre-filled this entry; id only.
-- `CalendarAvailabilitySchedule.honor_holidays` ([19](./19-calendar.md), [L17516](../../api/prisma/schema.prisma#L17516)) — Respect branch holidays (01 §122) and approved leave (10) on top of the rules.
+- `LedgerRecord.employee_id` ([09](./09-income-expense-management.md), [L7226](../../api/prisma/schema.prisma#L7226)) — 10 Employee — related employee (employee expenses, payroll); id only.
+- `PayrollSchedule.employee_id` ([09](./09-income-expense-management.md), [L7590](../../api/prisma/schema.prisma#L7590)) — 10 Employee; id only.
+- `PayrollEntry.employee_id` ([09](./09-income-expense-management.md), [L7637](../../api/prisma/schema.prisma#L7637)) — 10 Employee; id only.
+- `WikiChecklistRun.employee_id` ([15](./15-notion-business-docs.md), [L14823](../../api/prisma/schema.prisma#L14823)) — Employees (10) Employee record of the subject; id only.
+- `Folder.employee_id` ([17](./17-documents-file-management.md), [L15561](../../api/prisma/schema.prisma#L15561)) — 10 Employee for EMPLOYEE scope (HR documents); id only.
+- `Document.employee_id` ([17](./17-documents-file-management.md), [L15628](../../api/prisma/schema.prisma#L15628)) — 10 Employee for EMPLOYEE scope (HR documents); id only.
+- `TimeTrackingSettings.attendance_prefill_enabled` ([18](./18-time-tracking.md), [L16446](../../api/prisma/schema.prisma#L16446)) — Attendance (10) pre-fills the daily total (18 §9).
+- `TimeTrackingSettings.default_expected_hours_per_week` ([18](./18-time-tracking.md), [L16446](../../api/prisma/schema.prisma#L16446)) — Fallback expected hours per week when 10 Employees has no working-hours record.
+- `BillingRate.source_compensation_id` ([18](./18-time-tracking.md), [L16579](../../api/prisma/schema.prisma#L16579)) — 10 Employee compensation record this COST rate was synced from; id only.
+- `TimeEntry.employee_id` ([18](./18-time-tracking.md), [L16626](../../api/prisma/schema.prisma#L16626)) — 10 Employee record of the member at the time of logging; id only.
+- `TimeEntry.attendance_record_id` ([18](./18-time-tracking.md), [L16626](../../api/prisma/schema.prisma#L16626)) — Attendance record (10) that pre-filled this entry; id only.
+- `CalendarAvailabilitySchedule.honor_holidays` ([19](./19-calendar.md), [L17647](../../api/prisma/schema.prisma#L17647)) — Respect branch holidays (01 §122) and approved leave (10) on top of the rules.
 
 <!-- schema-refs:end -->
 
@@ -159,7 +159,7 @@ Definition of done for each resource of this module: permission keys in the cata
 ## Employee Profiles
 
 <!-- schema-section:start -->
-> **Schema:** `Employee` ([employees](../../api/prisma/schema.prisma#L8191)) · `EmployeeCertification` ([employee_certifications](../../api/prisma/schema.prisma#L8486)) · `EmployeeEmergencyContact` ([employee_emergency_contacts](../../api/prisma/schema.prisma#L8312)) · `EmployeeLanguage` ([employee_languages](../../api/prisma/schema.prisma#L8540)) · enum `EmploymentStatus` ([L7750](../../api/prisma/schema.prisma#L7750)) · enum `EmploymentType` ([L7760](../../api/prisma/schema.prisma#L7760)) · enum `LanguageProficiency` ([L8065](../../api/prisma/schema.prisma#L8065))
+> **Schema:** `Employee` ([employees](../../api/prisma/schema.prisma#L8321)) · `EmployeeCertification` ([employee_certifications](../../api/prisma/schema.prisma#L8616)) · `EmployeeEmergencyContact` ([employee_emergency_contacts](../../api/prisma/schema.prisma#L8442)) · `EmployeeLanguage` ([employee_languages](../../api/prisma/schema.prisma#L8670)) · enum `EmploymentStatus` ([L7880](../../api/prisma/schema.prisma#L7880)) · enum `EmploymentType` ([L7890](../../api/prisma/schema.prisma#L7890)) · enum `LanguageProficiency` ([L8195](../../api/prisma/schema.prisma#L8195))
 <!-- schema-section:end -->
 
 Maintain a complete profile for every employee including:
@@ -188,7 +188,7 @@ Maintain a complete profile for every employee including:
 ## Organization Structure
 
 <!-- schema-section:start -->
-> **Schema:** `Employee` ([employees](../../api/prisma/schema.prisma#L8191)) · `EmployeePosition` ([employee_positions](../../api/prisma/schema.prisma#L8333)) · enum `EmployeePositionChangeReason` ([L7808](../../api/prisma/schema.prisma#L7808))
+> **Schema:** `Employee` ([employees](../../api/prisma/schema.prisma#L8321)) · `EmployeePosition` ([employee_positions](../../api/prisma/schema.prisma#L8463)) · enum `EmployeePositionChangeReason` ([L7938](../../api/prisma/schema.prisma#L7938))
 <!-- schema-section:end -->
 
 > Defined by → [01 Users, Organizations & Permissions](./01-users-organizations-permissions.md) §16–23 (Branches), §40–43 (Teams, Departments) · Linear LOG-406.
@@ -202,7 +202,7 @@ Employees should be easily searchable by team, department, branch, role, skills,
 ## Compensation
 
 <!-- schema-section:start -->
-> **Schema:** `EmployeeCompensation` ([employee_compensations](../../api/prisma/schema.prisma#L8367)) · `EmployeeCompensationComponent` ([employee_compensation_components](../../api/prisma/schema.prisma#L8408)) · enum `CompensationComponentKind` ([L7776](../../api/prisma/schema.prisma#L7776)) · enum `CompensationFrequency` ([L7787](../../api/prisma/schema.prisma#L7787)) · enum `EmployeePayType` ([L7768](../../api/prisma/schema.prisma#L7768)) · enum `EmploymentType` ([L7760](../../api/prisma/schema.prisma#L7760)) — other modules: `PayrollSchedule` ([payroll_schedules](../../api/prisma/schema.prisma#L7460)) ([09](./09-income-expense-management.md))
+> **Schema:** `EmployeeCompensation` ([employee_compensations](../../api/prisma/schema.prisma#L8497)) · `EmployeeCompensationComponent` ([employee_compensation_components](../../api/prisma/schema.prisma#L8538)) · enum `CompensationComponentKind` ([L7906](../../api/prisma/schema.prisma#L7906)) · enum `CompensationFrequency` ([L7917](../../api/prisma/schema.prisma#L7917)) · enum `EmployeePayType` ([L7898](../../api/prisma/schema.prisma#L7898)) · enum `EmploymentType` ([L7890](../../api/prisma/schema.prisma#L7890)) — other modules: `PayrollSchedule` ([payroll_schedules](../../api/prisma/schema.prisma#L7590)) ([09](./09-income-expense-management.md))
 <!-- schema-section:end -->
 
 Per 01 §81 the Employee Profile is the source of truth for compensation. This is sensitive, field-level permissioned data (01 §60).
@@ -225,7 +225,7 @@ Payroll expense records (monthly payments, bonuses, reimbursements) are created 
 ## Roles & Responsibilities
 
 <!-- schema-section:start -->
-> **Schema:** `Employee` ([employees](../../api/prisma/schema.prisma#L8191)): `responsibilities`, `role` · `EmployeePosition` ([employee_positions](../../api/prisma/schema.prisma#L8333)) · `EmployeeSkill` ([employee_skills](../../api/prisma/schema.prisma#L8461)): `is_primary` · enum `EmployeePositionChangeReason` ([L7808](../../api/prisma/schema.prisma#L7808)) · enum `EmployeeSeniorityLevel` ([L7795](../../api/prisma/schema.prisma#L7795))
+> **Schema:** `Employee` ([employees](../../api/prisma/schema.prisma#L8321)): `responsibilities`, `role` · `EmployeePosition` ([employee_positions](../../api/prisma/schema.prisma#L8463)) · `EmployeeSkill` ([employee_skills](../../api/prisma/schema.prisma#L8591)): `is_primary` · enum `EmployeePositionChangeReason` ([L7938](../../api/prisma/schema.prisma#L7938)) · enum `EmployeeSeniorityLevel` ([L7925](../../api/prisma/schema.prisma#L7925))
 <!-- schema-section:end -->
 
 Track employee responsibilities including:
@@ -247,7 +247,7 @@ Support assigning employees to multiple teams and multiple projects simultaneous
 ## Employee Availability
 
 <!-- schema-section:start -->
-> **Schema:** `Employee` ([employees](../../api/prisma/schema.prisma#L8191)) · `EmployeeAvailabilityEntry` ([employee_availability_entries](../../api/prisma/schema.prisma#L8603)) · enum `EmployeeAvailabilitySource` ([L7844](../../api/prisma/schema.prisma#L7844)) · enum `EmployeeAvailabilityStatus` ([L7830](../../api/prisma/schema.prisma#L7830))
+> **Schema:** `Employee` ([employees](../../api/prisma/schema.prisma#L8321)) · `EmployeeAvailabilityEntry` ([employee_availability_entries](../../api/prisma/schema.prisma#L8733)) · enum `EmployeeAvailabilitySource` ([L7974](../../api/prisma/schema.prisma#L7974)) · enum `EmployeeAvailabilityStatus` ([L7960](../../api/prisma/schema.prisma#L7960))
 <!-- schema-section:end -->
 
 Provide real-time visibility into employee availability.
@@ -272,7 +272,7 @@ Managers should always have an overview of workforce availability.
 ## Leave Management
 
 <!-- schema-section:start -->
-> **Schema:** `CompanyHoliday` ([company_holidays](../../api/prisma/schema.prisma#L8871)) · `EmployeeHrSettings` ([employee_hr_settings](../../api/prisma/schema.prisma#L8147)) · `EmployeeLeavePolicy` ([employee_leave_policies](../../api/prisma/schema.prisma#L8709)) · `LeaveBalance` ([leave_balances](../../api/prisma/schema.prisma#L8727)) · `LeaveBalanceTransaction` ([leave_balance_transactions](../../api/prisma/schema.prisma#L8758)) · `LeavePolicy` ([leave_policies](../../api/prisma/schema.prisma#L8668)) · `LeaveRequest` ([leave_requests](../../api/prisma/schema.prisma#L8780)) · `LeaveRequestApproval` ([leave_request_approvals](../../api/prisma/schema.prisma#L8851)) · `LeaveRequestDay` ([leave_request_days](../../api/prisma/schema.prisma#L8836)) · `LeaveType` ([leave_types](../../api/prisma/schema.prisma#L8632)) · enum `CompanyHolidayKind` ([L7919](../../api/prisma/schema.prisma#L7919)) · enum `LeaveAccrualMethod` ([L7876](../../api/prisma/schema.prisma#L7876)) · enum `LeaveApprovalDecision` ([L7901](../../api/prisma/schema.prisma#L7901)) · enum `LeaveApproverStrategy` ([L8136](../../api/prisma/schema.prisma#L8136)) · enum `LeaveBalanceTransactionType` ([L7909](../../api/prisma/schema.prisma#L7909)) · enum `LeaveCategory` ([L7861](../../api/prisma/schema.prisma#L7861)) · enum `LeaveDayPart` ([L7894](../../api/prisma/schema.prisma#L7894)) · enum `LeaveRequestStatus` ([L7884](../../api/prisma/schema.prisma#L7884))
+> **Schema:** `CompanyHoliday` ([company_holidays](../../api/prisma/schema.prisma#L9001)) · `EmployeeHrSettings` ([employee_hr_settings](../../api/prisma/schema.prisma#L8277)) · `EmployeeLeavePolicy` ([employee_leave_policies](../../api/prisma/schema.prisma#L8839)) · `LeaveBalance` ([leave_balances](../../api/prisma/schema.prisma#L8857)) · `LeaveBalanceTransaction` ([leave_balance_transactions](../../api/prisma/schema.prisma#L8888)) · `LeavePolicy` ([leave_policies](../../api/prisma/schema.prisma#L8798)) · `LeaveRequest` ([leave_requests](../../api/prisma/schema.prisma#L8910)) · `LeaveRequestApproval` ([leave_request_approvals](../../api/prisma/schema.prisma#L8981)) · `LeaveRequestDay` ([leave_request_days](../../api/prisma/schema.prisma#L8966)) · `LeaveType` ([leave_types](../../api/prisma/schema.prisma#L8762)) · enum `CompanyHolidayKind` ([L8049](../../api/prisma/schema.prisma#L8049)) · enum `LeaveAccrualMethod` ([L8006](../../api/prisma/schema.prisma#L8006)) · enum `LeaveApprovalDecision` ([L8031](../../api/prisma/schema.prisma#L8031)) · enum `LeaveApproverStrategy` ([L8266](../../api/prisma/schema.prisma#L8266)) · enum `LeaveBalanceTransactionType` ([L8039](../../api/prisma/schema.prisma#L8039)) · enum `LeaveCategory` ([L7991](../../api/prisma/schema.prisma#L7991)) · enum `LeaveDayPart` ([L8024](../../api/prisma/schema.prisma#L8024)) · enum `LeaveRequestStatus` ([L8014](../../api/prisma/schema.prisma#L8014))
 <!-- schema-section:end -->
 
 Support complete leave management including:
@@ -306,7 +306,7 @@ Leave approval is an approval permission (01 §95) and a workflow in 20 Automati
 ## Attendance & Working Hours
 
 <!-- schema-section:start -->
-> **Schema:** `AttendanceBreak` ([attendance_breaks](../../api/prisma/schema.prisma#L8956)) · `AttendanceRecord` ([attendance_records](../../api/prisma/schema.prisma#L8894)) · `AttendanceSession` ([attendance_sessions](../../api/prisma/schema.prisma#L8933)) · `AttendanceSummary` ([attendance_summaries](../../api/prisma/schema.prisma#L8972)) · `EmployeeHrSettings` ([employee_hr_settings](../../api/prisma/schema.prisma#L8147)): `attendance_required` · `EmployeeWorkSchedule` ([employee_work_schedules](../../api/prisma/schema.prisma#L8559)) · `EmployeeWorkScheduleDay` ([employee_work_schedule_days](../../api/prisma/schema.prisma#L8582)) · enum `AttendanceBreakKind` ([L7944](../../api/prisma/schema.prisma#L7944)) · enum `AttendanceSource` ([L7935](../../api/prisma/schema.prisma#L7935)) · enum `AttendanceStatus` ([L7925](../../api/prisma/schema.prisma#L7925)) · enum `EmployeePeriodType` ([L7950](../../api/prisma/schema.prisma#L7950)) · enum `EmployeeScheduleType` ([L7854](../../api/prisma/schema.prisma#L7854)) · enum `EmployeeWorkLocation` ([L7821](../../api/prisma/schema.prisma#L7821))
+> **Schema:** `AttendanceBreak` ([attendance_breaks](../../api/prisma/schema.prisma#L9086)) · `AttendanceRecord` ([attendance_records](../../api/prisma/schema.prisma#L9024)) · `AttendanceSession` ([attendance_sessions](../../api/prisma/schema.prisma#L9063)) · `AttendanceSummary` ([attendance_summaries](../../api/prisma/schema.prisma#L9102)) · `EmployeeHrSettings` ([employee_hr_settings](../../api/prisma/schema.prisma#L8277)): `attendance_required` · `EmployeeWorkSchedule` ([employee_work_schedules](../../api/prisma/schema.prisma#L8689)) · `EmployeeWorkScheduleDay` ([employee_work_schedule_days](../../api/prisma/schema.prisma#L8712)) · enum `AttendanceBreakKind` ([L8074](../../api/prisma/schema.prisma#L8074)) · enum `AttendanceSource` ([L8065](../../api/prisma/schema.prisma#L8065)) · enum `AttendanceStatus` ([L8055](../../api/prisma/schema.prisma#L8055)) · enum `EmployeePeriodType` ([L8080](../../api/prisma/schema.prisma#L8080)) · enum `EmployeeScheduleType` ([L7984](../../api/prisma/schema.prisma#L7984)) · enum `EmployeeWorkLocation` ([L7951](../../api/prisma/schema.prisma#L7951))
 <!-- schema-section:end -->
 
 Attendance (presence) is owned here. Work effort against projects and tasks is owned by [18 Time Tracking](./18-time-tracking.md); attendance may pre-fill the daily total but never replaces time entries.
@@ -330,7 +330,7 @@ Track employee attendance through:
 ## Capacity & Workload
 
 <!-- schema-section:start -->
-> **Schema:** `EmployeeCapacityPeriod` ([employee_capacity_periods](../../api/prisma/schema.prisma#L9004)) · `EmployeeHrSettings` ([employee_hr_settings](../../api/prisma/schema.prisma#L8147)): `target_utilization_percent` · `EmployeeWorkSchedule` ([employee_work_schedules](../../api/prisma/schema.prisma#L8559)) · enum `EmployeeCapacityStatus` ([L7957](../../api/prisma/schema.prisma#L7957)) · enum `EmployeePeriodType` ([L7950](../../api/prisma/schema.prisma#L7950))
+> **Schema:** `EmployeeCapacityPeriod` ([employee_capacity_periods](../../api/prisma/schema.prisma#L9134)) · `EmployeeHrSettings` ([employee_hr_settings](../../api/prisma/schema.prisma#L8277)): `target_utilization_percent` · `EmployeeWorkSchedule` ([employee_work_schedules](../../api/prisma/schema.prisma#L8689)) · enum `EmployeeCapacityStatus` ([L8087](../../api/prisma/schema.prisma#L8087)) · enum `EmployeePeriodType` ([L8080](../../api/prisma/schema.prisma#L8080))
 <!-- schema-section:end -->
 
 Ownership split (05 §51): this module owns **availability and capacity** (working hours, leave, holidays, expected hours). [05 Projects](./05-project-management.md) owns **planned allocation**. [18 Time Tracking](./18-time-tracking.md) owns **actuals** and computes utilization. [06 Tasks](./06-task-management.md) owns the **task distribution** view.
@@ -368,7 +368,7 @@ Project membership, project roles, participation dates and allocation are owned 
 ## Performance Management
 
 <!-- schema-section:start -->
-> **Schema:** `PerformanceFeedback` ([performance_feedback](../../api/prisma/schema.prisma#L9180)) · `PerformanceGoal` ([performance_goals](../../api/prisma/schema.prisma#L9118)) · `PerformanceGoalUpdate` ([performance_goal_updates](../../api/prisma/schema.prisma#L9162)) · `PerformanceImprovementPlan` ([performance_improvement_plans](../../api/prisma/schema.prisma#L9215)) · `PerformanceImprovementPlanItem` ([performance_improvement_plan_items](../../api/prisma/schema.prisma#L9251)) · `PerformanceReview` ([performance_reviews](../../api/prisma/schema.prisma#L9063)) · `PerformanceReviewCycle` ([performance_review_cycles](../../api/prisma/schema.prisma#L9040)) · enum `PerformanceFeedbackKind` ([L8012](../../api/prisma/schema.prisma#L8012)) · enum `PerformanceFeedbackVisibility` ([L8022](../../api/prisma/schema.prisma#L8022)) · enum `PerformanceGoalKind` ([L7994](../../api/prisma/schema.prisma#L7994)) · enum `PerformanceGoalStatus` ([L8001](../../api/prisma/schema.prisma#L8001)) · enum `PerformanceImprovementItemStatus` ([L8038](../../api/prisma/schema.prisma#L8038)) · enum `PerformanceImprovementPlanStatus` ([L8029](../../api/prisma/schema.prisma#L8029)) · enum `PerformanceReviewCycleStatus` ([L7975](../../api/prisma/schema.prisma#L7975)) · enum `PerformanceReviewStatus` ([L7983](../../api/prisma/schema.prisma#L7983)) · enum `PerformanceReviewType` ([L7964](../../api/prisma/schema.prisma#L7964))
+> **Schema:** `PerformanceFeedback` ([performance_feedback](../../api/prisma/schema.prisma#L9310)) · `PerformanceGoal` ([performance_goals](../../api/prisma/schema.prisma#L9248)) · `PerformanceGoalUpdate` ([performance_goal_updates](../../api/prisma/schema.prisma#L9292)) · `PerformanceImprovementPlan` ([performance_improvement_plans](../../api/prisma/schema.prisma#L9345)) · `PerformanceImprovementPlanItem` ([performance_improvement_plan_items](../../api/prisma/schema.prisma#L9381)) · `PerformanceReview` ([performance_reviews](../../api/prisma/schema.prisma#L9193)) · `PerformanceReviewCycle` ([performance_review_cycles](../../api/prisma/schema.prisma#L9170)) · enum `PerformanceFeedbackKind` ([L8142](../../api/prisma/schema.prisma#L8142)) · enum `PerformanceFeedbackVisibility` ([L8152](../../api/prisma/schema.prisma#L8152)) · enum `PerformanceGoalKind` ([L8124](../../api/prisma/schema.prisma#L8124)) · enum `PerformanceGoalStatus` ([L8131](../../api/prisma/schema.prisma#L8131)) · enum `PerformanceImprovementItemStatus` ([L8168](../../api/prisma/schema.prisma#L8168)) · enum `PerformanceImprovementPlanStatus` ([L8159](../../api/prisma/schema.prisma#L8159)) · enum `PerformanceReviewCycleStatus` ([L8105](../../api/prisma/schema.prisma#L8105)) · enum `PerformanceReviewStatus` ([L8113](../../api/prisma/schema.prisma#L8113)) · enum `PerformanceReviewType` ([L8094](../../api/prisma/schema.prisma#L8094))
 <!-- schema-section:end -->
 
 Maintain employee performance records including:
@@ -390,7 +390,7 @@ Support ongoing performance tracking instead of annual reviews only.
 ## Skills Management
 
 <!-- schema-section:start -->
-> **Schema:** `EmployeeCertification` ([employee_certifications](../../api/prisma/schema.prisma#L8486)) · `EmployeeSkill` ([employee_skills](../../api/prisma/schema.prisma#L8461)) · `EmployeeTraining` ([employee_trainings](../../api/prisma/schema.prisma#L8511)) · `Skill` ([skills](../../api/prisma/schema.prisma#L8435)) · enum `EmployeeTrainingStatus` ([L8074](../../api/prisma/schema.prisma#L8074)) · enum `SkillCategory` ([L8045](../../api/prisma/schema.prisma#L8045)) · enum `SkillProficiency` ([L8057](../../api/prisma/schema.prisma#L8057))
+> **Schema:** `EmployeeCertification` ([employee_certifications](../../api/prisma/schema.prisma#L8616)) · `EmployeeSkill` ([employee_skills](../../api/prisma/schema.prisma#L8591)) · `EmployeeTraining` ([employee_trainings](../../api/prisma/schema.prisma#L8641)) · `Skill` ([skills](../../api/prisma/schema.prisma#L8565)) · enum `EmployeeTrainingStatus` ([L8204](../../api/prisma/schema.prisma#L8204)) · enum `SkillCategory` ([L8175](../../api/prisma/schema.prisma#L8175)) · enum `SkillProficiency` ([L8187](../../api/prisma/schema.prisma#L8187))
 <!-- schema-section:end -->
 
 Track employee capabilities including:
@@ -412,7 +412,7 @@ Support searching employees by skill to assist with project staffing.
 ## Employee Documents
 
 <!-- schema-section:start -->
-> **Schema:** `EmployeeDocument` ([employee_documents](../../api/prisma/schema.prisma#L9275)) · enum `EmployeeDocumentCategory` ([L8082](../../api/prisma/schema.prisma#L8082)) · enum `EmployeeDocumentStatus` ([L8094](../../api/prisma/schema.prisma#L8094))
+> **Schema:** `EmployeeDocument` ([employee_documents](../../api/prisma/schema.prisma#L9405)) · enum `EmployeeDocumentCategory` ([L8212](../../api/prisma/schema.prisma#L8212)) · enum `EmployeeDocumentStatus` ([L8224](../../api/prisma/schema.prisma#L8224))
 <!-- schema-section:end -->
 
 > Storage defined by → [17 Documents & File Management](./17-documents-file-management.md) (employee scope, 17 §3) · Linear LOG-407. Employment and contractor agreements may also be Contracts (04).
@@ -432,7 +432,7 @@ Maintain secure employee documentation including:
 ## Internal Notes
 
 <!-- schema-section:start -->
-> **Schema:** `EmployeeHrNote` ([employee_hr_notes](../../api/prisma/schema.prisma#L9320)) · enum `HrNoteCategory` ([L8104](../../api/prisma/schema.prisma#L8104)) · enum `HrNoteSeverity` ([L8120](../../api/prisma/schema.prisma#L8120)) · enum `HrNoteVisibility` ([L8113](../../api/prisma/schema.prisma#L8113))
+> **Schema:** `EmployeeHrNote` ([employee_hr_notes](../../api/prisma/schema.prisma#L9450)) · enum `HrNoteCategory` ([L8234](../../api/prisma/schema.prisma#L8234)) · enum `HrNoteSeverity` ([L8250](../../api/prisma/schema.prisma#L8250)) · enum `HrNoteVisibility` ([L8243](../../api/prisma/schema.prisma#L8243))
 <!-- schema-section:end -->
 
 Allow managers and HR personnel to maintain private employee notes including:
@@ -449,7 +449,7 @@ Visibility should be controlled through role-based permissions.
 ## Employee Directory
 
 <!-- schema-section:start -->
-> **Schema:** `Employee` ([employees](../../api/prisma/schema.prisma#L8191)): `directory_visible` · `EmployeeHrSettings` ([employee_hr_settings](../../api/prisma/schema.prisma#L8147)): `directory_visible_fields`
+> **Schema:** `Employee` ([employees](../../api/prisma/schema.prisma#L8321)): `directory_visible` · `EmployeeHrSettings` ([employee_hr_settings](../../api/prisma/schema.prisma#L8277)): `directory_visible_fields`
 <!-- schema-section:end -->
 
 Provide a searchable company directory including:
@@ -468,7 +468,7 @@ Provide a searchable company directory including:
 ## Notifications
 
 <!-- schema-section:start -->
-> **Schema:** `EmployeeHrSettings` ([employee_hr_settings](../../api/prisma/schema.prisma#L8147)): `notify_birthdays`
+> **Schema:** `EmployeeHrSettings` ([employee_hr_settings](../../api/prisma/schema.prisma#L8277)): `notify_birthdays`
 <!-- schema-section:end -->
 
 > Engine defined by → [14 Notifications & Activity Center](./14-notifications-activity-center.md) · Linear LOG-403. This module only emits events.
@@ -494,7 +494,7 @@ Channels and preferences are configured in 14.
 ## Dashboards & Reporting
 
 <!-- schema-section:start -->
-> **Schema:** `AttendanceSummary` ([attendance_summaries](../../api/prisma/schema.prisma#L8972))
+> **Schema:** `AttendanceSummary` ([attendance_summaries](../../api/prisma/schema.prisma#L9102))
 <!-- schema-section:end -->
 
 Provide HR and management dashboards displaying:
@@ -523,7 +523,7 @@ Support exporting reports in:
 ## Employee Self-Service
 
 <!-- schema-section:start -->
-> **Schema:** `EmployeeHrSettings` ([employee_hr_settings](../../api/prisma/schema.prisma#L8147)): `self_service_editable_fields` · `EmployeeProfileChangeRequest` ([employee_profile_change_requests](../../api/prisma/schema.prisma#L9365)) · enum `EmployeeChangeRequestStatus` ([L8128](../../api/prisma/schema.prisma#L8128))
+> **Schema:** `EmployeeHrSettings` ([employee_hr_settings](../../api/prisma/schema.prisma#L8277)): `self_service_editable_fields` · `EmployeeProfileChangeRequest` ([employee_profile_change_requests](../../api/prisma/schema.prisma#L9495)) · enum `EmployeeChangeRequestStatus` ([L8258](../../api/prisma/schema.prisma#L8258))
 <!-- schema-section:end -->
 
 Allow employees to manage their own information through a self-service portal.

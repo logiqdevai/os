@@ -153,8 +153,9 @@ Canonical terms for all specs, Linear issues and code. Synonyms in the right col
 
 ## 6. Integrations
 
+- **Bring your own keys:** every organization connects its own accounts in Admin → Integrations (launch set: OpenAI, Resend, Twilio, Stripe, Viva Wallet; more providers are added one by one) (01 §156–§161). Credentials are stored encrypted per organization and are write-only; no tenant provider key lives in the platform `.env`, which keeps infrastructure secrets only (01 §160). Modules resolve a connection by category and never read a provider key themselves.
 - **Payments:** provider abstraction with several connections per organization (Stripe and Viva Wallet at launch; PayPal, Mollie, Adyen later). See 08 "Payment Providers".
-- **Email and SMS:** providers behind the Communication Center. Local API development uses `.env.staging` for working keys.
+- **Email and SMS:** providers behind the Communication Center, using the organization's own accounts. Local API development uses platform-provided connections seeded from `.env.staging` (01 §160).
 - **E-signature:** provider abstraction (for example DocuSign, Dropbox Sign, Adobe Acrobat Sign).
 - **AI:** one shared AI integration layer used by every module (drafting, classification, extraction, retrieval over 15 Business Docs and 13 knowledge base, automation AI steps). Models are configurable per capability behind the layer; Support (13) specifies the JEV model from Typesafe AI for classification and the support agent.
 - **Calendar sync:** Google Calendar, Microsoft 365 (19).

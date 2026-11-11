@@ -127,13 +127,13 @@
          views-admin.js); show a sidebar item only if the caller holds it, so a Branch Admin sees Members/Teams/Branches but not SSO or API keys.
        @note `alias` keeps the parent item highlighted on detail routes (/admin/members/:id -> Members). In production use nested routes instead. */
     { id: "admin", label: "Admin", icon: "shield", newLabel: "Invite member", hidden: 1,
-      alias: { member: "members", role: "roles", service: "apikeys", domains: "sso" },
+      alias: { member: "members", role: "roles", service: "apikeys", domains: "sso", integration: "integrations" },
       panel: P("Admin", [
         items([{ l: "Overview", i: "home", k: "overview" }]),
         sec("People & structure", [{ l: "Members", i: "users", k: "members", c: 24 }, { l: "Invitations", i: "mail", k: "invitations", c: 3 }, { l: "Teams", i: "people", k: "teams" }, { l: "Branches", i: "building", k: "branches" }]),
         sec("Access control", [{ l: "Roles", i: "shield", k: "roles" }, { l: "Permission catalog", i: "list", k: "catalog" }, { l: "Permission matrix", i: "grid", k: "matrix" }, { l: "Module access", i: "layers", k: "modules" }, { l: "Delegations", i: "reply", k: "delegations" }, { l: "Access simulation", i: "zap", k: "simulate" }, { l: "Access reviews", i: "check", k: "reviews", c: 2 }]),
         sec("Security", [{ l: "Sign-in & MFA", i: "lock", k: "security" }, { l: "SSO & domains", i: "globe", k: "sso" }, { l: "Sessions", i: "clock", k: "sessions" }]),
-        sec("Developers", [{ l: "API keys", i: "link", k: "apikeys" }]),
+        sec("Developers", [{ l: "Integrations", i: "plug", k: "integrations", c: 6 }, { l: "API keys", i: "link", k: "apikeys" }]),
         sec("Organization", [{ l: "Profile & branding", i: "building", k: "profile" }, { l: "Audit log", i: "file", k: "audit" }]),
       ]) },
   ];

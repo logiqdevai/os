@@ -25,21 +25,21 @@
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **platform shared** | | | |
-| `NumberSequence` | `number_sequences` | [L2712](../../api/prisma/schema.prisma#L2712) | Per-organization numbering sequences, e.g. PRO-2026-0001 / CTR-2026-0001 / INV-2026-0001. Services increment `next_number` inside a transaction; numbers are … |
+| `NumberSequence` | `number_sequences` | [L2840](../../api/prisma/schema.prisma#L2840) | Per-organization numbering sequences, e.g. PRO-2026-0001 / CTR-2026-0001 / INV-2026-0001. Services increment `next_number` inside a transaction; numbers are … |
 | **Templates** | | | |
-| `ProposalTemplate` | `proposal_templates` | [L2850](../../api/prisma/schema.prisma#L2850) | 03 "Reusable Templates" — branded, versioned template per work type. Organization-owned. |
+| `ProposalTemplate` | `proposal_templates` | [L2978](../../api/prisma/schema.prisma#L2978) | 03 "Reusable Templates" — branded, versioned template per work type. Organization-owned. |
 | **Proposal** | | | |
-| `Proposal` | `proposals` | [L2889](../../api/prisma/schema.prisma#L2889) | 03 "Proposal Creation" — the proposal record. Content lives in versions; this row carries identity, relationships, status and snapshots of the current versio… |
-| `ProposalVersion` | `proposal_versions` | [L2976](../../api/prisma/schema.prisma#L2976) | 03 "Proposal Versions" — every revision. A version that was sent is immutable; acceptance is always bound to the exact version sent. |
-| `ProposalSection` | `proposal_sections` | [L3040](../../api/prisma/schema.prisma#L3040) | Addressable content blocks of a version (03 "AI Proposal Generation" output structure). |
-| `ProposalLineItem` | `proposal_line_items` | [L3063](../../api/prisma/schema.prisma#L3063) | 03 "Pricing & Quotation Builder" — line items of a version. product_id references the Finance catalog (08); no FK until 08 exists. |
-| `ProposalPaymentScheduleItem` | `proposal_payment_schedule_items` | [L3099](../../api/prisma/schema.prisma#L3099) | 03 "Pricing & Quotation Builder" — deposits, milestone payments, custom schedules. |
+| `Proposal` | `proposals` | [L3017](../../api/prisma/schema.prisma#L3017) | 03 "Proposal Creation" — the proposal record. Content lives in versions; this row carries identity, relationships, status and snapshots of the current versio… |
+| `ProposalVersion` | `proposal_versions` | [L3104](../../api/prisma/schema.prisma#L3104) | 03 "Proposal Versions" — every revision. A version that was sent is immutable; acceptance is always bound to the exact version sent. |
+| `ProposalSection` | `proposal_sections` | [L3168](../../api/prisma/schema.prisma#L3168) | Addressable content blocks of a version (03 "AI Proposal Generation" output structure). |
+| `ProposalLineItem` | `proposal_line_items` | [L3191](../../api/prisma/schema.prisma#L3191) | 03 "Pricing & Quotation Builder" — line items of a version. product_id references the Finance catalog (08); no FK until 08 exists. |
+| `ProposalPaymentScheduleItem` | `proposal_payment_schedule_items` | [L3227](../../api/prisma/schema.prisma#L3227) | 03 "Pricing & Quotation Builder" — deposits, milestone payments, custom schedules. |
 | **Review, delivery, tracking, acceptance** | | | |
-| `ProposalApproval` | `proposal_approvals` | [L3124](../../api/prisma/schema.prisma#L3124) | 03 "Proposal Review" — internal approval bound to an exact version (approval rights: 01 §95). |
-| `ProposalComment` | `proposal_comments` | [L3144](../../api/prisma/schema.prisma#L3144) | Internal and customer comments on a proposal or a section. Customer authors are Customer Portal Users (01 §79) or the addressed contact; internal comments ar… |
-| `ProposalDelivery` | `proposal_deliveries` | [L3169](../../api/prisma/schema.prisma#L3169) | 03 "Customer Delivery" — each send of a version through a channel. Emails go through 11. |
-| `ProposalEvent` | `proposal_events` | [L3196](../../api/prisma/schema.prisma#L3196) | 03 "Proposal Tracking" — append-only event log of customer activity and lifecycle changes. |
-| `ProposalAcceptance` | `proposal_acceptances` | [L3219](../../api/prisma/schema.prisma#L3219) | 03 "Customer Approval" — the customer's decision on an exact version, with the evidence collected (name, contact, terms confirmation, selected optional items… |
+| `ProposalApproval` | `proposal_approvals` | [L3252](../../api/prisma/schema.prisma#L3252) | 03 "Proposal Review" — internal approval bound to an exact version (approval rights: 01 §95). |
+| `ProposalComment` | `proposal_comments` | [L3272](../../api/prisma/schema.prisma#L3272) | Internal and customer comments on a proposal or a section. Customer authors are Customer Portal Users (01 §79) or the addressed contact; internal comments ar… |
+| `ProposalDelivery` | `proposal_deliveries` | [L3297](../../api/prisma/schema.prisma#L3297) | 03 "Customer Delivery" — each send of a version through a channel. Emails go through 11. |
+| `ProposalEvent` | `proposal_events` | [L3324](../../api/prisma/schema.prisma#L3324) | 03 "Proposal Tracking" — append-only event log of customer activity and lifecycle changes. |
+| `ProposalAcceptance` | `proposal_acceptances` | [L3347](../../api/prisma/schema.prisma#L3347) | 03 "Customer Approval" — the customer's decision on an exact version, with the evidence collected (name, contact, terms confirmation, selected optional items… |
 
 **Owned enums (9):** `ProposalStatus`, `ProposalVersionStatus`, `ProposalApprovalDecision`, `ProposalCustomerDecision`, `ProposalDeliveryChannel`, `ProposalDeliveryStatus`, `ProposalEventType`, `ProposalSectionType`, `ProposalPaymentTrigger`
 
@@ -70,14 +70,14 @@
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `Contract.proposal_id` ([04](./04-contracts.md), [L3627](../../api/prisma/schema.prisma#L3627)) — 04 §7, §55 — source proposal and exact version (03).
-- `Project.proposal_id` ([05](./05-project-management.md), [L4464](../../api/prisma/schema.prisma#L4464)) — Source proposal and exact version (03), set when created from an accepted proposal (05 §57).
-- `ProjectMilestone.proposal_milestone_key` ([05](./05-project-management.md), [L4716](../../api/prisma/schema.prisma#L4716)) — Proposal milestone this was created from (03), stored as the proposal's milestone key.
-- `ProjectDeliverable.proposal_reference` ([05](./05-project-management.md), [L4759](../../api/prisma/schema.prisma#L4759)) — Proposal line item / section reference (03) for commercial scope traceability.
-- `Invoice.proposal_version_id` ([08](./08-financial-management-stripe-integration.md), [L6232](../../api/prisma/schema.prisma#L6232)) — 08 "Proposals & Quotations" — accepted proposal version (03) this invoice was generated from; permanent link.
-- `Subscription.proposal_version_id` ([08](./08-financial-management-stripe-integration.md), [L6516](../../api/prisma/schema.prisma#L6516)) — 08 "Proposals & Quotations" — accepted proposal version (03) that created this subscription; permanent link.
-- `SupportSettings.ticket_prefix` ([13](./13-customer-support-communication-hub.md), [L12258](../../api/prisma/schema.prisma#L12258)) — Prefix for ticket references (e.g. "SUP"); the counter is number_sequences (03) with key "ticket".
-- `Ticket.number` ([13](./13-customer-support-communication-hub.md), [L12687](../../api/prisma/schema.prisma#L12687)) — 13 §2 — sequential per organization via number_sequences (03); `reference` = prefix + number (SUP-1042).
+- `Contract.proposal_id` ([04](./04-contracts.md), [L3755](../../api/prisma/schema.prisma#L3755)) — 04 §7, §55 — source proposal and exact version (03).
+- `Project.proposal_id` ([05](./05-project-management.md), [L4592](../../api/prisma/schema.prisma#L4592)) — Source proposal and exact version (03), set when created from an accepted proposal (05 §57).
+- `ProjectMilestone.proposal_milestone_key` ([05](./05-project-management.md), [L4844](../../api/prisma/schema.prisma#L4844)) — Proposal milestone this was created from (03), stored as the proposal's milestone key.
+- `ProjectDeliverable.proposal_reference` ([05](./05-project-management.md), [L4887](../../api/prisma/schema.prisma#L4887)) — Proposal line item / section reference (03) for commercial scope traceability.
+- `Invoice.proposal_version_id` ([08](./08-financial-management-stripe-integration.md), [L6360](../../api/prisma/schema.prisma#L6360)) — 08 "Proposals & Quotations" — accepted proposal version (03) this invoice was generated from; permanent link.
+- `Subscription.proposal_version_id` ([08](./08-financial-management-stripe-integration.md), [L6644](../../api/prisma/schema.prisma#L6644)) — 08 "Proposals & Quotations" — accepted proposal version (03) that created this subscription; permanent link.
+- `SupportSettings.ticket_prefix` ([13](./13-customer-support-communication-hub.md), [L12388](../../api/prisma/schema.prisma#L12388)) — Prefix for ticket references (e.g. "SUP"); the counter is number_sequences (03) with key "ticket".
+- `Ticket.number` ([13](./13-customer-support-communication-hub.md), [L12817](../../api/prisma/schema.prisma#L12817)) — 13 §2 — sequential per organization via number_sequences (03); `reference` = prefix + number (SUP-1042).
 
 <!-- schema-refs:end -->
 
@@ -126,7 +126,7 @@ The system should combine structured quotation management, reusable document tem
 ## Proposal Creation
 
 <!-- schema-section:start -->
-> **Schema:** `Proposal` ([proposals](../../api/prisma/schema.prisma#L2889))
+> **Schema:** `Proposal` ([proposals](../../api/prisma/schema.prisma#L3017))
 <!-- schema-section:end -->
 
 Allow users to create proposals and quotations manually or generate them with AI.
@@ -174,7 +174,7 @@ A proposal should support:
 ## AI Proposal Generation
 
 <!-- schema-section:start -->
-> **Schema:** `ProposalSection` ([proposal_sections](../../api/prisma/schema.prisma#L3040))
+> **Schema:** `ProposalSection` ([proposal_sections](../../api/prisma/schema.prisma#L3168))
 <!-- schema-section:end -->
 
 AI should be able to generate a complete proposal based on existing information within the platform.
@@ -208,7 +208,7 @@ The generated proposal should always remain editable and require user review bef
 ## Reusable Templates
 
 <!-- schema-section:start -->
-> **Schema:** `ProposalTemplate` ([proposal_templates](../../api/prisma/schema.prisma#L2850)) · enum `ProposalSectionType` ([L2813](../../api/prisma/schema.prisma#L2813))
+> **Schema:** `ProposalTemplate` ([proposal_templates](../../api/prisma/schema.prisma#L2978)) · enum `ProposalSectionType` ([L2941](../../api/prisma/schema.prisma#L2941))
 <!-- schema-section:end -->
 
 Provide a flexible template system for creating and managing multiple proposal templates.
@@ -250,7 +250,7 @@ Allow administrators to create templates for different types of work, such as:
 ## Dynamic Proposal Content
 
 <!-- schema-section:start -->
-> **Schema:** `ProposalTemplate` ([proposal_templates](../../api/prisma/schema.prisma#L2850)): `variables` · `ProposalVersion` ([proposal_versions](../../api/prisma/schema.prisma#L2976)): `variables`
+> **Schema:** `ProposalTemplate` ([proposal_templates](../../api/prisma/schema.prisma#L2978)): `variables` · `ProposalVersion` ([proposal_versions](../../api/prisma/schema.prisma#L3104)): `variables`
 <!-- schema-section:end -->
 
 Templates should support dynamic data that is automatically populated when a proposal is generated.
@@ -280,7 +280,7 @@ This should allow the same template to be reused across many customers without m
 ## Pricing & Quotation Builder
 
 <!-- schema-section:start -->
-> **Schema:** `ProposalLineItem` ([proposal_line_items](../../api/prisma/schema.prisma#L3063)) · `ProposalPaymentScheduleItem` ([proposal_payment_schedule_items](../../api/prisma/schema.prisma#L3099)) · enum `ProposalPaymentTrigger` ([L2838](../../api/prisma/schema.prisma#L2838))
+> **Schema:** `ProposalLineItem` ([proposal_line_items](../../api/prisma/schema.prisma#L3191)) · `ProposalPaymentScheduleItem` ([proposal_payment_schedule_items](../../api/prisma/schema.prisma#L3227)) · enum `ProposalPaymentTrigger` ([L2966](../../api/prisma/schema.prisma#L2966))
 <!-- schema-section:end -->
 
 Provide a dedicated quotation builder for constructing project pricing.
@@ -319,7 +319,7 @@ Services, packages, unit prices, tax rates and currencies come from the products
 ## Proposal Versions
 
 <!-- schema-section:start -->
-> **Schema:** `ProposalVersion` ([proposal_versions](../../api/prisma/schema.prisma#L2976)) · enum `ProposalVersionStatus` ([L2754](../../api/prisma/schema.prisma#L2754))
+> **Schema:** `ProposalVersion` ([proposal_versions](../../api/prisma/schema.prisma#L3104)) · enum `ProposalVersionStatus` ([L2882](../../api/prisma/schema.prisma#L2882))
 <!-- schema-section:end -->
 
 Maintain a complete proposal version history.
@@ -341,7 +341,7 @@ Every proposal sent to a customer should remain associated with the exact versio
 ## Proposal Review
 
 <!-- schema-section:start -->
-> **Schema:** `ProposalApproval` ([proposal_approvals](../../api/prisma/schema.prisma#L3124)) · `ProposalVersion` ([proposal_versions](../../api/prisma/schema.prisma#L2976)): `ai_metadata` · enum `ProposalApprovalDecision` ([L2763](../../api/prisma/schema.prisma#L2763))
+> **Schema:** `ProposalApproval` ([proposal_approvals](../../api/prisma/schema.prisma#L3252)) · `ProposalVersion` ([proposal_versions](../../api/prisma/schema.prisma#L3104)): `ai_metadata` · enum `ProposalApprovalDecision` ([L2891](../../api/prisma/schema.prisma#L2891))
 <!-- schema-section:end -->
 
 Before sending a proposal, provide a review workflow where authorized users can:
@@ -390,7 +390,7 @@ The generated PDF should be suitable for sending directly to customers and downl
 ## Customer Delivery
 
 <!-- schema-section:start -->
-> **Schema:** `Proposal` ([proposals](../../api/prisma/schema.prisma#L2889)): `public_token_hash` · `ProposalDelivery` ([proposal_deliveries](../../api/prisma/schema.prisma#L3169)) · enum `ProposalDeliveryChannel` ([L2778](../../api/prisma/schema.prisma#L2778))
+> **Schema:** `Proposal` ([proposals](../../api/prisma/schema.prisma#L3017)): `public_token_hash` · `ProposalDelivery` ([proposal_deliveries](../../api/prisma/schema.prisma#L3297)) · enum `ProposalDeliveryChannel` ([L2906](../../api/prisma/schema.prisma#L2906))
 <!-- schema-section:end -->
 
 Allow proposals to be delivered directly to customers through:
@@ -408,7 +408,7 @@ Track proposal delivery and customer activity.
 ## Customer Approval
 
 <!-- schema-section:start -->
-> **Schema:** `ProposalAcceptance` ([proposal_acceptances](../../api/prisma/schema.prisma#L3219)) · enum `ProposalCustomerDecision` ([L2771](../../api/prisma/schema.prisma#L2771))
+> **Schema:** `ProposalAcceptance` ([proposal_acceptances](../../api/prisma/schema.prisma#L3347)) · enum `ProposalCustomerDecision` ([L2899](../../api/prisma/schema.prisma#L2899))
 <!-- schema-section:end -->
 
 Support a complete proposal approval workflow.
@@ -434,7 +434,7 @@ Record the complete approval history and timestamp. Every acceptance is bound to
 ## Proposal Status
 
 <!-- schema-section:start -->
-> **Schema:** enum `ProposalStatus` ([L2739](../../api/prisma/schema.prisma#L2739))
+> **Schema:** enum `ProposalStatus` ([L2867](../../api/prisma/schema.prisma#L2867))
 <!-- schema-section:end -->
 
 Support proposal statuses such as:
@@ -457,7 +457,7 @@ Track the full lifecycle of every proposal.
 ## Proposal Tracking
 
 <!-- schema-section:start -->
-> **Schema:** `ProposalEvent` ([proposal_events](../../api/prisma/schema.prisma#L3196)) · enum `ProposalEventType` ([L2793](../../api/prisma/schema.prisma#L2793))
+> **Schema:** `ProposalEvent` ([proposal_events](../../api/prisma/schema.prisma#L3324)) · enum `ProposalEventType` ([L2921](../../api/prisma/schema.prisma#L2921))
 <!-- schema-section:end -->
 
 Provide visibility into proposal performance and customer activity.
@@ -482,7 +482,7 @@ Track:
 ## Conversion to Project
 
 <!-- schema-section:start -->
-> **Schema:** `Proposal` ([proposals](../../api/prisma/schema.prisma#L2889)): `requires_contract`
+> **Schema:** `Proposal` ([proposals](../../api/prisma/schema.prisma#L3017)): `requires_contract`
 <!-- schema-section:end -->
 
 Once a proposal is accepted, allow the agency to convert it into operational work without re-entering information.
@@ -507,7 +507,7 @@ The accepted proposal version remains permanently linked to the resulting contra
 ## AI Assistance
 
 <!-- schema-section:start -->
-> **Schema:** `ProposalVersion` ([proposal_versions](../../api/prisma/schema.prisma#L2976)): `ai_metadata`
+> **Schema:** `ProposalVersion` ([proposal_versions](../../api/prisma/schema.prisma#L3104)): `ai_metadata`
 <!-- schema-section:end -->
 
 AI should be available throughout the proposal creation and editing process.

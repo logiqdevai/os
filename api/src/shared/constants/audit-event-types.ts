@@ -121,6 +121,18 @@ export const AUDIT_EVENT_TYPES = {
     'access_review.completed': t('access_review', 'Access review completed'),
     'access_review.cancelled': t('access_review', 'Access review cancelled'),
 
+    // --- Integrations / organization-owned provider keys (01 §157-§160). NEVER put secrets, ciphertext or key hints in metadata:
+    //     only ids, provider, category, mode, status and which fields changed ("api_key rotated"). ---
+    'integration.connected': t('integration_connection', 'Integration connected with the organization\'s own credentials', { sensitive: true, notifyAdmins: true }),
+    'integration.updated': t('integration_connection', 'Integration settings, limits or branch scope changed', { sensitive: true }),
+    'integration.secret_rotated': t('integration_connection', 'Integration secret replaced', { sensitive: true, notifyAdmins: true }),
+    'integration.verified': t('integration_connection', 'Integration credentials verified against the provider'),
+    'integration.verification_failed': t('integration_connection', 'Integration verification or a provider call failed', { sensitive: true, notifyAdmins: true }),
+    'integration.enabled': t('integration_connection', 'Integration enabled', { sensitive: true }),
+    'integration.disabled': t('integration_connection', 'Integration disabled (secret kept)', { sensitive: true, notifyAdmins: true }),
+    'integration.default_changed': t('integration_connection', 'Default integration of a category changed', { sensitive: true }),
+    'integration.disconnected': t('integration_connection', 'Integration disconnected and secret destroyed', { sensitive: true, notifyAdmins: true }),
+
     // --- Exports (01 §101) ---
     'data.exported': t('export', 'Sensitive data export', { sensitive: true }),
 } as const satisfies Record<string, AuditEventTypeMeta>;

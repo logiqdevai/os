@@ -23,34 +23,34 @@
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Configuration** | | | |
-| `CalendarEventType` | `calendar_event_types` | [L17100](../../api/prisma/schema.prisma#L17100) | 19 §4 — configurable event types (meeting, customer meeting, kickoff, review, interview, deadline, out of office, focus time, booking …). System types are se… |
-| `CalendarPreference` | `calendar_preferences` | [L17135](../../api/prisma/schema.prisma#L17135) | 19 §5, §9 — per-member calendar preferences (default calendar, reminder defaults, view settings). Reminder timing is a user preference (§9). |
+| `CalendarEventType` | `calendar_event_types` | [L17231](../../api/prisma/schema.prisma#L17231) | 19 §4 — configurable event types (meeting, customer meeting, kickoff, review, interview, deadline, out of office, focus time, booking …). System types are se… |
+| `CalendarPreference` | `calendar_preferences` | [L17266](../../api/prisma/schema.prisma#L17266) | 19 §5, §9 — per-member calendar preferences (default calendar, reminder defaults, view settings). Reminder timing is a user preference (§9). |
 | **Calendars** | | | |
-| `Calendar` | `calendars` | [L17171](../../api/prisma/schema.prisma#L17171) | 19 §2, §5 — a named collection of events. Exactly one scope column is set according to kind: PERSONAL → owner_membership_id, TEAM → team_id, PROJECT → projec… |
-| `CalendarShare` | `calendar_shares` | [L17225](../../api/prisma/schema.prisma#L17225) | 19 §7, §10, §11 — explicit sharing of a calendar with a Member or a Team. Sharing is audited. |
-| `CalendarResource` | `calendar_resources` | [L17249](../../api/prisma/schema.prisma#L17249) | 19 §6 — bookable resources (meeting rooms, equipment). Each resource has a RESOURCE calendar (Calendar.resource_id) that holds its bookings for conflict dete… |
+| `Calendar` | `calendars` | [L17302](../../api/prisma/schema.prisma#L17302) | 19 §2, §5 — a named collection of events. Exactly one scope column is set according to kind: PERSONAL → owner_membership_id, TEAM → team_id, PROJECT → projec… |
+| `CalendarShare` | `calendar_shares` | [L17356](../../api/prisma/schema.prisma#L17356) | 19 §7, §10, §11 — explicit sharing of a calendar with a Member or a Team. Sharing is audited. |
+| `CalendarResource` | `calendar_resources` | [L17380](../../api/prisma/schema.prisma#L17380) | 19 §6 — bookable resources (meeting rooms, equipment). Each resource has a RESOURCE calendar (Calendar.resource_id) that holds its bookings for conflict dete… |
 | **Events** | | | |
-| `CalendarEvent` | `calendar_events` | [L17290](../../api/prisma/schema.prisma#L17290) | 19 §3–4 — the event record. Recurring series: the master row carries recurrence_rule; modified or cancelled occurrences are stored as child rows with recurri… |
-| `CalendarEventAttendee` | `calendar_event_attendees` | [L17386](../../api/prisma/schema.prisma#L17386) | 19 §3, §9 — attendees: Members (membership_id), Customer Portal users (user_id, 01 §79), CRM contacts (contact_id, 02) or plain external emails. Exactly one … |
-| `CalendarEventResource` | `calendar_event_resources` | [L17426](../../api/prisma/schema.prisma#L17426) | 19 §6 — resource booking (room / equipment) attached to an event, with optional approval. Conflicts are detected against other APPROVED rows for the same res… |
-| `CalendarEventReminder` | `calendar_event_reminders` | [L17450](../../api/prisma/schema.prisma#L17450) | 19 §3, §9 — reminders. membership_id null = event default for every attendee; set = a Member's personal override. Emitted to 14 at scheduled_at (next_occurre… |
-| `CalendarEventLink` | `calendar_event_links` | [L17473](../../api/prisma/schema.prisma#L17473) | 19 §3 — related records: project, customer, deal, contract, ticket (13), task, lead, proposal, invoice … Polymorphic via RecordEntityType; company_id / proje… |
-| `CalendarEventAttachment` | `calendar_event_attachments` | [L17491](../../api/prisma/schema.prisma#L17491) | 19 §3 — attachments are Documents (17); id only. |
+| `CalendarEvent` | `calendar_events` | [L17421](../../api/prisma/schema.prisma#L17421) | 19 §3–4 — the event record. Recurring series: the master row carries recurrence_rule; modified or cancelled occurrences are stored as child rows with recurri… |
+| `CalendarEventAttendee` | `calendar_event_attendees` | [L17517](../../api/prisma/schema.prisma#L17517) | 19 §3, §9 — attendees: Members (membership_id), Customer Portal users (user_id, 01 §79), CRM contacts (contact_id, 02) or plain external emails. Exactly one … |
+| `CalendarEventResource` | `calendar_event_resources` | [L17557](../../api/prisma/schema.prisma#L17557) | 19 §6 — resource booking (room / equipment) attached to an event, with optional approval. Conflicts are detected against other APPROVED rows for the same res… |
+| `CalendarEventReminder` | `calendar_event_reminders` | [L17581](../../api/prisma/schema.prisma#L17581) | 19 §3, §9 — reminders. membership_id null = event default for every attendee; set = a Member's personal override. Emitted to 14 at scheduled_at (next_occurre… |
+| `CalendarEventLink` | `calendar_event_links` | [L17604](../../api/prisma/schema.prisma#L17604) | 19 §3 — related records: project, customer, deal, contract, ticket (13), task, lead, proposal, invoice … Polymorphic via RecordEntityType; company_id / proje… |
+| `CalendarEventAttachment` | `calendar_event_attachments` | [L17622](../../api/prisma/schema.prisma#L17622) | 19 §3 — attachments are Documents (17); id only. |
 | **Availability** | | | |
-| `CalendarAvailabilitySchedule` | `calendar_availability_schedules` | [L17516](../../api/prisma/schema.prisma#L17516) | 19 §6 — a scheduling availability schedule (weekly hours + date overrides) for free/busy, slot suggestions and booking links. Employee working hours, leave a… |
-| `CalendarAvailabilityRule` | `calendar_availability_rules` | [L17544](../../api/prisma/schema.prisma#L17544) | 19 §6 — weekly recurring availability window. Several rows per weekday allow split shifts. |
-| `CalendarAvailabilityOverride` | `calendar_availability_overrides` | [L17561](../../api/prisma/schema.prisma#L17561) | 19 §6 — date-specific override: block a day / hours (UNAVAILABLE) or open extra hours (AVAILABLE). Null start/end times mean the whole day. |
+| `CalendarAvailabilitySchedule` | `calendar_availability_schedules` | [L17647](../../api/prisma/schema.prisma#L17647) | 19 §6 — a scheduling availability schedule (weekly hours + date overrides) for free/busy, slot suggestions and booking links. Employee working hours, leave a… |
+| `CalendarAvailabilityRule` | `calendar_availability_rules` | [L17675](../../api/prisma/schema.prisma#L17675) | 19 §6 — weekly recurring availability window. Several rows per weekday allow split shifts. |
+| `CalendarAvailabilityOverride` | `calendar_availability_overrides` | [L17692](../../api/prisma/schema.prisma#L17692) | 19 §6 — date-specific override: block a day / hours (UNAVAILABLE) or open extra hours (AVAILABLE). Null start/end times mean the whole day. |
 | **Booking links** | | | |
-| `BookingLink` | `booking_links` | [L17582](../../api/prisma/schema.prisma#L17582) | 19 §6, §8 — self-scheduling page for customers and prospects (used by 02 and 13; portal users see them in 07 §11). Slots are computed from the hosts' availab… |
-| `BookingLinkHost` | `booking_link_hosts` | [L17660](../../api/prisma/schema.prisma#L17660) | 19 §6 — Members who can be booked through a link. For ROUND_ROBIN the next host is chosen by priority then least-recently-booked; COLLECTIVE requires every h… |
-| `CalendarBooking` | `calendar_bookings` | [L17680](../../api/prisma/schema.prisma#L17680) | 19 §6, §8, §12 — a booked slot. Confirmed bookings own one CalendarEvent (source BOOKING) and emit `calendar.booking_created`. The invitee is a portal user (… |
+| `BookingLink` | `booking_links` | [L17713](../../api/prisma/schema.prisma#L17713) | 19 §6, §8 — self-scheduling page for customers and prospects (used by 02 and 13; portal users see them in 07 §11). Slots are computed from the hosts' availab… |
+| `BookingLinkHost` | `booking_link_hosts` | [L17791](../../api/prisma/schema.prisma#L17791) | 19 §6 — Members who can be booked through a link. For ROUND_ROBIN the next host is chosen by priority then least-recently-booked; COLLECTIVE requires every h… |
+| `CalendarBooking` | `calendar_bookings` | [L17811](../../api/prisma/schema.prisma#L17811) | 19 §6, §8, §12 — a booked slot. Confirmed bookings own one CalendarEvent (source BOOKING) and emit `calendar.booking_created`. The invitee is a portal user (… |
 | **External sync** | | | |
-| `CalendarConnection` | `calendar_connections` | [L17748](../../api/prisma/schema.prisma#L17748) | 19 §7, §10 — an OAuth connection to Google Calendar or Microsoft 365. membership_id set = a Member's personal connection (calendar.sync.manage_own); null = o… |
-| `CalendarConnectionCalendar` | `calendar_connection_calendars` | [L17788](../../api/prisma/schema.prisma#L17788) | 19 §7 — a remote calendar discovered on a connection and its mapping to a local Calendar. Local events of calendar_id are pushed and remote events are pulled… |
-| `CalendarEventSyncMapping` | `calendar_event_sync_mappings` | [L17822](../../api/prisma/schema.prisma#L17822) | 19 §7 — one row per (event, connected calendar): the remote id, the provider's last-modified timestamp used to resolve conflicts, and the sync state. Overwri… |
-| `CalendarSyncRun` | `calendar_sync_runs` | [L17853](../../api/prisma/schema.prisma#L17853) | 19 §7 — queryable history of sync runs per connection (full or incremental), for diagnostics. |
+| `CalendarConnection` | `calendar_connections` | [L17879](../../api/prisma/schema.prisma#L17879) | 19 §7, §10 — an OAuth connection to Google Calendar or Microsoft 365. membership_id set = a Member's personal connection (calendar.sync.manage_own); null = o… |
+| `CalendarConnectionCalendar` | `calendar_connection_calendars` | [L17919](../../api/prisma/schema.prisma#L17919) | 19 §7 — a remote calendar discovered on a connection and its mapping to a local Calendar. Local events of calendar_id are pushed and remote events are pulled… |
+| `CalendarEventSyncMapping` | `calendar_event_sync_mappings` | [L17953](../../api/prisma/schema.prisma#L17953) | 19 §7 — one row per (event, connected calendar): the remote id, the provider's last-modified timestamp used to resolve conflicts, and the sync state. Overwri… |
+| `CalendarSyncRun` | `calendar_sync_runs` | [L17984](../../api/prisma/schema.prisma#L17984) | 19 §7 — queryable history of sync runs per connection (full or incremental), for diagnostics. |
 | **Conferencing** | | | |
-| `CalendarConferencingAccount` | `calendar_conferencing_accounts` | [L17880](../../api/prisma/schema.prisma#L17880) | 19 §3 — connected video-conferencing accounts used to auto-create meeting links for events and bookings. GOOGLE_MEET / MICROSOFT_TEAMS may reuse the Calendar… |
+| `CalendarConferencingAccount` | `calendar_conferencing_accounts` | [L18011](../../api/prisma/schema.prisma#L18011) | 19 §3 — connected video-conferencing accounts used to auto-create meeting links for events and bookings. GOOGLE_MEET / MICROSOFT_TEAMS may reuse the Calendar… |
 
 **Owned enums (24):** `CalendarKind`, `CalendarResourceKind`, `CalendarShareRole`, `CalendarEventStatus`, `CalendarEventVisibility`, `CalendarEventSource`, `CalendarAttendeeKind`, `CalendarAttendeeRole`, `CalendarAttendeeResponse`, `CalendarResourceBookingStatus`, `CalendarReminderMethod`, `CalendarAvailabilityOverrideKind`, `BookingLinkStatus`, `BookingHostAssignment`, `BookingLinkAudience`, `CalendarBookingStatus`, `CalendarBookingSource`, `CalendarProvider`, `CalendarConnectionStatus`, `CalendarSyncDirection`, `CalendarSyncMappingStatus`, `CalendarSyncRunStatus`, `ConferencingProvider`, `ConferencingAccountStatus`
 
@@ -79,15 +79,15 @@
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `CrmActivity.calendar_event_id` ([02](./02-crm-sales-management.md), [L2558](../../api/prisma/schema.prisma#L2558)) — Calendar event id (19); id only.
-- `ProjectMilestone.customer_visible` ([05](./05-project-management.md), [L4716](../../api/prisma/schema.prisma#L4716)) — Shown in the Customer Portal (05 §60) and projected onto the Calendar (19).
-- `EmployeeAvailabilityEntry.calendar_event_id` ([10](./10-employee-management-system.md), [L8603](../../api/prisma/schema.prisma#L8603)) — 19 CalendarEvent — the projected or originating event.
-- `LeaveRequest.calendar_event_id` ([10](./10-employee-management-system.md), [L8780](../../api/prisma/schema.prisma#L8780)) — 19 CalendarEvent created for approved leave.
-- `PerformanceReview.meeting_event_id` ([10](./10-employee-management-system.md), [L9063](../../api/prisma/schema.prisma#L9063)) — 19 CalendarEvent — review meeting.
-- `ChannelCall.calendar_event_id` ([12](./12-messaging-team-communication.md), [L11953](../../api/prisma/schema.prisma#L11953)) — 19 CalendarEvent when scheduled as a meeting; id only.
-- `SlaPolicy.calendar_id` ([13](./13-customer-support-communication-hub.md), [L12635](../../api/prisma/schema.prisma#L12635)) — 19 Calendar id used for holidays when business hours apply; id only.
-- `TimeEntry.calendar_event_id` ([18](./18-time-tracking.md), [L16495](../../api/prisma/schema.prisma#L16495)) — Calendar event (19) this entry was captured from; id only.
-- `TimeSuggestion.calendar_event_id` ([18](./18-time-tracking.md), [L16702](../../api/prisma/schema.prisma#L16702)) — Calendar event (19) the suggestion came from; id only.
+- `CrmActivity.calendar_event_id` ([02](./02-crm-sales-management.md), [L2686](../../api/prisma/schema.prisma#L2686)) — Calendar event id (19); id only.
+- `ProjectMilestone.customer_visible` ([05](./05-project-management.md), [L4844](../../api/prisma/schema.prisma#L4844)) — Shown in the Customer Portal (05 §60) and projected onto the Calendar (19).
+- `EmployeeAvailabilityEntry.calendar_event_id` ([10](./10-employee-management-system.md), [L8733](../../api/prisma/schema.prisma#L8733)) — 19 CalendarEvent — the projected or originating event.
+- `LeaveRequest.calendar_event_id` ([10](./10-employee-management-system.md), [L8910](../../api/prisma/schema.prisma#L8910)) — 19 CalendarEvent created for approved leave.
+- `PerformanceReview.meeting_event_id` ([10](./10-employee-management-system.md), [L9193](../../api/prisma/schema.prisma#L9193)) — 19 CalendarEvent — review meeting.
+- `ChannelCall.calendar_event_id` ([12](./12-messaging-team-communication.md), [L12083](../../api/prisma/schema.prisma#L12083)) — 19 CalendarEvent when scheduled as a meeting; id only.
+- `SlaPolicy.calendar_id` ([13](./13-customer-support-communication-hub.md), [L12765](../../api/prisma/schema.prisma#L12765)) — 19 Calendar id used for holidays when business hours apply; id only.
+- `TimeEntry.calendar_event_id` ([18](./18-time-tracking.md), [L16626](../../api/prisma/schema.prisma#L16626)) — Calendar event (19) this entry was captured from; id only.
+- `TimeSuggestion.calendar_event_id` ([18](./18-time-tracking.md), [L16833](../../api/prisma/schema.prisma#L16833)) — Calendar event (19) the suggestion came from; id only.
 
 <!-- schema-refs:end -->
 
@@ -137,7 +137,7 @@ Core rule:
 ## 2. Core Concepts
 
 <!-- schema-section:start -->
-> **Schema:** `Calendar` ([calendars](../../api/prisma/schema.prisma#L17171)) · enum `CalendarKind` ([L16906](../../api/prisma/schema.prisma#L16906))
+> **Schema:** `Calendar` ([calendars](../../api/prisma/schema.prisma#L17302)) · enum `CalendarKind` ([L17037](../../api/prisma/schema.prisma#L17037))
 <!-- schema-section:end -->
 
 ### Event
@@ -159,7 +159,7 @@ Free/busy state derived from events, working hours (01 §121), holidays (01 §12
 ## 3. Event Model
 
 <!-- schema-section:start -->
-> **Schema:** `CalendarConferencingAccount` ([calendar_conferencing_accounts](../../api/prisma/schema.prisma#L17880)) · `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L17290)) · `CalendarEventAttachment` ([calendar_event_attachments](../../api/prisma/schema.prisma#L17491)): `document_id` · `CalendarEventAttendee` ([calendar_event_attendees](../../api/prisma/schema.prisma#L17386)) · `CalendarEventLink` ([calendar_event_links](../../api/prisma/schema.prisma#L17473)) · `CalendarEventReminder` ([calendar_event_reminders](../../api/prisma/schema.prisma#L17450)) · enum `CalendarAttendeeKind` ([L16957](../../api/prisma/schema.prisma#L16957)) · enum `CalendarAttendeeResponse` ([L16972](../../api/prisma/schema.prisma#L16972)) · enum `CalendarAttendeeRole` ([L16965](../../api/prisma/schema.prisma#L16965)) · enum `CalendarEventSource` ([L16949](../../api/prisma/schema.prisma#L16949)) · enum `CalendarEventStatus` ([L16934](../../api/prisma/schema.prisma#L16934)) · enum `CalendarEventVisibility` ([L16941](../../api/prisma/schema.prisma#L16941)) · enum `ConferencingAccountStatus` ([L17090](../../api/prisma/schema.prisma#L17090)) · enum `ConferencingProvider` ([L17082](../../api/prisma/schema.prisma#L17082))
+> **Schema:** `CalendarConferencingAccount` ([calendar_conferencing_accounts](../../api/prisma/schema.prisma#L18011)) · `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L17421)) · `CalendarEventAttachment` ([calendar_event_attachments](../../api/prisma/schema.prisma#L17622)): `document_id` · `CalendarEventAttendee` ([calendar_event_attendees](../../api/prisma/schema.prisma#L17517)) · `CalendarEventLink` ([calendar_event_links](../../api/prisma/schema.prisma#L17604)) · `CalendarEventReminder` ([calendar_event_reminders](../../api/prisma/schema.prisma#L17581)) · enum `CalendarAttendeeKind` ([L17088](../../api/prisma/schema.prisma#L17088)) · enum `CalendarAttendeeResponse` ([L17103](../../api/prisma/schema.prisma#L17103)) · enum `CalendarAttendeeRole` ([L17096](../../api/prisma/schema.prisma#L17096)) · enum `CalendarEventSource` ([L17080](../../api/prisma/schema.prisma#L17080)) · enum `CalendarEventStatus` ([L17065](../../api/prisma/schema.prisma#L17065)) · enum `CalendarEventVisibility` ([L17072](../../api/prisma/schema.prisma#L17072)) · enum `ConferencingAccountStatus` ([L17221](../../api/prisma/schema.prisma#L17221)) · enum `ConferencingProvider` ([L17213](../../api/prisma/schema.prisma#L17213))
 <!-- schema-section:end -->
 
 * Event ID
@@ -178,7 +178,7 @@ Free/busy state derived from events, working hours (01 §121), holidays (01 §12
 ## 4. Event Types
 
 <!-- schema-section:start -->
-> **Schema:** `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L17290)) · `CalendarEventType` ([calendar_event_types](../../api/prisma/schema.prisma#L17100))
+> **Schema:** `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L17421)) · `CalendarEventType` ([calendar_event_types](../../api/prisma/schema.prisma#L17231))
 <!-- schema-section:end -->
 
 Configurable, for example: meeting, customer meeting, kickoff, review, interview, deadline, out of office, focus time, booking.
@@ -188,7 +188,7 @@ CRM meetings (02 §15) are Calendar events of type customer meeting linked to CR
 ## 5. Views
 
 <!-- schema-section:start -->
-> **Schema:** `Calendar` ([calendars](../../api/prisma/schema.prisma#L17171)) · `CalendarPreference` ([calendar_preferences](../../api/prisma/schema.prisma#L17135))
+> **Schema:** `Calendar` ([calendars](../../api/prisma/schema.prisma#L17302)) · `CalendarPreference` ([calendar_preferences](../../api/prisma/schema.prisma#L17266))
 <!-- schema-section:end -->
 
 * Day, week, month, agenda
@@ -201,7 +201,7 @@ Project timeline and roadmap views remain in 05; the Calendar only renders dated
 ## 6. Scheduling & Availability
 
 <!-- schema-section:start -->
-> **Schema:** `BookingLink` ([booking_links](../../api/prisma/schema.prisma#L17582)) · `BookingLinkHost` ([booking_link_hosts](../../api/prisma/schema.prisma#L17660)) · `CalendarAvailabilityOverride` ([calendar_availability_overrides](../../api/prisma/schema.prisma#L17561)) · `CalendarAvailabilityRule` ([calendar_availability_rules](../../api/prisma/schema.prisma#L17544)) · `CalendarAvailabilitySchedule` ([calendar_availability_schedules](../../api/prisma/schema.prisma#L17516)) · `CalendarBooking` ([calendar_bookings](../../api/prisma/schema.prisma#L17680)) · `CalendarEventResource` ([calendar_event_resources](../../api/prisma/schema.prisma#L17426)) · `CalendarResource` ([calendar_resources](../../api/prisma/schema.prisma#L17249)) · enum `BookingHostAssignment` ([L17010](../../api/prisma/schema.prisma#L17010)) · enum `BookingLinkAudience` ([L17017](../../api/prisma/schema.prisma#L17017)) · enum `BookingLinkStatus` ([L17002](../../api/prisma/schema.prisma#L17002)) · enum `CalendarAvailabilityOverrideKind` ([L16996](../../api/prisma/schema.prisma#L16996)) · enum `CalendarBookingSource` ([L17034](../../api/prisma/schema.prisma#L17034)) · enum `CalendarBookingStatus` ([L17024](../../api/prisma/schema.prisma#L17024)) · enum `CalendarResourceBookingStatus` ([L16980](../../api/prisma/schema.prisma#L16980)) · enum `CalendarResourceKind` ([L16918](../../api/prisma/schema.prisma#L16918))
+> **Schema:** `BookingLink` ([booking_links](../../api/prisma/schema.prisma#L17713)) · `BookingLinkHost` ([booking_link_hosts](../../api/prisma/schema.prisma#L17791)) · `CalendarAvailabilityOverride` ([calendar_availability_overrides](../../api/prisma/schema.prisma#L17692)) · `CalendarAvailabilityRule` ([calendar_availability_rules](../../api/prisma/schema.prisma#L17675)) · `CalendarAvailabilitySchedule` ([calendar_availability_schedules](../../api/prisma/schema.prisma#L17647)) · `CalendarBooking` ([calendar_bookings](../../api/prisma/schema.prisma#L17811)) · `CalendarEventResource` ([calendar_event_resources](../../api/prisma/schema.prisma#L17557)) · `CalendarResource` ([calendar_resources](../../api/prisma/schema.prisma#L17380)) · enum `BookingHostAssignment` ([L17141](../../api/prisma/schema.prisma#L17141)) · enum `BookingLinkAudience` ([L17148](../../api/prisma/schema.prisma#L17148)) · enum `BookingLinkStatus` ([L17133](../../api/prisma/schema.prisma#L17133)) · enum `CalendarAvailabilityOverrideKind` ([L17127](../../api/prisma/schema.prisma#L17127)) · enum `CalendarBookingSource` ([L17165](../../api/prisma/schema.prisma#L17165)) · enum `CalendarBookingStatus` ([L17155](../../api/prisma/schema.prisma#L17155)) · enum `CalendarResourceBookingStatus` ([L17111](../../api/prisma/schema.prisma#L17111)) · enum `CalendarResourceKind` ([L17049](../../api/prisma/schema.prisma#L17049))
 <!-- schema-section:end -->
 
 * Free/busy lookup across attendees respecting working hours, branch holidays and leave
@@ -213,7 +213,7 @@ Project timeline and roadmap views remain in 05; the Calendar only renders dated
 ## 7. External Sync
 
 <!-- schema-section:start -->
-> **Schema:** `CalendarConnection` ([calendar_connections](../../api/prisma/schema.prisma#L17748)) · `CalendarConnectionCalendar` ([calendar_connection_calendars](../../api/prisma/schema.prisma#L17788)) · `CalendarEventSyncMapping` ([calendar_event_sync_mappings](../../api/prisma/schema.prisma#L17822)) · `CalendarShare` ([calendar_shares](../../api/prisma/schema.prisma#L17225)) · `CalendarSyncRun` ([calendar_sync_runs](../../api/prisma/schema.prisma#L17853)) · enum `CalendarConnectionStatus` ([L17048](../../api/prisma/schema.prisma#L17048)) · enum `CalendarProvider` ([L17042](../../api/prisma/schema.prisma#L17042)) · enum `CalendarShareRole` ([L16926](../../api/prisma/schema.prisma#L16926)) · enum `CalendarSyncDirection` ([L17057](../../api/prisma/schema.prisma#L17057)) · enum `CalendarSyncMappingStatus` ([L17064](../../api/prisma/schema.prisma#L17064)) · enum `CalendarSyncRunStatus` ([L17074](../../api/prisma/schema.prisma#L17074))
+> **Schema:** `CalendarConnection` ([calendar_connections](../../api/prisma/schema.prisma#L17879)) · `CalendarConnectionCalendar` ([calendar_connection_calendars](../../api/prisma/schema.prisma#L17919)) · `CalendarEventSyncMapping` ([calendar_event_sync_mappings](../../api/prisma/schema.prisma#L17953)) · `CalendarShare` ([calendar_shares](../../api/prisma/schema.prisma#L17356)) · `CalendarSyncRun` ([calendar_sync_runs](../../api/prisma/schema.prisma#L17984)) · enum `CalendarConnectionStatus` ([L17179](../../api/prisma/schema.prisma#L17179)) · enum `CalendarProvider` ([L17173](../../api/prisma/schema.prisma#L17173)) · enum `CalendarShareRole` ([L17057](../../api/prisma/schema.prisma#L17057)) · enum `CalendarSyncDirection` ([L17188](../../api/prisma/schema.prisma#L17188)) · enum `CalendarSyncMappingStatus` ([L17195](../../api/prisma/schema.prisma#L17195)) · enum `CalendarSyncRunStatus` ([L17205](../../api/prisma/schema.prisma#L17205))
 <!-- schema-section:end -->
 
 * Two-way sync with Google Calendar and Microsoft 365 per user
@@ -224,7 +224,7 @@ Project timeline and roadmap views remain in 05; the Calendar only renders dated
 ## 8. Customer Portal
 
 <!-- schema-section:start -->
-> **Schema:** `BookingLink` ([booking_links](../../api/prisma/schema.prisma#L17582)) · `CalendarBooking` ([calendar_bookings](../../api/prisma/schema.prisma#L17680)) · enum `CalendarEventVisibility` ([L16941](../../api/prisma/schema.prisma#L16941))
+> **Schema:** `BookingLink` ([booking_links](../../api/prisma/schema.prisma#L17713)) · `CalendarBooking` ([calendar_bookings](../../api/prisma/schema.prisma#L17811)) · enum `CalendarEventVisibility` ([L17072](../../api/prisma/schema.prisma#L17072))
 <!-- schema-section:end -->
 
 Customer-visible events (meetings, approval deadlines, milestone dates marked visible in 05) appear in the portal calendar. Internal events are never exposed.
@@ -232,7 +232,7 @@ Customer-visible events (meetings, approval deadlines, milestone dates marked vi
 ## 9. Notifications
 
 <!-- schema-section:start -->
-> **Schema:** `CalendarEventAttendee` ([calendar_event_attendees](../../api/prisma/schema.prisma#L17386)) · `CalendarEventReminder` ([calendar_event_reminders](../../api/prisma/schema.prisma#L17450)) · `CalendarPreference` ([calendar_preferences](../../api/prisma/schema.prisma#L17135)) · enum `CalendarReminderMethod` ([L16988](../../api/prisma/schema.prisma#L16988))
+> **Schema:** `CalendarEventAttendee` ([calendar_event_attendees](../../api/prisma/schema.prisma#L17517)) · `CalendarEventReminder` ([calendar_event_reminders](../../api/prisma/schema.prisma#L17581)) · `CalendarPreference` ([calendar_preferences](../../api/prisma/schema.prisma#L17266)) · enum `CalendarReminderMethod` ([L17119](../../api/prisma/schema.prisma#L17119))
 <!-- schema-section:end -->
 
 Invitations, responses, updates, cancellations and reminders are emitted as events to 14. Reminder timing is a user preference.
@@ -240,7 +240,7 @@ Invitations, responses, updates, cancellations and reminders are emitted as even
 ## 10. Permissions
 
 <!-- schema-section:start -->
-> **Schema:** `CalendarConnection` ([calendar_connections](../../api/prisma/schema.prisma#L17748)) · `CalendarShare` ([calendar_shares](../../api/prisma/schema.prisma#L17225)) · enum `CalendarShareRole` ([L16926](../../api/prisma/schema.prisma#L16926)) — other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1273)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** `CalendarConnection` ([calendar_connections](../../api/prisma/schema.prisma#L17879)) · `CalendarShare` ([calendar_shares](../../api/prisma/schema.prisma#L17356)) · enum `CalendarShareRole` ([L17057](../../api/prisma/schema.prisma#L17057)) — other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1319)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 * `calendar.events.read_own / create / update_own / delete_own`
@@ -254,7 +254,7 @@ Projected dates inherit the permissions of the source record.
 ## 11. Audit
 
 <!-- schema-section:start -->
-> **Schema:** `CalendarShare` ([calendar_shares](../../api/prisma/schema.prisma#L17225)) — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L1710)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** `CalendarShare` ([calendar_shares](../../api/prisma/schema.prisma#L17356)) — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L1838)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 Audit event creation, changes to attendees, cancellation, sync overwrites and calendar sharing.
@@ -262,7 +262,7 @@ Audit event creation, changes to attendees, cancellation, sync overwrites and ca
 ## 12. API & Webhooks
 
 <!-- schema-section:start -->
-> **Schema:** `CalendarBooking` ([calendar_bookings](../../api/prisma/schema.prisma#L17680)) — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L18855)) ([20](./20-automation-engine.md))
+> **Schema:** `CalendarBooking` ([calendar_bookings](../../api/prisma/schema.prisma#L17811)) — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L18986)) ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 API: CRUD events, list by range and calendar, free/busy, booking links, sync management.

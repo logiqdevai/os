@@ -32,6 +32,8 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'organizations.branding.manage', module: ModuleKey.ADMINISTRATION, resource: 'branding', action: 'manage' },
   { key: 'organizations.security.manage', module: ModuleKey.ADMINISTRATION, resource: 'security', action: 'manage', is_sensitive: true },
   { key: 'organizations.billing.manage', module: ModuleKey.ADMINISTRATION, resource: 'billing', action: 'manage', is_sensitive: true },
+  // 01 §157-§160: read = connections, status, key hints, usage (never secrets); manage = connect, rotate, disable, disconnect, set defaults.
+  { key: 'organizations.integrations.read', module: ModuleKey.ADMINISTRATION, resource: 'integrations', action: 'read' },
   { key: 'organizations.integrations.manage', module: ModuleKey.ADMINISTRATION, resource: 'integrations', action: 'manage', is_sensitive: true },
   { key: 'organizations.modules.manage', module: ModuleKey.ADMINISTRATION, resource: 'modules', action: 'manage', is_sensitive: true },
   { key: 'organizations.organization.delete', module: ModuleKey.ADMINISTRATION, resource: 'organization', action: 'delete', is_sensitive: true },

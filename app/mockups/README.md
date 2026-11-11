@@ -35,8 +35,13 @@ for reviewers only; do not ship it.
 3. **Enum values are exact.** The mock shows `Membership.status` etc. title-cased with the raw value in a tooltip; render
    labels from a shared enum→label map, keep the raw value for filters and the API.
 4. **Reuse existing models and services of the owning module.** Do not build a parallel service for something another module owns.
-5. After any `schema.prisma` change run `node docs/scripts/sync-feature-schema-refs.mjs`.
-6. Mock-only things to drop in production: the "Data model" footer, `window.LQ`/`window.AD` helpers, inline `onclick`,
+5. **Provider keys are per organization, never in `.env`.** OpenAI, Resend, Stripe, Twilio and the other third-party
+   keys are entered by each organization in Admin → Integrations (`#admin/integrations`) and stored as an
+   `IntegrationConnection` (encrypted, write-only). Modules resolve a connection by category and never read a provider
+   key themselves; the Integrations form is generated from `api/src/shared/constants/integration-providers.ts`.
+   Spec: `docs/features/01` §156–§161. Secrets must never appear in any response, log, audit event or AI prompt.
+6. After any `schema.prisma` change run `node docs/scripts/sync-feature-schema-refs.mjs`.
+7. Mock-only things to drop in production: the "Data model" footer, `window.LQ`/`window.AD` helpers, inline `onclick`,
    the sample data arrays, the floating tooltips (use shadcn `Tooltip`).
 
 ## Mock helper → production component

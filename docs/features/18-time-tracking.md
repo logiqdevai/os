@@ -23,22 +23,22 @@
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Configuration** | | | |
-| `TimeTrackingSettings` | `time_tracking_settings` | [L16315](../../api/prisma/schema.prisma#L16315) | 18 §4, §5, §6, §9 — organization-wide time tracking settings (one row per organization). |
-| `TimeActivityType` | `time_activity_types` | [L16379](../../api/prisma/schema.prisma#L16379) | 18 §3 — configurable activity types (development, design, meeting, support, admin …). |
-| `TimeProjectSettings` | `time_project_settings` | [L16412](../../api/prisma/schema.prisma#L16412) | 18 §6, §8 — per-project time tracking overrides. Billing model and T&M hourly rate stay in ProjectBillingSettings (08); this row carries default billability … |
+| `TimeTrackingSettings` | `time_tracking_settings` | [L16446](../../api/prisma/schema.prisma#L16446) | 18 §4, §5, §6, §9 — organization-wide time tracking settings (one row per organization). |
+| `TimeActivityType` | `time_activity_types` | [L16510](../../api/prisma/schema.prisma#L16510) | 18 §3 — configurable activity types (development, design, meeting, support, admin …). |
+| `TimeProjectSettings` | `time_project_settings` | [L16543](../../api/prisma/schema.prisma#L16543) | 18 §6, §8 — per-project time tracking overrides. Billing model and T&M hourly rate stay in ProjectBillingSettings (08); this row carries default billability … |
 | **Rates** | | | |
-| `BillingRate` | `billing_rates` | [L16448](../../api/prisma/schema.prisma#L16448) | 18 §2, §6 — rate cards with effective dates. BILLING rates (customer price per hour) resolve by scope: organization default, product/service (08), project ov… |
+| `BillingRate` | `billing_rates` | [L16579](../../api/prisma/schema.prisma#L16579) | 18 §2, §6 — rate cards with effective dates. BILLING rates (customer price per hour) resolve by scope: organization default, product/service (08), project ov… |
 | **Time entries** | | | |
-| `TimeEntry` | `time_entries` | [L16495](../../api/prisma/schema.prisma#L16495) | 18 §3 — a unit of recorded work. Project is optional for internal time (admin, training, leave); task and ticket are optional. Rate snapshots (18 §3) are cop… |
-| `Timer` | `timers` | [L16620](../../api/prisma/schema.prisma#L16620) | 18 §2, §4 — a running timer started from a task, ticket or project. At most one running timer per member (enforced by the service: stopped_at IS NULL). Stopp… |
-| `TimeImportJob` | `time_import_jobs` | [L16669](../../api/prisma/schema.prisma#L16669) | 18 §4 — bulk/CSV/external imports producing IMPORTED entries. |
-| `TimeSuggestion` | `time_suggestions` | [L16702](../../api/prisma/schema.prisma#L16702) | 18 §4 — suggested entries from calendar events (19), commits, task activity (06), attendance (10) or AI. Review is always required: accepting creates a TimeE… |
-| `TimeEntryAdjustment` | `time_entry_adjustments` | [L16751](../../api/prisma/schema.prisma#L16751) | 18 §6 — write-off / write-up / write-down applied at invoicing time. The entry itself is never edited: the adjustment records the delta between the snapshott… |
+| `TimeEntry` | `time_entries` | [L16626](../../api/prisma/schema.prisma#L16626) | 18 §3 — a unit of recorded work. Project is optional for internal time (admin, training, leave); task and ticket are optional. Rate snapshots (18 §3) are cop… |
+| `Timer` | `timers` | [L16751](../../api/prisma/schema.prisma#L16751) | 18 §2, §4 — a running timer started from a task, ticket or project. At most one running timer per member (enforced by the service: stopped_at IS NULL). Stopp… |
+| `TimeImportJob` | `time_import_jobs` | [L16800](../../api/prisma/schema.prisma#L16800) | 18 §4 — bulk/CSV/external imports producing IMPORTED entries. |
+| `TimeSuggestion` | `time_suggestions` | [L16833](../../api/prisma/schema.prisma#L16833) | 18 §4 — suggested entries from calendar events (19), commits, task activity (06), attendance (10) or AI. Review is always required: accepting creates a TimeE… |
+| `TimeEntryAdjustment` | `time_entry_adjustments` | [L16882](../../api/prisma/schema.prisma#L16882) | 18 §6 — write-off / write-up / write-down applied at invoicing time. The entry itself is never edited: the adjustment records the delta between the snapshott… |
 | **Timesheets** | | | |
-| `Timesheet` | `timesheets` | [L16784](../../api/prisma/schema.prisma#L16784) | 18 §2, §5 — a periodic collection of one member's entries submitted for approval. Created lazily when the first entry of a period is logged or on submission.… |
-| `TimesheetAction` | `timesheet_actions` | [L16843](../../api/prisma/schema.prisma#L16843) | 18 §5, §12 — submit/approve/reject/reopen/lock/unlock history with comments. Mirrors audit_events but is kept queryable for compliance reporting (18 §10). |
+| `Timesheet` | `timesheets` | [L16915](../../api/prisma/schema.prisma#L16915) | 18 §2, §5 — a periodic collection of one member's entries submitted for approval. Created lazily when the first entry of a period is logged or on submission.… |
+| `TimesheetAction` | `timesheet_actions` | [L16974](../../api/prisma/schema.prisma#L16974) | 18 §5, §12 — submit/approve/reject/reopen/lock/unlock history with comments. Mirrors audit_events but is kept queryable for compliance reporting (18 §10). |
 | **Reporting** | | | |
-| `TimeUtilizationPeriod` | `time_utilization_periods` | [L16866](../../api/prisma/schema.prisma#L16866) | 18 §9, §10 — per-member, per-period utilization snapshot. Utilization = logged / expected hours; computed here (expected capacity from 10 and 01 §121–122), d… |
+| `TimeUtilizationPeriod` | `time_utilization_periods` | [L16997](../../api/prisma/schema.prisma#L16997) | 18 §9, §10 — per-member, per-period utilization snapshot. Utilization = logged / expected hours; computed here (expected capacity from 10 and 01 §121–122), d… |
 
 **Owned enums (14):** `TimeEntryStatus`, `TimeEntrySource`, `TimeNonBillableCategory`, `TimesheetStatus`, `TimesheetPeriodType`, `TimesheetApproverPolicy`, `TimesheetActionType`, `TimeRateKind`, `BillingRateScope`, `TimeSuggestionSource`, `TimeSuggestionStatus`, `TimeAdjustmentType`, `TimeRoundingMode`, `TimeImportStatus`
 
@@ -67,15 +67,15 @@
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `Contract.billing_model` ([04](./04-contracts.md), [L3627](../../api/prisma/schema.prisma#L3627)) — 04 §54, 18 §6 — billing model agreed in the contract (08 BillingModel); seeds ProjectBillingSettings on project creation.
-- `Contract.default_time_billable` ([04](./04-contracts.md), [L3627](../../api/prisma/schema.prisma#L3627)) — 18 §6 — contract-level default billability for time logged under this contract; null = project type / organization default.
-- `ProjectType.default_time_billable` ([05](./05-project-management.md), [L4358](../../api/prisma/schema.prisma#L4358)) — 18 §6 — default billability for time entries on projects of this type; null = organization default (TimeTrackingSettings). Copied into TimeProjectSettings wh…
-- `ProjectType.default_time_non_billable_category` ([05](./05-project-management.md), [L4358](../../api/prisma/schema.prisma#L4358)) — 18 §6 — non-billable category applied when default_time_billable = false.
-- `Task.actual_hours` ([06](./06-task-management.md), [L5458](../../api/prisma/schema.prisma#L5458)) — 06 §3, §11 — cached actual effort rolled up from approved time entries (18 §8); 18 is the source of truth.
-- `EmployeeHrSettings.prefill_time_entries_from_attendance` ([10](./10-employee-management-system.md), [L8147](../../api/prisma/schema.prisma#L8147)) — Pre-fill 18 Time Tracking daily total from attendance (never replaces time entries).
-- `EmployeeCompensation.cost_rate_hourly` ([10](./10-employee-management-system.md), [L8367](../../api/prisma/schema.prisma#L8367)) — Hourly cost rate for project costing (18 §7 snapshots this).
-- `AttendanceRecord.prefilled_time_entry_id` ([10](./10-employee-management-system.md), [L8894](../../api/prisma/schema.prisma#L8894)) — 18 TimeEntry pre-filled from this record, if enabled.
-- `EmployeeCapacityPeriod.logged_hours` ([10](./10-employee-management-system.md), [L9004](../../api/prisma/schema.prisma#L9004)) — Snapshot from 18 TimeEntry actuals.
+- `Contract.billing_model` ([04](./04-contracts.md), [L3755](../../api/prisma/schema.prisma#L3755)) — 04 §54, 18 §6 — billing model agreed in the contract (08 BillingModel); seeds ProjectBillingSettings on project creation.
+- `Contract.default_time_billable` ([04](./04-contracts.md), [L3755](../../api/prisma/schema.prisma#L3755)) — 18 §6 — contract-level default billability for time logged under this contract; null = project type / organization default.
+- `ProjectType.default_time_billable` ([05](./05-project-management.md), [L4486](../../api/prisma/schema.prisma#L4486)) — 18 §6 — default billability for time entries on projects of this type; null = organization default (TimeTrackingSettings). Copied into TimeProjectSettings wh…
+- `ProjectType.default_time_non_billable_category` ([05](./05-project-management.md), [L4486](../../api/prisma/schema.prisma#L4486)) — 18 §6 — non-billable category applied when default_time_billable = false.
+- `Task.actual_hours` ([06](./06-task-management.md), [L5586](../../api/prisma/schema.prisma#L5586)) — 06 §3, §11 — cached actual effort rolled up from approved time entries (18 §8); 18 is the source of truth.
+- `EmployeeHrSettings.prefill_time_entries_from_attendance` ([10](./10-employee-management-system.md), [L8277](../../api/prisma/schema.prisma#L8277)) — Pre-fill 18 Time Tracking daily total from attendance (never replaces time entries).
+- `EmployeeCompensation.cost_rate_hourly` ([10](./10-employee-management-system.md), [L8497](../../api/prisma/schema.prisma#L8497)) — Hourly cost rate for project costing (18 §7 snapshots this).
+- `AttendanceRecord.prefilled_time_entry_id` ([10](./10-employee-management-system.md), [L9024](../../api/prisma/schema.prisma#L9024)) — 18 TimeEntry pre-filled from this record, if enabled.
+- `EmployeeCapacityPeriod.logged_hours` ([10](./10-employee-management-system.md), [L9134](../../api/prisma/schema.prisma#L9134)) — Snapshot from 18 TimeEntry actuals.
 
 <!-- schema-refs:end -->
 
@@ -124,7 +124,7 @@ Core rule:
 ## 2. Core Concepts
 
 <!-- schema-section:start -->
-> **Schema:** `BillingRate` ([billing_rates](../../api/prisma/schema.prisma#L16448)) · `Timer` ([timers](../../api/prisma/schema.prisma#L16620)) · `Timesheet` ([timesheets](../../api/prisma/schema.prisma#L16784)) · enum `BillingRateScope` ([L16263](../../api/prisma/schema.prisma#L16263)) · enum `TimeRateKind` ([L16256](../../api/prisma/schema.prisma#L16256)) · enum `TimesheetPeriodType` ([L16229](../../api/prisma/schema.prisma#L16229)) · enum `TimesheetStatus` ([L16220](../../api/prisma/schema.prisma#L16220))
+> **Schema:** `BillingRate` ([billing_rates](../../api/prisma/schema.prisma#L16579)) · `Timer` ([timers](../../api/prisma/schema.prisma#L16751)) · `Timesheet` ([timesheets](../../api/prisma/schema.prisma#L16915)) · enum `BillingRateScope` ([L16394](../../api/prisma/schema.prisma#L16394)) · enum `TimeRateKind` ([L16387](../../api/prisma/schema.prisma#L16387)) · enum `TimesheetPeriodType` ([L16360](../../api/prisma/schema.prisma#L16360)) · enum `TimesheetStatus` ([L16351](../../api/prisma/schema.prisma#L16351))
 <!-- schema-section:end -->
 
 ### Time Entry
@@ -146,7 +146,7 @@ A billing rate (what the customer is charged) and a cost rate (what the employee
 ## 3. Time Entry Model
 
 <!-- schema-section:start -->
-> **Schema:** `TimeActivityType` ([time_activity_types](../../api/prisma/schema.prisma#L16379)) · `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L16495)) · enum `TimeEntrySource` ([L16200](../../api/prisma/schema.prisma#L16200)) · enum `TimeEntryStatus` ([L16190](../../api/prisma/schema.prisma#L16190))
+> **Schema:** `TimeActivityType` ([time_activity_types](../../api/prisma/schema.prisma#L16510)) · `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L16626)) · enum `TimeEntrySource` ([L16331](../../api/prisma/schema.prisma#L16331)) · enum `TimeEntryStatus` ([L16321](../../api/prisma/schema.prisma#L16321))
 <!-- schema-section:end -->
 
 * Entry ID
@@ -169,7 +169,7 @@ Rate snapshots are stored at approval time so later rate changes do not alter hi
 ## 4. Capture
 
 <!-- schema-section:start -->
-> **Schema:** `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L16495)): `billable_minutes`, `timer_id` · `TimeImportJob` ([time_import_jobs](../../api/prisma/schema.prisma#L16669)) · `TimeSuggestion` ([time_suggestions](../../api/prisma/schema.prisma#L16702)) · `TimeTrackingSettings` ([time_tracking_settings](../../api/prisma/schema.prisma#L16315)): `idle_timeout_minutes` · `Timer` ([timers](../../api/prisma/schema.prisma#L16620)): `last_heartbeat_at` · enum `TimeEntrySource` ([L16200](../../api/prisma/schema.prisma#L16200)) · enum `TimeImportStatus` ([L16304](../../api/prisma/schema.prisma#L16304)) · enum `TimeRoundingMode` ([L16296](../../api/prisma/schema.prisma#L16296)) · enum `TimeSuggestionSource` ([L16272](../../api/prisma/schema.prisma#L16272)) · enum `TimeSuggestionStatus` ([L16281](../../api/prisma/schema.prisma#L16281))
+> **Schema:** `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L16626)): `billable_minutes`, `timer_id` · `TimeImportJob` ([time_import_jobs](../../api/prisma/schema.prisma#L16800)) · `TimeSuggestion` ([time_suggestions](../../api/prisma/schema.prisma#L16833)) · `TimeTrackingSettings` ([time_tracking_settings](../../api/prisma/schema.prisma#L16446)): `idle_timeout_minutes` · `Timer` ([timers](../../api/prisma/schema.prisma#L16751)): `last_heartbeat_at` · enum `TimeEntrySource` ([L16331](../../api/prisma/schema.prisma#L16331)) · enum `TimeImportStatus` ([L16435](../../api/prisma/schema.prisma#L16435)) · enum `TimeRoundingMode` ([L16427](../../api/prisma/schema.prisma#L16427)) · enum `TimeSuggestionSource` ([L16403](../../api/prisma/schema.prisma#L16403)) · enum `TimeSuggestionStatus` ([L16412](../../api/prisma/schema.prisma#L16412))
 <!-- schema-section:end -->
 
 * Start/stop timer from a task, ticket or project
@@ -183,7 +183,7 @@ Rate snapshots are stored at approval time so later rate changes do not alter hi
 ## 5. Timesheets & Approval
 
 <!-- schema-section:start -->
-> **Schema:** `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L16412)): `approver_membership_id` · `TimeTrackingSettings` ([time_tracking_settings](../../api/prisma/schema.prisma#L16315)): `lock_on_approval` · `Timesheet` ([timesheets](../../api/prisma/schema.prisma#L16784)) · `TimesheetAction` ([timesheet_actions](../../api/prisma/schema.prisma#L16843)) · enum `TimesheetActionType` ([L16246](../../api/prisma/schema.prisma#L16246)) · enum `TimesheetApproverPolicy` ([L16238](../../api/prisma/schema.prisma#L16238)) · enum `TimesheetPeriodType` ([L16229](../../api/prisma/schema.prisma#L16229)) · enum `TimesheetStatus` ([L16220](../../api/prisma/schema.prisma#L16220))
+> **Schema:** `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L16543)): `approver_membership_id` · `TimeTrackingSettings` ([time_tracking_settings](../../api/prisma/schema.prisma#L16446)): `lock_on_approval` · `Timesheet` ([timesheets](../../api/prisma/schema.prisma#L16915)) · `TimesheetAction` ([timesheet_actions](../../api/prisma/schema.prisma#L16974)) · enum `TimesheetActionType` ([L16377](../../api/prisma/schema.prisma#L16377)) · enum `TimesheetApproverPolicy` ([L16369](../../api/prisma/schema.prisma#L16369)) · enum `TimesheetPeriodType` ([L16360](../../api/prisma/schema.prisma#L16360)) · enum `TimesheetStatus` ([L16351](../../api/prisma/schema.prisma#L16351))
 <!-- schema-section:end -->
 
 * Weekly timesheet per employee
@@ -197,7 +197,7 @@ Approval permissions follow 01 §95.
 ## 6. Billable Classification
 
 <!-- schema-section:start -->
-> **Schema:** `BillingRate` ([billing_rates](../../api/prisma/schema.prisma#L16448)) · `TimeActivityType` ([time_activity_types](../../api/prisma/schema.prisma#L16379)): `default_billable` · `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L16495)): `billable_overridden` · `TimeEntryAdjustment` ([time_entry_adjustments](../../api/prisma/schema.prisma#L16751)) · `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L16412)) · `TimeTrackingSettings` ([time_tracking_settings](../../api/prisma/schema.prisma#L16315)) · enum `BillingRateScope` ([L16263](../../api/prisma/schema.prisma#L16263)) · enum `TimeAdjustmentType` ([L16289](../../api/prisma/schema.prisma#L16289)) · enum `TimeNonBillableCategory` ([L16209](../../api/prisma/schema.prisma#L16209)) — other modules: `Contract` ([contracts](../../api/prisma/schema.prisma#L3627)): `default_time_billable` ([04](./04-contracts.md)) · `ProjectType` ([project_types](../../api/prisma/schema.prisma#L4358)): `default_time_billable` ([05](./05-project-management.md))
+> **Schema:** `BillingRate` ([billing_rates](../../api/prisma/schema.prisma#L16579)) · `TimeActivityType` ([time_activity_types](../../api/prisma/schema.prisma#L16510)): `default_billable` · `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L16626)): `billable_overridden` · `TimeEntryAdjustment` ([time_entry_adjustments](../../api/prisma/schema.prisma#L16882)) · `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L16543)) · `TimeTrackingSettings` ([time_tracking_settings](../../api/prisma/schema.prisma#L16446)) · enum `BillingRateScope` ([L16394](../../api/prisma/schema.prisma#L16394)) · enum `TimeAdjustmentType` ([L16420](../../api/prisma/schema.prisma#L16420)) · enum `TimeNonBillableCategory` ([L16340](../../api/prisma/schema.prisma#L16340)) — other modules: `Contract` ([contracts](../../api/prisma/schema.prisma#L3755)): `default_time_billable` ([04](./04-contracts.md)) · `ProjectType` ([project_types](../../api/prisma/schema.prisma#L4486)): `default_time_billable` ([05](./05-project-management.md))
 <!-- schema-section:end -->
 
 * Default billability from project type and contract (04 §54 billing context)
@@ -208,7 +208,7 @@ Approval permissions follow 01 §95.
 ## 7. Integration with Finance
 
 <!-- schema-section:start -->
-> **Schema:** `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L16495)): `cost_amount` — other modules: `EmployeeCompensation` ([employee_compensations](../../api/prisma/schema.prisma#L8367)): `cost_rate_hourly` ([10](./10-employee-management-system.md)) · `InvoiceLineItem` ([invoice_line_items](../../api/prisma/schema.prisma#L6331)) ([08](./08-financial-management-stripe-integration.md)) · `LedgerProfitabilitySnapshot` ([ledger_profitability_snapshots](../../api/prisma/schema.prisma#L7663)) ([09](./09-income-expense-management.md))
+> **Schema:** `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L16626)): `cost_amount` — other modules: `EmployeeCompensation` ([employee_compensations](../../api/prisma/schema.prisma#L8497)): `cost_rate_hourly` ([10](./10-employee-management-system.md)) · `InvoiceLineItem` ([invoice_line_items](../../api/prisma/schema.prisma#L6459)) ([08](./08-financial-management-stripe-integration.md)) · `LedgerProfitabilitySnapshot` ([ledger_profitability_snapshots](../../api/prisma/schema.prisma#L7793)) ([09](./09-income-expense-management.md))
 <!-- schema-section:end -->
 
 * 08 Finance pulls approved, uninvoiced billable entries to create time and materials invoices.
@@ -220,7 +220,7 @@ Time Tracking never creates invoices or financial records.
 ## 8. Integration with Projects & Tasks
 
 <!-- schema-section:start -->
-> **Schema:** `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L16412)) — other modules: `Task` ([tasks](../../api/prisma/schema.prisma#L5458)): `actual_hours` ([06](./06-task-management.md))
+> **Schema:** `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L16543)) — other modules: `Task` ([tasks](../../api/prisma/schema.prisma#L5586)): `actual_hours` ([06](./06-task-management.md))
 <!-- schema-section:end -->
 
 * 05 shows planned vs logged, billable vs non-billable, hours by employee, workstream and milestone.
@@ -230,7 +230,7 @@ Time Tracking never creates invoices or financial records.
 ## 9. Integration with Employees
 
 <!-- schema-section:start -->
-> **Schema:** `TimeTrackingSettings` ([time_tracking_settings](../../api/prisma/schema.prisma#L16315)): `attendance_prefill_enabled` · `TimeUtilizationPeriod` ([time_utilization_periods](../../api/prisma/schema.prisma#L16866))
+> **Schema:** `TimeTrackingSettings` ([time_tracking_settings](../../api/prisma/schema.prisma#L16446)): `attendance_prefill_enabled` · `TimeUtilizationPeriod` ([time_utilization_periods](../../api/prisma/schema.prisma#L16997))
 <!-- schema-section:end -->
 
 * Working hours, leave and holidays from 10 and 01 §121–122 define expected capacity.
@@ -240,7 +240,7 @@ Time Tracking never creates invoices or financial records.
 ## 10. Reporting
 
 <!-- schema-section:start -->
-> **Schema:** `TimeUtilizationPeriod` ([time_utilization_periods](../../api/prisma/schema.prisma#L16866)) · `Timesheet` ([timesheets](../../api/prisma/schema.prisma#L16784)) · `TimesheetAction` ([timesheet_actions](../../api/prisma/schema.prisma#L16843))
+> **Schema:** `TimeUtilizationPeriod` ([time_utilization_periods](../../api/prisma/schema.prisma#L16997)) · `Timesheet` ([timesheets](../../api/prisma/schema.prisma#L16915)) · `TimesheetAction` ([timesheet_actions](../../api/prisma/schema.prisma#L16974))
 <!-- schema-section:end -->
 
 * Hours by project, customer, employee, team, branch, activity type
@@ -255,7 +255,7 @@ Reports respect branch scope (01 §123–124).
 ## 11. Permissions
 
 <!-- schema-section:start -->
-> **Schema:** `BillingRate` ([billing_rates](../../api/prisma/schema.prisma#L16448)) — other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1273)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** `BillingRate` ([billing_rates](../../api/prisma/schema.prisma#L16579)) — other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1319)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 * `time.entries.create_own / read_own / update_own`
@@ -270,7 +270,7 @@ Cost rates are a sensitive field (01 §60).
 ## 12. Audit
 
 <!-- schema-section:start -->
-> **Schema:** `BillingRate` ([billing_rates](../../api/prisma/schema.prisma#L16448)) · `TimesheetAction` ([timesheet_actions](../../api/prisma/schema.prisma#L16843)) · enum `TimesheetActionType` ([L16246](../../api/prisma/schema.prisma#L16246)) — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L1710)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** `BillingRate` ([billing_rates](../../api/prisma/schema.prisma#L16579)) · `TimesheetAction` ([timesheet_actions](../../api/prisma/schema.prisma#L16974)) · enum `TimesheetActionType` ([L16377](../../api/prisma/schema.prisma#L16377)) — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L1838)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 Audit creation, edit, approval, rejection, unlock, rate changes and invoicing state changes.
@@ -278,7 +278,7 @@ Audit creation, edit, approval, rejection, unlock, rate changes and invoicing st
 ## 13. API & Webhooks
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L18855)) ([20](./20-automation-engine.md))
+> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L18986)) ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 API: create/update/delete entry, start/stop timer, list entries, submit timesheet, approve/reject, list uninvoiced billable entries, mark invoiced.
