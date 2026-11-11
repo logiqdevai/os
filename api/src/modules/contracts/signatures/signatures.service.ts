@@ -14,7 +14,7 @@ import { paginate, skipTake } from '@/shared/utils/pagination/pagination.utils';
 import { ContractsService } from '../contracts/contracts.service';
 import { ContractVersionsService } from '../versions/versions.service';
 import { ContractMailerService } from '../shared/contract-mailer.service';
-import { addDays, maskEmail, newCode, newToken, publicContext, sectionsHash, sha256, today } from '../shared/contracts.utils';
+import { addDays, assertNoUnresolvedVariables, maskEmail, newCode, newToken, publicContext, sectionsHash, sha256, today } from '../shared/contracts.utils';
 import { CancelSignatureRequestDto, CreateSignatureRequestDto, DeclineDto, SignDto, SignatureRequestQuery, VerifyCodeDto } from './dto/signature.dto';
 
 const ACTIVE_REQUEST: SignatureRequestStatus[] = [SignatureRequestStatus.NOT_SENT, SignatureRequestStatus.SENT, SignatureRequestStatus.DELIVERED, SignatureRequestStatus.VIEWED, SignatureRequestStatus.PARTIALLY_SIGNED];
@@ -94,6 +94,7 @@ export class SignaturesService {
             throw new ConflictException({ message: 'Approve this version before sending it for signature (submit for approval — it is approved automatically when no rule applies)', code: 'version_not_approved' });
         }
         await this.versions.assertReadyForSignature(versionId);
+        assertNoUnresolvedVariables(version.sections);
         const active = await this.prisma.signatureRequest.count({ where: { contract_id: contractId, status: { in: ACTIVE_REQUEST } } });
         if (active) throw new ConflictException({ message: 'A signature request is already in progress for this contract', code: 'signature_request_active' });
 

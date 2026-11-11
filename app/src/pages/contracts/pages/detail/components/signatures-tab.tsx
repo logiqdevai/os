@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { BellRing, Copy, FileCheck2, Link2, Send, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,14 @@ export function SignaturesTab({ contract, version }: { contract: ContractDetail;
     const [certificate, setCertificate] = useState<string | null>(null);
     const canSend = p.can("contracts.signatures.send") && !!version && version.id === contract.current_version_id && version.status === "APPROVED";
     const active = list.data?.data.some((r) => ACTIVE.includes(r.status));
+    const [sp, setSp] = useSearchParams();
+
+    // The header's "Send for signature" links here with ?send=1: open the dialog once the version is loaded.
+    useEffect(() => {
+        if (sp.get("send") !== "1" || !version || list.isPending) return;
+        if (canSend && !active) setSendOpen(true);
+        setSp((prev) => { const n = new URLSearchParams(prev); n.delete("send"); return n; }, { replace: true });
+    }, [sp, setSp, version, canSend, active, list.isPending]);
 
     return (
         <div className="space-y-3">

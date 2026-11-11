@@ -41,6 +41,21 @@ const LIST_INCLUDE = {
 } satisfies Prisma.ContractInclude;
 
 const fmtDate = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
+
+/** Values for `{{…}}` placeholders in contract templates and clauses. */
+export function contractVariables(
+    c: { title: string; number: string | null; currency: string; start_date: Date | null; end_date: Date | null; effective_date: Date | null; payment_terms: string | null; total_value: { toString(): string } | null },
+    org: { display_name: string; legal_name: string },
+    company: { name: string; legal_name: string | null } | null,
+): Record<string, string | null | undefined> {
+    return {
+        'contract.title': c.title, 'contract.number': c.number, 'contract.currency': c.currency,
+        'contract.start_date': fmtDate(c.start_date), 'contract.end_date': fmtDate(c.end_date), 'contract.effective_date': fmtDate(c.effective_date),
+        'contract.payment_terms': c.payment_terms, 'contract.total_value': c.total_value?.toString(),
+        'agency.name': org.display_name, 'agency.legal_name': org.legal_name,
+        'customer.name': company?.name, 'customer.legal_name': company?.legal_name || company?.name,
+    };
+}
 const toDate = (s: string | undefined | null) => (s ? new Date(s) : undefined);
 const dec = (n: number | undefined) => (n === undefined ? undefined : new Prisma.Decimal(n));
 const TERMINAL: ContractStatus[] = [ContractStatus.TERMINATED, ContractStatus.EXPIRED, ContractStatus.CANCELLED, ContractStatus.ARCHIVED, ContractStatus.SUPERSEDED];
@@ -73,6 +88,31 @@ export class ContractsService {
     }
 
     /** Loads a contract the caller may see (404 otherwise, so ids do not leak). */
+    /**
+     * Fill placeholders left in a DRAFT version with the contract's current details (dates, payment terms, customer)
+     * set after creation. Returns the sections after filling.
+     */
+    async fillDraftVariables(ctx: OrgContext, contractId: string, versionId: string) {
+        const c = await this.prisma.contract.findFirstOrThrow({ where: { id: contractId, organization_id: ctx.organization_id } });
+        const [org, company, version] = await Promise.all([
+            this.prisma.organization.findUniqueOrThrow({ where: { id: ctx.organization_id }, select: { legal_name: true, display_name: true } }),
+            c.primary_company_id ? this.prisma.crmCompany.findFirst({ where: { id: c.primary_company_id, organization_id: ctx.organization_id }, select: { name: true, legal_name: true } }) : null,
+            this.prisma.contractVersion.findFirstOrThrow({ where: { id: versionId, contract_id: contractId }, include: { sections: true } }),
+        ]);
+        if (version.status !== 'DRAFT' && version.status !== 'IN_REVIEW') return version.sections;
+        const vars = { ...contractVariables(c, org, company), ...((version.variables as Record<string, string>) ?? {}) };
+        for (const [k, v] of Object.entries(contractVariables(c, org, company))) if (v) vars[k] = v;
+        const updated = version.sections.map((s) => ({ ...s, body: resolveVariables(s.body, vars) ?? s.body }));
+        const changed = updated.filter((s, i) => s.body !== version.sections[i].body);
+        if (changed.length) {
+            await this.prisma.$transaction([
+                ...changed.map((s) => this.prisma.contractSection.update({ where: { id: s.id }, data: { body: s.body } })),
+                this.prisma.contractVersion.update({ where: { id: versionId }, data: { content_hash: sectionsHash(updated), variables: vars as Prisma.InputJsonValue } }),
+            ]);
+        }
+        return updated;
+    }
+
     async assertContract(ctx: OrgContext, id: string) {
         const c = await this.prisma.contract.findFirst({ where: { id, organization_id: ctx.organization_id, ...this.scopeWhere(ctx) } });
         if (!c) throw new NotFoundException({ message: 'Contract not found', code: 'contract_not_found' });
@@ -192,14 +232,7 @@ export class ContractsService {
             await this.writeParties(tx, c.id, parties);
             if (dto.project_ids?.length) await tx.contractProject.createMany({ data: dto.project_ids.map((p, i) => ({ contract_id: c.id, project_id: p, role: i === 0 ? 'primary' : 'related' })) });
 
-            const vars: Record<string, string | null | undefined> = {
-                'contract.title': c.title, 'contract.number': c.number, 'contract.currency': c.currency,
-                'contract.start_date': fmtDate(c.start_date), 'contract.end_date': fmtDate(c.end_date), 'contract.effective_date': fmtDate(c.effective_date),
-                'contract.payment_terms': c.payment_terms, 'contract.total_value': c.total_value?.toString(),
-                'agency.name': org.display_name, 'agency.legal_name': org.legal_name,
-                'customer.name': company?.name, 'customer.legal_name': company?.legal_name || company?.name,
-                ...(dto.variables ?? {}),
-            };
+            const vars = { ...contractVariables(c, org, company), ...(dto.variables ?? {}) };
             const sections = seeds.map((s) => ({ ...s, body: resolveVariables(s.body, vars) }));
             const v = await tx.contractVersion.create({
                 data: {

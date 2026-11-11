@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { createHash, randomBytes, randomInt } from 'crypto';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 
@@ -40,6 +41,25 @@ export function sectionsHash(sections: { key: string; title: string; body: strin
 export function resolveVariables(text: string | null | undefined, vars: Record<string, string | null | undefined>) {
     if (!text) return text ?? null;
     return text.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (m, key: string) => (vars[key] !== undefined && vars[key] !== null && vars[key] !== '' ? String(vars[key]) : m));
+}
+
+/** Template placeholders still present in the document (e.g. `contract.start_date`), deduplicated. */
+export function unresolvedVariables(sections: { body: string | null }[]): string[] {
+    const found = new Set<string>();
+    for (const s of sections) for (const m of (s.body ?? '').matchAll(/\{\{\s*([\w.]+)\s*\}\}/g)) found.add(m[1]);
+    return [...found];
+}
+
+/** A document must never reach approvers or signers with unfilled `{{…}}` placeholders. */
+export function assertNoUnresolvedVariables(sections: { body: string | null }[]) {
+    const missing = unresolvedVariables(sections);
+    if (missing.length) {
+        throw new BadRequestException({
+            message: `Fill in these values in the document first: ${missing.join(', ')}. Set the contract details (dates, payment terms) or edit the text, then submit again.`,
+            code: 'unresolved_variables',
+            missing,
+        });
+    }
 }
 
 export interface RuleCondition {

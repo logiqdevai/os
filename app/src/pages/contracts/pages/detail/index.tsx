@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Archive, FilePlus2, GitBranch, MoreHorizontal, Pencil, Plus, RefreshCw, Trash2, XOctagon } from "lucide-react";
+import { Archive, FilePlus2, GitBranch, MoreHorizontal, Pencil, Plus, RefreshCw, Send, Trash2, XOctagon } from "lucide-react";
 import { Page } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -85,6 +85,9 @@ export default function ContractDetailPage() {
                         </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                        {c.status === "READY_FOR_SIGNATURE" && p.can("contracts.signatures.send") && (
+                            <Button onClick={() => setSp((prev) => { const n = new URLSearchParams(prev); n.set("tab", "signatures"); n.set("send", "1"); return n; })}><Send /> Send for signature</Button>
+                        )}
                         {canNewVersion && <Button variant="outline" loading={createVersion.isPending} onClick={newVersion}><GitBranch /> New version</Button>}
                         {live && p.can("contracts.contracts.renew") && <Button variant="outline" onClick={() => setDialog("renew")}><RefreshCw /> Renew</Button>}
                         {live && p.can("contracts.contracts.amend") && <Button variant="outline" onClick={() => setDialog("amend")}><FilePlus2 /> Amend</Button>}

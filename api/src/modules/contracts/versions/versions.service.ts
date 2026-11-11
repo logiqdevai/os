@@ -5,7 +5,7 @@ import { AuditService } from '@/shared/audit/audit.service';
 import { EventsService } from '@/shared/events/events.service';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { ContractsService } from '../contracts/contracts.service';
-import { INTERNAL_COMMENTS_READ, MEMBER_SELECT, matchesConditions, sectionsHash } from '../shared/contracts.utils';
+import { INTERNAL_COMMENTS_READ, MEMBER_SELECT, assertNoUnresolvedVariables, matchesConditions, sectionsHash } from '../shared/contracts.utils';
 import {
     ApprovalDecisionDto, CommentsQuery, CompareQuery, CreateCommentDto, CreateVersionDto, RequestReviewDto, ResolveCommentDto, ReviewDecisionDto, SubmitApprovalDto, UpdateSectionsDto, UpdateVersionDto,
 } from './dto/version.dto';
@@ -280,6 +280,7 @@ export class ContractVersionsService {
         const required = (Array.isArray(type?.required_metadata) ? type!.required_metadata : []) as string[];
         const missing = required.filter((k) => { const v = (contract as Record<string, unknown>)[k]; return v === null || v === undefined || v === ''; });
         if (missing.length) throw new BadRequestException({ message: `Fill in the required fields first: ${missing.join(', ')}`, code: 'required_metadata_missing', missing });
+        assertNoUnresolvedVariables(await this.contracts.fillDraftVariables(ctx, contractId, versionId));
 
         let steps: { step: number; step_name: string | null; approver_membership_id: string; rule_id: string | null }[];
         if (dto.steps?.length) {
