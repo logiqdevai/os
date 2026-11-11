@@ -40,3 +40,7 @@ This project is in **development with no real data**. Every database (local, sta
 - Do not add feature flags, fallbacks or "temporary" code paths to avoid a schema change. Change the schema.
 - Still keep the schema, migrations, generated client, seed (`api/prisma/seed/**`), feature specs and mockups consistent with each other in the same change.
 - This stops applying once the user says the product has real customers or production data.
+
+## UI mockups (`app/mockups/**`)
+
+Every module has a schema-aligned mockup under `app/mockups/modules/NN-name/` (NN = number of `docs/features/NN-*.md`). Before building a screen in `app/`, open `app/mockups/index.html` (catalog of all screens) or the module's `README.md`, then read the screen function: its comment block gives route, permission keys, API, MCP tool, data, states and audit events. Shared shell and styles are in `app/mockups/core/`. Folder guide: `app/mockups/README.md`.
