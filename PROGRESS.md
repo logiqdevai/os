@@ -19,7 +19,10 @@ Missing functionality may be added to DB, API and UI.
 | Migrate | `cd api && npx dotenv run -f .env.staging -- npx prisma migrate dev --name <name>` | Then `npx prisma generate` and `node docs/scripts/sync-feature-schema-refs.mjs`. |
 | Seed | `cd api && npx dotenv run -f .env.staging -- npx prisma db seed` | Idempotent. Slow over the remote link (~5–10 min). |
 
-Test account (staging, test data only): `owner@logiqdev.test` / `Password123!` — owner of org "Logiqdev" (all permissions).
+Test accounts (staging, test data only):
+- `owner@logiqdev.test` / `Password123!` — owner of org "Logiqdev" (all permissions, demo data from `scripts/demo-data.mjs`).
+- `portal.customer@logiqdev.test` / `PortalTest-2026!` — customer portal user of Helios Energy (open `/portal`).
+- `sam.signup@logiqdev.test` / `SignupTest-2026!` — owner of a fresh, nearly empty org "Sweep Studio" (sign-up flow test).
 Get a token: `curl -s -X POST localhost:3000/auth/email/login -H 'content-type: application/json' -d '{"email":"owner@logiqdev.test","password":"Password123!"}'`.
 
 DB facts: staging DB was wiped and rebuilt from the repo migrations on 2026-11-11 (user approved).
