@@ -8,6 +8,9 @@ import { PeopleApiRoutes } from "./modules/people.routes";
 import { MessagingApiRoutes } from "./modules/messaging.routes";
 import { ProposalsApiRoutes } from "./modules/proposals.routes";
 import { CommunicationsApiRoutes } from "./modules/communications.routes";
+import { AutomationApiRoutes } from "./modules/automation.routes";
+import { DocsApiRoutes } from "./modules/docs.routes";
+import { FilesApiRoutes } from "./modules/files.routes";
 import { NotificationsApiRoutes } from "./modules/notifications.routes";
 import { CalendarApiRoutes } from "./modules/calendar.routes";
 import { BillingApiRoutes } from "./modules/billing.routes";
@@ -48,6 +51,9 @@ export const ApiRoutes = {
     proposals: ProposalsApiRoutes,
     communications: CommunicationsApiRoutes,
     crm: CrmApiRoutes,
+    automation: AutomationApiRoutes,
+    docs: DocsApiRoutes,
+    files: FilesApiRoutes,
     notifications: NotificationsApiRoutes,
     calendar: CalendarApiRoutes,
     billing: BillingApiRoutes,

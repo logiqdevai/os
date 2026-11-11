@@ -1,0 +1,53 @@
+/** Module 17 Documents & Files API routes (api/src/modules/files/**). */
+export const FilesApiRoutes = {
+    upload: "/files/upload",
+    documents: "/files/documents",
+    bulk: "/files/documents/bulk",
+    recent: "/files/recent",
+    favorites: "/files/favorites",
+    storageUsage: "/files/storage-usage",
+    settings: "/files/settings",
+    categories: "/files/categories",
+    document: {
+        detail: (id: string) => `/files/documents/${id}`,
+        action: (id: string, action: "move" | "archive" | "unarchive" | "restore" | "favorite" | "legal-hold") => `/files/documents/${id}/${action}`,
+        versions: (id: string) => `/files/documents/${id}/versions`,
+        restoreVersion: (id: string, versionId: string) => `/files/documents/${id}/versions/${versionId}/restore`,
+        downloadUrl: (id: string) => `/files/documents/${id}/download-url`,
+        preview: (id: string) => `/files/documents/${id}/preview`,
+    },
+    folders: {
+        tree: "/files/folders/tree",
+        list: "/files/folders",
+        detail: (id: string) => `/files/folders/${id}`,
+        move: (id: string) => `/files/folders/${id}/move`,
+        favorite: (id: string) => `/files/folders/${id}/favorite`,
+    },
+    shares: {
+        list: "/files/shares",
+        directory: "/files/shares/directory",
+        detail: (id: string) => `/files/shares/${id}`,
+        revoke: (id: string) => `/files/shares/${id}/revoke`,
+    },
+    approvals: {
+        list: "/files/approvals",
+        detail: (id: string) => `/files/approvals/${id}`,
+        decision: (id: string) => `/files/approvals/${id}/decision`,
+        cancel: (id: string) => `/files/approvals/${id}/cancel`,
+    },
+    vault: {
+        list: "/files/vault/entries",
+        detail: (id: string) => `/files/vault/entries/${id}`,
+        reveal: (id: string) => `/files/vault/entries/${id}/reveal`,
+        copy: (id: string) => `/files/vault/entries/${id}/copy`,
+        accessLog: (id: string) => `/files/vault/entries/${id}/access-log`,
+    },
+    deletionRequests: {
+        list: "/files/retention/deletion-requests",
+        action: (id: string, action: "approve" | "reject" | "cancel") => `/files/retention/deletion-requests/${id}/${action}`,
+    },
+    public: {
+        share: (token: string) => `/files/public/shares/${token}`,
+        access: (token: string) => `/files/public/shares/${token}/access`,
+    },
+};

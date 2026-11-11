@@ -6,6 +6,8 @@ import { lazy, type ComponentType, type LazyExoticComponent } from "react";
  *   { path: "/portal/*", Component: lazy(() => import("@/pages/portal/routes")) },
  */
 export const PUBLIC_ROUTES: { path: string; Component: LazyExoticComponent<ComponentType> }[] = [
+    { path: "/f/:formId", Component: lazy(() => import("@/pages/docs/public/public-form")) },
+    { path: "/share/:token", Component: lazy(() => import("@/pages/files/public/public-share")) },
     { path: "/p/:token", Component: lazy(() => import("@/pages/proposals/public/public-proposal-page")) },
     { path: "/sign/:token", Component: lazy(() => import("@/pages/contracts/public/sign-page")) },
     { path: "/print/invoices/:id", Component: lazy(() => import("@/pages/billing/print/invoice-print")) },

@@ -1,4 +1,4 @@
-import { BookOpen, ClipboardList, House, Layers, LayoutTemplate, ListChecks } from "lucide-react";
+import { BookOpen, ClipboardList, House, Layers, LayoutTemplate, ListChecks, Trash2 } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
 export const docsApp: AppDefinition = {
@@ -17,7 +17,10 @@ export const docsApp: AppDefinition = {
         ] },
         { label: "Knowledge", items: [
             { label: "Checklists", to: "/docs/checklists", icon: ListChecks },
-            { label: "Forms", to: "/docs/forms", icon: ClipboardList, permissions: ["docs.forms.read"] },
+            { label: "Forms", to: "/docs/forms", icon: ClipboardList },
+        ] },
+        { items: [
+            { label: "Trash", to: "/docs/trash", icon: Trash2 },
         ] },
     ],
 };
