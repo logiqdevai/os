@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App shell — Logiqdev OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="shell.css">
+<script src="shared.js"></script>
+</head>
+<body>
+<div class="app" id="app">
+  <nav class="rail" id="rail"></nav>
+
+  <aside class="ctx">
+    <div class="ctx-head"><b id="ctxTitle"></b><span id="ctxAction"></span><button class="btn ghost icon sm" id="toggleCtx" title="Hide panel"><i data-i="panel" data-s="15"></i></button></div>
+    <div class="ctx-body" id="ctxBody"></div>
+    <div class="ctx-foot">
+      <button class="org"><span class="logo" style="width:24px;height:24px;font-size:11px">L</span><div style="flex:1"><b>Logiqdev</b><small>Main branch</small></div><i data-i="down" data-s="14"></i></button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="bar-top">
+      <button class="btn ghost icon" id="reopen" style="display:none" title="Show panel"><i data-i="panel" data-s="16"></i></button>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="spacer"></div>
+      <button class="search-trigger"><i data-i="search" data-s="14"></i>Search or run a command…<span class="kbd">⌘K</span></button>
+      <button class="btn primary" id="newBtn"></button>
+      <button class="btn icon ghost" title="AI assistant"><i data-i="sparkles"></i></button>
+      <span class="avatar lg">PR</span>
+    </header>
+    <main class="content" id="page"></main>
+  </div>
+</div>
+<div id="tip"></div>
+
+<script src="apps.js"></script>
+<script src="views.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const app = $('app'), rail = $('rail'), body = $('ctxBody'), tip = $('tip');
+  let current = (location.hash || '#tasks').slice(1);
+  if (!appById(current)) current = 'tasks';
+
+  /* ---- rail: apps (flat, no groups), scrollable middle, fixed bottom actions ---- */
+  function drawRail() {
+    let h = '<span class="logo">L</span><div class="rail-mid">';
+    APPS.forEach(a => {
+      if (a.sep) h += '<div class="rail-sep"></div>';
+      const badge = a.id === 'support' ? '<span class="nbadge">3</span>' : a.id === 'messages' ? '<span class="dotbadge"></span>' : '';
+      h += `<button class="rail-btn ${a.id === current ? 'active' : ''}" data-app="${a.id}" data-tip="${a.label}">${LQ.icon(a.icon, 19)}${badge}</button>`;
+    });
+    h += '</div><div class="rail-bot">' +
+      `<button class="rail-btn" data-tip="Notifications">${LQ.icon('bell', 19)}<span class="dotbadge"></span></button>` +
+      `<button class="rail-btn" data-tip="AI assistant">${LQ.icon('sparkles', 19)}</button>` +
+      `<button class="rail-btn" data-theme-btn></button>` +
+      `<button class="rail-btn" data-tip="Admin & settings">${LQ.icon('settings', 19)}</button></div>`;
+    rail.innerHTML = h;
+    rail.querySelectorAll('[data-app]').forEach(b => b.onclick = () => go(b.dataset.app));
+    rail.querySelectorAll('[data-theme-btn]').forEach(b => { LQ.paintThemeBtn(b); b.onclick = () => LQ.toggleTheme(); });
+    rail.querySelectorAll('[data-tip]').forEach(b => {
+      b.onmouseenter = () => { tip.textContent = b.dataset.tip; tip.style.display = 'block'; const r = b.getBoundingClientRect(); tip.style.left = (r.right + 8) + 'px'; tip.style.top = (r.top + r.height / 2 - tip.offsetHeight / 2) + 'px'; };
+      b.onmouseleave = () => { tip.style.display = 'none'; };
+    });
+  }
+
+  /* ---- context panel ---- */
+  function itemHtml(it) {
+    const lead = it.i ? LQ.icon(it.i, 16) : it.dot ? `<span class="sq" style="background:var(--${it.dot})"></span>` : it.av ? LQ.av(it.av[0], it.av[1], '', it.av[2]) : it.pre ? `<span class="pre">${it.pre}</span>` : '';
+    const trail = (it.tag ? `<span class="tagx">${it.tag}</span>` : '') + (it.c ? `<span class="count ${it.alert ? 'alert' : ''}">${it.c}</span>` : '') + (it.children ? `<span class="chev">${LQ.icon('right', 12)}</span>` : '');
+    const cls = 'nav-item' + (it.active ? ' active' : '') + (it.bold ? ' unread' : '') + (it.tag && it.c ? ' hasc' : '');
+    let h = `<div class="${it.children ? 'mod' + (it.open ? ' open' : '') : ''}"><button class="${cls}">${lead}<span>${it.l}</span>${trail}</button>`;
+    if (it.children) h += '<div class="nav-sub">' + it.children.map(c => `<button class="nav-item">${c}</button>`).join('') + '</div>';
+    return h + '</div>';
+  }
+  function drawPanel(a) {
+    $('ctxTitle').textContent = a.panel.title;
+    $('ctxAction').innerHTML = a.panel.action ? `<button class="btn ghost icon sm" title="${a.panel.action === 'plus' ? 'Create' : a.panel.action === 'edit' ? 'Compose' : 'Settings'}">${LQ.icon(a.panel.action === 'settings' ? 'settings' : a.panel.action, 15)}</button>` : '';
+    body.innerHTML = a.panel.blocks.map(b =>
+      (b.label ? `<div class="nav-label"><span>${b.label}</span>${b.action ? `<span class="ctx-label-btn">${LQ.icon('plus', 13)}</span>` : ''}</div>` : '') + b.items.map(itemHtml).join('')
+    ).join('');
+    body.querySelectorAll('.mod > .nav-item').forEach(b => b.onclick = () => b.parentElement.classList.toggle('open'));
+    body.querySelectorAll('.nav-item:not(.mod > .nav-item)').forEach(b => b.onclick = () => { body.querySelectorAll('.nav-item.active').forEach(x => x.classList.remove('active')); b.classList.add('active'); });
+  }
+
+  /* ---- main view ---- */
+  function drawMain(a) {
+    const v = VIEWS[a.id], page = $('page');
+    page.classList.toggle('fill', !!(v && v.fill));
+    page.innerHTML = v ? v.html() : VIEWS.placeholder(a);
+    page.scrollTop = 0;
+    $('crumbs').innerHTML = `${LQ.icon(a.icon, 14)}<span>${a.label}</span>${LQ.icon('right', 12)}<b>${(a.panel.blocks.flatMap(b => b.items).find(i => i.active) || a.panel.blocks[0].items[0]).l}</b>`;
+    $('newBtn').innerHTML = `${LQ.icon('plus', 14)}${a.newLabel}`;
+    LQ.hydrate(page);
+  }
+
+  function go(id) {
+    current = id; history.replaceState(null, '', '#' + id);
+    const a = appById(id);
+    app.classList.remove('no-ctx'); $('reopen').style.display = 'none';
+    drawRail(); drawPanel(a); drawMain(a); LQ.hydrate();
+    document.title = a.label + ' — Logiqdev OS';
+  }
+  $('toggleCtx').onclick = () => { app.classList.add('no-ctx'); $('reopen').style.display = ''; };
+  $('reopen').onclick = () => { app.classList.remove('no-ctx'); $('reopen').style.display = 'none'; };
+  addEventListener('hashchange', () => { const id = location.hash.slice(1); if (appById(id) && id !== current) go(id); });
+  go(current);
+</script>
+</body>
+</html>

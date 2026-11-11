@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logiqdev OS — Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  body { overflow-y: auto; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 56px 32px 80px; }
+  h1 { font-size: 36px; font-weight: 600; color: var(--ink); letter-spacing: -.3px; line-height: 1.1; margin-top: 14px; }
+  .lead { color: var(--mute); margin: 10px 0 32px; max-width: 640px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--ash); font-weight: 500; margin: 28px 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden; display: block; transition: border-color .15s; }
+  .card:hover { border-color: var(--hairline-strong); }
+  .thumb { position: relative; height: 190px; overflow: hidden; border-bottom: 1px solid var(--hairline); background: var(--canvas); }
+  .thumb iframe { position: absolute; top: 0; left: 0; width: 1400px; height: 833px; border: 0; transform: scale(.34); transform-origin: 0 0; pointer-events: none; }
+  .info { padding: 14px 16px 16px; display: flex; align-items: center; gap: 10px; }
+  .info b { color: var(--ink); font-weight: 500; }
+  .info small { display: block; color: var(--ash); font-size: 12.5px; }
+  .card.todo { border-style: dashed; background: transparent; padding: 16px; color: var(--ash); }
+  .card.todo b { color: var(--mute); font-weight: 500; display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="badge blue">Mockups</span>
+  <h1>Logiqdev OS</h1>
+  <p class="lead">Static HTML mockups. Light + dark themes via semantic tokens (toggle in the rail, or add <code>?theme=light</code>). Each rail entry is its own app with its own panel and layout. Files: <code>shared.css</code> tokens, <code>shell.css</code> shell and views, <code>apps.js</code> app registry, <code>views.js</code> app screens.</p>
+
+  <h2>Apps (each has its own panel + layout)</h2>
+  <div class="grid">
+    <a class="card" href="app-shell.html#tasks">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#tasks" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Tasks</b><small>Linear-style grouped issue list</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+    <a class="card" href="app-shell.html#messages">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#messages" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Messages</b><small>Slack-style channels, DMs, client channels and threads</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+    <a class="card" href="app-shell.html#support">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#support" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Support</b><small>Intercom-style shared inbox with customer context</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+    <a class="card" href="app-shell.html#campaigns">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#campaigns" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Campaigns</b><small>Email + SMS campaign manager</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+    <a class="card" href="app-shell.html#projects">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#projects" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Projects</b><small>Portfolio overview</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+  </div>
+
+  <h2>Not mocked yet</h2>
+  <div class="grid">
+    <div class="card todo"><b>CRM, Proposals, Contracts, Client portal</b>Sales apps</div>
+    <div class="card todo"><b>Billing, Expenses, Time, Calendar</b>Money &amp; time apps</div>
+    <div class="card todo"><b>People, Docs, Files, Automation</b>Company apps</div>
+    <div class="card todo"><b>Command palette, notifications, AI panel</b>Shell overlays</div>
+  </div>
+</div>
+<script src="shared.js"></script>
+</body>
+</html>
