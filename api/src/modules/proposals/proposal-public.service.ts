@@ -101,7 +101,7 @@ export class ProposalPublicService {
         const vars = (version.variables ?? {}) as Record<string, string>;
         const [decision, comments] = await Promise.all([
             this.prisma.proposalAcceptance.findFirst({ where: { proposal_id: p.id, version_id: version.id }, orderBy: { created_at: 'desc' }, select: { decision: true, signer_name: true, signer_title: true, created_at: true, feedback: true, selected_optional_item_ids: true } }),
-            this.prisma.proposalComment.findMany({ where: { proposal_id: p.id, is_internal: false }, orderBy: { created_at: 'asc' }, select: { id: true, body: true, created_at: true, section_id: true, author_contact_id: true, author_membership_id: true } }),
+            this.prisma.proposalComment.findMany({ where: { proposal_id: p.id, is_internal: false }, orderBy: { created_at: 'asc' }, select: { id: true, body: true, created_at: true, section_id: true, author_contact_id: true, author_membership_id: true, author_name: true } }),
         ]);
 
         if (state === 'ACTIVE') {
@@ -142,7 +142,7 @@ export class ProposalPublicService {
                 totals: this.quote(version.line_items, decision?.selected_optional_item_ids ?? version.line_items.filter((l) => l.is_optional && l.selected_by_customer).map((l) => l.id)),
             },
             decision,
-            comments: comments.map((c) => ({ id: c.id, body: c.body, created_at: c.created_at, section_id: c.section_id, from: c.author_membership_id ? 'agency' : 'customer' })),
+            comments: comments.map((c) => ({ id: c.id, body: c.body, created_at: c.created_at, section_id: c.section_id, author_name: c.author_name, from: c.author_membership_id ? 'agency' : 'customer' })),
         };
     }
 
@@ -244,14 +244,14 @@ export class ProposalPublicService {
         const contactName = p.contact ? `${p.contact.first_name} ${p.contact.last_name ?? ''}`.trim().toLowerCase() : '';
         const isContact = contactName && dto.author_name.trim().toLowerCase() === contactName;
         const c = await this.prisma.proposalComment.create({
-            data: { proposal_id: p.id, version_id: p.sent_version_id, section_id: dto.section_id ?? null, author_contact_id: isContact ? p.contact_id : null, is_internal: false, body: isContact ? dto.body : `${dto.author_name.trim()}: ${dto.body}` },
+            data: { proposal_id: p.id, version_id: p.sent_version_id, section_id: dto.section_id ?? null, author_contact_id: isContact ? p.contact_id : null, author_name: dto.author_name.trim(), is_internal: false, body: dto.body },
         });
         await this.prisma.proposalEvent.create({ data: { proposal_id: p.id, version_id: p.sent_version_id, type: ProposalEventType.COMMENTED, actor_contact_id: p.contact_id, ip_address: meta.ip ?? null, user_agent: meta.user_agent ?? null, metadata: { comment_id: c.id, author_name: dto.author_name } } });
         this.events.publish(externalContext(p.organization_id, meta), {
             event_key: 'proposals.proposal.customer_commented', module: ModuleKey.PROPOSALS, entity_kind: 'proposal', entity_id: p.id,
             payload: { number: p.number, comment_id: c.id, author_name: dto.author_name, owner_membership_id: p.owner_membership_id },
         });
-        return { id: c.id, body: c.body, created_at: c.created_at, section_id: c.section_id, from: 'customer' };
+        return { id: c.id, body: c.body, created_at: c.created_at, section_id: c.section_id, author_name: c.author_name, from: 'customer' };
     }
 
     // --- EMAIL_VERIFIED links -------------------------------------------------------------------------

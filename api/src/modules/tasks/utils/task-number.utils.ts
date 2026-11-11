@@ -4,23 +4,23 @@ const ENTITY = 'task';
 const PREFIX = 'TASK';
 
 /**
- * Allocate the next task number (06 §3) inside the caller's transaction. The counter is a NumberSequence row
- * (entity_type `task`, never resets); the atomic `increment` takes a row lock until the transaction commits, so two
- * concurrent creates can never get the same number and a rolled-back create never leaves a gap twice.
- * Numbers are unique per organization (Task @@unique([organization_id, number])); the identifier shown to people is
- * `<Team.task_key>-<number>`, e.g. WEB-142.
+ * Allocate the next task number (06 §3) for a team inside the caller's transaction. Each team has its own counter
+ * (NumberSequence entity_type `task`, prefix = team id; tasks without a team share prefix `TASK`), so every team
+ * starts at 1 like Linear (WEB-1, APP-1). The atomic `increment` takes a row lock until the transaction commits, so two
+ * concurrent creates never get the same number. Unique key: Task @@unique([organization_id, team_id, number]).
  */
-export async function nextTaskNumber(tx: Prisma.TransactionClient, organizationId: string): Promise<number> {
-    let seq = await tx.numberSequence.findFirst({ where: { organization_id: organizationId, entity_type: ENTITY, prefix: PREFIX, year: null } });
+export async function nextTaskNumber(tx: Prisma.TransactionClient, organizationId: string, teamId: string | null): Promise<number> {
+    const prefix = teamId ?? PREFIX;
+    let seq = await tx.numberSequence.findFirst({ where: { organization_id: organizationId, entity_type: ENTITY, prefix, year: null } });
     if (!seq) {
-        const max = await tx.task.aggregate({ where: { organization_id: organizationId }, _max: { number: true } });
+        const max = await tx.task.aggregate({ where: { organization_id: organizationId, team_id: teamId }, _max: { number: true } });
         try {
             seq = await tx.numberSequence.create({
-                data: { organization_id: organizationId, entity_type: ENTITY, prefix: PREFIX, year: null, reset_policy: NumberResetPolicy.NEVER, padding: 0, next_number: (max._max.number ?? 0) + 1 },
+                data: { organization_id: organizationId, entity_type: ENTITY, prefix, year: null, reset_policy: NumberResetPolicy.NEVER, padding: 0, next_number: (max._max.number ?? 0) + 1 },
             });
         } catch (error) {
             if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) throw error;
-            seq = await tx.numberSequence.findFirstOrThrow({ where: { organization_id: organizationId, entity_type: ENTITY, prefix: PREFIX, year: null } });
+            seq = await tx.numberSequence.findFirstOrThrow({ where: { organization_id: organizationId, entity_type: ENTITY, prefix, year: null } });
         }
     }
     const updated = await tx.numberSequence.update({ where: { id: seq.id }, data: { next_number: { increment: 1 } } });

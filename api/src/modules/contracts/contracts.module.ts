@@ -1,3 +1,4 @@
+import { FilesModule } from '../files/files.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ResendModule } from '@/integrations/notifications/resend/resend.module';
@@ -17,7 +18,7 @@ import { ContractsMcp } from './contracts.mcp';
 
 /** 04 Contracts — records, library, versions/review/approval, obligations, in-house e-signature (also usable by 03). */
 @Module({
-    imports: [ConfigModule, ResendModule, NumberingModule],
+    imports: [ConfigModule, ResendModule, NumberingModule, FilesModule],
     controllers: [ContractLibraryController, ContractsController, ContractVersionsController, ContractObligationsController, SignaturesController, PublicSigningController],
     providers: [ContractsService, ContractLibraryService, ContractVersionsService, ContractObligationsService, SignaturesService, ContractMailerService, ContractsMcp],
     exports: [ContractsService, SignaturesService],

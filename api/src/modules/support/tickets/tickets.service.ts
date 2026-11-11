@@ -564,7 +564,7 @@ export class TicketsService {
         const task = await this.prisma.$transaction(async (tx) => {
             const statuses = await ensureTaskStatuses(tx, ctx.organization_id, teamId);
             const status = defaultStatus(statuses);
-            const number = await nextTaskNumber(tx, ctx.organization_id);
+            const number = await nextTaskNumber(tx, ctx.organization_id, teamId);
             const created = await tx.task.create({
                 data: {
                     organization_id: ctx.organization_id,

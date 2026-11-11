@@ -31,38 +31,38 @@ The finance module should support one-time payments, recurring subscriptions, qu
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Customer billing** | | | |
-| `BillingProfile` | `billing_profiles` | [L7323](../../api/prisma/schema.prisma#L7323) | 08 "Customer Billing" — billing profile of a Customer (CRM Company, 02). The customer record at each connected provider is a PaymentProviderObject (object_ty… |
-| `PaymentMethod` | `payment_methods` | [L7373](../../api/prisma/schema.prisma#L7373) | 08 "Customer Billing" — stored payment methods; card data never stored, only provider tokens. A saved method belongs to one provider connection and can only … |
+| `BillingProfile` | `billing_profiles` | [L7325](../../api/prisma/schema.prisma#L7325) | 08 "Customer Billing" — billing profile of a Customer (CRM Company, 02). The customer record at each connected provider is a PaymentProviderObject (object_ty… |
+| `PaymentMethod` | `payment_methods` | [L7375](../../api/prisma/schema.prisma#L7375) | 08 "Customer Billing" — stored payment methods; card data never stored, only provider tokens. A saved method belongs to one provider connection and can only … |
 | **Catalog** | | | |
-| `Product` | `products` | [L7406](../../api/prisma/schema.prisma#L7406) | 08 "Products & Services" — the platform catalog used by 02 deal line items, 03 proposals and 18 rates. |
-| `Price` | `prices` | [L7436](../../api/prisma/schema.prisma#L7436) | 08 — a price of a product: one-time or recurring, per currency. |
-| `TaxRate` | `tax_rates` | [L7462](../../api/prisma/schema.prisma#L7462) | 08 "Taxes & Discounts" — tax rates incl. VAT and regional rules. |
-| `Coupon` | `coupons` | [L7495](../../api/prisma/schema.prisma#L7495) | 08 "Taxes & Discounts" — percentage or fixed discounts, reusable as coupons. |
+| `Product` | `products` | [L7408](../../api/prisma/schema.prisma#L7408) | 08 "Products & Services" — the platform catalog used by 02 deal line items, 03 proposals and 18 rates. |
+| `Price` | `prices` | [L7438](../../api/prisma/schema.prisma#L7438) | 08 — a price of a product: one-time or recurring, per currency. |
+| `TaxRate` | `tax_rates` | [L7464](../../api/prisma/schema.prisma#L7464) | 08 "Taxes & Discounts" — tax rates incl. VAT and regional rules. |
+| `Coupon` | `coupons` | [L7497](../../api/prisma/schema.prisma#L7497) | 08 "Taxes & Discounts" — percentage or fixed discounts, reusable as coupons. |
 | **Invoicing** | | | |
-| `InvoiceTemplate` | `invoice_templates` | [L7523](../../api/prisma/schema.prisma#L7523) | 08 "Invoicing" — invoice templates: layout, branding and default texts. Organization branding (01 §15) is the fallback. |
-| `Invoice` | `invoices` | [L7550](../../api/prisma/schema.prisma#L7550) | 08 "Invoicing" — the invoice. Numbering via NumberSequence (INV-2026-0001). |
-| `InvoiceLineItem` | `invoice_line_items` | [L7659](../../api/prisma/schema.prisma#L7659) | 08 "Invoicing" — line items; milestone and time entries link project billing (05 §20, 18 §7). |
-| `InvoiceReminder` | `invoice_reminders` | [L7695](../../api/prisma/schema.prisma#L7695) | 08 "Automation" — reminder / dunning actions sent for an invoice. Delivery is 11/14. |
+| `InvoiceTemplate` | `invoice_templates` | [L7525](../../api/prisma/schema.prisma#L7525) | 08 "Invoicing" — invoice templates: layout, branding and default texts. Organization branding (01 §15) is the fallback. |
+| `Invoice` | `invoices` | [L7552](../../api/prisma/schema.prisma#L7552) | 08 "Invoicing" — the invoice. Numbering via NumberSequence (INV-2026-0001). |
+| `InvoiceLineItem` | `invoice_line_items` | [L7661](../../api/prisma/schema.prisma#L7661) | 08 "Invoicing" — line items; milestone and time entries link project billing (05 §20, 18 §7). |
+| `InvoiceReminder` | `invoice_reminders` | [L7697](../../api/prisma/schema.prisma#L7697) | 08 "Automation" — reminder / dunning actions sent for an invoice. Delivery is 11/14. |
 | **Payments** | | | |
-| `Payment` | `payments` | [L7717](../../api/prisma/schema.prisma#L7717) | 08 "Payments" — a payment received (online or manually recorded). Allocations split it across invoices. |
-| `PaymentAllocation` | `payment_allocations` | [L7774](../../api/prisma/schema.prisma#L7774) | Partial and multi-invoice payments (08 "Partial payments"). |
-| `Refund` | `refunds` | [L7790](../../api/prisma/schema.prisma#L7790) | 08 "Payments" — refunds against a payment. |
-| `CreditNote` | `credit_notes` | [L7810](../../api/prisma/schema.prisma#L7810) | 08 "Invoicing" — credit notes issued against an invoice. Numbered via NumberSequence. |
+| `Payment` | `payments` | [L7719](../../api/prisma/schema.prisma#L7719) | 08 "Payments" — a payment received (online or manually recorded). Allocations split it across invoices. |
+| `PaymentAllocation` | `payment_allocations` | [L7776](../../api/prisma/schema.prisma#L7776) | Partial and multi-invoice payments (08 "Partial payments"). |
+| `Refund` | `refunds` | [L7792](../../api/prisma/schema.prisma#L7792) | 08 "Payments" — refunds against a payment. |
+| `CreditNote` | `credit_notes` | [L7812](../../api/prisma/schema.prisma#L7812) | 08 "Invoicing" — credit notes issued against an invoice. Numbered via NumberSequence. |
 | **Subscriptions** | | | |
-| `Subscription` | `subscriptions` | [L7848](../../api/prisma/schema.prisma#L7848) | 08 "Subscription Management" — multiple active subscriptions per customer. |
-| `SubscriptionItem` | `subscription_items` | [L7912](../../api/prisma/schema.prisma#L7912) | 08 — plan lines of a subscription (upgrades/downgrades change items, history in audit_events). |
-| `DunningPolicy` | `dunning_policies` | [L7934](../../api/prisma/schema.prisma#L7934) | 08 "Recurring Billing" — dunning policy; steps are scheduled by the Automation Engine (20). |
-| `ProjectBillingSettings` | `project_billing_settings` | [L7953](../../api/prisma/schema.prisma#L7953) | 08 "Project Billing" — how a project is billed (05 §63 consumes the result). |
-| `PaymentProviderConnection` | `payment_provider_connections` | [L7983](../../api/prisma/schema.prisma#L7983) | 08 "Payment Providers" — one connected payment provider account of an organization. An organization can connect several providers (Stripe, Viva Wallet) and s… |
-| `PaymentProviderObject` | `payment_provider_objects` | [L8047](../../api/prisma/schema.prisma#L8047) | 08 "Payment Providers" — the copy of a platform billing record at one provider connection (customer, product, price, tax rate, coupon). One row per record an… |
-| `ProviderWebhookEvent` | `provider_webhook_events` | [L8070](../../api/prisma/schema.prisma#L8070) | Idempotent processing of provider webhooks (payment providers, email/SMS providers; signature providers also use SignatureEvent). |
+| `Subscription` | `subscriptions` | [L7850](../../api/prisma/schema.prisma#L7850) | 08 "Subscription Management" — multiple active subscriptions per customer. |
+| `SubscriptionItem` | `subscription_items` | [L7914](../../api/prisma/schema.prisma#L7914) | 08 — plan lines of a subscription (upgrades/downgrades change items, history in audit_events). |
+| `DunningPolicy` | `dunning_policies` | [L7936](../../api/prisma/schema.prisma#L7936) | 08 "Recurring Billing" — dunning policy; steps are scheduled by the Automation Engine (20). |
+| `ProjectBillingSettings` | `project_billing_settings` | [L7955](../../api/prisma/schema.prisma#L7955) | 08 "Project Billing" — how a project is billed (05 §63 consumes the result). |
+| `PaymentProviderConnection` | `payment_provider_connections` | [L7985](../../api/prisma/schema.prisma#L7985) | 08 "Payment Providers" — one connected payment provider account of an organization. An organization can connect several providers (Stripe, Viva Wallet) and s… |
+| `PaymentProviderObject` | `payment_provider_objects` | [L8049](../../api/prisma/schema.prisma#L8049) | 08 "Payment Providers" — the copy of a platform billing record at one provider connection (customer, product, price, tax rate, coupon). One row per record an… |
+| `ProviderWebhookEvent` | `provider_webhook_events` | [L8072](../../api/prisma/schema.prisma#L8072) | Idempotent processing of provider webhooks (payment providers, email/SMS providers; signature providers also use SignatureEvent). |
 | **Payment links, disputes, payouts, approvals and report schedules (08)** | | | |
-| `PaymentLink` | `payment_links` | [L8160](../../api/prisma/schema.prisma#L8160) | 08 "Payment Providers" — a shareable, reusable hosted checkout: for one invoice, a price from the catalog or a free / custom amount. The provider-side object… |
-| `PaymentDispute` | `payment_disputes` | [L8202](../../api/prisma/schema.prisma#L8202) | 08 "Payment Providers" — a dispute / chargeback opened at a provider against a payment. Created by the dispute.opened webhook event, closed by dispute.closed… |
-| `PaymentPayout` | `payment_payouts` | [L8233](../../api/prisma/schema.prisma#L8233) | 08 "Payment Providers" — a payout from a provider balance to the bank (event payout.paid). Reconciled against the bank-side ledger record (09 LedgerSettlemen… |
-| `FinanceApprovalRule` | `finance_approval_rules` | [L8267](../../api/prisma/schema.prisma#L8267) | 08 "Invoicing" / 09 "Audit Trail" — one approval policy for every money movement: invoices, refunds, credit notes, write-offs (08) and ledger records, employ… |
-| `FinanceApproval` | `finance_approvals` | [L8300](../../api/prisma/schema.prisma#L8300) | 08 "Invoicing" / 09 "Audit Trail" — an approval request and decision for one step on one item. `entity_id` is the invoice, refund, credit note, ledger record… |
-| `FinanceReportSchedule` | `finance_report_schedules` | [L8334](../../api/prisma/schema.prisma#L8334) | 08 "Financial Reporting" / 09 "Financial Dashboard" — a saved report definition with optional recurring e-mailed export (monthly / quarterly report to the ac… |
+| `PaymentLink` | `payment_links` | [L8162](../../api/prisma/schema.prisma#L8162) | 08 "Payment Providers" — a shareable, reusable hosted checkout: for one invoice, a price from the catalog or a free / custom amount. The provider-side object… |
+| `PaymentDispute` | `payment_disputes` | [L8204](../../api/prisma/schema.prisma#L8204) | 08 "Payment Providers" — a dispute / chargeback opened at a provider against a payment. Created by the dispute.opened webhook event, closed by dispute.closed… |
+| `PaymentPayout` | `payment_payouts` | [L8235](../../api/prisma/schema.prisma#L8235) | 08 "Payment Providers" — a payout from a provider balance to the bank (event payout.paid). Reconciled against the bank-side ledger record (09 LedgerSettlemen… |
+| `FinanceApprovalRule` | `finance_approval_rules` | [L8269](../../api/prisma/schema.prisma#L8269) | 08 "Invoicing" / 09 "Audit Trail" — one approval policy for every money movement: invoices, refunds, credit notes, write-offs (08) and ledger records, employ… |
+| `FinanceApproval` | `finance_approvals` | [L8302](../../api/prisma/schema.prisma#L8302) | 08 "Invoicing" / 09 "Audit Trail" — an approval request and decision for one step on one item. `entity_id` is the invoice, refund, credit note, ledger record… |
+| `FinanceReportSchedule` | `finance_report_schedules` | [L8336](../../api/prisma/schema.prisma#L8336) | 08 "Financial Reporting" / 09 "Financial Dashboard" — a saved report definition with optional recurring e-mailed export (monthly / quarterly report to the ac… |
 
 **Owned enums (26):** `ProductType`, `PriceType`, `BillingInterval`, `TaxBehavior`, `DiscountType`, `CouponDuration`, `InvoiceStatus`, `BillingModel`, `PaymentProvider`, `PaymentProviderConnectionStatus`, `ProviderObjectType`, `PaymentMethodType`, `PaymentStatus`, `RefundStatus`, `CreditNoteStatus`, `SubscriptionStatus`, `CollectionMethod`, `DunningAction`, `PaymentLinkStatus`, `PaymentDisputeStatus`, `PaymentPayoutStatus`, `VatValidationStatus`, `FinanceApprovalEntityType`, `FinanceApprovalDecision`, `FinanceReportFormat`, `NumberResetPolicy`
 
@@ -98,10 +98,10 @@ The finance module should support one-time payments, recurring subscriptions, qu
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `Contract.billing_model` ([04](./04-contracts.md), [L4733](../../api/prisma/schema.prisma#L4733)) — 04 §54, 18 §6 — billing model agreed in the contract (08 BillingModel); seeds ProjectBillingSettings on project creation.
-- `RecurringExpense.interval` ([09](./09-income-expense-management.md), [L9006](../../api/prisma/schema.prisma#L9006)) — MONTH / QUARTER / YEAR, or WEEK/DAY with interval_count for custom recurrence (08 BillingInterval).
-- `CommDeliveryEvent.provider_webhook_event_id` ([11](./11-communication-center.md), [L12230](../../api/prisma/schema.prisma#L12230)) — 08 ProviderWebhookEvent that carried this event.
-- `Segment.definition` ([11](./11-communication-center.md), [L12343](../../api/prisma/schema.prisma#L12343)) — Filter tree: { and: [ { field, op, value }, { or: [...] } ] } over CRM fields, custom fields, tags, subscription plan / billing status / outstanding invoices…
+- `Contract.billing_model` ([04](./04-contracts.md), [L4735](../../api/prisma/schema.prisma#L4735)) — 04 §54, 18 §6 — billing model agreed in the contract (08 BillingModel); seeds ProjectBillingSettings on project creation.
+- `RecurringExpense.interval` ([09](./09-income-expense-management.md), [L9008](../../api/prisma/schema.prisma#L9008)) — MONTH / QUARTER / YEAR, or WEEK/DAY with interval_count for custom recurrence (08 BillingInterval).
+- `CommDeliveryEvent.provider_webhook_event_id` ([11](./11-communication-center.md), [L12232](../../api/prisma/schema.prisma#L12232)) — 08 ProviderWebhookEvent that carried this event.
+- `Segment.definition` ([11](./11-communication-center.md), [L12345](../../api/prisma/schema.prisma#L12345)) — Filter tree: { and: [ { field, op, value }, { or: [...] } ] } over CRM fields, custom fields, tags, subscription plan / billing status / outstanding invoices…
 
 <!-- schema-refs:end -->
 
@@ -150,7 +150,7 @@ Definition of done for each resource of this module: permission keys in the cata
 ## Customer Billing
 
 <!-- schema-section:start -->
-> **Schema:** `BillingProfile` ([billing_profiles](../../api/prisma/schema.prisma#L7323)) · `PaymentMethod` ([payment_methods](../../api/prisma/schema.prisma#L7373))
+> **Schema:** `BillingProfile` ([billing_profiles](../../api/prisma/schema.prisma#L7325)) · `PaymentMethod` ([payment_methods](../../api/prisma/schema.prisma#L7375))
 <!-- schema-section:end -->
 
 Manage financial information for every customer, including:
@@ -169,7 +169,7 @@ Manage financial information for every customer, including:
 ## Products & Services
 
 <!-- schema-section:start -->
-> **Schema:** `Product` ([products](../../api/prisma/schema.prisma#L7406)) · enum `ProductType` ([L7166](../../api/prisma/schema.prisma#L7166))
+> **Schema:** `Product` ([products](../../api/prisma/schema.prisma#L7408)) · enum `ProductType` ([L7168](../../api/prisma/schema.prisma#L7168))
 <!-- schema-section:end -->
 
 > **Platform catalog.** This is the single products and services catalog of the Agency OS. 02 CRM deal line items and 03 Proposal line items select from it; 18 Time Tracking billing rates reference it.
@@ -190,7 +190,7 @@ Support creation and management of:
 ## Proposals & Quotations
 
 <!-- schema-section:start -->
-> **Schema:** `Invoice` ([invoices](../../api/prisma/schema.prisma#L7550)): `proposal_payment_schedule_item_id`, `proposal_version_id` · `Subscription` ([subscriptions](../../api/prisma/schema.prisma#L7848)): `proposal_version_id`
+> **Schema:** `Invoice` ([invoices](../../api/prisma/schema.prisma#L7552)): `proposal_payment_schedule_item_id`, `proposal_version_id` · `Subscription` ([subscriptions](../../api/prisma/schema.prisma#L7850)): `proposal_version_id`
 <!-- schema-section:end -->
 
 > Defined by → [03 AI-Powered Proposal & Quotation Generator](./03-proposal-quotation-generator.md) · Linear LOG-303.
@@ -208,7 +208,7 @@ Finance's responsibilities toward proposals:
 ## Invoicing
 
 <!-- schema-section:start -->
-> **Schema:** `CreditNote` ([credit_notes](../../api/prisma/schema.prisma#L7810)) · `FinanceApproval` ([finance_approvals](../../api/prisma/schema.prisma#L8300)) · `FinanceApprovalRule` ([finance_approval_rules](../../api/prisma/schema.prisma#L8267)) · `Invoice` ([invoices](../../api/prisma/schema.prisma#L7550)): `approved_by_user_id`, `sent_communication_id`, `uncollectible_at` · `InvoiceLineItem` ([invoice_line_items](../../api/prisma/schema.prisma#L7659)) · `InvoiceTemplate` ([invoice_templates](../../api/prisma/schema.prisma#L7523)) · enum `FinanceApprovalEntityType` ([L8128](../../api/prisma/schema.prisma#L8128)) · enum `InvoiceStatus` ([L7210](../../api/prisma/schema.prisma#L7210)) — other modules: `TimeEntryAdjustment` ([time_entry_adjustments](../../api/prisma/schema.prisma#L19599)) ([18](./18-time-tracking.md))
+> **Schema:** `CreditNote` ([credit_notes](../../api/prisma/schema.prisma#L7812)) · `FinanceApproval` ([finance_approvals](../../api/prisma/schema.prisma#L8302)) · `FinanceApprovalRule` ([finance_approval_rules](../../api/prisma/schema.prisma#L8269)) · `Invoice` ([invoices](../../api/prisma/schema.prisma#L7552)): `approved_by_user_id`, `sent_communication_id`, `uncollectible_at` · `InvoiceLineItem` ([invoice_line_items](../../api/prisma/schema.prisma#L7661)) · `InvoiceTemplate` ([invoice_templates](../../api/prisma/schema.prisma#L7525)) · enum `FinanceApprovalEntityType` ([L8130](../../api/prisma/schema.prisma#L8130)) · enum `InvoiceStatus` ([L7212](../../api/prisma/schema.prisma#L7212)) — other modules: `TimeEntryAdjustment` ([time_entry_adjustments](../../api/prisma/schema.prisma#L19601)) ([18](./18-time-tracking.md))
 <!-- schema-section:end -->
 
 > **Approvals, delivery, write-offs and numbering.** Approval of invoices, refunds, credit notes and write-offs follows `FinanceApprovalRule` (amount band, currency, branch, ordered approver steps) and is recorded in `FinanceApproval`; `Invoice.approved_by_user_id` keeps the final stamp, the requester can never approve their own item (01 §96). Delivery is traced by `Invoice.sent_communication_id` (the 11 message) and `Invoice.viewed_at`. Marking an invoice uncollectible sets `uncollectible_at`, `uncollectible_reason` and `written_off_amount` (status stays OVERDUE for reporting). `NumberSequence.format` and `reset_policy` hold the number pattern (e.g. `{PREFIX}-{YYYY}-{####}`) and yearly reset; numbers are allocated gap-free in the finalize transaction.
@@ -256,7 +256,7 @@ Invoice statuses should include:
 ## Payments
 
 <!-- schema-section:start -->
-> **Schema:** `Payment` ([payments](../../api/prisma/schema.prisma#L7717)): `tax_amount` · `Refund` ([refunds](../../api/prisma/schema.prisma#L7790)) · enum `FinanceApprovalEntityType` ([L8128](../../api/prisma/schema.prisma#L8128))
+> **Schema:** `Payment` ([payments](../../api/prisma/schema.prisma#L7719)): `tax_amount` · `Refund` ([refunds](../../api/prisma/schema.prisma#L7792)) · enum `FinanceApprovalEntityType` ([L8130](../../api/prisma/schema.prisma#L8130))
 <!-- schema-section:end -->
 
 > **Payment links.** A `PaymentLink` is a reusable hosted checkout (amount or price or invoice, expiry, max uses, accepted methods, QR from `url`); payments made through it carry `Payment.payment_link_id`. Managed with `finance.payment_links.manage`.
@@ -292,7 +292,7 @@ Track:
 ## Payment Providers
 
 <!-- schema-section:start -->
-> **Schema:** `BillingProfile` ([billing_profiles](../../api/prisma/schema.prisma#L7323)): `preferred_provider_connection_id` · `Invoice` ([invoices](../../api/prisma/schema.prisma#L7550)): `provider_connection_id` · `Payment` ([payments](../../api/prisma/schema.prisma#L7717)): `payment_link_id`, `provider_connection_id` · `PaymentDispute` ([payment_disputes](../../api/prisma/schema.prisma#L8202)) · `PaymentLink` ([payment_links](../../api/prisma/schema.prisma#L8160)): `provider_connection_id` · `PaymentMethod` ([payment_methods](../../api/prisma/schema.prisma#L7373)): `provider_connection_id` · `PaymentPayout` ([payment_payouts](../../api/prisma/schema.prisma#L8233)) · `PaymentProviderConnection` ([payment_provider_connections](../../api/prisma/schema.prisma#L7983)): `currencies` · `PaymentProviderObject` ([payment_provider_objects](../../api/prisma/schema.prisma#L8047)) · `ProviderWebhookEvent` ([provider_webhook_events](../../api/prisma/schema.prisma#L8070)): `provider_connection_id` · `Subscription` ([subscriptions](../../api/prisma/schema.prisma#L7848)): `provider_connection_id` · enum `PaymentDisputeStatus` ([L8103](../../api/prisma/schema.prisma#L8103)) · enum `PaymentLinkStatus` ([L8095](../../api/prisma/schema.prisma#L8095)) · enum `PaymentPayoutStatus` ([L8112](../../api/prisma/schema.prisma#L8112)) · enum `PaymentProvider` ([L7235](../../api/prisma/schema.prisma#L7235)) · enum `PaymentProviderConnectionStatus` ([L7243](../../api/prisma/schema.prisma#L7243)) · enum `ProviderObjectType` ([L7251](../../api/prisma/schema.prisma#L7251))
+> **Schema:** `BillingProfile` ([billing_profiles](../../api/prisma/schema.prisma#L7325)): `preferred_provider_connection_id` · `Invoice` ([invoices](../../api/prisma/schema.prisma#L7552)): `provider_connection_id` · `Payment` ([payments](../../api/prisma/schema.prisma#L7719)): `payment_link_id`, `provider_connection_id` · `PaymentDispute` ([payment_disputes](../../api/prisma/schema.prisma#L8204)) · `PaymentLink` ([payment_links](../../api/prisma/schema.prisma#L8162)): `provider_connection_id` · `PaymentMethod` ([payment_methods](../../api/prisma/schema.prisma#L7375)): `provider_connection_id` · `PaymentPayout` ([payment_payouts](../../api/prisma/schema.prisma#L8235)) · `PaymentProviderConnection` ([payment_provider_connections](../../api/prisma/schema.prisma#L7985)): `currencies` · `PaymentProviderObject` ([payment_provider_objects](../../api/prisma/schema.prisma#L8049)) · `ProviderWebhookEvent` ([provider_webhook_events](../../api/prisma/schema.prisma#L8072)): `provider_connection_id` · `Subscription` ([subscriptions](../../api/prisma/schema.prisma#L7850)): `provider_connection_id` · enum `PaymentDisputeStatus` ([L8105](../../api/prisma/schema.prisma#L8105)) · enum `PaymentLinkStatus` ([L8097](../../api/prisma/schema.prisma#L8097)) · enum `PaymentPayoutStatus` ([L8114](../../api/prisma/schema.prisma#L8114)) · enum `PaymentProvider` ([L7237](../../api/prisma/schema.prisma#L7237)) · enum `PaymentProviderConnectionStatus` ([L7245](../../api/prisma/schema.prisma#L7245)) · enum `ProviderObjectType` ([L7253](../../api/prisma/schema.prisma#L7253))
 <!-- schema-section:end -->
 
 > **Disputes and payouts.** The adapter events `dispute.opened` / `dispute.closed` and `payout.paid` are stored as `PaymentDispute` and `PaymentPayout` (besides the raw `ProviderWebhookEvent`). Disputes are answered with `finance.disputes.manage`; payouts are reconciled against the connection's 09 ledger payment method.
@@ -363,7 +363,7 @@ Dashboards and reports can be filtered and grouped by provider and connection: v
 ## Subscription Management
 
 <!-- schema-section:start -->
-> **Schema:** `Subscription` ([subscriptions](../../api/prisma/schema.prisma#L7848)): `setup_fee` · enum `BillingInterval` ([L7184](../../api/prisma/schema.prisma#L7184)) · enum `SubscriptionStatus` ([L7294](../../api/prisma/schema.prisma#L7294))
+> **Schema:** `Subscription` ([subscriptions](../../api/prisma/schema.prisma#L7850)): `setup_fee` · enum `BillingInterval` ([L7186](../../api/prisma/schema.prisma#L7186)) · enum `SubscriptionStatus` ([L7296](../../api/prisma/schema.prisma#L7296))
 <!-- schema-section:end -->
 
 Provide a complete subscription management system supporting:
@@ -390,7 +390,7 @@ Support multiple active subscriptions per customer.
 ## Recurring Billing
 
 <!-- schema-section:start -->
-> **Schema:** `BillingProfile` ([billing_profiles](../../api/prisma/schema.prisma#L7323)): `dunning_policy_id` · `DunningPolicy` ([dunning_policies](../../api/prisma/schema.prisma#L7934)) · enum `DunningAction` ([L7310](../../api/prisma/schema.prisma#L7310))
+> **Schema:** `BillingProfile` ([billing_profiles](../../api/prisma/schema.prisma#L7325)): `dunning_policy_id` · `DunningPolicy` ([dunning_policies](../../api/prisma/schema.prisma#L7936)) · enum `DunningAction` ([L7312](../../api/prisma/schema.prisma#L7312))
 <!-- schema-section:end -->
 
 Automate recurring billing through:
@@ -409,7 +409,7 @@ Automate recurring billing through:
 ## Taxes & Discounts
 
 <!-- schema-section:start -->
-> **Schema:** `BillingProfile` ([billing_profiles](../../api/prisma/schema.prisma#L7323)): `custom_pricing` · `Coupon` ([coupons](../../api/prisma/schema.prisma#L7495)) · `TaxRate` ([tax_rates](../../api/prisma/schema.prisma#L7462)): `is_reverse_charge` · enum `TaxBehavior` ([L7193](../../api/prisma/schema.prisma#L7193)) · enum `VatValidationStatus` ([L8121](../../api/prisma/schema.prisma#L8121))
+> **Schema:** `BillingProfile` ([billing_profiles](../../api/prisma/schema.prisma#L7325)): `custom_pricing` · `Coupon` ([coupons](../../api/prisma/schema.prisma#L7497)) · `TaxRate` ([tax_rates](../../api/prisma/schema.prisma#L7464)): `is_reverse_charge` · enum `TaxBehavior` ([L7195](../../api/prisma/schema.prisma#L7195)) · enum `VatValidationStatus` ([L8123](../../api/prisma/schema.prisma#L8123))
 <!-- schema-section:end -->
 
 > **VAT validation and reverse charge.** `BillingProfile.vat_validation_status`, `vat_validated_at` and `reverse_charge` hold the VIES result; a `TaxRate` with `is_reverse_charge` (0%) is applied for EU B2B customers with a valid VAT id. `TaxRate.tax_category` groups rates for reports and `TaxRate.invoice_note` is the legal text printed on the invoice.
@@ -460,7 +460,7 @@ Provide real-time billing dashboards displaying:
 ## Financial Reporting
 
 <!-- schema-section:start -->
-> **Schema:** `FinanceReportSchedule` ([finance_report_schedules](../../api/prisma/schema.prisma#L8334)) · enum `FinanceReportFormat` ([L8145](../../api/prisma/schema.prisma#L8145))
+> **Schema:** `FinanceReportSchedule` ([finance_report_schedules](../../api/prisma/schema.prisma#L8336)) · enum `FinanceReportFormat` ([L8147](../../api/prisma/schema.prisma#L8147))
 <!-- schema-section:end -->
 
 > **Saved and scheduled reports.** A `FinanceReportSchedule` stores a report definition (`report_key`, filters, format) and an optional recurring e-mailed delivery (frequency, recipients), run by 20 and delivered by 11. Exports need `finance.reports.export`; saving and scheduling need `finance.reports.manage`. The same table serves the 09 reports.
@@ -490,7 +490,7 @@ Support exporting reports to:
 ## Project Billing
 
 <!-- schema-section:start -->
-> **Schema:** `InvoiceLineItem` ([invoice_line_items](../../api/prisma/schema.prisma#L7659)): `adjustment_amount` · `ProjectBillingSettings` ([project_billing_settings](../../api/prisma/schema.prisma#L7953)) · enum `BillingModel` ([L7224](../../api/prisma/schema.prisma#L7224))
+> **Schema:** `InvoiceLineItem` ([invoice_line_items](../../api/prisma/schema.prisma#L7661)): `adjustment_amount` · `ProjectBillingSettings` ([project_billing_settings](../../api/prisma/schema.prisma#L7955)) · enum `BillingModel` ([L7226](../../api/prisma/schema.prisma#L7226))
 <!-- schema-section:end -->
 
 Connect financial operations directly with projects.
@@ -538,7 +538,7 @@ Customers should be able to:
 ## Automation
 
 <!-- schema-section:start -->
-> **Schema:** `InvoiceReminder` ([invoice_reminders](../../api/prisma/schema.prisma#L7695)): `automation_run_id`
+> **Schema:** `InvoiceReminder` ([invoice_reminders](../../api/prisma/schema.prisma#L7697)): `automation_run_id`
 <!-- schema-section:end -->
 
 > Engine defined by → [20 Automation Engine](./20-automation-engine.md) · Linear LOG-410. Notifications delivered by → [14](./14-notifications-activity-center.md) · Linear LOG-403. Emails sent through → [11 Communication Center](./11-communication-center.md) · Linear LOG-106.

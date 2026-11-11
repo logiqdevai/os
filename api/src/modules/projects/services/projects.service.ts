@@ -374,7 +374,7 @@ export class ProjectsService {
             let rank: string | null = null;
             for (const t of s.tasks) {
                 rank = rankBetween(rank, null);
-                const number = await nextTaskNumber(tx, ctx.organization_id);
+                const number = await nextTaskNumber(tx, ctx.organization_id, project.team_id);
                 await tx.task.create({
                     data: {
                         organization_id: ctx.organization_id, number, team_id: project.team_id, project_id: project.id, title: t.title, description: t.description,

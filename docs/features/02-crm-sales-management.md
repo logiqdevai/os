@@ -66,7 +66,7 @@ Company
 # 2. Companies
 
 <!-- schema-section:start -->
-> **Schema:** `CrmCompany` ([crm_companies](../../api/prisma/schema.prisma#L2794)): `partner_commission_percent` · `CrmDeal` ([crm_deals](../../api/prisma/schema.prisma#L3078)): `referring_partner_company_id` · `CrmLead` ([crm_leads](../../api/prisma/schema.prisma#L3005)): `referring_partner_company_id` · enum `CrmCompanyType` ([L2556](../../api/prisma/schema.prisma#L2556)) — other modules: `Calendar` ([calendars](../../api/prisma/schema.prisma#L20094)): `company_id` ([19](./19-calendar.md)) · `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L20217)): `company_id` ([19](./19-calendar.md)) · `LedgerInvoiceImport` ([ledger_invoice_imports](../../api/prisma/schema.prisma#L8911)): `matched_company_id` ([09](./09-income-expense-management.md)) · `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8717)): `company_id` ([09](./09-income-expense-management.md)) · `LedgerSupplierProfile` ([ledger_supplier_profiles](../../api/prisma/schema.prisma#L8681)) ([09](./09-income-expense-management.md)) · `RecurringExpense` ([recurring_expenses](../../api/prisma/schema.prisma#L9006)): `company_id` ([09](./09-income-expense-management.md))
+> **Schema:** `CrmCompany` ([crm_companies](../../api/prisma/schema.prisma#L2794)): `partner_commission_percent` · `CrmDeal` ([crm_deals](../../api/prisma/schema.prisma#L3078)): `referring_partner_company_id` · `CrmLead` ([crm_leads](../../api/prisma/schema.prisma#L3005)): `referring_partner_company_id` · enum `CrmCompanyType` ([L2556](../../api/prisma/schema.prisma#L2556)) — other modules: `Calendar` ([calendars](../../api/prisma/schema.prisma#L20096)): `company_id` ([19](./19-calendar.md)) · `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L20219)): `company_id` ([19](./19-calendar.md)) · `LedgerInvoiceImport` ([ledger_invoice_imports](../../api/prisma/schema.prisma#L8913)): `matched_company_id` ([09](./09-income-expense-management.md)) · `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8719)): `company_id` ([09](./09-income-expense-management.md)) · `LedgerSupplierProfile` ([ledger_supplier_profiles](../../api/prisma/schema.prisma#L8683)) ([09](./09-income-expense-management.md)) · `RecurringExpense` ([recurring_expenses](../../api/prisma/schema.prisma#L9008)): `company_id` ([09](./09-income-expense-management.md))
 <!-- schema-section:end -->
 
 Provide complete company management. A Company is any external legal entity the agency deals with: prospect, customer, partner or vendor. Company type and lifecycle stage distinguish them; there is one record model.
@@ -133,7 +133,7 @@ Vendor companies link to supplier invoices and expenses in [09 Income & Expense]
 # 3. Contacts
 
 <!-- schema-section:start -->
-> **Schema:** `CrmContact` ([crm_contacts](../../api/prisma/schema.prisma#L2919)): `address` · enum `CrmContactRole` ([L2565](../../api/prisma/schema.prisma#L2565)) — other modules: `BillingProfile` ([billing_profiles](../../api/prisma/schema.prisma#L7323)): `billing_contact_ids` ([08](./08-financial-management-stripe-integration.md))
+> **Schema:** `CrmContact` ([crm_contacts](../../api/prisma/schema.prisma#L2919)): `address` · enum `CrmContactRole` ([L2565](../../api/prisma/schema.prisma#L2565)) — other modules: `BillingProfile` ([billing_profiles](../../api/prisma/schema.prisma#L7325)): `billing_contact_ids` ([08](./08-financial-management-stripe-integration.md))
 <!-- schema-section:end -->
 
 Provide detailed contact management.
@@ -547,7 +547,7 @@ Calls and emails carry a `direction` (inbound or outbound). A call may link its 
 # 14. Tasks & Follow-Ups
 
 <!-- schema-section:start -->
-> **Schema:** `CrmActivity` ([crm_activities](../../api/prisma/schema.prisma#L3235)) — other modules: `TaskLink` ([task_links](../../api/prisma/schema.prisma#L6955)) ([06](./06-task-management.md))
+> **Schema:** `CrmActivity` ([crm_activities](../../api/prisma/schema.prisma#L3235)) — other modules: `TaskLink` ([task_links](../../api/prisma/schema.prisma#L6957)) ([06](./06-task-management.md))
 <!-- schema-section:end -->
 
 > Defined by → [06 Task Management](./06-task-management.md) · Linear LOG-102.
@@ -578,7 +578,7 @@ Automatic follow-up reminders for inactive deals are an Automation Engine rule (
 # 15. Meetings
 
 <!-- schema-section:start -->
-> **Schema:** `CrmActivity` ([crm_activities](../../api/prisma/schema.prisma#L3235)) — other modules: `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L20217)) ([19](./19-calendar.md)) · `CalendarEventType` ([calendar_event_types](../../api/prisma/schema.prisma#L20023)): `is_customer_facing` ([19](./19-calendar.md))
+> **Schema:** `CrmActivity` ([crm_activities](../../api/prisma/schema.prisma#L3235)) — other modules: `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L20219)) ([19](./19-calendar.md)) · `CalendarEventType` ([calendar_event_types](../../api/prisma/schema.prisma#L20025)): `is_customer_facing` ([19](./19-calendar.md))
 <!-- schema-section:end -->
 
 > Event record defined by → [19 Calendar](./19-calendar.md) · Linear LOG-409.
@@ -672,7 +672,7 @@ Maintain historical lifecycle changes.
 # 18. Customer 360 View
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `CommMessageLink` ([comm_message_links](../../api/prisma/schema.prisma#L12212)) ([11](./11-communication-center.md))
+> **Schema:** other modules: `CommMessageLink` ([comm_message_links](../../api/prisma/schema.prisma#L12214)) ([11](./11-communication-center.md))
 <!-- schema-section:end -->
 
 Every company and contact should have a unified **360° relationship view**.
@@ -711,7 +711,7 @@ This should provide a complete understanding of the customer's relationship with
 # 19. Customer Revenue & Commercial History
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `LedgerProfitabilitySnapshot` ([ledger_profitability_snapshots](../../api/prisma/schema.prisma#L9286)) ([09](./09-income-expense-management.md)) · enum `LedgerProfitabilityScope` ([L8532](../../api/prisma/schema.prisma#L8532)) ([09](./09-income-expense-management.md))
+> **Schema:** other modules: `LedgerProfitabilitySnapshot` ([ledger_profitability_snapshots](../../api/prisma/schema.prisma#L9288)) ([09](./09-income-expense-management.md)) · enum `LedgerProfitabilityScope` ([L8534](../../api/prisma/schema.prisma#L8534)) ([09](./09-income-expense-management.md))
 <!-- schema-section:end -->
 
 Provide financial visibility directly inside CRM records.
@@ -1049,7 +1049,7 @@ Allow multiple records to be associated with the same entity where appropriate.
 # 29. CRM Views
 
 <!-- schema-section:start -->
-> **Schema:** `SavedView` ([saved_views](../../api/prisma/schema.prisma#L2498)) — other modules: `Segment` ([segments](../../api/prisma/schema.prisma#L12343)) ([11](./11-communication-center.md)) · `TimeReportSchedule` ([time_report_schedules](../../api/prisma/schema.prisma#L19743)): `saved_view_id` ([18](./18-time-tracking.md))
+> **Schema:** `SavedView` ([saved_views](../../api/prisma/schema.prisma#L2498)) — other modules: `Segment` ([segments](../../api/prisma/schema.prisma#L12345)) ([11](./11-communication-center.md)) · `TimeReportSchedule` ([time_report_schedules](../../api/prisma/schema.prisma#L19745)): `saved_view_id` ([18](./18-time-tracking.md))
 <!-- schema-section:end -->
 
 Provide multiple ways to work with CRM data:
@@ -1286,7 +1286,7 @@ Data should be linked between these modules rather than duplicated.
 # 36. Extensibility
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `SupportConversation` ([support_conversations](../../api/prisma/schema.prisma#L14713)) ([13](./13-customer-support-communication-hub.md)) · `TaskLabel` ([task_labels](../../api/prisma/schema.prisma#L6692)) ([06](./06-task-management.md))
+> **Schema:** other modules: `SupportConversation` ([support_conversations](../../api/prisma/schema.prisma#L14715)) ([13](./13-customer-support-communication-hub.md)) · `TaskLabel` ([task_labels](../../api/prisma/schema.prisma#L6694)) ([06](./06-task-management.md))
 <!-- schema-section:end -->
 
 The CRM should be designed as an extensible platform rather than a fixed set of fields and workflows.
@@ -1449,16 +1449,16 @@ Columns in other modules that point at this module by plain string id or JSON (n
 - `Invitation.customer_id` ([01](./01-users-organizations-permissions.md), [L1947](../../api/prisma/schema.prisma#L1947)) — 01 §79, 07 §2 — CRM Company (02) the invitee joins as a Customer Portal user; set instead of branch_id/team_id.
 - `CustomerPortalMembership.customer_id` ([01](./01-users-organizations-permissions.md), [L2204](../../api/prisma/schema.prisma#L2204)) — CRM Company id (02). No FK until LOG-404 is implemented.
 - `Proposal.company_id` ([03](./03-proposal-quotation-generator.md), [L3894](../../api/prisma/schema.prisma#L3894)) — CRM references (02). company_id is the Customer the proposal is addressed to.
-- `BillingProfile.billing_contact_ids` ([08](./08-financial-management-stripe-integration.md), [L7323](../../api/prisma/schema.prisma#L7323)) — CRM contact ids with the BILLING role (02 §3).
-- `LedgerRecord.company_id` ([09](./09-income-expense-management.md), [L8717](../../api/prisma/schema.prisma#L8717)) — Customer or supplier (CRM company, 02 §2a).
-- `LedgerInvoiceImport.matched_company_id` ([09](./09-income-expense-management.md), [L8911](../../api/prisma/schema.prisma#L8911)) — CRM company matched from supplier/customer data (02 §2a); confirmed in review.
-- `RecurringExpense.company_id` ([09](./09-income-expense-management.md), [L9006](../../api/prisma/schema.prisma#L9006)) — Supplier (CRM company, 02 §2a).
-- `Segment.saved_view_id` ([11](./11-communication-center.md), [L12343](../../api/prisma/schema.prisma#L12343)) — Optional 02 SavedView whose filter this segment was created from.
-- `TimeReportSchedule.saved_view_id` ([18](./18-time-tracking.md), [L19743](../../api/prisma/schema.prisma#L19743)) — SavedView (02 §29, entity_type TIME_ENTRY) the filters came from; id only.
-- `CalendarEventType.is_customer_facing` ([19](./19-calendar.md), [L20023](../../api/prisma/schema.prisma#L20023)) — Customer meeting type used by CRM meetings (02 §15).
-- `Calendar.company_id` ([19](./19-calendar.md), [L20094](../../api/prisma/schema.prisma#L20094)) — Customer calendar (CRM company, 02 §2) — holds customer-visible events shown in the portal (§8).
-- `CalendarEvent.company_id` ([19](./19-calendar.md), [L20217](../../api/prisma/schema.prisma#L20217)) — Customer context: CRM company (02 §2). Required for CUSTOMER_VISIBLE events (§8).
-- `AutomationRule.crm_activities` ([20](./20-automation-engine.md), [L21221](../../api/prisma/schema.prisma#L21221)) — 02 §31 — activities created by this rule.
+- `BillingProfile.billing_contact_ids` ([08](./08-financial-management-stripe-integration.md), [L7325](../../api/prisma/schema.prisma#L7325)) — CRM contact ids with the BILLING role (02 §3).
+- `LedgerRecord.company_id` ([09](./09-income-expense-management.md), [L8719](../../api/prisma/schema.prisma#L8719)) — Customer or supplier (CRM company, 02 §2a).
+- `LedgerInvoiceImport.matched_company_id` ([09](./09-income-expense-management.md), [L8913](../../api/prisma/schema.prisma#L8913)) — CRM company matched from supplier/customer data (02 §2a); confirmed in review.
+- `RecurringExpense.company_id` ([09](./09-income-expense-management.md), [L9008](../../api/prisma/schema.prisma#L9008)) — Supplier (CRM company, 02 §2a).
+- `Segment.saved_view_id` ([11](./11-communication-center.md), [L12345](../../api/prisma/schema.prisma#L12345)) — Optional 02 SavedView whose filter this segment was created from.
+- `TimeReportSchedule.saved_view_id` ([18](./18-time-tracking.md), [L19745](../../api/prisma/schema.prisma#L19745)) — SavedView (02 §29, entity_type TIME_ENTRY) the filters came from; id only.
+- `CalendarEventType.is_customer_facing` ([19](./19-calendar.md), [L20025](../../api/prisma/schema.prisma#L20025)) — Customer meeting type used by CRM meetings (02 §15).
+- `Calendar.company_id` ([19](./19-calendar.md), [L20096](../../api/prisma/schema.prisma#L20096)) — Customer calendar (CRM company, 02 §2) — holds customer-visible events shown in the portal (§8).
+- `CalendarEvent.company_id` ([19](./19-calendar.md), [L20219](../../api/prisma/schema.prisma#L20219)) — Customer context: CRM company (02 §2). Required for CUSTOMER_VISIBLE events (§8).
+- `AutomationRule.crm_activities` ([20](./20-automation-engine.md), [L21223](../../api/prisma/schema.prisma#L21223)) — 02 §31 — activities created by this rule.
 
 <!-- schema-refs:end -->
 

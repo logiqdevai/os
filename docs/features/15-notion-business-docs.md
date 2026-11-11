@@ -25,43 +25,43 @@
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Spaces** | | | |
-| `WikiSpace` | `wiki_spaces` | [L16835](../../api/prisma/schema.prisma#L16835) | 15 §2, §4 — a space groups pages per department, team, branch, project or topic. Exactly one of team_id / branch_id / department_id / project_id is normally … |
-| `WikiSpaceMember` | `wiki_space_members` | [L16894](../../api/prisma/schema.prisma#L16894) | 15 §2, §8 — explicit space members with their access level (space managers hold `docs.spaces.manage`). |
+| `WikiSpace` | `wiki_spaces` | [L16837](../../api/prisma/schema.prisma#L16837) | 15 §2, §4 — a space groups pages per department, team, branch, project or topic. Exactly one of team_id / branch_id / department_id / project_id is normally … |
+| `WikiSpaceMember` | `wiki_space_members` | [L16896](../../api/prisma/schema.prisma#L16896) | 15 §2, §8 — explicit space members with their access level (space managers hold `docs.spaces.manage`). |
 | **Templates** | | | |
-| `WikiPageTemplate` | `wiki_page_templates` | [L16913](../../api/prisma/schema.prisma#L16913) | 15 §2, §3 — page templates (policy, procedure, runbook, meeting notes, decision record, handbook chapter, onboarding/offboarding guide). organization_id null… |
+| `WikiPageTemplate` | `wiki_page_templates` | [L16915](../../api/prisma/schema.prisma#L16915) | 15 §2, §3 — page templates (policy, procedure, runbook, meeting notes, decision record, handbook chapter, onboarding/offboarding guide). organization_id null… |
 | **Pages** | | | |
-| `WikiPage` | `wiki_pages` | [L16950](../../api/prisma/schema.prisma#L16950) | 15 §2, §4 — a nested page. `content` is a block tree (Notion-style: paragraph, heading, list, checklist, table, code, image/embed → Document (17), record lin… |
-| `WikiPageReviewer` | `wiki_page_reviewers` | [L17059](../../api/prisma/schema.prisma#L17059) | 15 §2 — members responsible for reviewing a page on its cadence. |
-| `WikiPageVersion` | `wiki_page_versions` | [L17073](../../api/prisma/schema.prisma#L17073) | 15 §2 — immutable snapshot per save/publish; `WikiPage.current_version_number` points at the latest. |
-| `WikiPagePermission` | `wiki_page_permissions` | [L17101](../../api/prisma/schema.prisma#L17101) | 15 §2, §8 — explicit grant on a page to a member, team, branch, role or department (10). Enumerates the principals for BRANCH / TEAM / ROLE / MEMBERS visibil… |
-| `WikiPageLink` | `wiki_page_links` | [L17121](../../api/prisma/schema.prisma#L17121) | 15 §2, §4, §6 — link from a page to a platform record (project, customer, task, document, ticket …). Also fed to the AI index as context (15 §6). |
-| `WikiPageAttachment` | `wiki_page_attachments` | [L17140](../../api/prisma/schema.prisma#L17140) | 15 §2 — files/images embedded in a page are Documents (17); id only. |
-| `WikiPageComment` | `wiki_page_comments` | [L17157](../../api/prisma/schema.prisma#L17157) | 15 §2 — threaded page comments with mentions (14 notifies), optionally anchored to a block, resolvable. |
-| `WikiPageFavorite` | `wiki_page_favorites` | [L17187](../../api/prisma/schema.prisma#L17187) | 15 §2 — a member's favorite (starred) pages for the sidebar. |
-| `WikiPageAcknowledgement` | `wiki_page_acknowledgements` | [L17203](../../api/prisma/schema.prisma#L17203) | 15 §3 — required-reading acknowledgement tracking: one row per member per page; re-acknowledgement is required when `acknowledged_version_number` falls behin… |
+| `WikiPage` | `wiki_pages` | [L16952](../../api/prisma/schema.prisma#L16952) | 15 §2, §4 — a nested page. `content` is a block tree (Notion-style: paragraph, heading, list, checklist, table, code, image/embed → Document (17), record lin… |
+| `WikiPageReviewer` | `wiki_page_reviewers` | [L17061](../../api/prisma/schema.prisma#L17061) | 15 §2 — members responsible for reviewing a page on its cadence. |
+| `WikiPageVersion` | `wiki_page_versions` | [L17075](../../api/prisma/schema.prisma#L17075) | 15 §2 — immutable snapshot per save/publish; `WikiPage.current_version_number` points at the latest. |
+| `WikiPagePermission` | `wiki_page_permissions` | [L17103](../../api/prisma/schema.prisma#L17103) | 15 §2, §8 — explicit grant on a page to a member, team, branch, role or department (10). Enumerates the principals for BRANCH / TEAM / ROLE / MEMBERS visibil… |
+| `WikiPageLink` | `wiki_page_links` | [L17123](../../api/prisma/schema.prisma#L17123) | 15 §2, §4, §6 — link from a page to a platform record (project, customer, task, document, ticket …). Also fed to the AI index as context (15 §6). |
+| `WikiPageAttachment` | `wiki_page_attachments` | [L17142](../../api/prisma/schema.prisma#L17142) | 15 §2 — files/images embedded in a page are Documents (17); id only. |
+| `WikiPageComment` | `wiki_page_comments` | [L17159](../../api/prisma/schema.prisma#L17159) | 15 §2 — threaded page comments with mentions (14 notifies), optionally anchored to a block, resolvable. |
+| `WikiPageFavorite` | `wiki_page_favorites` | [L17189](../../api/prisma/schema.prisma#L17189) | 15 §2 — a member's favorite (starred) pages for the sidebar. |
+| `WikiPageAcknowledgement` | `wiki_page_acknowledgements` | [L17205](../../api/prisma/schema.prisma#L17205) | 15 §3 — required-reading acknowledgement tracking: one row per member per page; re-acknowledgement is required when `acknowledged_version_number` falls behin… |
 | **Onboarding & offboarding checklists** | | | |
-| `WikiChecklist` | `wiki_checklists` | [L17228](../../api/prisma/schema.prisma#L17228) | 15 §3 — onboarding/offboarding checklist definition per department and/or role (01 §130–131). Items generate Tasks (06) when a run starts. |
-| `WikiChecklistItem` | `wiki_checklist_items` | [L17266](../../api/prisma/schema.prisma#L17266) | 15 §3 — a step in a checklist: a task to do, a page to read (with acknowledgement) or a form to fill (15 §5). |
-| `WikiChecklistRun` | `wiki_checklist_runs` | [L17297](../../api/prisma/schema.prisma#L17297) | 15 §3 — a checklist executed for one member; progress is tracked per employee (10). |
-| `WikiChecklistRunItem` | `wiki_checklist_run_items` | [L17330](../../api/prisma/schema.prisma#L17330) | 15 §3 — item state inside a run; `task_id` is the generated Task (06). |
+| `WikiChecklist` | `wiki_checklists` | [L17230](../../api/prisma/schema.prisma#L17230) | 15 §3 — onboarding/offboarding checklist definition per department and/or role (01 §130–131). Items generate Tasks (06) when a run starts. |
+| `WikiChecklistItem` | `wiki_checklist_items` | [L17268](../../api/prisma/schema.prisma#L17268) | 15 §3 — a step in a checklist: a task to do, a page to read (with acknowledgement) or a form to fill (15 §5). |
+| `WikiChecklistRun` | `wiki_checklist_runs` | [L17299](../../api/prisma/schema.prisma#L17299) | 15 §3 — a checklist executed for one member; progress is tracked per employee (10). |
+| `WikiChecklistRunItem` | `wiki_checklist_run_items` | [L17332](../../api/prisma/schema.prisma#L17332) | 15 §3 — item state inside a run; `task_id` is the generated Task (06). |
 | **Custom forms** | | | |
-| `CustomForm` | `custom_forms` | [L17359](../../api/prisma/schema.prisma#L17359) | 15 §5 — form builder definition. `fields_schema` is the editable draft; each publish freezes a CustomFormVersion that submissions reference. Shape: [{ key, t… |
-| `CustomFormVersion` | `custom_form_versions` | [L17406](../../api/prisma/schema.prisma#L17406) | 15 §5 — frozen copy of fields_schema at publish time so old submissions stay interpretable. |
-| `FormAssignment` | `form_assignments` | [L17424](../../api/prisma/schema.prisma#L17424) | 15 §5 — an assignment of a form to a member, team, department (10), branch or the whole organization, with due date and reminders (14, 20). Recipients are ex… |
-| `FormAssignmentRecipient` | `form_assignment_recipients` | [L17456](../../api/prisma/schema.prisma#L17456) | 15 §5 — per-member state of an assignment. For anonymous forms `submission_id` stays null and only `status` moves to SUBMITTED, so completion is trackable wi… |
-| `FormSubmission` | `form_submissions` | [L17479](../../api/prisma/schema.prisma#L17479) | 15 §5 — a response. `answers` = { [field_key]: value } (files hold FormSubmissionFile ids). When the form is anonymous, respondent_membership_id, submitted_b… |
-| `FormSubmissionFile` | `form_submission_files` | [L17519](../../api/prisma/schema.prisma#L17519) | 15 §5 — uploaded files and signature images for FILE_UPLOAD / SIGNATURE fields; stored as Documents (17). |
+| `CustomForm` | `custom_forms` | [L17361](../../api/prisma/schema.prisma#L17361) | 15 §5 — form builder definition. `fields_schema` is the editable draft; each publish freezes a CustomFormVersion that submissions reference. Shape: [{ key, t… |
+| `CustomFormVersion` | `custom_form_versions` | [L17408](../../api/prisma/schema.prisma#L17408) | 15 §5 — frozen copy of fields_schema at publish time so old submissions stay interpretable. |
+| `FormAssignment` | `form_assignments` | [L17426](../../api/prisma/schema.prisma#L17426) | 15 §5 — an assignment of a form to a member, team, department (10), branch or the whole organization, with due date and reminders (14, 20). Recipients are ex… |
+| `FormAssignmentRecipient` | `form_assignment_recipients` | [L17458](../../api/prisma/schema.prisma#L17458) | 15 §5 — per-member state of an assignment. For anonymous forms `submission_id` stays null and only `status` moves to SUBMITTED, so completion is trackable wi… |
+| `FormSubmission` | `form_submissions` | [L17481](../../api/prisma/schema.prisma#L17481) | 15 §5 — a response. `answers` = { [field_key]: value } (files hold FormSubmissionFile ids). When the form is anonymous, respondent_membership_id, submitted_b… |
+| `FormSubmissionFile` | `form_submission_files` | [L17521](../../api/prisma/schema.prisma#L17521) | 15 §5 — uploaded files and signature images for FILE_UPLOAD / SIGNATURE fields; stored as Documents (17). |
 | **AI knowledge index** | | | |
-| `WikiAiIndexEntry` | `wiki_ai_index_entries` | [L17539](../../api/prisma/schema.prisma#L17539) | 15 §6, §7 — one retrievable chunk of a page, form or submission for the shared AI layer and semantic search. `embedding` is a float vector (switch to pgvecto… |
-| `WikiAiSuggestion` | `wiki_ai_suggestions` | [L17585](../../api/prisma/schema.prisma#L17585) | 15 §6 — AI-proposed page drafts/updates (from conversations, meetings, resolved tickets) and stale or contradiction flags, held for human review before they … |
-| `WikiPageView` | `wiki_page_views` | [L17628](../../api/prisma/schema.prisma#L17628) | 15 §2 — one row per page open (Recent pages, reader analytics). Retained 180 days, rolled up daily in WikiPageViewDaily. |
-| `WikiPageViewDaily` | `wiki_page_view_daily` | [L17648](../../api/prisma/schema.prisma#L17648) | 15 §2 — daily rollup of WikiPageView kept after the raw rows expire (reader analytics, popular pages). |
-| `WikiSearchQuery` | `wiki_search_queries` | [L17664](../../api/prisma/schema.prisma#L17664) | 15 §7 — search log: top searches, zero-result tracking, click-through. |
-| `WikiPageFeedback` | `wiki_page_feedback` | [L17685](../../api/prisma/schema.prisma#L17685) | 15 §2 — "was this page helpful" feedback, one per member per page (updated in place). |
-| `WikiTransferJob` | `wiki_transfer_jobs` | [L17706](../../api/prisma/schema.prisma#L17706) | 15 §2, §10 — import / export job (Markdown, HTML, DOCX, PDF, Notion, Confluence, Google Docs). |
-| `WikiPageAckTarget` | `wiki_page_ack_targets` | [L17737](../../api/prisma/schema.prisma#L17737) | 15 §3 — who must acknowledge a page (member, team, branch, role or department). Expanded into WikiPageAcknowledgement rows on publish and for new members; th… |
-| `WikiPageWatcher` | `wiki_page_watchers` | [L17754](../../api/prisma/schema.prisma#L17754) | 15 §2 — member follows a page and is notified (14) on publish and comments. Author, owner, reviewers and mentioned members follow implicitly. |
-| `WikiPageReviewRequest` | `wiki_page_review_requests` | [L17768](../../api/prisma/schema.prisma#L17768) | 15 §2 — review request for a page version in a space with require_review_before_publish. |
+| `WikiAiIndexEntry` | `wiki_ai_index_entries` | [L17541](../../api/prisma/schema.prisma#L17541) | 15 §6, §7 — one retrievable chunk of a page, form or submission for the shared AI layer and semantic search. `embedding` is a float vector (switch to pgvecto… |
+| `WikiAiSuggestion` | `wiki_ai_suggestions` | [L17587](../../api/prisma/schema.prisma#L17587) | 15 §6 — AI-proposed page drafts/updates (from conversations, meetings, resolved tickets) and stale or contradiction flags, held for human review before they … |
+| `WikiPageView` | `wiki_page_views` | [L17630](../../api/prisma/schema.prisma#L17630) | 15 §2 — one row per page open (Recent pages, reader analytics). Retained 180 days, rolled up daily in WikiPageViewDaily. |
+| `WikiPageViewDaily` | `wiki_page_view_daily` | [L17650](../../api/prisma/schema.prisma#L17650) | 15 §2 — daily rollup of WikiPageView kept after the raw rows expire (reader analytics, popular pages). |
+| `WikiSearchQuery` | `wiki_search_queries` | [L17666](../../api/prisma/schema.prisma#L17666) | 15 §7 — search log: top searches, zero-result tracking, click-through. |
+| `WikiPageFeedback` | `wiki_page_feedback` | [L17687](../../api/prisma/schema.prisma#L17687) | 15 §2 — "was this page helpful" feedback, one per member per page (updated in place). |
+| `WikiTransferJob` | `wiki_transfer_jobs` | [L17708](../../api/prisma/schema.prisma#L17708) | 15 §2, §10 — import / export job (Markdown, HTML, DOCX, PDF, Notion, Confluence, Google Docs). |
+| `WikiPageAckTarget` | `wiki_page_ack_targets` | [L17739](../../api/prisma/schema.prisma#L17739) | 15 §3 — who must acknowledge a page (member, team, branch, role or department). Expanded into WikiPageAcknowledgement rows on publish and for new members; th… |
+| `WikiPageWatcher` | `wiki_page_watchers` | [L17756](../../api/prisma/schema.prisma#L17756) | 15 §2 — member follows a page and is notified (14) on publish and comments. Author, owner, reviewers and mentioned members follow implicitly. |
+| `WikiPageReviewRequest` | `wiki_page_review_requests` | [L17770](../../api/prisma/schema.prisma#L17770) | 15 §2 — review request for a page version in a space with require_review_before_publish. |
 
 **Owned enums (28):** `WikiSpaceKind`, `WikiPageStatus`, `WikiPageType`, `WikiVisibility`, `WikiPermissionLevel`, `WikiPrincipalType`, `WikiChecklistKind`, `WikiChecklistAssigneeKind`, `WikiChecklistRunStatus`, `WikiChecklistTrigger`, `WikiChecklistItemStatus`, `CustomFormStatus`, `CustomFormKind`, `CustomFormFieldType`, `FormAssignmentTargetType`, `FormAssignmentRecipientStatus`, `FormSubmissionStatus`, `WikiAiSourceType`, `WikiAiIndexStatus`, `WikiAiSuggestionKind`, `WikiAiSuggestionStatus`, `WikiPageViewSource`, `WikiSearchMode`, `WikiTransferKind`, `WikiTransferFormat`, `WikiTransferScope`, `WikiTransferStatus`, `WikiReviewRequestStatus`
 
@@ -88,7 +88,7 @@
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `Project.runbook_page_id` ([05](./05-project-management.md), [L5696](../../api/prisma/schema.prisma#L5696)) — Business Docs runbook page (15 §4); id only.
+- `Project.runbook_page_id` ([05](./05-project-management.md), [L5698](../../api/prisma/schema.prisma#L5698)) — Business Docs runbook page (15 §4); id only.
 
 <!-- schema-refs:end -->
 
@@ -135,7 +135,7 @@ Business Docs is the Notion-style internal knowledge system: how the business wo
 ## 2. Pages & Spaces
 
 <!-- schema-section:start -->
-> **Schema:** `CustomForm` ([custom_forms](../../api/prisma/schema.prisma#L17359)): `space_id` · `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L16950)): `deleted_at`, `stale_flagged_at` · `WikiPageAttachment` ([wiki_page_attachments](../../api/prisma/schema.prisma#L17140)) · `WikiPageComment` ([wiki_page_comments](../../api/prisma/schema.prisma#L17157)) · `WikiPageFavorite` ([wiki_page_favorites](../../api/prisma/schema.prisma#L17187)) · `WikiPageFeedback` ([wiki_page_feedback](../../api/prisma/schema.prisma#L17685)) · `WikiPageLink` ([wiki_page_links](../../api/prisma/schema.prisma#L17121)) · `WikiPagePermission` ([wiki_page_permissions](../../api/prisma/schema.prisma#L17101)) · `WikiPageReviewRequest` ([wiki_page_review_requests](../../api/prisma/schema.prisma#L17768)) · `WikiPageReviewer` ([wiki_page_reviewers](../../api/prisma/schema.prisma#L17059)) · `WikiPageTemplate` ([wiki_page_templates](../../api/prisma/schema.prisma#L16913)): `default_review_interval_days` · `WikiPageVersion` ([wiki_page_versions](../../api/prisma/schema.prisma#L17073)) · `WikiPageView` ([wiki_page_views](../../api/prisma/schema.prisma#L17628)) · `WikiPageViewDaily` ([wiki_page_view_daily](../../api/prisma/schema.prisma#L17648)) · `WikiPageWatcher` ([wiki_page_watchers](../../api/prisma/schema.prisma#L17754)) · `WikiSpace` ([wiki_spaces](../../api/prisma/schema.prisma#L16835)): `deleted_at`, `members_can_publish`, `require_review_before_publish` · `WikiSpaceMember` ([wiki_space_members](../../api/prisma/schema.prisma#L16894)) · `WikiTransferJob` ([wiki_transfer_jobs](../../api/prisma/schema.prisma#L17706)) · enum `WikiPageStatus` ([L16594](../../api/prisma/schema.prisma#L16594)) · enum `WikiPageType` ([L16603](../../api/prisma/schema.prisma#L16603)) · enum `WikiPageViewSource` ([L16779](../../api/prisma/schema.prisma#L16779)) · enum `WikiPermissionLevel` ([L16627](../../api/prisma/schema.prisma#L16627)) · enum `WikiPrincipalType` ([L16635](../../api/prisma/schema.prisma#L16635)) · enum `WikiReviewRequestStatus` ([L16824](../../api/prisma/schema.prisma#L16824)) · enum `WikiSpaceKind` ([L16585](../../api/prisma/schema.prisma#L16585)) · enum `WikiTransferFormat` ([L16798](../../api/prisma/schema.prisma#L16798)) · enum `WikiTransferKind` ([L16792](../../api/prisma/schema.prisma#L16792)) · enum `WikiTransferScope` ([L16809](../../api/prisma/schema.prisma#L16809)) · enum `WikiTransferStatus` ([L16816](../../api/prisma/schema.prisma#L16816)) · enum `WikiVisibility` ([L16618](../../api/prisma/schema.prisma#L16618))
+> **Schema:** `CustomForm` ([custom_forms](../../api/prisma/schema.prisma#L17361)): `space_id` · `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L16952)): `deleted_at`, `stale_flagged_at` · `WikiPageAttachment` ([wiki_page_attachments](../../api/prisma/schema.prisma#L17142)) · `WikiPageComment` ([wiki_page_comments](../../api/prisma/schema.prisma#L17159)) · `WikiPageFavorite` ([wiki_page_favorites](../../api/prisma/schema.prisma#L17189)) · `WikiPageFeedback` ([wiki_page_feedback](../../api/prisma/schema.prisma#L17687)) · `WikiPageLink` ([wiki_page_links](../../api/prisma/schema.prisma#L17123)) · `WikiPagePermission` ([wiki_page_permissions](../../api/prisma/schema.prisma#L17103)) · `WikiPageReviewRequest` ([wiki_page_review_requests](../../api/prisma/schema.prisma#L17770)) · `WikiPageReviewer` ([wiki_page_reviewers](../../api/prisma/schema.prisma#L17061)) · `WikiPageTemplate` ([wiki_page_templates](../../api/prisma/schema.prisma#L16915)): `default_review_interval_days` · `WikiPageVersion` ([wiki_page_versions](../../api/prisma/schema.prisma#L17075)) · `WikiPageView` ([wiki_page_views](../../api/prisma/schema.prisma#L17630)) · `WikiPageViewDaily` ([wiki_page_view_daily](../../api/prisma/schema.prisma#L17650)) · `WikiPageWatcher` ([wiki_page_watchers](../../api/prisma/schema.prisma#L17756)) · `WikiSpace` ([wiki_spaces](../../api/prisma/schema.prisma#L16837)): `deleted_at`, `members_can_publish`, `require_review_before_publish` · `WikiSpaceMember` ([wiki_space_members](../../api/prisma/schema.prisma#L16896)) · `WikiTransferJob` ([wiki_transfer_jobs](../../api/prisma/schema.prisma#L17708)) · enum `WikiPageStatus` ([L16596](../../api/prisma/schema.prisma#L16596)) · enum `WikiPageType` ([L16605](../../api/prisma/schema.prisma#L16605)) · enum `WikiPageViewSource` ([L16781](../../api/prisma/schema.prisma#L16781)) · enum `WikiPermissionLevel` ([L16629](../../api/prisma/schema.prisma#L16629)) · enum `WikiPrincipalType` ([L16637](../../api/prisma/schema.prisma#L16637)) · enum `WikiReviewRequestStatus` ([L16826](../../api/prisma/schema.prisma#L16826)) · enum `WikiSpaceKind` ([L16587](../../api/prisma/schema.prisma#L16587)) · enum `WikiTransferFormat` ([L16800](../../api/prisma/schema.prisma#L16800)) · enum `WikiTransferKind` ([L16794](../../api/prisma/schema.prisma#L16794)) · enum `WikiTransferScope` ([L16811](../../api/prisma/schema.prisma#L16811)) · enum `WikiTransferStatus` ([L16818](../../api/prisma/schema.prisma#L16818)) · enum `WikiVisibility` ([L16620](../../api/prisma/schema.prisma#L16620))
 <!-- schema-section:end -->
 
 * Spaces per department, team, branch or topic (Engineering, Sales, HR, Finance, Operations)
@@ -151,7 +151,7 @@ Business Docs is the Notion-style internal knowledge system: how the business wo
 ## 3. Onboarding & Offboarding
 
 <!-- schema-section:start -->
-> **Schema:** `WikiChecklist` ([wiki_checklists](../../api/prisma/schema.prisma#L17228)) · `WikiChecklistItem` ([wiki_checklist_items](../../api/prisma/schema.prisma#L17266)) · `WikiChecklistRun` ([wiki_checklist_runs](../../api/prisma/schema.prisma#L17297)) · `WikiChecklistRunItem` ([wiki_checklist_run_items](../../api/prisma/schema.prisma#L17330)) · `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L16950)): `ack_due_at`, `requires_acknowledgement` · `WikiPageAckTarget` ([wiki_page_ack_targets](../../api/prisma/schema.prisma#L17737)) · `WikiPageAcknowledgement` ([wiki_page_acknowledgements](../../api/prisma/schema.prisma#L17203)) · `WikiPageTemplate` ([wiki_page_templates](../../api/prisma/schema.prisma#L16913)) · enum `WikiChecklistAssigneeKind` ([L16650](../../api/prisma/schema.prisma#L16650)) · enum `WikiChecklistItemStatus` ([L16674](../../api/prisma/schema.prisma#L16674)) · enum `WikiChecklistKind` ([L16644](../../api/prisma/schema.prisma#L16644)) · enum `WikiChecklistRunStatus` ([L16658](../../api/prisma/schema.prisma#L16658)) · enum `WikiChecklistTrigger` ([L16666](../../api/prisma/schema.prisma#L16666)) · enum `WikiPageType` ([L16603](../../api/prisma/schema.prisma#L16603))
+> **Schema:** `WikiChecklist` ([wiki_checklists](../../api/prisma/schema.prisma#L17230)) · `WikiChecklistItem` ([wiki_checklist_items](../../api/prisma/schema.prisma#L17268)) · `WikiChecklistRun` ([wiki_checklist_runs](../../api/prisma/schema.prisma#L17299)) · `WikiChecklistRunItem` ([wiki_checklist_run_items](../../api/prisma/schema.prisma#L17332)) · `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L16952)): `ack_due_at`, `requires_acknowledgement` · `WikiPageAckTarget` ([wiki_page_ack_targets](../../api/prisma/schema.prisma#L17739)) · `WikiPageAcknowledgement` ([wiki_page_acknowledgements](../../api/prisma/schema.prisma#L17205)) · `WikiPageTemplate` ([wiki_page_templates](../../api/prisma/schema.prisma#L16915)) · enum `WikiChecklistAssigneeKind` ([L16652](../../api/prisma/schema.prisma#L16652)) · enum `WikiChecklistItemStatus` ([L16676](../../api/prisma/schema.prisma#L16676)) · enum `WikiChecklistKind` ([L16646](../../api/prisma/schema.prisma#L16646)) · enum `WikiChecklistRunStatus` ([L16660](../../api/prisma/schema.prisma#L16660)) · enum `WikiChecklistTrigger` ([L16668](../../api/prisma/schema.prisma#L16668)) · enum `WikiPageType` ([L16605](../../api/prisma/schema.prisma#L16605))
 <!-- schema-section:end -->
 
 Per department and per role:
@@ -166,7 +166,7 @@ Per department and per role:
 ## 4. Project Help Center
 
 <!-- schema-section:start -->
-> **Schema:** `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L16950)): `customer_visible` · `WikiPageLink` ([wiki_page_links](../../api/prisma/schema.prisma#L17121)) · `WikiSpace` ([wiki_spaces](../../api/prisma/schema.prisma#L16835)): `allow_customer_visible`, `project_id` · enum `WikiPageType` ([L16603](../../api/prisma/schema.prisma#L16603)) — other modules: `Project` ([projects](../../api/prisma/schema.prisma#L5696)): `runbook_page_id` ([05](./05-project-management.md))
+> **Schema:** `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L16952)): `customer_visible` · `WikiPageLink` ([wiki_page_links](../../api/prisma/schema.prisma#L17123)) · `WikiSpace` ([wiki_spaces](../../api/prisma/schema.prisma#L16837)): `allow_customer_visible`, `project_id` · enum `WikiPageType` ([L16605](../../api/prisma/schema.prisma#L16605)) — other modules: `Project` ([projects](../../api/prisma/schema.prisma#L5698)): `runbook_page_id` ([05](./05-project-management.md))
 <!-- schema-section:end -->
 
 Project runbooks and FAQs linked from the project workspace (05 §34). Pages marked customer-visible answer portal questions and can be published to the customer help center (13 §6) without duplication: the page is the source and 13 publishes a view.
@@ -174,7 +174,7 @@ Project runbooks and FAQs linked from the project workspace (05 §34). Pages mar
 ## 5. Custom Forms
 
 <!-- schema-section:start -->
-> **Schema:** `CustomForm` ([custom_forms](../../api/prisma/schema.prisma#L17359)): `is_anonymous` · `CustomFormVersion` ([custom_form_versions](../../api/prisma/schema.prisma#L17406)) · `FormAssignment` ([form_assignments](../../api/prisma/schema.prisma#L17424)) · `FormAssignmentRecipient` ([form_assignment_recipients](../../api/prisma/schema.prisma#L17456)) · `FormSubmission` ([form_submissions](../../api/prisma/schema.prisma#L17479)): `created_task_id` · `FormSubmissionFile` ([form_submission_files](../../api/prisma/schema.prisma#L17519)) · `WikiChecklistItem` ([wiki_checklist_items](../../api/prisma/schema.prisma#L17266)) · enum `CustomFormFieldType` ([L16702](../../api/prisma/schema.prisma#L16702)) · enum `CustomFormKind` ([L16690](../../api/prisma/schema.prisma#L16690)) · enum `CustomFormStatus` ([L16682](../../api/prisma/schema.prisma#L16682)) · enum `FormAssignmentRecipientStatus` ([L16727](../../api/prisma/schema.prisma#L16727)) · enum `FormAssignmentTargetType` ([L16718](../../api/prisma/schema.prisma#L16718)) · enum `FormSubmissionStatus` ([L16736](../../api/prisma/schema.prisma#L16736))
+> **Schema:** `CustomForm` ([custom_forms](../../api/prisma/schema.prisma#L17361)): `is_anonymous` · `CustomFormVersion` ([custom_form_versions](../../api/prisma/schema.prisma#L17408)) · `FormAssignment` ([form_assignments](../../api/prisma/schema.prisma#L17426)) · `FormAssignmentRecipient` ([form_assignment_recipients](../../api/prisma/schema.prisma#L17458)) · `FormSubmission` ([form_submissions](../../api/prisma/schema.prisma#L17481)): `created_task_id` · `FormSubmissionFile` ([form_submission_files](../../api/prisma/schema.prisma#L17521)) · `WikiChecklistItem` ([wiki_checklist_items](../../api/prisma/schema.prisma#L17268)) · enum `CustomFormFieldType` ([L16704](../../api/prisma/schema.prisma#L16704)) · enum `CustomFormKind` ([L16692](../../api/prisma/schema.prisma#L16692)) · enum `CustomFormStatus` ([L16684](../../api/prisma/schema.prisma#L16684)) · enum `FormAssignmentRecipientStatus` ([L16729](../../api/prisma/schema.prisma#L16729)) · enum `FormAssignmentTargetType` ([L16720](../../api/prisma/schema.prisma#L16720)) · enum `FormSubmissionStatus` ([L16738](../../api/prisma/schema.prisma#L16738))
 <!-- schema-section:end -->
 
 * Form builder: text, choice, scale, date, file upload (17), signature
@@ -187,7 +187,7 @@ Project runbooks and FAQs linked from the project workspace (05 §34). Pages mar
 ## 6. Internal AI Knowledge
 
 <!-- schema-section:start -->
-> **Schema:** `FormSubmission` ([form_submissions](../../api/prisma/schema.prisma#L17479)): `exclude_from_ai_index` · `WikiAiIndexEntry` ([wiki_ai_index_entries](../../api/prisma/schema.prisma#L17539)) · `WikiAiSuggestion` ([wiki_ai_suggestions](../../api/prisma/schema.prisma#L17585)) · `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L16950)): `ai_generated`, `stale_flagged_at` · `WikiPageLink` ([wiki_page_links](../../api/prisma/schema.prisma#L17121)) · `WikiPageVersion` ([wiki_page_versions](../../api/prisma/schema.prisma#L17073)): `ai_suggestion_id` · enum `WikiAiIndexStatus` ([L16755](../../api/prisma/schema.prisma#L16755)) · enum `WikiAiSourceType` ([L16745](../../api/prisma/schema.prisma#L16745)) · enum `WikiAiSuggestionKind` ([L16763](../../api/prisma/schema.prisma#L16763)) · enum `WikiAiSuggestionStatus` ([L16771](../../api/prisma/schema.prisma#L16771))
+> **Schema:** `FormSubmission` ([form_submissions](../../api/prisma/schema.prisma#L17481)): `exclude_from_ai_index` · `WikiAiIndexEntry` ([wiki_ai_index_entries](../../api/prisma/schema.prisma#L17541)) · `WikiAiSuggestion` ([wiki_ai_suggestions](../../api/prisma/schema.prisma#L17587)) · `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L16952)): `ai_generated`, `stale_flagged_at` · `WikiPageLink` ([wiki_page_links](../../api/prisma/schema.prisma#L17123)) · `WikiPageVersion` ([wiki_page_versions](../../api/prisma/schema.prisma#L17075)): `ai_suggestion_id` · enum `WikiAiIndexStatus` ([L16757](../../api/prisma/schema.prisma#L16757)) · enum `WikiAiSourceType` ([L16747](../../api/prisma/schema.prisma#L16747)) · enum `WikiAiSuggestionKind` ([L16765](../../api/prisma/schema.prisma#L16765)) · enum `WikiAiSuggestionStatus` ([L16773](../../api/prisma/schema.prisma#L16773))
 <!-- schema-section:end -->
 
 * Pages, forms and linked records are indexed for retrieval by the shared AI layer
@@ -198,7 +198,7 @@ Project runbooks and FAQs linked from the project workspace (05 §34). Pages mar
 ## 7. Search
 
 <!-- schema-section:start -->
-> **Schema:** `WikiAiIndexEntry` ([wiki_ai_index_entries](../../api/prisma/schema.prisma#L17539)) · `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L16950)): `search_vector` · `WikiSearchQuery` ([wiki_search_queries](../../api/prisma/schema.prisma#L17664)) · enum `WikiSearchMode` ([L16786](../../api/prisma/schema.prisma#L16786))
+> **Schema:** `WikiAiIndexEntry` ([wiki_ai_index_entries](../../api/prisma/schema.prisma#L17541)) · `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L16952)): `search_vector` · `WikiSearchQuery` ([wiki_search_queries](../../api/prisma/schema.prisma#L17666)) · enum `WikiSearchMode` ([L16788](../../api/prisma/schema.prisma#L16788))
 <!-- schema-section:end -->
 
 Full-text and semantic search across pages and forms, permission-checked, integrated into the platform global search.
@@ -208,7 +208,7 @@ Full-text and semantic search across pages and forms, permission-checked, integr
 ## 8. Permissions
 
 <!-- schema-section:start -->
-> **Schema:** `WikiPagePermission` ([wiki_page_permissions](../../api/prisma/schema.prisma#L17101)) · `WikiSpaceMember` ([wiki_space_members](../../api/prisma/schema.prisma#L16894)) · enum `WikiPermissionLevel` ([L16627](../../api/prisma/schema.prisma#L16627)) — other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1611)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** `WikiPagePermission` ([wiki_page_permissions](../../api/prisma/schema.prisma#L17103)) · `WikiSpaceMember` ([wiki_space_members](../../api/prisma/schema.prisma#L16896)) · enum `WikiPermissionLevel` ([L16629](../../api/prisma/schema.prisma#L16629)) — other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1611)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 Keys follow 01 §46: `docs.pages.read / create / update / publish / archive`, `docs.spaces.manage`, `docs.forms.create / assign / review`, `docs.forms.anonymous_responses.read` (restricted).
@@ -216,7 +216,7 @@ Keys follow 01 §46: `docs.pages.read / create / update / publish / archive`, `d
 ## 9. Audit
 
 <!-- schema-section:start -->
-> **Schema:** `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L16950)): `customer_visible` — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L2268)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L16952)): `customer_visible` — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L2268)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 Audit publish, visibility changes, customer-visible flags, form assignments and access to anonymous response sets.
@@ -224,7 +224,7 @@ Audit publish, visibility changes, customer-visible flags, form assignments and 
 ## 10. API & Webhooks
 
 <!-- schema-section:start -->
-> **Schema:** `WikiTransferJob` ([wiki_transfer_jobs](../../api/prisma/schema.prisma#L17706)) — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21877)) ([20](./20-automation-engine.md))
+> **Schema:** `WikiTransferJob` ([wiki_transfer_jobs](../../api/prisma/schema.prisma#L17708)) — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21879)) ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 API: CRUD pages and spaces, search, forms and responses. Webhooks: `docs.page_published`, `docs.page_updated`, `docs.form_assigned`, `docs.form_submitted`.

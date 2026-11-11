@@ -25,51 +25,51 @@
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Organization settings** | | | |
-| `MessagingSettings` | `messaging_settings` | [L13123](../../api/prisma/schema.prisma#L13123) | 12 §13, §14, §43, §53, §80, §85, §94 — organization-wide messaging configuration (one row per organization). Global notification channels/DND/digest live in … |
-| `MessagingRetentionPolicy` | `messaging_retention_policies` | [L13187](../../api/prisma/schema.prisma#L13187) | 12 §54 — message retention policy. Scope precedence: CHANNEL > CHANNEL_KIND > TEAM > BRANCH > ORGANIZATION. |
-| `ChannelTemplate` | `channel_templates` | [L13221](../../api/prisma/schema.prisma#L13221) | 12 §93 — templates for recurring communication spaces (new project channel, customer onboarding). |
+| `MessagingSettings` | `messaging_settings` | [L13125](../../api/prisma/schema.prisma#L13125) | 12 §13, §14, §43, §53, §80, §85, §94 — organization-wide messaging configuration (one row per organization). Global notification channels/DND/digest live in … |
+| `MessagingRetentionPolicy` | `messaging_retention_policies` | [L13189](../../api/prisma/schema.prisma#L13189) | 12 §54 — message retention policy. Scope precedence: CHANNEL > CHANNEL_KIND > TEAM > BRANCH > ORGANIZATION. |
+| `ChannelTemplate` | `channel_templates` | [L13223](../../api/prisma/schema.prisma#L13223) | 12 §93 — templates for recurring communication spaces (new project channel, customer onboarding). |
 | **Channels** | | | |
-| `Channel` | `channels` | [L13263](../../api/prisma/schema.prisma#L13263) | 12 §5–8, §25–29, §48 — every conversation: channels, DMs (DIRECT/GROUP_DIRECT), project and customer channels, announcement channels and record conversations… |
-| `ChannelMember` | `channel_members` | [L13379](../../api/prisma/schema.prisma#L13379) | 12 §9, §27, §82–83 — a participant of a channel: an internal Member (membership_id) or an external participant (external_user_id — Customer Portal User 01 §7… |
-| `ChannelNotificationSetting` | `channel_notification_settings` | [L13423](../../api/prisma/schema.prisma#L13423) | 12 §17, §79, §90 — per-channel / per-conversation notification settings layered on the global preferences of 14 §6 (DND, quiet hours and delivery channels ar… |
-| `ChannelMemberRestriction` | `channel_member_restrictions` | [L13449](../../api/prisma/schema.prisma#L13449) | 12 §49–50 — moderation restrictions: mute or ban a participant in one channel (channel_id set) or across the whole organization (channel_id null). Target is … |
+| `Channel` | `channels` | [L13265](../../api/prisma/schema.prisma#L13265) | 12 §5–8, §25–29, §48 — every conversation: channels, DMs (DIRECT/GROUP_DIRECT), project and customer channels, announcement channels and record conversations… |
+| `ChannelMember` | `channel_members` | [L13381](../../api/prisma/schema.prisma#L13381) | 12 §9, §27, §82–83 — a participant of a channel: an internal Member (membership_id) or an external participant (external_user_id — Customer Portal User 01 §7… |
+| `ChannelNotificationSetting` | `channel_notification_settings` | [L13425](../../api/prisma/schema.prisma#L13425) | 12 §17, §79, §90 — per-channel / per-conversation notification settings layered on the global preferences of 14 §6 (DND, quiet hours and delivery channels ar… |
+| `ChannelMemberRestriction` | `channel_member_restrictions` | [L13451](../../api/prisma/schema.prisma#L13451) | 12 §49–50 — moderation restrictions: mute or ban a participant in one channel (channel_id set) or across the whole organization (channel_id null). Target is … |
 | **Messages** | | | |
-| `Message` | `messages` | [L13480](../../api/prisma/schema.prisma#L13480) | 12 §10–13, §28, §29, §38, §75, §91 — the message. Thread replies set parent_message_id (root only, one level). Author is a Member, an external User, or an in… |
-| `MessageVersion` | `message_versions` | [L13587](../../api/prisma/schema.prisma#L13587) | 12 §13 — edit history (previous bodies) when the organization preserves it. |
-| `MessageReaction` | `message_reactions` | [L13604](../../api/prisma/schema.prisma#L13604) | 12 §14 — emoji reactions; one per (message, emoji, reactor). Reactor is a Member or an external user. |
-| `MessageMention` | `message_mentions` | [L13624](../../api/prisma/schema.prisma#L13624) | 12 §15 — mentions extracted from a message; drives notifications (14) and mention counts (12 §19). |
-| `MessageAttachment` | `message_attachments` | [L13657](../../api/prisma/schema.prisma#L13657) | 12 §22, §45 — link between a message and a Document (17). File bytes, versions and access permissions are owned by 17; metadata is denormalized here for list… |
-| `MessageLinkPreview` | `message_link_previews` | [L13687](../../api/prisma/schema.prisma#L13687) | 12 §23 — unfurled link previews. Internal application links resolve to a record (entity_type/entity_id) and are rendered with a permission check at view time. |
-| `MessageRecordShare` | `message_record_shares` | [L13712](../../api/prisma/schema.prisma#L13712) | 12 §24, §58–60 — a business record shared into a conversation with a preview snapshot. Record access is re-checked when rendered; the snapshot is only a disp… |
-| `MessageAcknowledgement` | `message_acknowledgements` | [L13732](../../api/prisma/schema.prisma#L13732) | 12 §29 — acknowledgement of an announcement that requires it. |
+| `Message` | `messages` | [L13482](../../api/prisma/schema.prisma#L13482) | 12 §10–13, §28, §29, §38, §75, §91 — the message. Thread replies set parent_message_id (root only, one level). Author is a Member, an external User, or an in… |
+| `MessageVersion` | `message_versions` | [L13589](../../api/prisma/schema.prisma#L13589) | 12 §13 — edit history (previous bodies) when the organization preserves it. |
+| `MessageReaction` | `message_reactions` | [L13606](../../api/prisma/schema.prisma#L13606) | 12 §14 — emoji reactions; one per (message, emoji, reactor). Reactor is a Member or an external user. |
+| `MessageMention` | `message_mentions` | [L13626](../../api/prisma/schema.prisma#L13626) | 12 §15 — mentions extracted from a message; drives notifications (14) and mention counts (12 §19). |
+| `MessageAttachment` | `message_attachments` | [L13659](../../api/prisma/schema.prisma#L13659) | 12 §22, §45 — link between a message and a Document (17). File bytes, versions and access permissions are owned by 17; metadata is denormalized here for list… |
+| `MessageLinkPreview` | `message_link_previews` | [L13689](../../api/prisma/schema.prisma#L13689) | 12 §23 — unfurled link previews. Internal application links resolve to a record (entity_type/entity_id) and are rendered with a permission check at view time. |
+| `MessageRecordShare` | `message_record_shares` | [L13714](../../api/prisma/schema.prisma#L13714) | 12 §24, §58–60 — a business record shared into a conversation with a preview snapshot. Record access is re-checked when rendered; the snapshot is only a disp… |
+| `MessageAcknowledgement` | `message_acknowledgements` | [L13734](../../api/prisma/schema.prisma#L13734) | 12 §29 — acknowledgement of an announcement that requires it. |
 | **Read state, threads, personal items** | | | |
-| `ChannelReadState` | `channel_read_states` | [L13749](../../api/prisma/schema.prisma#L13749) | 12 §19, §43 — per-participant read position in a channel (unread state for channels, read state for DMs). Participant is a Member or an external user (id only). |
-| `MessageReadReceipt` | `message_read_receipts` | [L13775](../../api/prisma/schema.prisma#L13775) | 12 §43 — per-message read receipts for DMs, group conversations and (when configured) customer conversations. |
-| `MessageThreadFollower` | `message_thread_followers` | [L13791](../../api/prisma/schema.prisma#L13791) | 12 §12, §88 — members following a thread (root message) without subscribing to the channel. |
-| `ChannelPin` | `channel_pins` | [L13811](../../api/prisma/schema.prisma#L13811) | 12 §47 — pinned messages per channel. |
-| `SavedMessage` | `saved_messages` | [L13829](../../api/prisma/schema.prisma#L13829) | 12 §20 — personal saved/bookmarked messages with an optional note. |
-| `MessageReminder` | `message_reminders` | [L13846](../../api/prisma/schema.prisma#L13846) | 12 §20–21 — "remind me" on a message; triggers a notification (14) linking back to the message. |
-| `MessageDraft` | `message_drafts` | [L13874](../../api/prisma/schema.prisma#L13874) | 12 §46, §74 — unsent messages, private to the author, one per channel (+ thread) per author. |
-| `MessagingKeyword` | `messaging_keywords` | [L13899](../../api/prisma/schema.prisma#L13899) | 12 §32, §79 — keyword subscriptions; matches in authorized conversations notify the member (14). |
-| `ChannelSection` | `channel_sections` | [L13922](../../api/prisma/schema.prisma#L13922) | 12 §33, §72 — a member's custom sidebar sections (My Projects, Sales, …). Built-in groups (favorites, DMs, channels, projects, customers, archived, unread) a… |
-| `ChannelSectionItem` | `channel_section_items` | [L13943](../../api/prisma/schema.prisma#L13943) | 12 §33 — a channel placed in a member's custom section. |
+| `ChannelReadState` | `channel_read_states` | [L13751](../../api/prisma/schema.prisma#L13751) | 12 §19, §43 — per-participant read position in a channel (unread state for channels, read state for DMs). Participant is a Member or an external user (id only). |
+| `MessageReadReceipt` | `message_read_receipts` | [L13777](../../api/prisma/schema.prisma#L13777) | 12 §43 — per-message read receipts for DMs, group conversations and (when configured) customer conversations. |
+| `MessageThreadFollower` | `message_thread_followers` | [L13793](../../api/prisma/schema.prisma#L13793) | 12 §12, §88 — members following a thread (root message) without subscribing to the channel. |
+| `ChannelPin` | `channel_pins` | [L13813](../../api/prisma/schema.prisma#L13813) | 12 §47 — pinned messages per channel. |
+| `SavedMessage` | `saved_messages` | [L13831](../../api/prisma/schema.prisma#L13831) | 12 §20 — personal saved/bookmarked messages with an optional note. |
+| `MessageReminder` | `message_reminders` | [L13848](../../api/prisma/schema.prisma#L13848) | 12 §20–21 — "remind me" on a message; triggers a notification (14) linking back to the message. |
+| `MessageDraft` | `message_drafts` | [L13876](../../api/prisma/schema.prisma#L13876) | 12 §46, §74 — unsent messages, private to the author, one per channel (+ thread) per author. |
+| `MessagingKeyword` | `messaging_keywords` | [L13901](../../api/prisma/schema.prisma#L13901) | 12 §32, §79 — keyword subscriptions; matches in authorized conversations notify the member (14). |
+| `ChannelSection` | `channel_sections` | [L13924](../../api/prisma/schema.prisma#L13924) | 12 §33, §72 — a member's custom sidebar sections (My Projects, Sales, …). Built-in groups (favorites, DMs, channels, projects, customers, archived, unread) a… |
+| `ChannelSectionItem` | `channel_section_items` | [L13945](../../api/prisma/schema.prisma#L13945) | 12 §33 — a channel placed in a member's custom section. |
 | **Presence & member settings** | | | |
-| `MessagingPresence` | `messaging_presence` | [L13961](../../api/prisma/schema.prisma#L13961) | 12 §4, §41 — presence and custom status, one row per Member. Visibility follows organization privacy settings (messaging_settings.presence_visibility) and th… |
-| `MessagingMemberSettings` | `messaging_member_settings` | [L13991](../../api/prisma/schema.prisma#L13991) | 12 §17, §43, §53, §73, §87 — messaging-specific per-member defaults. Global notification preferences, DND and digests are 14 §6 (NotificationPreference); onl… |
+| `MessagingPresence` | `messaging_presence` | [L13963](../../api/prisma/schema.prisma#L13963) | 12 §4, §41 — presence and custom status, one row per Member. Visibility follows organization privacy settings (messaging_settings.presence_visibility) and th… |
+| `MessagingMemberSettings` | `messaging_member_settings` | [L13993](../../api/prisma/schema.prisma#L13993) | 12 §17, §43, §53, §73, §87 — messaging-specific per-member defaults. Global notification preferences, DND and digests are 14 §6 (NotificationPreference); onl… |
 | **Moderation** | | | |
-| `MessageReport` | `message_reports` | [L14019](../../api/prisma/schema.prisma#L14019) | 12 §49–50, §64, §69 — a message reported by a participant or flagged by spam detection. |
+| `MessageReport` | `message_reports` | [L14021](../../api/prisma/schema.prisma#L14021) | 12 §49–50, §64, §69 — a message reported by a participant or flagged by spam detection. |
 | **Retention & export** | | | |
-| `MessagingExportJob` | `messaging_export_jobs` | [L14051](../../api/prisma/schema.prisma#L14051) | 12 §55, §106 — administrator export of messaging data; the produced file is a Document (17). |
+| `MessagingExportJob` | `messaging_export_jobs` | [L14053](../../api/prisma/schema.prisma#L14053) | 12 §55, §106 — administrator export of messaging data; the produced file is a Document (17). |
 | **Integrations, bots & webhooks** | | | |
-| `MessagingIntegration` | `messaging_integrations` | [L14084](../../api/prisma/schema.prisma#L14084) | 12 §37–38, §50, §61, §92 — an integration or bot allowed to post into channels. Inbound webhook integrations authenticate with a hashed token; provider integ… |
+| `MessagingIntegration` | `messaging_integrations` | [L14086](../../api/prisma/schema.prisma#L14086) | 12 §37–38, §50, §61, §92 — an integration or bot allowed to post into channels. Inbound webhook integrations authenticate with a hashed token; provider integ… |
 | **Calls** | | | |
-| `ChannelCall` | `channel_calls` | [L14130](../../api/prisma/schema.prisma#L14130) | 12 §5, §44 — voice/video calls and huddles started from a conversation. Media is provided by an external provider or 19 Calendar meeting links; messaging kee… |
-| `ChannelCallParticipant` | `channel_call_participants` | [L14169](../../api/prisma/schema.prisma#L14169) | 12 §44 — call participants (Members or external users). |
+| `ChannelCall` | `channel_calls` | [L14132](../../api/prisma/schema.prisma#L14132) | 12 §5, §44 — voice/video calls and huddles started from a conversation. Media is provided by an external provider or 19 Calendar meeting links; messaging kee… |
+| `ChannelCallParticipant` | `channel_call_participants` | [L14171](../../api/prisma/schema.prisma#L14171) | 12 §44 — call participants (Members or external users). |
 | **Analytics** | | | |
-| `MessagingUsageDaily` | `messaging_usage_daily` | [L14194](../../api/prisma/schema.prisma#L14194) | 12 §66, §104 — daily usage aggregates per organization (channel_id null) and per channel. Usage-oriented, never per-employee productivity scoring. |
-| `ChannelInvitation` | `channel_invitations` | [L14235](../../api/prisma/schema.prisma#L14235) | 12 §27, §82, §109 Journey 4 — secure invitation of a guest / external person to a channel. The accepted person becomes a ChannelMember (external_user_id); on… |
-| `ChannelAccessRequest` | `channel_access_requests` | [L14286](../../api/prisma/schema.prisma#L14286) | 12 §9, §34, §49 — request to join a private / hidden channel or to post in a restricted channel (posting_policy). Decided by channel admins / messaging.chann… |
-| `MessagingLegalHold` | `messaging_legal_holds` | [L14312](../../api/prisma/schema.prisma#L14312) | 12 §54, §106 — legal hold: retention (MessagingRetentionPolicy) and deletion jobs skip held content while active (released_at null). Scope = the listed chann… |
+| `MessagingUsageDaily` | `messaging_usage_daily` | [L14196](../../api/prisma/schema.prisma#L14196) | 12 §66, §104 — daily usage aggregates per organization (channel_id null) and per channel. Usage-oriented, never per-employee productivity scoring. |
+| `ChannelInvitation` | `channel_invitations` | [L14237](../../api/prisma/schema.prisma#L14237) | 12 §27, §82, §109 Journey 4 — secure invitation of a guest / external person to a channel. The accepted person becomes a ChannelMember (external_user_id); on… |
+| `ChannelAccessRequest` | `channel_access_requests` | [L14288](../../api/prisma/schema.prisma#L14288) | 12 §9, §34, §49 — request to join a private / hidden channel or to post in a restricted channel (posting_policy). Decided by channel admins / messaging.chann… |
+| `MessagingLegalHold` | `messaging_legal_holds` | [L14314](../../api/prisma/schema.prisma#L14314) | 12 §54, §106 — legal hold: retention (MessagingRetentionPolicy) and deletion jobs skip held content while active (released_at null). Scope = the listed chann… |
 
 **Owned enums (31):** `ChannelKind`, `ChannelVisibility`, `ChannelStatus`, `ChannelPostingPolicy`, `ChannelMemberRole`, `ChannelMembershipSource`, `ChannelGuestKind`, `ChannelNotificationLevel`, `ChannelDigestFrequency`, `MessageKind`, `MessageVisibility`, `MessageDeliveryStatus`, `MessageMentionKind`, `MessageAttachmentKind`, `MessageLinkPreviewStatus`, `MessagingPresenceState`, `MessageReminderStatus`, `MessagingRetentionScope`, `MessagingRetentionAction`, `MessagingExportStatus`, `MessagingExportFormat`, `MessageReportStatus`, `ChannelRestrictionKind`, `MessagingIntegrationKind`, `MessagingIntegrationStatus`, `ChannelCallKind`, `ChannelCallStatus`, `ChannelTemplateTrigger`, `ChannelInvitationStatus`, `ChannelAccessRequestKind`, `ChannelAccessRequestStatus`
 
@@ -99,17 +99,17 @@
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `Project.channel_id` ([05](./05-project-management.md), [L5696](../../api/prisma/schema.prisma#L5696)) — Messaging project channel (12 §26); id only.
-- `ProjectDecision.source_message_id` ([05](./05-project-management.md), [L6165](../../api/prisma/schema.prisma#L6165)) — Source message permalink (12 §63) when converted from a conversation.
-- `Ticket.source_message_id` ([13](./13-customer-support-communication-hub.md), [L15016](../../api/prisma/schema.prisma#L15016)) — 12 §64, §60 — Message the ticket was created from ("Create ticket" on a channel message); id of the source message.
-- `Ticket.channel_id` ([13](./13-customer-support-communication-hub.md), [L15016](../../api/prisma/schema.prisma#L15016)) — Messaging thread for internal discussion (12 §60); id only.
-- `NotificationRecipientSettings.show_previews` ([14](./14-notifications-activity-center.md), [L16213](../../api/prisma/schema.prisma#L16213)) — 14 §6, §11 — whether push / desktop / email previews include message content (12 §87).
-- `NotificationPreference.enabled` ([14](./14-notifications-activity-center.md), [L16270](../../api/prisma/schema.prisma#L16270)) — false = muted for this scope / channel (14 §6 per-record mute, 12 §17 per-channel settings).
-- `NotificationPreference.level` ([14](./14-notifications-activity-center.md), [L16270](../../api/prisma/schema.prisma#L16270)) — Record / module scope: all / important only / mentions and direct only / none (12 §17).
-- `NotificationKeyword.disabled_until` ([14](./14-notifications-activity-center.md), [L16314](../../api/prisma/schema.prisma#L16314)) — 12 §32 — "disable temporarily".
-- `AutomationSettings.dead_letter_alert_channel_id` ([20](./20-automation-engine.md), [L21064](../../api/prisma/schema.prisma#L21064)) — 12 Messaging channel that also receives the alert; id only.
-- `OutboundWebhook.channel_id` ([20](./20-automation-engine.md), [L21877](../../api/prisma/schema.prisma#L21877)) — 12 §40 — only messaging events from this channel; null = all channels the endpoint may see.
-- `OutboundWebhook.include_direct_messages` ([20](./20-automation-engine.md), [L21877](../../api/prisma/schema.prisma#L21877)) — 12 §40, §53 — direct-message events are excluded unless explicitly enabled.
+- `Project.channel_id` ([05](./05-project-management.md), [L5698](../../api/prisma/schema.prisma#L5698)) — Messaging project channel (12 §26); id only.
+- `ProjectDecision.source_message_id` ([05](./05-project-management.md), [L6167](../../api/prisma/schema.prisma#L6167)) — Source message permalink (12 §63) when converted from a conversation.
+- `Ticket.source_message_id` ([13](./13-customer-support-communication-hub.md), [L15018](../../api/prisma/schema.prisma#L15018)) — 12 §64, §60 — Message the ticket was created from ("Create ticket" on a channel message); id of the source message.
+- `Ticket.channel_id` ([13](./13-customer-support-communication-hub.md), [L15018](../../api/prisma/schema.prisma#L15018)) — Messaging thread for internal discussion (12 §60); id only.
+- `NotificationRecipientSettings.show_previews` ([14](./14-notifications-activity-center.md), [L16215](../../api/prisma/schema.prisma#L16215)) — 14 §6, §11 — whether push / desktop / email previews include message content (12 §87).
+- `NotificationPreference.enabled` ([14](./14-notifications-activity-center.md), [L16272](../../api/prisma/schema.prisma#L16272)) — false = muted for this scope / channel (14 §6 per-record mute, 12 §17 per-channel settings).
+- `NotificationPreference.level` ([14](./14-notifications-activity-center.md), [L16272](../../api/prisma/schema.prisma#L16272)) — Record / module scope: all / important only / mentions and direct only / none (12 §17).
+- `NotificationKeyword.disabled_until` ([14](./14-notifications-activity-center.md), [L16316](../../api/prisma/schema.prisma#L16316)) — 12 §32 — "disable temporarily".
+- `AutomationSettings.dead_letter_alert_channel_id` ([20](./20-automation-engine.md), [L21066](../../api/prisma/schema.prisma#L21066)) — 12 Messaging channel that also receives the alert; id only.
+- `OutboundWebhook.channel_id` ([20](./20-automation-engine.md), [L21879](../../api/prisma/schema.prisma#L21879)) — 12 §40 — only messaging events from this channel; null = all channels the endpoint may see.
+- `OutboundWebhook.include_direct_messages` ([20](./20-automation-engine.md), [L21879](../../api/prisma/schema.prisma#L21879)) — 12 §40, §53 — direct-message events are excluded unless explicitly enabled.
 
 <!-- schema-refs:end -->
 
@@ -181,7 +181,7 @@ The messaging system must be independent from the CRM's marketing/campaign funct
 ## 2. Messaging Architecture
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `expires_at` · enum `ChannelKind` ([L12867](../../api/prisma/schema.prisma#L12867))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `expires_at` · enum `ChannelKind` ([L12869](../../api/prisma/schema.prisma#L12869))
 <!-- schema-section:end -->
 
 The messaging system should contain several communication primitives:
@@ -210,7 +210,7 @@ Direct messaging exists alongside the channel hierarchy.
 ## 3. Organizations & Teams
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `team_id`
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `team_id`
 <!-- schema-section:end -->
 
 > Defined by → [01](./01-users-organizations-permissions.md) §8 (Organization), §16 (Branch), §40 (Team) · Linear LOG-406.
@@ -220,7 +220,7 @@ The messaging system operates within an Organization. Channels can be scoped to 
 ## 4. Users & Presence
 
 <!-- schema-section:start -->
-> **Schema:** `MessagingPresence` ([messaging_presence](../../api/prisma/schema.prisma#L13961)): `status_expires_at`, `status_text` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `presence_visibility` · enum `MessagingPresenceState` ([L13008](../../api/prisma/schema.prisma#L13008))
+> **Schema:** `MessagingPresence` ([messaging_presence](../../api/prisma/schema.prisma#L13963)): `status_expires_at`, `status_text` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `presence_visibility` · enum `MessagingPresenceState` ([L13010](../../api/prisma/schema.prisma#L13010))
 <!-- schema-section:end -->
 
 The messaging identity is the Member (01 §24). Employee profile data stays in 10; messaging only adds presence and status.
@@ -258,7 +258,7 @@ Presence should be visible according to organization privacy settings.
 ## 5. Direct Messages
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `dm_key` · `ChannelCall` ([channel_calls](../../api/prisma/schema.prisma#L14130)) · enum `ChannelKind` ([L12867](../../api/prisma/schema.prisma#L12867))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `dm_key` · `ChannelCall` ([channel_calls](../../api/prisma/schema.prisma#L14132)) · enum `ChannelKind` ([L12869](../../api/prisma/schema.prisma#L12869))
 <!-- schema-section:end -->
 
 Users can communicate privately through direct messages.
@@ -297,7 +297,7 @@ Messages remain available according to organization retention policies.
 ## 6. Channels
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)) · enum `ChannelKind` ([L12867](../../api/prisma/schema.prisma#L12867)) · enum `ChannelStatus` ([L12885](../../api/prisma/schema.prisma#L12885))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)) · enum `ChannelKind` ([L12869](../../api/prisma/schema.prisma#L12869)) · enum `ChannelStatus` ([L12887](../../api/prisma/schema.prisma#L12887))
 <!-- schema-section:end -->
 
 Channels are persistent spaces for team communication.
@@ -333,7 +333,7 @@ Read-only or restricted channel preserved for historical access.
 ## 7. Channel Properties
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `company_id`, `external_access_enabled`, `name`, `project_id`, `slug`, `team_id` · enum `ChannelPostingPolicy` ([L12892](../../api/prisma/schema.prisma#L12892)) · enum `ChannelVisibility` ([L12879](../../api/prisma/schema.prisma#L12879))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `company_id`, `external_access_enabled`, `name`, `project_id`, `slug`, `team_id` · enum `ChannelPostingPolicy` ([L12894](../../api/prisma/schema.prisma#L12894)) · enum `ChannelVisibility` ([L12881](../../api/prisma/schema.prisma#L12881))
 <!-- schema-section:end -->
 
 Each channel should support:
@@ -368,7 +368,7 @@ Each channel should support:
 ## 8. Channel Lifecycle
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)) · enum `ChannelStatus` ([L12885](../../api/prisma/schema.prisma#L12885))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)) · enum `ChannelStatus` ([L12887](../../api/prisma/schema.prisma#L12887))
 <!-- schema-section:end -->
 
 Channels should support:
@@ -391,7 +391,7 @@ Archived channels should preserve historical messages and files while preventing
 ## 9. Channel Membership
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `auto_join`, `membership_rules` · `ChannelAccessRequest` ([channel_access_requests](../../api/prisma/schema.prisma#L14286)) · `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13379)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `default_channel_ids` · enum `ChannelAccessRequestKind` ([L14271](../../api/prisma/schema.prisma#L14271)) · enum `ChannelAccessRequestStatus` ([L14277](../../api/prisma/schema.prisma#L14277)) · enum `ChannelMemberRole` ([L12900](../../api/prisma/schema.prisma#L12900)) · enum `ChannelMembershipSource` ([L12910](../../api/prisma/schema.prisma#L12910))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `auto_join`, `membership_rules` · `ChannelAccessRequest` ([channel_access_requests](../../api/prisma/schema.prisma#L14288)) · `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13381)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `default_channel_ids` · enum `ChannelAccessRequestKind` ([L14273](../../api/prisma/schema.prisma#L14273)) · enum `ChannelAccessRequestStatus` ([L14279](../../api/prisma/schema.prisma#L14279)) · enum `ChannelMemberRole` ([L12902](../../api/prisma/schema.prisma#L12902)) · enum `ChannelMembershipSource` ([L12912](../../api/prisma/schema.prisma#L12912))
 <!-- schema-section:end -->
 
 Channel membership should support:
@@ -421,7 +421,7 @@ Membership changes should be recorded in channel history.
 ## 10. Messages
 
 <!-- schema-section:start -->
-> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `metadata` · enum `MessageKind` ([L12949](../../api/prisma/schema.prisma#L12949))
+> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `metadata` · enum `MessageKind` ([L12951](../../api/prisma/schema.prisma#L12951))
 <!-- schema-section:end -->
 
 Messages are the fundamental communication unit.
@@ -453,7 +453,7 @@ Messages are the fundamental communication unit.
 ## 11. Message Composer
 
 <!-- schema-section:start -->
-> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `body`, `forwarded_from_message_id`, `quoted_message_id`, `scheduled_for` · `MessageDraft` ([message_drafts](../../api/prisma/schema.prisma#L13874)): `scheduled_for` · `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13991)): `composer_preferences`
+> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `body`, `forwarded_from_message_id`, `quoted_message_id`, `scheduled_for` · `MessageDraft` ([message_drafts](../../api/prisma/schema.prisma#L13876)): `scheduled_for` · `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13993)): `composer_preferences`
 <!-- schema-section:end -->
 
 The composer should provide a rich messaging experience.
@@ -499,7 +499,7 @@ The composer should provide a rich messaging experience.
 ## 12. Threads
 
 <!-- schema-section:start -->
-> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `parent_message_id` · `MessageThreadFollower` ([message_thread_followers](../../api/prisma/schema.prisma#L13791))
+> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `parent_message_id` · `MessageThreadFollower` ([message_thread_followers](../../api/prisma/schema.prisma#L13793))
 <!-- schema-section:end -->
 
 Threads provide focused discussions underneath a parent message.
@@ -525,7 +525,7 @@ Users should be able to follow a thread without receiving all channel activity.
 ## 13. Message Editing & Deletion
 
 <!-- schema-section:start -->
-> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `delete_reason`, `is_edited` · `MessageVersion` ([message_versions](../../api/prisma/schema.prisma#L13587)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `allow_delete_own_messages`, `delete_own_time_limit_minutes`, `edit_time_limit_minutes`, `preserve_edit_history` · enum `MessageDeliveryStatus` ([L12963](../../api/prisma/schema.prisma#L12963))
+> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `delete_reason`, `is_edited` · `MessageVersion` ([message_versions](../../api/prisma/schema.prisma#L13589)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `allow_delete_own_messages`, `delete_own_time_limit_minutes`, `edit_time_limit_minutes`, `preserve_edit_history` · enum `MessageDeliveryStatus` ([L12965](../../api/prisma/schema.prisma#L12965))
 <!-- schema-section:end -->
 
 Users should be able to edit messages according to permissions.
@@ -553,7 +553,7 @@ Deleted messages should follow organization retention and audit rules.
 ## 14. Message Reactions
 
 <!-- schema-section:start -->
-> **Schema:** `MessageReaction` ([message_reactions](../../api/prisma/schema.prisma#L13604)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `allowed_reactions`
+> **Schema:** `MessageReaction` ([message_reactions](../../api/prisma/schema.prisma#L13606)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `allowed_reactions`
 <!-- schema-section:end -->
 
 Users should be able to react to messages.
@@ -573,7 +573,7 @@ Organizations may define allowed reaction sets.
 ## 15. Mentions
 
 <!-- schema-section:start -->
-> **Schema:** `MessageMention` ([message_mentions](../../api/prisma/schema.prisma#L13624)): `read_at` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `broadcast_mention_policy` · enum `MessageMentionKind` ([L12975](../../api/prisma/schema.prisma#L12975))
+> **Schema:** `MessageMention` ([message_mentions](../../api/prisma/schema.prisma#L13626)): `read_at` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `broadcast_mention_policy` · enum `MessageMentionKind` ([L12977](../../api/prisma/schema.prisma#L12977))
 <!-- schema-section:end -->
 
 Messaging should support contextual mentions.
@@ -603,7 +603,7 @@ Mentions should trigger notifications according to recipient notification prefer
 ## 16. Notifications
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `Notification` ([notifications](../../api/prisma/schema.prisma#L15967)) ([14](./14-notifications-activity-center.md))
+> **Schema:** other modules: `Notification` ([notifications](../../api/prisma/schema.prisma#L15969)) ([14](./14-notifications-activity-center.md))
 <!-- schema-section:end -->
 
 > Engine defined by → [14 Notifications & Activity Center](./14-notifications-activity-center.md) · Linear LOG-403. Messaging emits the events below; 14 owns channels, global preferences, inbox and delivery. Sections 17–18 describe only the messaging-specific settings layered on top of 14.
@@ -630,7 +630,7 @@ Channels (in-app, desktop, browser, push, email) are provided by 14 §5.
 ## 17. Notification Preferences
 
 <!-- schema-section:start -->
-> **Schema:** `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13379)): `muted_until` · `ChannelNotificationSetting` ([channel_notification_settings](../../api/prisma/schema.prisma#L13423)): `schedule` · `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13991)) · enum `ChannelNotificationLevel` ([L12932](../../api/prisma/schema.prisma#L12932)) — other modules: `NotificationPreference` ([notification_preferences](../../api/prisma/schema.prisma#L16270)): `enabled` ([14](./14-notifications-activity-center.md)) · `NotificationRecipientSettings` ([notification_recipient_settings](../../api/prisma/schema.prisma#L16213)) ([14](./14-notifications-activity-center.md)) · enum `NotificationLevel` ([L15738](../../api/prisma/schema.prisma#L15738)) ([14](./14-notifications-activity-center.md))
+> **Schema:** `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13381)): `muted_until` · `ChannelNotificationSetting` ([channel_notification_settings](../../api/prisma/schema.prisma#L13425)): `schedule` · `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13993)) · enum `ChannelNotificationLevel` ([L12934](../../api/prisma/schema.prisma#L12934)) — other modules: `NotificationPreference` ([notification_preferences](../../api/prisma/schema.prisma#L16272)): `enabled` ([14](./14-notifications-activity-center.md)) · `NotificationRecipientSettings` ([notification_recipient_settings](../../api/prisma/schema.prisma#L16215)) ([14](./14-notifications-activity-center.md)) · enum `NotificationLevel` ([L15740](../../api/prisma/schema.prisma#L15740)) ([14](./14-notifications-activity-center.md))
 <!-- schema-section:end -->
 
 Global preferences, Do Not Disturb and digest settings live in 14 §6. Messaging adds **per-channel and per-conversation** settings:
@@ -660,7 +660,7 @@ Additional settings:
 ## 18. Notification Inbox
 
 <!-- schema-section:start -->
-> **Schema:** `MessageMention` ([message_mentions](../../api/prisma/schema.prisma#L13624)): `read_at` — other modules: `Notification` ([notifications](../../api/prisma/schema.prisma#L15967)) ([14](./14-notifications-activity-center.md)) · enum `NotificationCategory` ([L15708](../../api/prisma/schema.prisma#L15708)) ([14](./14-notifications-activity-center.md))
+> **Schema:** `MessageMention` ([message_mentions](../../api/prisma/schema.prisma#L13626)): `read_at` — other modules: `Notification` ([notifications](../../api/prisma/schema.prisma#L15969)) ([14](./14-notifications-activity-center.md)) · enum `NotificationCategory` ([L15710](../../api/prisma/schema.prisma#L15710)) ([14](./14-notifications-activity-center.md))
 <!-- schema-section:end -->
 
 The inbox is the Activity Center of 14 §7. Messaging contributes these categories and actions to it rather than building a separate inbox:
@@ -691,7 +691,7 @@ The inbox is the Activity Center of 14 §7. Messaging contributes these categori
 ## 19. Unread Management
 
 <!-- schema-section:start -->
-> **Schema:** `ChannelReadState` ([channel_read_states](../../api/prisma/schema.prisma#L13749)): `marked_unread_from_id` · `MessageMention` ([message_mentions](../../api/prisma/schema.prisma#L13624))
+> **Schema:** `ChannelReadState` ([channel_read_states](../../api/prisma/schema.prisma#L13751)): `marked_unread_from_id` · `MessageMention` ([message_mentions](../../api/prisma/schema.prisma#L13626))
 <!-- schema-section:end -->
 
 Users should be able to manage unread content.
@@ -713,7 +713,7 @@ Users should be able to manage unread content.
 ## 20. Saved Messages & Bookmarks
 
 <!-- schema-section:start -->
-> **Schema:** `MessageReminder` ([message_reminders](../../api/prisma/schema.prisma#L13846)) · `SavedMessage` ([saved_messages](../../api/prisma/schema.prisma#L13829))
+> **Schema:** `MessageReminder` ([message_reminders](../../api/prisma/schema.prisma#L13848)) · `SavedMessage` ([saved_messages](../../api/prisma/schema.prisma#L13831))
 <!-- schema-section:end -->
 
 Users should be able to save important messages.
@@ -735,7 +735,7 @@ Saved messages are personal unless explicitly shared.
 ## 21. Message Reminders
 
 <!-- schema-section:start -->
-> **Schema:** `MessageReminder` ([message_reminders](../../api/prisma/schema.prisma#L13846)) · enum `MessageReminderStatus` ([L13016](../../api/prisma/schema.prisma#L13016))
+> **Schema:** `MessageReminder` ([message_reminders](../../api/prisma/schema.prisma#L13848)) · enum `MessageReminderStatus` ([L13018](../../api/prisma/schema.prisma#L13018))
 <!-- schema-section:end -->
 
 Users should be able to create reminders from messages.
@@ -754,7 +754,7 @@ When triggered, the user receives a notification linking back to the original me
 ## 22. File & Attachment Sharing
 
 <!-- schema-section:start -->
-> **Schema:** `MessageAttachment` ([message_attachments](../../api/prisma/schema.prisma#L13657)): `preview` · enum `MessageAttachmentKind` ([L12986](../../api/prisma/schema.prisma#L12986))
+> **Schema:** `MessageAttachment` ([message_attachments](../../api/prisma/schema.prisma#L13659)): `preview` · enum `MessageAttachmentKind` ([L12988](../../api/prisma/schema.prisma#L12988))
 <!-- schema-section:end -->
 
 Messaging should support file sharing.
@@ -790,7 +790,7 @@ Attachments are Documents owned by [17 Documents & File Management](./17-documen
 ## 23. Link Sharing & Previews
 
 <!-- schema-section:start -->
-> **Schema:** `MessageLinkPreview` ([message_link_previews](../../api/prisma/schema.prisma#L13687)) · enum `MessageLinkPreviewStatus` ([L13000](../../api/prisma/schema.prisma#L13000))
+> **Schema:** `MessageLinkPreview` ([message_link_previews](../../api/prisma/schema.prisma#L13689)) · enum `MessageLinkPreviewStatus` ([L13002](../../api/prisma/schema.prisma#L13002))
 <!-- schema-section:end -->
 
 Messages containing URLs should support link previews.
@@ -824,7 +824,7 @@ Users should not receive access to a record they are not authorized to view.
 ## 24. Business Record Sharing
 
 <!-- schema-section:start -->
-> **Schema:** `MessageRecordShare` ([message_record_shares](../../api/prisma/schema.prisma#L13712)): `snapshot`
+> **Schema:** `MessageRecordShare` ([message_record_shares](../../api/prisma/schema.prisma#L13714)): `snapshot`
 <!-- schema-section:end -->
 
 Messaging should be deeply connected to the Agency OS.
@@ -865,7 +865,7 @@ A shared record should display:
 ## 25. Contextual Messaging
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)) · enum `ChannelKind` ([L12867](../../api/prisma/schema.prisma#L12867))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)) · enum `ChannelKind` ([L12869](../../api/prisma/schema.prisma#L12869))
 <!-- schema-section:end -->
 
 Business records should optionally contain a dedicated conversation area.
@@ -892,7 +892,7 @@ Examples:
 ## 26. Project Channels
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `project_id` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `auto_create_project_channels` — other modules: `Project` ([projects](../../api/prisma/schema.prisma#L5696)): `channel_id` ([05](./05-project-management.md))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `project_id` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `auto_create_project_channels` — other modules: `Project` ([projects](../../api/prisma/schema.prisma#L5698)): `channel_id` ([05](./05-project-management.md))
 <!-- schema-section:end -->
 
 Projects should be able to create a dedicated communication channel.
@@ -926,7 +926,7 @@ Customers should not automatically gain access unless explicitly configured.
 ## 27. Customer / External Messaging
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `company_id`, `external_access_enabled` · `ChannelInvitation` ([channel_invitations](../../api/prisma/schema.prisma#L14235)) · `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13379)) · `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `author_user_id` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `external_access_enabled` · enum `ChannelInvitationStatus` ([L14226](../../api/prisma/schema.prisma#L14226))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `company_id`, `external_access_enabled` · `ChannelInvitation` ([channel_invitations](../../api/prisma/schema.prisma#L14237)) · `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13381)) · `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `author_user_id` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `external_access_enabled` · enum `ChannelInvitationStatus` ([L14228](../../api/prisma/schema.prisma#L14228))
 <!-- schema-section:end -->
 
 The system should optionally support external participants.
@@ -969,7 +969,7 @@ External users must not automatically see:
 ## 28. Internal vs External Messages
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)) · `Message` ([messages](../../api/prisma/schema.prisma#L13480)) · enum `MessageVisibility` ([L12957](../../api/prisma/schema.prisma#L12957))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)) · `Message` ([messages](../../api/prisma/schema.prisma#L13482)) · enum `MessageVisibility` ([L12959](../../api/prisma/schema.prisma#L12959))
 <!-- schema-section:end -->
 
 Customer-facing channels should clearly distinguish:
@@ -986,7 +986,7 @@ The system should prevent accidental posting of internal content into customer-f
 ## 29. Announcements
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `require_acknowledgement` · `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `is_announcement` · `MessageAcknowledgement` ([message_acknowledgements](../../api/prisma/schema.prisma#L13732)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `announcement_policy` · enum `ChannelPostingPolicy` ([L12892](../../api/prisma/schema.prisma#L12892))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `require_acknowledgement` · `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `is_announcement` · `MessageAcknowledgement` ([message_acknowledgements](../../api/prisma/schema.prisma#L13734)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `announcement_policy` · enum `ChannelPostingPolicy` ([L12894](../../api/prisma/schema.prisma#L12894))
 <!-- schema-section:end -->
 
 Organizations should be able to create announcement channels.
@@ -1014,7 +1014,7 @@ Potential uses:
 ## 30. Search
 
 <!-- schema-section:start -->
-> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `body_plain`, `has_attachments`, `search_vector`
+> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `body_plain`, `has_attachments`, `search_vector`
 <!-- schema-section:end -->
 
 Messaging requires powerful global search.
@@ -1077,7 +1077,7 @@ All results must respect permissions.
 ## 32. Keywords & Custom Notifications
 
 <!-- schema-section:start -->
-> **Schema:** `MessagingKeyword` ([messaging_keywords](../../api/prisma/schema.prisma#L13899)): `is_enabled` — other modules: `NotificationKeyword` ([notification_keywords](../../api/prisma/schema.prisma#L16314)): `disabled_until` ([14](./14-notifications-activity-center.md))
+> **Schema:** `MessagingKeyword` ([messaging_keywords](../../api/prisma/schema.prisma#L13901)): `is_enabled` — other modules: `NotificationKeyword` ([notification_keywords](../../api/prisma/schema.prisma#L16316)): `disabled_until` ([14](./14-notifications-activity-center.md))
 <!-- schema-section:end -->
 
 Users should optionally subscribe to specific keywords.
@@ -1096,7 +1096,7 @@ When the term appears in an authorized conversation, the user receives a notific
 ## 33. Channel Organization
 
 <!-- schema-section:start -->
-> **Schema:** `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13379)): `is_favorite` · `ChannelSection` ([channel_sections](../../api/prisma/schema.prisma#L13922)) · `ChannelSectionItem` ([channel_section_items](../../api/prisma/schema.prisma#L13943)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `default_sections`
+> **Schema:** `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13381)): `is_favorite` · `ChannelSection` ([channel_sections](../../api/prisma/schema.prisma#L13924)) · `ChannelSectionItem` ([channel_section_items](../../api/prisma/schema.prisma#L13945)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `default_sections`
 <!-- schema-section:end -->
 
 Users should be able to organize channels.
@@ -1128,7 +1128,7 @@ Users may create sections such as:
 ## 34. Channel Discovery
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `member_count` · `ChannelAccessRequest` ([channel_access_requests](../../api/prisma/schema.prisma#L14286)) · enum `ChannelAccessRequestKind` ([L14271](../../api/prisma/schema.prisma#L14271)) · enum `ChannelAccessRequestStatus` ([L14277](../../api/prisma/schema.prisma#L14277)) · enum `ChannelVisibility` ([L12879](../../api/prisma/schema.prisma#L12879))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `member_count` · `ChannelAccessRequest` ([channel_access_requests](../../api/prisma/schema.prisma#L14288)) · enum `ChannelAccessRequestKind` ([L14273](../../api/prisma/schema.prisma#L14273)) · enum `ChannelAccessRequestStatus` ([L14279](../../api/prisma/schema.prisma#L14279)) · enum `ChannelVisibility` ([L12881](../../api/prisma/schema.prisma#L12881))
 <!-- schema-section:end -->
 
 Users should be able to discover authorized channels.
@@ -1151,7 +1151,7 @@ Private channels should not expose sensitive metadata to unauthorized users.
 ## 35. Message Formatting
 
 <!-- schema-section:start -->
-> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `body`
+> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `body`
 <!-- schema-section:end -->
 
 The messaging editor should support rich formatting without becoming unnecessarily complex.
@@ -1177,7 +1177,7 @@ Keyboard shortcuts should be supported for common actions.
 ## 37. Integrations
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `settings` · `MessagingIntegration` ([messaging_integrations](../../api/prisma/schema.prisma#L14084)) · enum `MessagingIntegrationKind` ([L13072](../../api/prisma/schema.prisma#L13072)) · enum `MessagingIntegrationStatus` ([L13089](../../api/prisma/schema.prisma#L13089))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `settings` · `MessagingIntegration` ([messaging_integrations](../../api/prisma/schema.prisma#L14086)) · enum `MessagingIntegrationKind` ([L13074](../../api/prisma/schema.prisma#L13074)) · enum `MessagingIntegrationStatus` ([L13091](../../api/prisma/schema.prisma#L13091))
 <!-- schema-section:end -->
 
 The messaging system should support integrations with the rest of the Agency OS and external tools.
@@ -1220,7 +1220,7 @@ External integrations should be implemented as controlled event/message sources 
 ## 38. Integration Messages
 
 <!-- schema-section:start -->
-> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `integration_id`, `integration_source` · `MessagingIntegration` ([messaging_integrations](../../api/prisma/schema.prisma#L14084)): `bot_display_name` · enum `MessageKind` ([L12949](../../api/prisma/schema.prisma#L12949)) · enum `MessagingIntegrationKind` ([L13072](../../api/prisma/schema.prisma#L13072))
+> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `integration_id`, `integration_source` · `MessagingIntegration` ([messaging_integrations](../../api/prisma/schema.prisma#L14086)): `bot_display_name` · enum `MessageKind` ([L12951](../../api/prisma/schema.prisma#L12951)) · enum `MessagingIntegrationKind` ([L13074](../../api/prisma/schema.prisma#L13074))
 <!-- schema-section:end -->
 
 External systems may create messages or notifications inside designated channels.
@@ -1243,7 +1243,7 @@ Integration messages should clearly indicate their external source.
 ## 39. Webhooks & API
 
 <!-- schema-section:start -->
-> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `client_message_id` — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21877)) ([20](./20-automation-engine.md))
+> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `client_message_id` — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21879)) ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 Messaging must expose an extensible API.
@@ -1288,7 +1288,7 @@ Messaging must expose an extensible API.
 ## 40. Messaging Webhooks
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21877)): `channel_id`, `include_direct_messages` ([20](./20-automation-engine.md))
+> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21879)): `channel_id`, `include_direct_messages` ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 Support events such as:
@@ -1316,7 +1316,7 @@ Webhook delivery should support retries, signatures, event IDs, and idempotency.
 ## 41. Real-Time Communication
 
 <!-- schema-section:start -->
-> **Schema:** `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13991)): `share_typing_indicator` · `MessagingPresence` ([messaging_presence](../../api/prisma/schema.prisma#L13961))
+> **Schema:** `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13993)): `share_typing_indicator` · `MessagingPresence` ([messaging_presence](../../api/prisma/schema.prisma#L13963))
 <!-- schema-section:end -->
 
 Messaging should be real-time.
@@ -1367,7 +1367,7 @@ Typing indicators should be ephemeral and should not be stored as permanent mess
 ## 43. Read Receipts
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `read_receipts_enabled` · `ChannelReadState` ([channel_read_states](../../api/prisma/schema.prisma#L13749)) · `MessageReadReceipt` ([message_read_receipts](../../api/prisma/schema.prisma#L13775)) · `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13991)): `share_read_receipts` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `read_receipts_direct`
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `read_receipts_enabled` · `ChannelReadState` ([channel_read_states](../../api/prisma/schema.prisma#L13751)) · `MessageReadReceipt` ([message_read_receipts](../../api/prisma/schema.prisma#L13777)) · `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13993)): `share_read_receipts` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `read_receipts_direct`
 <!-- schema-section:end -->
 
 Read receipts may be enabled depending on conversation type.
@@ -1386,7 +1386,7 @@ Organizations should be able to configure privacy settings.
 ## 44. Voice & Video Communication
 
 <!-- schema-section:start -->
-> **Schema:** `ChannelCall` ([channel_calls](../../api/prisma/schema.prisma#L14130)) · `ChannelCallParticipant` ([channel_call_participants](../../api/prisma/schema.prisma#L14169)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `calls_enabled` · enum `ChannelCallKind` ([L13096](../../api/prisma/schema.prisma#L13096)) · enum `ChannelCallStatus` ([L13103](../../api/prisma/schema.prisma#L13103))
+> **Schema:** `ChannelCall` ([channel_calls](../../api/prisma/schema.prisma#L14132)) · `ChannelCallParticipant` ([channel_call_participants](../../api/prisma/schema.prisma#L14171)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `calls_enabled` · enum `ChannelCallKind` ([L13098](../../api/prisma/schema.prisma#L13098)) · enum `ChannelCallStatus` ([L13105](../../api/prisma/schema.prisma#L13105))
 <!-- schema-section:end -->
 
 Messaging should provide an extensible foundation for calls.
@@ -1410,7 +1410,7 @@ Calls may integrate with external providers rather than requiring the messaging 
 ## 45. Audio / Voice Messages
 
 <!-- schema-section:start -->
-> **Schema:** `MessageAttachment` ([message_attachments](../../api/prisma/schema.prisma#L13657)): `duration_seconds` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `voice_messages_enabled` · enum `MessageAttachmentKind` ([L12986](../../api/prisma/schema.prisma#L12986)) · enum `MessageKind` ([L12949](../../api/prisma/schema.prisma#L12949))
+> **Schema:** `MessageAttachment` ([message_attachments](../../api/prisma/schema.prisma#L13659)): `duration_seconds` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `voice_messages_enabled` · enum `MessageAttachmentKind` ([L12988](../../api/prisma/schema.prisma#L12988)) · enum `MessageKind` ([L12951](../../api/prisma/schema.prisma#L12951))
 <!-- schema-section:end -->
 
 Optional support for short audio messages.
@@ -1432,7 +1432,7 @@ Audio messages should follow the same retention and permission rules as other at
 ## 46. Drafts
 
 <!-- schema-section:start -->
-> **Schema:** `MessageDraft` ([message_drafts](../../api/prisma/schema.prisma#L13874))
+> **Schema:** `MessageDraft` ([message_drafts](../../api/prisma/schema.prisma#L13876))
 <!-- schema-section:end -->
 
 Users should be able to save unsent messages.
@@ -1453,7 +1453,7 @@ Drafts are private to the author and should persist across sessions.
 ## 47. Message Pinning
 
 <!-- schema-section:start -->
-> **Schema:** `ChannelPin` ([channel_pins](../../api/prisma/schema.prisma#L13811)) · `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `pinned_at`
+> **Schema:** `ChannelPin` ([channel_pins](../../api/prisma/schema.prisma#L13813)) · `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `pinned_at`
 <!-- schema-section:end -->
 
 Authorized users should be able to pin important messages.
@@ -1479,7 +1479,7 @@ Pinned content may include:
 ## 48. Channel Topic & Description
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `topic`
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `topic`
 <!-- schema-section:end -->
 
 Channels should provide lightweight contextual information.
@@ -1497,7 +1497,7 @@ Longer explanation of channel purpose.
 ## 49. Channel Moderation
 
 <!-- schema-section:start -->
-> **Schema:** `ChannelAccessRequest` ([channel_access_requests](../../api/prisma/schema.prisma#L14286)) · `ChannelMemberRestriction` ([channel_member_restrictions](../../api/prisma/schema.prisma#L13449)) · `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `delete_reason` · `MessageReport` ([message_reports](../../api/prisma/schema.prisma#L14019)) · enum `ChannelAccessRequestKind` ([L14271](../../api/prisma/schema.prisma#L14271)) · enum `ChannelAccessRequestStatus` ([L14277](../../api/prisma/schema.prisma#L14277)) · enum `ChannelPostingPolicy` ([L12892](../../api/prisma/schema.prisma#L12892)) · enum `ChannelRestrictionKind` ([L13065](../../api/prisma/schema.prisma#L13065)) · enum `MessageReportStatus` ([L13057](../../api/prisma/schema.prisma#L13057))
+> **Schema:** `ChannelAccessRequest` ([channel_access_requests](../../api/prisma/schema.prisma#L14288)) · `ChannelMemberRestriction` ([channel_member_restrictions](../../api/prisma/schema.prisma#L13451)) · `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `delete_reason` · `MessageReport` ([message_reports](../../api/prisma/schema.prisma#L14021)) · enum `ChannelAccessRequestKind` ([L14273](../../api/prisma/schema.prisma#L14273)) · enum `ChannelAccessRequestStatus` ([L14279](../../api/prisma/schema.prisma#L14279)) · enum `ChannelPostingPolicy` ([L12894](../../api/prisma/schema.prisma#L12894)) · enum `ChannelRestrictionKind` ([L13067](../../api/prisma/schema.prisma#L13067)) · enum `MessageReportStatus` ([L13059](../../api/prisma/schema.prisma#L13059))
 <!-- schema-section:end -->
 
 Channel owners/admins should have moderation controls.
@@ -1523,7 +1523,7 @@ Moderation actions should be auditable.
 ## 50. Organization Moderation
 
 <!-- schema-section:start -->
-> **Schema:** `ChannelMemberRestriction` ([channel_member_restrictions](../../api/prisma/schema.prisma#L13449)) · `MessageReport` ([message_reports](../../api/prisma/schema.prisma#L14019)) · `MessagingIntegration` ([messaging_integrations](../../api/prisma/schema.prisma#L14084)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `admin_private_message_access_enabled` · enum `ChannelRestrictionKind` ([L13065](../../api/prisma/schema.prisma#L13065)) · enum `MessagingIntegrationStatus` ([L13089](../../api/prisma/schema.prisma#L13089))
+> **Schema:** `ChannelMemberRestriction` ([channel_member_restrictions](../../api/prisma/schema.prisma#L13451)) · `MessageReport` ([message_reports](../../api/prisma/schema.prisma#L14021)) · `MessagingIntegration` ([messaging_integrations](../../api/prisma/schema.prisma#L14086)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `admin_private_message_access_enabled` · enum `ChannelRestrictionKind` ([L13067](../../api/prisma/schema.prisma#L13067)) · enum `MessagingIntegrationStatus` ([L13091](../../api/prisma/schema.prisma#L13091))
 <!-- schema-section:end -->
 
 Administrators should have organization-level controls.
@@ -1577,7 +1577,7 @@ Audit logs should be immutable and accessible only to authorized administrators.
 ## 52. Security
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21877)) ([20](./20-automation-engine.md)) · `Permission` ([permissions](../../api/prisma/schema.prisma#L1611)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21879)) ([20](./20-automation-engine.md)) · `Permission` ([permissions](../../api/prisma/schema.prisma#L1611)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 > Authentication, authorization, RBAC, organization isolation and session management are defined by → [01](./01-users-organizations-permissions.md) · Linear LOG-406.
@@ -1608,7 +1608,7 @@ Users must never be able to retrieve messages or attachments outside their autho
 ## 53. Privacy
 
 <!-- schema-section:start -->
-> **Schema:** `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13991)): `share_read_receipts` · `MessagingPresence` ([messaging_presence](../../api/prisma/schema.prisma#L13961)): `presence_hidden` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `presence_visibility`, `read_receipts_direct` — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21877)): `include_direct_messages` ([20](./20-automation-engine.md))
+> **Schema:** `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13993)): `share_read_receipts` · `MessagingPresence` ([messaging_presence](../../api/prisma/schema.prisma#L13963)): `presence_hidden` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `presence_visibility`, `read_receipts_direct` — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21879)): `include_direct_messages` ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 Privacy controls should include:
@@ -1630,7 +1630,7 @@ The organization should clearly define how long messages and attachments are ret
 ## 54. Retention Policies
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `retention_policy_id` · `MessagingLegalHold` ([messaging_legal_holds](../../api/prisma/schema.prisma#L14312)) · `MessagingRetentionPolicy` ([messaging_retention_policies](../../api/prisma/schema.prisma#L13187)): `applies_to_attachments` · enum `MessagingRetentionAction` ([L13034](../../api/prisma/schema.prisma#L13034)) · enum `MessagingRetentionScope` ([L13025](../../api/prisma/schema.prisma#L13025))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `retention_policy_id` · `MessagingLegalHold` ([messaging_legal_holds](../../api/prisma/schema.prisma#L14314)) · `MessagingRetentionPolicy` ([messaging_retention_policies](../../api/prisma/schema.prisma#L13189)): `applies_to_attachments` · enum `MessagingRetentionAction` ([L13036](../../api/prisma/schema.prisma#L13036)) · enum `MessagingRetentionScope` ([L13027](../../api/prisma/schema.prisma#L13027))
 <!-- schema-section:end -->
 
 Organizations should be able to configure message retention.
@@ -1664,7 +1664,7 @@ Retention policies should apply consistently to:
 ## 55. Data Export
 
 <!-- schema-section:start -->
-> **Schema:** `MessagingExportJob` ([messaging_export_jobs](../../api/prisma/schema.prisma#L14051)): `filters` · enum `MessagingExportFormat` ([L13050](../../api/prisma/schema.prisma#L13050)) · enum `MessagingExportStatus` ([L13041](../../api/prisma/schema.prisma#L13041))
+> **Schema:** `MessagingExportJob` ([messaging_export_jobs](../../api/prisma/schema.prisma#L14053)): `filters` · enum `MessagingExportFormat` ([L13052](../../api/prisma/schema.prisma#L13052)) · enum `MessagingExportStatus` ([L13043](../../api/prisma/schema.prisma#L13043))
 <!-- schema-section:end -->
 
 Authorized administrators should be able to export messaging data.
@@ -1695,7 +1695,7 @@ Export permissions should be tightly controlled.
 ## 57. Customer Communication Boundaries
 
 <!-- schema-section:start -->
-> **Schema:** enum `MessageVisibility` ([L12957](../../api/prisma/schema.prisma#L12957))
+> **Schema:** enum `MessageVisibility` ([L12959](../../api/prisma/schema.prisma#L12959))
 <!-- schema-section:end -->
 
 Customer-facing messaging must remain clearly separated from internal company communication.
@@ -1717,7 +1717,7 @@ The system should make visibility obvious in the interface.
 ## 58. Messaging & CRM Integration
 
 <!-- schema-section:start -->
-> **Schema:** `MessageRecordShare` ([message_record_shares](../../api/prisma/schema.prisma#L13712))
+> **Schema:** `MessageRecordShare` ([message_record_shares](../../api/prisma/schema.prisma#L13714))
 <!-- schema-section:end -->
 
 Messaging should integrate with CRM without becoming a CRM replacement.
@@ -1747,7 +1747,7 @@ Messaging users should be able to navigate:
 ## 59. Messaging & Project Management Integration
 
 <!-- schema-section:start -->
-> **Schema:** `MessageRecordShare` ([message_record_shares](../../api/prisma/schema.prisma#L13712))
+> **Schema:** `MessageRecordShare` ([message_record_shares](../../api/prisma/schema.prisma#L13714))
 <!-- schema-section:end -->
 
 Projects should be able to surface communication context.
@@ -1766,7 +1766,7 @@ The project interface should show recent relevant messages without duplicating t
 ## 60. Messaging & Support Integration
 
 <!-- schema-section:start -->
-> **Schema:** `MessageRecordShare` ([message_record_shares](../../api/prisma/schema.prisma#L13712)) — other modules: `Ticket` ([tickets](../../api/prisma/schema.prisma#L15016)): `channel_id`, `source_message_id` ([13](./13-customer-support-communication-hub.md))
+> **Schema:** `MessageRecordShare` ([message_record_shares](../../api/prisma/schema.prisma#L13714)) — other modules: `Ticket` ([tickets](../../api/prisma/schema.prisma#L15018)): `channel_id`, `source_message_id` ([13](./13-customer-support-communication-hub.md))
 <!-- schema-section:end -->
 
 Support tickets may have linked conversations.
@@ -1782,7 +1782,7 @@ Internal support notes remain private.
 ## 61. Messaging & Finance Integration
 
 <!-- schema-section:start -->
-> **Schema:** `MessagingIntegration` ([messaging_integrations](../../api/prisma/schema.prisma#L14084))
+> **Schema:** `MessagingIntegration` ([messaging_integrations](../../api/prisma/schema.prisma#L14086))
 <!-- schema-section:end -->
 
 Financial events may optionally be posted to channels as system messages through a 20 Automation Engine rule ("post message to channel" action).
@@ -1822,7 +1822,7 @@ Messaging permissions should remain independent from HR permissions.
 ## 63. Searchable Decision History
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `ProjectDecision` ([project_decisions](../../api/prisma/schema.prisma#L6165)): `source_message_id` ([05](./05-project-management.md))
+> **Schema:** other modules: `ProjectDecision` ([project_decisions](../../api/prisma/schema.prisma#L6167)): `source_message_id` ([05](./05-project-management.md))
 <!-- schema-section:end -->
 
 The messaging system should preserve business context over time.
@@ -1851,7 +1851,7 @@ This should be a user-controlled action.
 ## 64. Conversation Actions
 
 <!-- schema-section:start -->
-> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `forwarded_from_message_id` · `MessageReport` ([message_reports](../../api/prisma/schema.prisma#L14019)) · enum `MessageReportStatus` ([L13057](../../api/prisma/schema.prisma#L13057)) — other modules: `Ticket` ([tickets](../../api/prisma/schema.prisma#L15016)): `source_message_id` ([13](./13-customer-support-communication-hub.md))
+> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `forwarded_from_message_id` · `MessageReport` ([message_reports](../../api/prisma/schema.prisma#L14021)) · enum `MessageReportStatus` ([L13059](../../api/prisma/schema.prisma#L13059)) — other modules: `Ticket` ([tickets](../../api/prisma/schema.prisma#L15018)): `source_message_id` ([13](./13-customer-support-communication-hub.md))
 <!-- schema-section:end -->
 
 Every message should expose contextual actions.
@@ -1878,7 +1878,7 @@ Every message should expose contextual actions.
 ## 65. Message Permalinks
 
 <!-- schema-section:start -->
-> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13480))
+> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13482))
 <!-- schema-section:end -->
 
 Every message should have a stable internal URL.
@@ -1897,7 +1897,7 @@ Permission checks must occur when the URL is opened.
 ## 66. Reporting & Analytics
 
 <!-- schema-section:start -->
-> **Schema:** `MessagingUsageDaily` ([messaging_usage_daily](../../api/prisma/schema.prisma#L14194)): `avg_response_seconds`, `unread_snapshot`
+> **Schema:** `MessagingUsageDaily` ([messaging_usage_daily](../../api/prisma/schema.prisma#L14196)): `avg_response_seconds`, `unread_snapshot`
 <!-- schema-section:end -->
 
 Provide organization-level messaging analytics without turning the module into employee surveillance.
@@ -1948,7 +1948,7 @@ Administrators should have a messaging administration area.
 ## 69. Rate Limits & Abuse Prevention
 
 <!-- schema-section:start -->
-> **Schema:** `MessageReport` ([message_reports](../../api/prisma/schema.prisma#L14019)) · `MessagingIntegration` ([messaging_integrations](../../api/prisma/schema.prisma#L14084)): `rate_limit_per_minute` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `file_policy`, `rate_limits`
+> **Schema:** `MessageReport` ([message_reports](../../api/prisma/schema.prisma#L14021)) · `MessagingIntegration` ([messaging_integrations](../../api/prisma/schema.prisma#L14086)): `rate_limit_per_minute` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `file_policy`, `rate_limits`
 <!-- schema-section:end -->
 
 The messaging API and UI should include protections against abuse.
@@ -1970,7 +1970,7 @@ Administrators should receive alerts for significant abuse events.
 ## 71. Mobile & Responsive Experience
 
 <!-- schema-section:start -->
-> **Schema:** `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `voice_messages_enabled`
+> **Schema:** `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `voice_messages_enabled`
 <!-- schema-section:end -->
 
 Messaging should work effectively on:
@@ -1997,7 +1997,7 @@ Mobile priorities:
 ## 72. Desktop Experience
 
 <!-- schema-section:start -->
-> **Schema:** `ChannelSection` ([channel_sections](../../api/prisma/schema.prisma#L13922)) · `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13991)): `sidebar_preferences`
+> **Schema:** `ChannelSection` ([channel_sections](../../api/prisma/schema.prisma#L13924)) · `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13993)): `sidebar_preferences`
 <!-- schema-section:end -->
 
 The desktop UI should support a Slack-like three-column workflow.
@@ -2036,7 +2036,7 @@ The interface should remain configurable and responsive.
 ## 73. Keyboard Shortcuts
 
 <!-- schema-section:start -->
-> **Schema:** `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13991)): `keyboard_shortcuts`
+> **Schema:** `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13993)): `keyboard_shortcuts`
 <!-- schema-section:end -->
 
 Support common shortcuts such as:
@@ -2059,7 +2059,7 @@ Shortcut configuration should avoid conflicts with browser and OS shortcuts.
 ## 74. Draft & Offline Behavior
 
 <!-- schema-section:start -->
-> **Schema:** `MessageDraft` ([message_drafts](../../api/prisma/schema.prisma#L13874))
+> **Schema:** `MessageDraft` ([message_drafts](../../api/prisma/schema.prisma#L13876))
 <!-- schema-section:end -->
 
 The client should preserve drafts during temporary network outages.
@@ -2081,7 +2081,7 @@ The system must clearly indicate message delivery status.
 ## 75. Message Delivery States
 
 <!-- schema-section:start -->
-> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13480)) · enum `MessageDeliveryStatus` ([L12963](../../api/prisma/schema.prisma#L12963))
+> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13482)) · enum `MessageDeliveryStatus` ([L12965](../../api/prisma/schema.prisma#L12965))
 <!-- schema-section:end -->
 
 Messages may have states such as:
@@ -2101,7 +2101,7 @@ The UI should provide clear feedback when a message fails to send.
 ## 76. Reliability
 
 <!-- schema-section:start -->
-> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `client_message_id`
+> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `client_message_id`
 <!-- schema-section:end -->
 
 Messaging is a real-time operational system and should prioritize reliability.
@@ -2123,7 +2123,7 @@ Messaging is a real-time operational system and should prioritize reliability.
 ## 77. Performance
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `member_count`
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `member_count`
 <!-- schema-section:end -->
 
 The system should remain responsive with large organizations and high message volume.
@@ -2168,7 +2168,7 @@ When opening a permalink, the client should load enough surrounding context to m
 ## 79. Notification Rules Engine
 
 <!-- schema-section:start -->
-> **Schema:** `ChannelNotificationSetting` ([channel_notification_settings](../../api/prisma/schema.prisma#L13423)): `priority_customer_messages` · `MessagingKeyword` ([messaging_keywords](../../api/prisma/schema.prisma#L13899)) · enum `ChannelNotificationLevel` ([L12932](../../api/prisma/schema.prisma#L12932))
+> **Schema:** `ChannelNotificationSetting` ([channel_notification_settings](../../api/prisma/schema.prisma#L13425)): `priority_customer_messages` · `MessagingKeyword` ([messaging_keywords](../../api/prisma/schema.prisma#L13901)) · enum `ChannelNotificationLevel` ([L12934](../../api/prisma/schema.prisma#L12934))
 <!-- schema-section:end -->
 
 The notification system should support configurable rules.
@@ -2190,7 +2190,7 @@ Rules should be evaluated consistently across web and mobile clients.
 ## 80. Customization
 
 <!-- schema-section:start -->
-> **Schema:** `MessageReaction` ([message_reactions](../../api/prisma/schema.prisma#L13604)): `emoji` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `allowed_reactions`, `announcement_policy`, `broadcast_mention_policy`, `channel_naming_rules`, `custom_emoji`, `default_channel_ids`, `default_sections`, `external_access_enabled`, `file_policy`
+> **Schema:** `MessageReaction` ([message_reactions](../../api/prisma/schema.prisma#L13606)): `emoji` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `allowed_reactions`, `announcement_policy`, `broadcast_mention_policy`, `channel_naming_rules`, `custom_emoji`, `default_channel_ids`, `default_sections`, `external_access_enabled`, `file_policy`
 <!-- schema-section:end -->
 
 Organizations should be able to customize:
@@ -2257,7 +2257,7 @@ Messaging permissions apply at organization, channel and conversation levels.
 ## 82. Guest Users
 
 <!-- schema-section:start -->
-> **Schema:** `ChannelInvitation` ([channel_invitations](../../api/prisma/schema.prisma#L14235)) · `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13379)): `access_expires_at` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `guest_access_enabled` · enum `ChannelGuestKind` ([L12923](../../api/prisma/schema.prisma#L12923)) · enum `ChannelInvitationStatus` ([L14226](../../api/prisma/schema.prisma#L14226))
+> **Schema:** `ChannelInvitation` ([channel_invitations](../../api/prisma/schema.prisma#L14237)) · `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13381)): `access_expires_at` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `guest_access_enabled` · enum `ChannelGuestKind` ([L12925](../../api/prisma/schema.prisma#L12925)) · enum `ChannelInvitationStatus` ([L14228](../../api/prisma/schema.prisma#L14228))
 <!-- schema-section:end -->
 
 Support limited guest users.
@@ -2277,7 +2277,7 @@ Guest access should automatically expire when configured.
 ## 83. External Identity
 
 <!-- schema-section:start -->
-> **Schema:** `ChannelInvitation` ([channel_invitations](../../api/prisma/schema.prisma#L14235)): `external_label` · `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13379)): `external_label`
+> **Schema:** `ChannelInvitation` ([channel_invitations](../../api/prisma/schema.prisma#L14237)): `external_label` · `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13381)): `external_label`
 <!-- schema-section:end -->
 
 External users should have a clear identity marker.
@@ -2293,7 +2293,7 @@ This prevents confusion between employees and external participants.
 ## 85. Sensitive Information Controls
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `is_confidential` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `file_policy`, `sensitive_content_controls`
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `is_confidential` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `file_policy`, `sensitive_content_controls`
 <!-- schema-section:end -->
 
 The platform should provide configurable controls for sensitive content.
@@ -2337,7 +2337,7 @@ A user should not be able to infer private message contents through search metad
 ## 87. Notifications & Privacy
 
 <!-- schema-section:start -->
-> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `body_plain` · `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13991)): `notification_previews_with_text` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `notification_previews_include_text` — other modules: `NotificationRecipientSettings` ([notification_recipient_settings](../../api/prisma/schema.prisma#L16213)): `show_previews` ([14](./14-notifications-activity-center.md))
+> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `body_plain` · `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L13993)): `notification_previews_with_text` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `notification_previews_include_text` — other modules: `NotificationRecipientSettings` ([notification_recipient_settings](../../api/prisma/schema.prisma#L16215)): `show_previews` ([14](./14-notifications-activity-center.md))
 <!-- schema-section:end -->
 
 Notifications must also respect permissions.
@@ -2356,7 +2356,7 @@ Users should be able to configure whether notification previews contain message 
 ## 88. Message Thread Following
 
 <!-- schema-section:start -->
-> **Schema:** `MessageThreadFollower` ([message_thread_followers](../../api/prisma/schema.prisma#L13791)): `last_read_at`
+> **Schema:** `MessageThreadFollower` ([message_thread_followers](../../api/prisma/schema.prisma#L13793)): `last_read_at`
 <!-- schema-section:end -->
 
 Users should be able to follow important threads.
@@ -2376,7 +2376,7 @@ Thread following should not automatically subscribe users to the entire channel.
 ## 90. Channel Digest
 
 <!-- schema-section:start -->
-> **Schema:** `ChannelNotificationSetting` ([channel_notification_settings](../../api/prisma/schema.prisma#L13423)) · enum `ChannelDigestFrequency` ([L12941](../../api/prisma/schema.prisma#L12941))
+> **Schema:** `ChannelNotificationSetting` ([channel_notification_settings](../../api/prisma/schema.prisma#L13425)) · enum `ChannelDigestFrequency` ([L12943](../../api/prisma/schema.prisma#L12943))
 <!-- schema-section:end -->
 
 Optional digest functionality may summarize activity for channels where users do not need real-time notifications.
@@ -2394,7 +2394,7 @@ The digest should link directly to the relevant messages.
 ## 91. System Messages
 
 <!-- schema-section:start -->
-> **Schema:** `ChannelCall` ([channel_calls](../../api/prisma/schema.prisma#L14130)): `message_id` · `Message` ([messages](../../api/prisma/schema.prisma#L13480)): `system_event` · enum `MessageKind` ([L12949](../../api/prisma/schema.prisma#L12949))
+> **Schema:** `ChannelCall` ([channel_calls](../../api/prisma/schema.prisma#L14132)): `message_id` · `Message` ([messages](../../api/prisma/schema.prisma#L13482)): `system_event` · enum `MessageKind` ([L12951](../../api/prisma/schema.prisma#L12951))
 <!-- schema-section:end -->
 
 The platform should support system-generated messages.
@@ -2416,7 +2416,7 @@ System messages should be visually distinct from user messages.
 ## 92. Automated System Events
 
 <!-- schema-section:start -->
-> **Schema:** `MessagingIntegration` ([messaging_integrations](../../api/prisma/schema.prisma#L14084)): `subscribed_events`
+> **Schema:** `MessagingIntegration` ([messaging_integrations](../../api/prisma/schema.prisma#L14086)): `subscribed_events`
 <!-- schema-section:end -->
 
 Internal modules may publish operational events to messaging.
@@ -2452,7 +2452,7 @@ These events should be configurable and should not create excessive noise.
 ## 93. Conversation Templates
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `template_id` · `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13379)): `is_required` · `ChannelTemplate` ([channel_templates](../../api/prisma/schema.prisma#L13221)): `discussion_sections`, `member_rules`, `pinned_content` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `auto_create_project_channels` · enum `ChannelMembershipSource` ([L12910](../../api/prisma/schema.prisma#L12910)) · enum `ChannelTemplateTrigger` ([L13113](../../api/prisma/schema.prisma#L13113))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `template_id` · `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13381)): `is_required` · `ChannelTemplate` ([channel_templates](../../api/prisma/schema.prisma#L13223)): `discussion_sections`, `member_rules`, `pinned_content` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `auto_create_project_channels` · enum `ChannelMembershipSource` ([L12912](../../api/prisma/schema.prisma#L12912)) · enum `ChannelTemplateTrigger` ([L13115](../../api/prisma/schema.prisma#L13115))
 <!-- schema-section:end -->
 
 Organizations may define templates for recurring communication spaces.
@@ -2485,7 +2485,7 @@ Automatically include:
 ## 94. Channel Naming & Conventions
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `slug` · `ChannelTemplate` ([channel_templates](../../api/prisma/schema.prisma#L13221)): `name_pattern` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)): `channel_naming_rules`
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `slug` · `ChannelTemplate` ([channel_templates](../../api/prisma/schema.prisma#L13223)): `name_pattern` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13125)): `channel_naming_rules`
 <!-- schema-section:end -->
 
 Organizations may define naming conventions.
@@ -2507,7 +2507,7 @@ Naming rules should prevent duplicate/confusing channel names.
 ## 95. Archival & Lifecycle Automation
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `archive_reason`, `expires_at` · `ChannelTemplate` ([channel_templates](../../api/prisma/schema.prisma#L13221)): `archive_rule` · enum `ChannelStatus` ([L12885](../../api/prisma/schema.prisma#L12885))
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `archive_reason`, `expires_at` · `ChannelTemplate` ([channel_templates](../../api/prisma/schema.prisma#L13223)): `archive_rule` · enum `ChannelStatus` ([L12887](../../api/prisma/schema.prisma#L12887))
 <!-- schema-section:end -->
 
 > Engine defined by → [20 Automation Engine](./20-automation-engine.md) · Linear LOG-410. Messaging exposes "create channel", "archive channel" and "post message" actions.
@@ -2622,7 +2622,7 @@ Users should be able to continue work quickly without manually navigating throug
 ## 102. Recent Conversations
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `member_count`
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `member_count`
 <!-- schema-section:end -->
 
 Show recently active conversations.
@@ -2642,7 +2642,7 @@ Each item may display:
 ## 103. Conversation Information Panel
 
 <!-- schema-section:start -->
-> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13263)): `settings`
+> **Schema:** `Channel` ([channels](../../api/prisma/schema.prisma#L13265)): `settings`
 <!-- schema-section:end -->
 
 A conversation details panel should show:
@@ -2663,7 +2663,7 @@ A conversation details panel should show:
 ## 104. Message Analytics
 
 <!-- schema-section:start -->
-> **Schema:** `MessagingUsageDaily` ([messaging_usage_daily](../../api/prisma/schema.prisma#L14194))
+> **Schema:** `MessagingUsageDaily` ([messaging_usage_daily](../../api/prisma/schema.prisma#L14196))
 <!-- schema-section:end -->
 
 Per-channel analytics may include:
@@ -2703,7 +2703,7 @@ Search should handle multilingual text correctly.
 ## 106. Compliance
 
 <!-- schema-section:start -->
-> **Schema:** `MessagingExportJob` ([messaging_export_jobs](../../api/prisma/schema.prisma#L14051)) · `MessagingLegalHold` ([messaging_legal_holds](../../api/prisma/schema.prisma#L14312))
+> **Schema:** `MessagingExportJob` ([messaging_export_jobs](../../api/prisma/schema.prisma#L14053)) · `MessagingLegalHold` ([messaging_legal_holds](../../api/prisma/schema.prisma#L14314))
 <!-- schema-section:end -->
 
 The messaging module should provide configurable controls for applicable organizational and legal requirements.
@@ -2739,7 +2739,7 @@ No user, API request, search operation, notification, file URL, or integration e
 ## 109. Core User Journeys
 
 <!-- schema-section:start -->
-> **Schema:** `ChannelInvitation` ([channel_invitations](../../api/prisma/schema.prisma#L14235))
+> **Schema:** `ChannelInvitation` ([channel_invitations](../../api/prisma/schema.prisma#L14237))
 <!-- schema-section:end -->
 
 ### Journey 1 — Send a DM

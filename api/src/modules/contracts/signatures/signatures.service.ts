@@ -1,8 +1,10 @@
 import { BadRequestException, ConflictException, GoneException, HttpException, HttpStatus, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
     AuditOutcome, ContractRelationKind, ContractStatus, ContractVersionStatus, ModuleKey, Prisma, SignatureEventType, SignatureRequestStatus, SignatureSubjectType, SignatureType, SignerStatus, SigningOrder,
-    VerificationChannel, VerificationPurpose,
+    VerificationChannel, VerificationPurpose, RecordEntityType, DocumentSource,
 } from 'generated/prisma';
+import { AuthorizationService } from '@/shared/authorization/authorization.service';
+import { DocumentsService } from '@/modules/files/services/documents.service';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { AuditService } from '@/shared/audit/audit.service';
@@ -49,7 +51,33 @@ export class SignaturesService {
         private readonly versions: ContractVersionsService,
         private readonly mailer: ContractMailerService,
         private readonly config: ConfigService,
+        private readonly authorization: AuthorizationService,
+        private readonly documents: DocumentsService,
     ) { }
+
+    /**
+     * Store a drawn signature as a Document on the contract (17) and link it from Signer.signature_document_id.
+     * The public signer has no permissions, so the file is stored on behalf of the contract owner; if the owner cannot
+     * create documents the PNG stays in the SIGNED event payload as evidence.
+     */
+    private async storeDrawnSignature(input: { organization_id: string; contract_id: string; owner_membership_id: string | null; signer_id: string; event_id: string; data_url: string }) {
+        try {
+            if (!input.owner_membership_id) return;
+            const ownerCtx = await this.authorization.contextFor({ organization_id: input.organization_id, membership_id: input.owner_membership_id, channel: 'api' });
+            if (!ownerCtx.can('documents.documents.create')) return;
+            const buffer = Buffer.from(input.data_url.replace(/^data:image\/png;base64,/, ''), 'base64');
+            const doc = await this.documents.attachToEntity(ownerCtx, {
+                buffer, filename: `signature-${input.signer_id}.png`, mimetype: 'image/png', title: 'Signature',
+                entity_type: RecordEntityType.CONTRACT, entity_id: input.contract_id, role: 'signature', source: DocumentSource.GENERATED, source_module: ModuleKey.CONTRACTS,
+            });
+            await this.prisma.signer.update({ where: { id: input.signer_id }, data: { signature_document_id: doc.id } });
+            const event = await this.prisma.signatureEvent.findUnique({ where: { id: input.event_id }, select: { payload: true } });
+            const payload = { ...((event?.payload as Record<string, unknown>) ?? {}), signature_data_url: null, signature_document_id: doc.id };
+            await this.prisma.signatureEvent.update({ where: { id: input.event_id }, data: { payload: payload as Prisma.InputJsonValue } });
+        } catch (error) {
+            this.logger.warn(`signature image not stored as a document: ${(error as Error).message}`);
+        }
+    }
 
     private signUrl(token: string) {
         return this.mailer.appUrl(`/sign/${token}`);
@@ -364,7 +392,7 @@ export class SignaturesService {
 
         const now = new Date();
         const ctx = publicContext(r.organization_id, meta);
-        await this.prisma.$transaction(async (tx) => {
+        const signedEvent = await this.prisma.$transaction(async (tx) => {
             await tx.signer.update({
                 where: { id: signer.id },
                 data: {
@@ -372,8 +400,7 @@ export class SignaturesService {
                     ip_address: meta.ip ?? null, user_agent: meta.user_agent ?? null, viewed_at: signer.viewed_at ?? now,
                 },
             });
-            // Signature image stays in the event payload until 17 Documents storage is wired (Signer.signature_document_id).
-            await tx.signatureEvent.create({
+            return tx.signatureEvent.create({
                 data: {
                     request_id: r.id, signer_id: signer.id, type: SignatureEventType.SIGNED, occurred_at: now, ip_address: meta.ip ?? null,
                     payload: {
@@ -383,6 +410,12 @@ export class SignaturesService {
                 },
             });
         });
+        if (dto.signature_type === 'DRAWN' && dto.signature_data_url) {
+            await this.storeDrawnSignature({
+                organization_id: r.organization_id, contract_id: r.contract!.id, owner_membership_id: r.contract!.owner_membership_id ?? null,
+                signer_id: signer.id, event_id: signedEvent.id, data_url: dto.signature_data_url,
+            });
+        }
         await this.audit.record(ctx, 'contract.signed_by_signer', { resource_type: 'contract', resource_id: r.contract!.id, metadata: { request_id: r.id, signer_id: signer.id, signer_email: signer.email, signature_type: dto.signature_type, document_hash: hash } });
         this.events.publish(ctx, {
             event_key: 'contracts.signature.signer_signed', module: ModuleKey.CONTRACTS, entity_kind: 'signature_request', entity_id: r.id,

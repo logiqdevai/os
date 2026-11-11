@@ -65,11 +65,14 @@ export class TasksService {
         if (UUID.test(idOrKey)) return idOrKey;
         const parsed = parseTaskIdentifier(idOrKey);
         if (!parsed) throw new NotFoundException({ message: 'Task not found', code: 'task_not_found' });
+        // Numbers are per team: WEB-142 = team with task_key WEB, number 142. TASK-n = tasks without a team key.
+        const teamWhere: Prisma.TaskWhereInput =
+            parsed.key === DEFAULT_TASK_KEY ? { OR: [{ team_id: null }, { team: { task_key: null } }] } : { team: { task_key: parsed.key } };
         const task = await this.prisma.task.findFirst({
-            where: { organization_id: ctx.organization_id, number: parsed.number },
-            select: { id: true, team: { select: { task_key: true } } },
+            where: { organization_id: ctx.organization_id, number: parsed.number, ...teamWhere },
+            select: { id: true },
         });
-        if (!task || (task.team?.task_key || DEFAULT_TASK_KEY) !== parsed.key) throw new NotFoundException({ message: 'Task not found', code: 'task_not_found' });
+        if (!task) throw new NotFoundException({ message: 'Task not found', code: 'task_not_found' });
         return task.id;
     }
 
@@ -299,7 +302,7 @@ export class TasksService {
         const watchers = [...new Set([me, assignee, ...extraAssignees].filter(Boolean))] as string[];
 
         const task = await this.prisma.$transaction(async (tx) => {
-            const number = await nextTaskNumber(tx, ctx.organization_id);
+            const number = await nextTaskNumber(tx, ctx.organization_id, teamId);
             const last = await tx.task.findFirst({ where: { organization_id: ctx.organization_id, team_id: teamId, status_id: status?.id ?? null, rank: { not: null } }, orderBy: { rank: 'desc' }, select: { rank: true } });
             const created = await tx.task.create({
                 data: {
@@ -403,6 +406,8 @@ export class TasksService {
         if (dto.project_id === undefined && refs.parent && before.project_id === null) data.project_id = refs.parent.project_id;
 
         await this.prisma.$transaction(async (tx) => {
+            // Moving to another team gives the task that team's next number (WEB-12 → APP-4), like Linear.
+            if (teamChanged) data.number = await nextTaskNumber(tx, ctx.organization_id, teamId);
             await tx.task.update({ where: { id: before.id }, data });
             if (label_ids) {
                 await tx.taskLabelAssignment.deleteMany({ where: { task_id: before.id, label_id: { notIn: label_ids } } });

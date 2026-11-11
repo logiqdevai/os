@@ -4190,6 +4190,8 @@ model ProposalComment {
   author_membership_id String?
   author_user_id       String?
   author_contact_id    String?
+  /// Name typed by a customer on the public proposal link when it differs from the CRM contact (03).
+  author_name          String?
   is_internal          Boolean   @default(true)
   body                 String
   resolved_at          DateTime?
@@ -6742,7 +6744,7 @@ model Cycle {
 model Task {
   id                         String                   @id @default(uuid())
   organization_id            String
-  /// Sequential per organization; shown with Team.task_key (e.g. WEB-142).
+  /// Sequential per team (tasks without a team share one counter); shown with Team.task_key (e.g. WEB-142).
   number                     Int
   team_id                    String?
   /// 06 §2 — project context consumed from 05 (project, workstream, milestone); all optional.
@@ -6834,7 +6836,7 @@ model Task {
   time_suggestions         TimeSuggestion[]
   automation_rule          AutomationRule?        @relation("TaskAutomationRule", fields: [automation_rule_id], references: [id], onDelete: SetNull)
 
-  @@unique([organization_id, number])
+  @@unique([organization_id, team_id, number])
   @@index([organization_id, status_id])
   @@index([project_id, status_id])
   @@index([search_vector], type: Gin)

@@ -499,7 +499,7 @@ export interface PublicProposal {
         totals: PublicTotals;
     };
     decision?: { decision: ProposalCustomerDecision; signer_name: string; signer_title: string | null; created_at: string; feedback: string | null; selected_optional_item_ids: string[] } | null;
-    comments?: { id: string; body: string; created_at: string; section_id: string | null; from: "agency" | "customer" }[];
+    comments?: { id: string; body: string; created_at: string; section_id: string | null; author_name?: string | null; from: "agency" | "customer" }[];
 }
 
 export interface PublicDecisionDto {

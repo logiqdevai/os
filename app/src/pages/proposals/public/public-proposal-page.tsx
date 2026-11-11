@@ -322,7 +322,7 @@ function Comments({ token, access, data }: { token: string; access: string | nul
                 <ul className="mb-3 space-y-2">
                     {comments.map((cm) => (
                         <li key={cm.id} className={cn("rounded-md px-3 py-2 text-[13px]", cm.from === "agency" ? "bg-info-soft" : "bg-secondary")}>
-                            <div className="mb-0.5 text-xs text-muted-foreground">{cm.from === "agency" ? data.organization.name : "You"} · {formatDateTime(cm.created_at)}</div>
+                            <div className="mb-0.5 text-xs text-muted-foreground">{cm.from === "agency" ? data.organization.name : cm.author_name || "You"} · {formatDateTime(cm.created_at)}</div>
                             <p className="whitespace-pre-wrap">{cm.body}</p>
                         </li>
                     ))}
