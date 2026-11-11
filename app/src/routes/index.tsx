@@ -29,9 +29,11 @@ export default function AppRoutes() {
                     key={path}
                     path={path}
                     element={
-                        <Suspense fallback={<PageSkeleton />}>
-                            <Component />
-                        </Suspense>
+                        <ErrorBoundary>
+                            <Suspense fallback={<PageSkeleton />}>
+                                <Component />
+                            </Suspense>
+                        </ErrorBoundary>
                     }
                 />
             ))}
