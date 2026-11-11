@@ -84,6 +84,14 @@ Optional: `link` (in-app path opened on click, e.g. `/tasks/WEB-142`), `notifica
 Or call `NotificationsService.notify(ctx, { recipient_membership_ids, event_key, module, title, body, link, category, priority, requires_action, actions, entity_type, entity_id, entity_label, idempotency_key })`
 (import `NotificationsModule`). Event types register themselves in the catalog on first use. Never put PRIVATE content in `activity` (the org feed shows it).
 
+## Known pitfalls
+
+- **Prisma: `{}` inside `OR` matches nothing** (verified on this Prisma 7 client: `OR: [{}]` → 0 rows). Scope helpers that
+  return `{}` for organization-wide scope are safe when spread into a where object, but NOT inside `OR: [...]`. When
+  combining "scope OR own records", return a real condition (e.g. `{ organization_id: ctx.organization_id }`) or skip
+  the `OR` for organization-wide scope. Owner-level list totals were audited against DB counts for 30 list endpoints
+  on 2026-11-11 (all match); branch/team-scoped roles still need the same audit.
+
 ## Schema change requests
 
 Parallel agents must NOT run migrations (shared DB). If a feature truly needs a schema change, add a line here
