@@ -36,6 +36,11 @@ export class CreateChannelDto {
     @MaxLength(250)
     purpose?: string;
 
+    @ApiProperty({ required: false, description: 'Organization-wide channel: every member joins automatically (needs messaging.channels.manage; public/announcement channels only).' })
+    @IsOptional()
+    @IsBoolean()
+    auto_join?: boolean;
+
     @ApiProperty({ required: false, type: [String], description: 'Members to add on creation (Membership ids). The creator is always the owner.' })
     @IsOptional()
     @IsArray()
@@ -44,7 +49,7 @@ export class CreateChannelDto {
     membership_ids?: string[];
 }
 
-export class UpdateChannelDto extends PartialType(PickType(CreateChannelDto, ['name', 'description', 'topic', 'purpose'] as const)) { }
+export class UpdateChannelDto extends PartialType(PickType(CreateChannelDto, ['name', 'description', 'topic', 'purpose', 'auto_join'] as const)) { }
 
 export class AddChannelMembersDto {
     @ApiProperty({ required: false, type: [String], description: 'Internal members (Membership ids).' })

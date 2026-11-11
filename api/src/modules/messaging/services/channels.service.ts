@@ -34,8 +34,44 @@ export class ChannelsService {
     ) { }
 
     /** Sidebar: the caller's channels and DMs with unread / mention counts, favorites and mute state. */
+    /**
+     * 12 §9 — organization-wide channels (`auto_join`) include every member. Joins the caller to any they are not in
+     * yet; a member who left a channel (left_at set) is not re-added. Idempotent and cheap after the first call.
+     */
+    private async joinAutoJoinChannels(ctx: OrgContext, membershipId: string) {
+        // First use of Messaging in an organization: create the organization-wide #general channel.
+        if (!(await this.prisma.channel.count({ where: { organization_id: ctx.organization_id } }))) {
+            try {
+                await this.prisma.channel.create({
+                    data: {
+                        organization_id: ctx.organization_id, kind: 'PUBLIC', visibility: 'DISCOVERABLE', slug: 'general', name: 'general', display_name: 'general',
+                        description: 'Company-wide announcements and chat', auto_join: true, owner_membership_id: membershipId, created_by_membership_id: membershipId, member_count: 0,
+                    },
+                });
+            } catch (error) {
+                if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) throw error;
+            }
+        }
+        const missing = await this.prisma.channel.findMany({
+            where: { organization_id: ctx.organization_id, auto_join: true, status: 'ACTIVE', members: { none: { membership_id: membershipId } } },
+            select: { id: true },
+        });
+        for (const c of missing) {
+            const created = await this.prisma.channelMember.createMany({ data: [{ channel_id: c.id, membership_id: membershipId, source: 'ORGANIZATION_DEFAULT' }], skipDuplicates: true });
+            if (created.count) await this.prisma.channel.update({ where: { id: c.id }, data: { member_count: { increment: 1 } } });
+        }
+    }
+
+    /** Auto-join affects every member: organization-level permission, open channel kinds only. */
+    private assertAutoJoin(ctx: OrgContext, autoJoin: boolean | undefined, kind: string) {
+        if (!autoJoin) return;
+        if (!ctx.can('messaging.channels.manage')) throw new ForbiddenException({ message: 'Making a channel organization-wide needs messaging.channels.manage', code: 'permission_denied', permissions: ['messaging.channels.manage'] });
+        if (kind !== 'PUBLIC' && kind !== 'ANNOUNCEMENT') throw new BadRequestException({ message: 'Only public or announcement channels can include everyone automatically', code: 'auto_join_kind' });
+    }
+
     async mine(ctx: OrgContext, includeArchived = false) {
         const me = this.access.requireMembership(ctx);
+        await this.joinAutoJoinChannels(ctx, me);
         const rows = await this.prisma.channelMember.findMany({
             where: { membership_id: me, ...ACTIVE_MEMBER, channel: { organization_id: ctx.organization_id, status: includeArchived ? { not: 'DELETED' } : 'ACTIVE' } },
             include: {
@@ -131,6 +167,7 @@ export class ChannelsService {
         if (!slug) throw new BadRequestException({ message: 'Use letters or numbers in the channel name', code: 'channel_name_invalid' });
         const others = (await this.access.assertOrgMembers(ctx, dto.membership_ids ?? [])).filter((id) => id !== owner);
         const kind = dto.kind ?? 'PUBLIC';
+        this.assertAutoJoin(ctx, dto.auto_join, kind);
         try {
             const channel = await this.prisma.$transaction(async (tx) => {
                 const c = await tx.channel.create({
@@ -144,6 +181,7 @@ export class ChannelsService {
                         description: dto.description ?? null,
                         topic: dto.topic ?? null,
                         purpose: dto.purpose ?? null,
+                        auto_join: dto.auto_join ?? false,
                         owner_membership_id: owner,
                         created_by_membership_id: owner,
                         member_count: others.length + 1,
@@ -185,7 +223,8 @@ export class ChannelsService {
             this.access.assertChannelAdmin(ctx, channel.me);
         }
         this.access.assertNotArchived(channel);
-        const data: Prisma.ChannelUpdateInput = { description: dto.description, topic: dto.topic, purpose: dto.purpose };
+        this.assertAutoJoin(ctx, dto.auto_join, channel.kind);
+        const data: Prisma.ChannelUpdateInput = { description: dto.description, topic: dto.topic, purpose: dto.purpose, auto_join: dto.auto_join };
         let renamedTo: string | null = null;
         if (dto.name !== undefined) {
             const slug = slugifyChannel(dto.name);
