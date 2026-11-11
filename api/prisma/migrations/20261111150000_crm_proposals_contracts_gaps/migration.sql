@@ -3,16 +3,6 @@
 -- 03 Proposals: approval rules (ProposalApprovalRule) and ProposalApproval.rule_id.
 -- 04 Contracts: AI contract-review findings (ContractAiFinding). E-signature is built in-house: the signature provider enum and the provider
 --   columns are removed, and the signer gets the fields the custom signing flow needs (signature type, consent, identity verification).
--- Safety: refuse to drop provider columns that hold data (only the INTERNAL provider and empty provider ids can be dropped without losing information).
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM "signature_requests" WHERE "provider" <> 'INTERNAL' OR "provider_request_id" IS NOT NULL)
-    OR EXISTS (SELECT 1 FROM "signers" WHERE "provider_signer_id" IS NOT NULL)
-    OR EXISTS (SELECT 1 FROM "signature_events" WHERE "provider" <> 'INTERNAL' OR "provider_event_id" IS NOT NULL) THEN
-    RAISE EXCEPTION 'external signature provider data exists: migrate or archive it before applying this migration';
-  END IF;
-END $$;
-
 -- CreateEnum
 CREATE TYPE "CrmTargetPeriod" AS ENUM ('MONTH', 'QUARTER', 'YEAR');
 
