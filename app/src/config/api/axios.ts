@@ -1,29 +1,37 @@
-import axios from 'axios'
-import { getAuthStoreState } from '@/stores/auth'
-import { isTokenExpired } from '@/lib/token';
-import { environments } from '@/config/environments';
+import axios, { AxiosError } from "axios";
+import { getAuthStoreState, isLoggedIn } from "@/stores/auth";
+import { environments } from "@/config/environments";
 
 const axiosInstance = axios.create({
     baseURL: environments.API_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
+    headers: { "Content-Type": "application/json" },
 });
 
 axiosInstance.interceptors.request.use((config) => {
-    const authState = getAuthStoreState();
-
-    if (authState?.expires_in && isTokenExpired(authState.expires_in)) {
-        authState.logout();
-
-        return Promise.reject(new Error('Token expired'));
+    const auth = getAuthStoreState();
+    if (auth.access_token && isLoggedIn(auth)) {
+        config.headers.Authorization = `Bearer ${auth.access_token}`;
+        if (auth.organization_id) config.headers["X-Organization-Id"] = auth.organization_id;
     }
-
-    if (authState.access_token) {
-        config.headers.Authorization = `Bearer ${authState.access_token}`;
-    }
-
     return config;
 });
 
-export default axiosInstance
+axiosInstance.interceptors.response.use(
+    (response) => response,
+    (error: AxiosError<{ code?: string }>) => {
+        const status = error.response?.status;
+        const code = error.response?.data?.code;
+        if (status === 401 && getAuthStoreState().access_token && !error.config?.url?.includes("/auth/email/")) {
+            getAuthStoreState().clear();
+            if (!window.location.pathname.startsWith("/auth")) {
+                window.location.href = `/auth/sign-in?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+            }
+        }
+        if (status === 404 && code === "organization_not_found") {
+            getAuthStoreState().setOrganization(null);
+        }
+        return Promise.reject(error);
+    }
+);
+
+export default axiosInstance;

@@ -1,22 +1,32 @@
-import Navbar from "@/components/layout/navbar";
-import { environments } from "@/config/environments";
-import { Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { isLoggedIn, useAuthStore } from "@/stores/auth";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
+/** Public auth pages. Signed-in users are sent into the app (except the invitation page, which works both ways). */
 export default function AuthLayout() {
-  return (
-    <div className="h-full flex flex-col">
-      <Navbar />
-      <main className="flex-1 flex justify-center p-4 pt-8 sm:pt-12 overflow-y-auto">
-        <div className="w-full max-w-md space-y-6">
-          <div className="flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-6 w-6">
-              <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
-            </svg>
-            <h2 className="text-xl font-medium">{environments.APP_NAME}</h2>
-          </div>
-          <Outlet />
-        </div>
-      </main>
-    </div>
-  );
+    const auth = useAuthStore();
+    const location = useLocation();
+    const next = new URLSearchParams(location.search).get("next");
+    if (isLoggedIn(auth) && !location.pathname.startsWith("/auth/invite")) {
+        return <Navigate to={next && next.startsWith("/") ? next : "/home"} replace />;
+    }
+    return (
+        <TooltipProvider>
+            <div className="relative flex min-h-dvh flex-col bg-background">
+                <div className="flex items-center justify-between px-4 py-4 md:px-8">
+                    <div className="flex items-center gap-2">
+                        <div className="grid size-8 place-items-center rounded-lg bg-primary text-[13px] font-semibold text-primary-foreground">L</div>
+                        <span className="text-[15px] font-semibold text-foreground">Logiqdev OS</span>
+                    </div>
+                    <ThemeToggle />
+                </div>
+                <main className="flex flex-1 items-start justify-center px-4 pb-16 pt-6 md:items-center md:pt-0">
+                    <div className="w-full max-w-[400px]">
+                        <Outlet />
+                    </div>
+                </main>
+            </div>
+        </TooltipProvider>
+    );
 }

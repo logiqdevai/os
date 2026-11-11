@@ -36,10 +36,12 @@ const t = (resource: string, description: string, opts: { sensitive?: boolean; n
 
 export const AUDIT_EVENT_TYPES = {
     // --- Identity & sign-in (01 §6, §72, §74, §100) ---
+    'user.registered': t('user', 'User account created'),
     'user.login': t('user', 'User signed in'),
     'user.logout': t('user', 'User signed out'),
     'user.login_failed': t('user', 'Failed sign-in attempt', { sensitive: true }),
     'user.password_changed': t('user', 'Password changed'),
+    'authorization.denied': t('permission', 'Request denied by the authorization service', { sensitive: true }),
     'user.mfa_enabled': t('user_auth_method', 'MFA factor added'),
     'user.mfa_disabled': t('user_auth_method', 'MFA factor disabled', { sensitive: true, notifyAdmins: true }),
     'user.suspended': t('user', 'User suspended', { sensitive: true }),
@@ -135,6 +137,7 @@ export const AUDIT_EVENT_TYPES = {
 
     // --- Exports (01 §101) ---
     'data.exported': t('export', 'Sensitive data export', { sensitive: true }),
+    'membership.updated': t('membership', 'Member job title, type or defaults changed'), 'service_account.updated': t('service_account', 'Service account changed or reactivated', { sensitive: true }), 'mcp_call.confirmed': t('mcp_tool_call', 'A human confirmed a sensitive MCP call', { sensitive: true }), 'mcp_call.rejected': t('mcp_tool_call', 'A human rejected a sensitive MCP call', { sensitive: true }),
 } as const satisfies Record<string, AuditEventTypeMeta>;
 
 export type AuditEventType = keyof typeof AUDIT_EVENT_TYPES;

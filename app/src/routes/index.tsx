@@ -1,44 +1,58 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import { Routes as RoutePaths } from "@/routes/routes";
-import ProtectedRoute from "@/routes/protected-route";
-import SignIn from "@/pages/auth/pages/sign-in";
-import SignUp from "@/pages/auth/pages/sign-up";
+import { Suspense } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 import AuthLayout from "@/pages/auth/layout";
-import AdminLayout from "@/pages/admin/layout";
-import AdminHealthPage from "@/pages/admin/pages/health";
-import { RoleTypes } from "@/features/user/interfaces/user.interface";
+import SignInPage from "@/pages/auth/pages/sign-in";
+import SignUpPage from "@/pages/auth/pages/sign-up";
+import ForgotPasswordPage from "@/pages/auth/pages/forgot-password";
+import ResetPasswordPage from "@/pages/auth/pages/reset-password";
+import InvitePage from "@/pages/auth/pages/invite";
+import AppShell from "@/components/layout/app-shell";
+import { PageSkeleton } from "@/components/ui/states";
+import ErrorBoundary from "@/components/ui/error-boundary";
+import { MODULE_ROUTES } from "./module-routes";
+import { PUBLIC_ROUTES } from "./public-routes";
 
 export default function AppRoutes() {
-  return (
-    <Routes>
-      <Route
-        path="/auth"
-        element={
-          <ProtectedRoute loggedIn={false}>
-            <AuthLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="sign-up" element={<SignUp />} />
-        <Route path="sign-in" element={<SignIn />} />
-        <Route index element={<Navigate to="/auth/sign-in" replace />} />
-      </Route>
+    return (
+        <Routes>
+            <Route path="/auth" element={<AuthLayout />}>
+                <Route path="sign-in" element={<SignInPage />} />
+                <Route path="sign-up" element={<SignUpPage />} />
+                <Route path="forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="reset-password" element={<ResetPasswordPage />} />
+                <Route path="invite/:token" element={<InvitePage />} />
+                <Route index element={<Navigate to="/auth/sign-in" replace />} />
+            </Route>
 
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute loggedIn={true} requiredRoles={[RoleTypes.ADMIN, RoleTypes.SUPER_ADMIN]}>
-            <AdminLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="health" element={<AdminHealthPage />} />
-        <Route index element={<Navigate to={RoutePaths.admin.health} replace />} />
-      </Route>
+            {PUBLIC_ROUTES.map(({ path, Component }) => (
+                <Route
+                    key={path}
+                    path={path}
+                    element={
+                        <Suspense fallback={<PageSkeleton />}>
+                            <Component />
+                        </Suspense>
+                    }
+                />
+            ))}
 
-      <Route path="/" element={<Navigate to="/auth/sign-in" replace />} />
-
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
+            <Route element={<AppShell />}>
+                {MODULE_ROUTES.map(({ path, Component }) => (
+                    <Route
+                        key={path}
+                        path={path}
+                        element={
+                            <ErrorBoundary>
+                                <Suspense fallback={<PageSkeleton />}>
+                                    <Component />
+                                </Suspense>
+                            </ErrorBoundary>
+                        }
+                    />
+                ))}
+                <Route index element={<Navigate to="/home" replace />} />
+                <Route path="*" element={<Navigate to="/home" replace />} />
+            </Route>
+        </Routes>
+    );
 }

@@ -42,3 +42,6 @@ lerna-debug.log*
 /src/shared/config/gcs-key.json
 # Prisma generated client (built by `prisma generate`)
 /src/generated
+/storage
+
+.dev-stamp

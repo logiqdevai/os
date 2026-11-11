@@ -1,46 +1,67 @@
-import type { FC } from "react";
-import { Card } from "@/components/ui/card";
-import { SignInForm } from "./components/sign-in-form";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useSignIn } from "@/features/session/hooks/use-session";
+import { signInSchema, type SignInFormValues } from "@/features/session/validation-schemas/session.schema";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { usePageMetadata } from "@/hooks/use-page-metadata";
+import { AuthCard, FieldError } from "../../components/auth-card";
 
-const Login: FC = () => {
-  return (
-    <Card className="p-6 max-w-md mx-auto">
-      <div className="flex flex-col space-y-2 text-left">
-        <h1 className="text-2xl font-semibold tracking-tight">Login</h1>
-        <p className="text-sm text-muted-foreground">
-          Enter your username and password below <br />
-          to log into your account
-        </p>
-      </div>
-      <SignInForm />
+export default function SignInPage() {
+    usePageMetadata({ title: "Sign in" });
+    const [params] = useSearchParams();
+    const navigate = useNavigate();
+    const signIn = useSignIn();
+    const form = useForm<SignInFormValues>({ resolver: zodResolver(signInSchema), defaultValues: { email: "", password: "" } });
+    const next = params.get("next");
 
-      {/* <div className="text-center text-sm mt-3">
-        <Link to="/auth/forgot-password" className="text-muted-foreground hover:text-primary">
-          Forgot password?
-        </Link>
-      </div> */}
+    const submit = form.handleSubmit((values) =>
+        signIn.mutate(values, { onSuccess: () => navigate(next && next.startsWith("/") ? next : "/home", { replace: true }) })
+    );
 
-      <div className="text-center text-sm mt-3">
-        Don&apos;t have an account?{" "}
-        <Link to="/auth/sign-up" className="underline underline-offset-4">
-          Sign up
-        </Link>
-      </div>
-
-      {/* <p className="mt-4 px-8 text-center text-sm text-muted-foreground">
-        By clicking login, you agree to our{" "}
-        <a href="/terms" className="underline underline-offset-4 hover:text-primary">
-          Terms of Service
-        </a>{" "}
-        and{" "}
-        <a href="/privacy" className="underline underline-offset-4 hover:text-primary">
-          Privacy Policy
-        </a>
-        .
-      </p> */}
-    </Card>
-  );
-};
-
-export default Login;
+    return (
+        <AuthCard
+            title="Sign in"
+            description="Welcome back. Sign in to your agency workspace."
+            footer={
+                <>
+                    New to Logiqdev OS?{" "}
+                    <Link to={`/auth/sign-up${next ? `?next=${encodeURIComponent(next)}` : ""}`} className="font-medium text-foreground hover:underline">
+                        Create an account
+                    </Link>
+                </>
+            }
+        >
+            <form onSubmit={submit} className="space-y-4" noValidate>
+                {signIn.isError && (
+                    <Alert variant="destructive">
+                        <AlertDescription>{getApiErrorMessage(signIn.error)}</AlertDescription>
+                    </Alert>
+                )}
+                <div className="space-y-1.5">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" autoComplete="email" autoFocus {...form.register("email")} />
+                    <FieldError message={form.formState.errors.email?.message} />
+                </div>
+                <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="password">Password</Label>
+                        <Link to="/auth/forgot-password" className="text-xs text-muted-foreground hover:text-foreground">
+                            Forgot password?
+                        </Link>
+                    </div>
+                    <PasswordInput id="password" autoComplete="current-password" {...form.register("password")} />
+                    <FieldError message={form.formState.errors.password?.message} />
+                </div>
+                <Button type="submit" className="w-full" size="lg" loading={signIn.isPending}>
+                    Sign in
+                </Button>
+            </form>
+        </AuthCard>
+    );
+}

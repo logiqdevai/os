@@ -1,0 +1,21 @@
+import { z } from "zod";
+
+export const profileSettingsSchema = z.object({
+    first_name: z.string().trim().min(1, "Enter your first name").max(80),
+    last_name: z.string().trim().min(1, "Enter your last name").max(80),
+    display_name: z.string().trim().max(120),
+    profile_photo_url: z.union([z.literal(""), z.string().trim().url("Enter a full URL starting with https://")]),
+    timezone: z.string(),
+    locale: z.string().trim().max(16),
+});
+export type ProfileSettingsFormValues = z.infer<typeof profileSettingsSchema>;
+
+export const changePasswordSchema = z
+    .object({
+        current_password: z.string().min(1, "Enter your current password"),
+        new_password: z.string().min(8, "Use at least 8 characters").max(128),
+        confirm: z.string(),
+    })
+    .refine((v) => v.new_password === v.confirm, { path: ["confirm"], message: "Passwords do not match" })
+    .refine((v) => v.new_password !== v.current_password, { path: ["new_password"], message: "Choose a different password" });
+export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;

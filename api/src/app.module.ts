@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MailModule } from './modules/internal/mail/mail.module';
@@ -9,18 +10,24 @@ import { RedisCacheModule } from './modules/internal/redis-cache/redis-cache.mod
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { ConfigModule } from './shared/config/env/env.module';
+import { PlatformModule } from './shared/platform.module';
+import { McpModule } from './core/mcp/mcp.module';
+import { FEATURE_MODULES } from './modules/feature-modules';
 
 @Module({
   imports: [
     ConfigModule,
+    ScheduleModule.forRoot(),
+    RedisModule,
+    PlatformModule,
     MailModule,
     SmsModule,
     AiModule,
-    RedisModule,
     RedisCacheModule,
-    // GraphQLModule,
     AuthModule,
     HealthModule,
+    McpModule,
+    ...FEATURE_MODULES,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,60 +1,61 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 
-type Theme = "light" | "dark" | "system";
+export type Theme = "light" | "dark" | "system";
 
+const STORAGE_KEY = "theme";
+const listeners = new Set<() => void>();
+
+const read = (): Theme => {
+    try {
+        return (localStorage.getItem(STORAGE_KEY) as Theme) || "system";
+    } catch {
+        return "system";
+    }
+};
+
+const systemDark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+function apply(theme: Theme) {
+    const dark = theme === "dark" || (theme === "system" && systemDark());
+    const root = document.documentElement;
+    root.classList.remove("light", "dark");
+    root.classList.add(dark ? "dark" : "light");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#07080a" : "#ffffff");
+}
+
+function setStoredTheme(theme: Theme) {
+    try {
+        localStorage.setItem(STORAGE_KEY, theme);
+    } catch {
+        /* storage blocked */
+    }
+    apply(theme);
+    listeners.forEach((l) => l());
+}
+
+/** Light / dark / system theme shared across the app (class `dark` on <html>). */
 export const useTheme = () => {
-    const [theme, setTheme] = useState<Theme>(() => {
-        const stored = localStorage.getItem("theme") as Theme;
-        return stored || "system";
-    });
+    const theme = useSyncExternalStore(
+        (cb) => {
+            listeners.add(cb);
+            return () => listeners.delete(cb);
+        },
+        read,
+        () => "system" as Theme
+    );
 
     useEffect(() => {
-        const root = window.document.documentElement;
-
-        const getSystemTheme = () =>
-            window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-
-        const applyTheme = (currentTheme: Theme) => {
-            root.classList.remove("light", "dark");
-
-            if (currentTheme === "system") {
-                root.classList.add(getSystemTheme());
-            } else {
-                root.classList.add(currentTheme);
-            }
-        };
-
-        applyTheme(theme);
-        localStorage.setItem("theme", theme);
-
-        if (theme === "system") {
-            const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-            const handleChange = () => applyTheme(theme);
-            mediaQuery.addEventListener("change", handleChange);
-            return () => mediaQuery.removeEventListener("change", handleChange);
-        }
+        apply(theme);
+        if (theme !== "system") return;
+        const mq = window.matchMedia("(prefers-color-scheme: dark)");
+        const onChange = () => apply("system");
+        mq.addEventListener("change", onChange);
+        return () => mq.removeEventListener("change", onChange);
     }, [theme]);
 
-    const getSystemTheme = () =>
-        window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    const resolved: "light" | "dark" = theme === "system" ? (systemDark() ? "dark" : "light") : theme;
+    const setTheme = useCallback((t: Theme) => setStoredTheme(t), []);
+    const toggleTheme = useCallback(() => setStoredTheme(resolved === "dark" ? "light" : "dark"), [resolved]);
 
-    const getThemeLabel = () => {
-        const currentTheme = theme === "system" ? getSystemTheme() : theme;
-        return currentTheme === "dark" ? "Light" : "Dark";
-    };
-
-    const getThemeIconType = () => {
-        const currentTheme = theme === "system" ? getSystemTheme() : theme;
-        return currentTheme === "dark" ? "sun" : "moon";
-    };
-
-    return {
-        theme,
-        setTheme,
-        toggleTheme: () => {
-            setTheme(prev => prev === "dark" ? "light" : "dark");
-        },
-        getThemeLabel,
-        getThemeIconType
-    };
+    return { theme, resolved, setTheme, toggleTheme };
 };

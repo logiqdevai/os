@@ -8,11 +8,11 @@ interface UsePageMetadataOptions {
 export const usePageMetadata = ({ title, iconUrl }: UsePageMetadataOptions) => {
     useEffect(() => {
         if (title) {
-            document.title = title;
+            document.title = `${title} · Logiqdev OS`;
         }
         return () => {
             if (title) {
-                document.title = "";
+                document.title = "Logiqdev OS";
             }
         };
     }, [title]);
