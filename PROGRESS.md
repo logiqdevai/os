@@ -138,9 +138,13 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
   'Unknown' name; contract `{{placeholders}}` reaching signers (fill on approval + guard) and header Send for signature;
   Messages conversation width + duplicate sidebar (`ownSidebar` app flag); CORS for X-Portal-Membership-Id/X-Proposal-Access;
   app-wide TooltipProvider + error boundary on public routes; automation catalog deal fields.
-  Still open: scoped-role (branch/team) list audit for the Prisma `{}`-in-OR pitfall; default portal role cannot list
-  requests (catalog has no portal.requests.read); manual flows not yet clicked: admin invite UI, campaign wizard send, leave
-  request UI, docs editing, vault reveal, booking page; email/SMS delivery needs org Resend/Twilio keys (BYOK).
+  Follow-up pass: docs edit/save (versions), campaign wizard to Review (pre-send compliance checks block sending
+  without consent/provider/sender), admin invite UI, leave request UI, vault reveal, public booking page, command
+  palette verified. Team-scoped Developer sees only WEB tasks/projects (scope OK). Added Channel.auto_join behaviour +
+  default #general; portal.requests.read for read-only portal users; shared Select remounts on value change; app is
+  lint clean; vendor chunks split (largest 392 kB).
+  Still open: drag-and-drop can't be automated here (the "Move to" menus cover the same action); email/SMS delivery
+  needs each org's own Resend/Twilio keys (BYOK); features listed as "Left" in each module row above.
 - 2026-11-11 — 13 Support + 07 Client portal (API + app). Support: settings (lazy defaults: 6 statuses, default inbox, "Standard"
   SLA), inboxes/channels/agent profiles, unified-inbox conversations (views + counts, reply vs INTERNAL_NOTE, @mentions, assign,
   snooze, pending, resolve/reopen, merge, participants), shared message engine that updates linked tickets (first/next response,
