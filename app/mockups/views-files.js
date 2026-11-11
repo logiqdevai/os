@@ -2,7 +2,7 @@
    FILES APP — module 17 Documents & File Management (docs/features/17-documents-file-management.md). Standalone rail app "Files".
    =====================================================================================================================
    SCHEMA-ALIGNED to api/prisma/schema.prisma: Document, DocumentVersion, Folder, FolderTemplate, DocumentCategory, DocumentAttachment, DocumentShare, DocumentApproval, DocumentApprover, DocumentRetentionPolicy,
-   DocumentDeletionRequest, DocumentUploadJob, DocumentPreview, DocumentFavorite, DocumentRecentAccess, DocumentSettings, VaultEntry, VaultEntryGrant, VaultAccessLog, VaultKey. Reused: SignatureRequest/Signer (04),
+   DocumentDeletionRequest, DocumentUploadJob, DocumentPreview, DocumentFavorite, DocumentRecentAccess, DocumentSettings, DocumentTemplate, VaultEntry, VaultEntryGrant, VaultAccessLog, VaultKey. Reused: OrganizationEntitlement (01, key documents.storage_bytes), SignatureRequest/Signer (04),
    CrmNote (comments, entity_type DOCUMENT), SavedView (entity_type DOCUMENT), AuditEvent.
    Enums are real values: DocumentStatus (DRAFT, ACTIVE, APPROVED, ARCHIVED, DELETED), DocumentScope (ORGANIZATION, BRANCH, TEAM, PROJECT, CUSTOMER, EMPLOYEE, RECORD), DocumentSource (UPLOAD, URL_IMPORT, PORTAL_UPLOAD,
    EMAIL_CAPTURE, GENERATED, OCR_INTAKE, EXTERNAL_LINK, API), DocumentVersionStatus (PENDING, SCANNING, AVAILABLE, QUARANTINED, FAILED), DocumentScanStatus (PENDING, SCANNING, CLEAN, INFECTED, FAILED, SKIPPED),
@@ -13,7 +13,7 @@
    VaultEntryType (PASSWORD, API_KEY, SSH_KEY, NOTE, FILE), VaultScope (ORGANIZATION, CUSTOMER, PROJECT), VaultGrantSubjectType, VaultAccessAction (VIEW, REVEAL, COPY, CREATE, UPDATE, ROTATE, DELETE, GRANT, REVOKE),
    VaultKeyStatus (ACTIVE, ROTATING, RETIRED), DocumentStorageProvider (PLATFORM, S3_COMPATIBLE, GOOGLE_DRIVE, MICROSOFT_365), SignatureRequestStatus, SignerStatus.
    Permission keys: documents.documents.* (read, create, update, delete*, archive, export*, share, approve), documents.folders.manage, documents.categories.manage, documents.retention.manage*, documents.deletions.approve*,
-   documents.storage.manage*, documents.vault.read*, documents.vault.reveal*, documents.vault.manage*; portal.documents.read / upload (customer portal); contracts.signatures.send / cancel (04, signature requests).
+   documents.storage.manage*, documents.documents.restore, documents.legal_hold.manage*, documents.templates.read / manage, documents.vault.read*, documents.vault.reveal*, documents.vault.manage*; portal.documents.read / upload (customer portal); contracts.signatures.read / send / cancel (04, signature requests).
    Comment tags (legend in README.md): @screen @route @perm @api @mcp @data @ui @states @audit @note @gap. Every screen ends with a "Data model" footer (REVIEW-ONLY, do not ship).
 
    RULES THAT APPLY TO EVERY SCREEN HERE:
@@ -178,7 +178,7 @@
      @screen Files / Document
      @route  /files/documents/:documentId?tab=preview|versions|sharing|links|approvals|signatures|activity
      @perm   VIEW documents.documents.read (+ employees.documents.read for EMPLOYEE scope) · edit metadata/new version documents.documents.update · archive documents.documents.archive · delete documents.documents.delete* · share documents.documents.share ·
-             approvals documents.documents.approve · download documents.documents.read (every request re-checked; sensitive ones audited) · legal hold documents.retention.manage*
+             approvals documents.documents.approve · download documents.documents.read (every request re-checked; sensitive ones audited) · legal hold documents.legal_hold.manage*
      @api    GET /documents/:id · PATCH /documents/:id · GET /documents/:id/versions · POST /documents/:id/versions · POST /documents/:id/versions/:versionId/restore · GET /documents/:id/preview?version= (signed URL) ·
              GET /documents/:id/download?version= (signed URL) · GET /documents/:id/shares · GET /documents/:id/attachments · GET /documents/:id/approvals · GET /documents/:id/activity · GET/POST /notes?entity_type=DOCUMENT&entity_id=
      @mcp    documents_documents_get · documents_versions_list · documents_documents_update · documents_documents_share · documents_documents_archive
@@ -219,7 +219,7 @@
      @route  /files/shared?tab=links|people|with-me&status=&expires=
      @perm   VIEW documents.documents.read on the shared item · create/revoke documents.documents.share · see every share of the organization documents.documents.share + manage on the item (others only see shares they created) ·
              public links additionally require DocumentSettings.public_links_enabled
-     @api    GET /document-shares?subject_type=&status=&document_id=&folder_id=&expires_before=&cursor= · POST /document-shares · PATCH /document-shares/:id {expires_at, permission, allow_download, max_access_count} · POST /document-shares/:id/revoke · POST /document-shares/bulk-revoke
+     @api    GET /document-shares?subject_type=&status=&document_id=&folder_id=&expires_before=&cursor= · POST /document-shares · PATCH /document-shares/:id {expires_at, permission, allow_download, max_access_count, max_download_count} · POST /document-shares/:id/revoke · POST /document-shares/bulk-revoke
      @mcp    documents_shares_list · documents_documents_share · documents_shares_revoke
      @data   DocumentShare (document_id | folder_id, subject_type, membership_id, team_id, portal_user_id, external_email, external_name, link_token, link_password_hash, permission, status, allow_download, watermark, pinned_version_id,
              max_access_count, access_count, download_count, last_accessed_at, message, expires_at, shared_by_membership_id, revoked_at) · Document.title · Folder.name · DocumentSettings (public_links_enabled, public_link_max_days, default_share_expiry_days)
@@ -240,7 +240,7 @@
         sub("Every public link expires (maximum DocumentSettings.public_link_max_days = 90) and is audited per access. No link ever points at storage; opening it goes through the platform, which checks status, expiry, password and download limits.")) +
       pane("p", 0, tbl(["Item", "Shared with", "Type", "Permission", "Expires", "Pinned version", "Status", "Shared by", ""], [["Acme Rebrand, Design Specification", "Lena Kovac, Acme Corp", E("PORTAL_USER"), E("VIEW"), "Dec 31", "v2", E("ACTIVE", "green"), av("MS"), more], ["Acme Rebrand, Design Specification", "Design team", E("TEAM"), E("COMMENT"), "—", "Current", E("ACTIVE", "green"), av("AM"), more], ["Folder: Deliverables (Acme)", "Marco Silva", E("MEMBERSHIP"), E("EDIT"), "—", "—", E("ACTIVE", "green"), av("AM"), more], ["Brand guidelines 2026", "agency@studio-nord.com", E("EXTERNAL_EMAIL"), E("VIEW"), "Nov 5", "v3", E("EXPIRED"), av("SJ"), more]])) +
       pane("m", 0, tbl(["Item", "Shared by", "Permission", "Expires", ""], [["Q4 budget workbook", wh("JK"), E("EDIT"), "—", more], ["Onboarding checklist", wh("SJ"), E("VIEW"), "Dec 15", more], ["Folder: Employee handbook drafts", wh("SJ"), E("COMMENT"), "—", more]])) + "</div>" +
-      dm(["DocumentShare · subject_type, membership_id, team_id, portal_user_id, external_email, link_token (last 4 only), permission, status, allow_download, watermark, pinned_version_id, max_access_count, access_count, download_count, last_accessed_at, expires_at, shared_by_membership_id, revoked_at", "Document.title · Folder.name · DocumentSettings · public_links_enabled, public_link_max_days"], []) + "</div>";
+      dm(["DocumentShare · subject_type, membership_id, team_id, portal_user_id, external_email, link_token (last 4 only), permission, status, allow_download, watermark, pinned_version_id, max_access_count, max_download_count, access_count, download_count, last_accessed_at, expires_at, shared_by_membership_id, revoked_at", "Document.title · Folder.name · DocumentSettings · public_links_enabled, public_link_max_days"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -248,15 +248,14 @@
      @screen Files / Share (also the Share dialog opened from a document, folder or the browser bulk bar)
      @route  /files/shared/new?document=<id>|folder=<id>&type=link|member|team|portal|external
      @perm   documents.documents.share on the item · PUBLIC_LINK needs DocumentSettings.public_links_enabled · sharing to PORTAL_USER needs the item to be customer_visible (or the share makes it visible after a warning) · sensitive documents: public links and external e-mail are blocked
-     @api    POST /document-shares {document_id|folder_id, subject_type, membership_id|team_id|portal_user_id|external_email, external_name, permission, allow_download, watermark, pinned_version_id, expires_at, max_access_count, password, message, notify}
+     @api    POST /document-shares {document_id|folder_id, subject_type, membership_id|team_id|portal_user_id|external_email, external_name, permission, allow_download, watermark, pinned_version_id, expires_at, max_access_count, max_download_count, password, message, notify}
      @mcp    documents_documents_share (sensitive: needs human confirmation when an AI agent calls it)
      @data   DocumentShare (all columns written) · DocumentSettings (public_links_enabled, public_link_max_days, default_share_expiry_days, watermark_customer_documents) · Document / Folder · Membership / Team / User (portal) pickers
      @ui     shadcn Form: ToggleGroup for the subject type, Popover+Command pickers (members, teams, portal users), DatePicker, Switch, password Input with strength hint, Textarea, copy-link Input with a Copy button
      @states validation (expiry required and not beyond the maximum, password min length) · saving · created (link shown once, with Copy) · blocked by policy (reason) · permission error
      @audit  share created (subject, permission, expiry, pinned version, password set yes/no), link created
      @note   Expiry defaults to DocumentSettings.default_share_expiry_days and cannot exceed public_link_max_days for public links. A pinned version makes the recipient see that version even after newer uploads. A password is stored only as
-             link_password_hash. max_access_count counts opens (the link stops at the limit); there is no separate download limit column, downloads are limited by allow_download only.
-     @gap    Download limit separate from max_access_count is not in the schema (DocumentShare has max_access_count only). Documented in gaps-17.md.
+             link_password_hash. max_access_count counts opens and max_download_count counts downloads; the link stops serving at whichever limit is reached first (null = unlimited). allow_download = false hides downloads entirely.
      ===================================================================================================================== */
   function sharenew() {
     return '<div class="a-page">' + head("Share a document", "Choose who gets access and for how long.", btn("Cancel") + btn("Create share", "link", "primary")) +
@@ -264,7 +263,7 @@
       cd("<b>What you share</b>", '<div class="rowx"><div class="fl-name">' + ficon("PDF") + "<div><b>Acme Rebrand, Design Specification</b><small>acme-rebrand-design-spec.pdf · v3 · Customer visible</small></div></div><span style='flex:1'></span>" + btn("Change", "", "sm") + "</div>" + f("Version", ser(["Always the latest", "Pin to a version"], 0), "Pinned: recipients keep seeing that version (DocumentShare.pinned_version_id).")) + sp +
       cd("<b>Who</b>", f("Share with", ser(["Public link", "Member", "Team", "Portal user", "External e-mail"], 0)) + f("Link access", '<div class="fl-secret" style="letter-spacing:0;font-family:inherit"><span class="grow muted">A link is generated when you save. Shown once.</span></div>') +
         '<div class="g2"><div>' + f("Permission", sel("View", "lock"), "VIEW · COMMENT · EDIT · MANAGE. Public links allow VIEW only.") + "</div><div>" + f("Expires", sel("In 14 days (default 14, max 90)", "calendar"), "Required for public links.") + "</div></div>" +
-        '<div class="g2"><div>' + f("Password", box("Optional, at least 10 characters"), "Stored as a hash only. Share it with the recipient separately.") + "</div><div>" + f("Maximum opens", box("Unlimited"), "DocumentShare.max_access_count") + "</div></div>" +
+        '<div class="g2"><div>' + f("Password", box("Optional, at least 10 characters"), "Stored as a hash only. Share it with the recipient separately.") + "</div><div>" + f("Maximum opens", box("Unlimited"), "DocumentShare.max_access_count") + "</div></div>" + '<div class="g2"><div>' + f("Maximum downloads", box("Unlimited"), "DocumentShare.max_download_count") + "</div></div>" +
         f("Message to the recipient", box("Optional note included in the e-mail"))) + sp +
       cd("<b>Subject pickers (shown for the selected type)</b>", f("Member", sel("Search members…", "users")) + f("Team", sel("Search teams…", "users")) + f("Portal user", sel("Search customer contacts…", "building"), "Only contacts of the document customer.") + f("External e-mail", box("name@company.com") + box("Name (optional)"), "Allowed only when the organization policy permits external collaborators.")) +
       "</div><div>" +
@@ -272,7 +271,7 @@
       cd("<b>Policy</b>", kv("Public links", E("ENABLED", "green")) + kv("Maximum lifetime", "90 days") + kv("Default expiry", "14 days") + kv("Sensitive documents", "No public links, no external e-mail") + kv("This document", "Not sensitive")) + sp +
       callout("shield", "Opening the link is audited each time: time, IP and whether the file was downloaded. You can revoke it from Shared at any moment.") +
       "</div></div>" +
-      dm(["DocumentShare · every column listed in @data", "DocumentSettings · public_links_enabled, public_link_max_days, default_share_expiry_days, watermark_customer_documents", "Membership · Team · User (portal)"], ["Separate download limit (max_downloads) is not in the schema: only max_access_count exists"]) + "</div>";
+      dm(["DocumentShare · every column listed in @data", "DocumentSettings · public_links_enabled, public_link_max_days, default_share_expiry_days, watermark_customer_documents", "Membership · Team · User (portal)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -413,7 +412,7 @@
      SIGNATURES — overview of in-house e-signature requests (module 04, shown here because signed artifacts are documents)
      @screen Files / Signatures
      @route  /files/signatures?status=&subject=&expiring=
-     @perm   VIEW contracts.contracts.read (requests belong to contracts and proposals) + documents.documents.read for the artifact · send/resend contracts.signatures.send* · cancel contracts.signatures.cancel* · download signed file and audit certificate documents.documents.read
+     @perm   VIEW contracts.signatures.read (requests belong to contracts and proposals) + documents.documents.read for the artifact · send/resend contracts.signatures.send* · cancel contracts.signatures.cancel* · download signed file and audit certificate documents.documents.read
      @api    GET /signature-requests?status=&subject_type=&cursor= · GET /signature-requests/:id (signers, events) · POST /signature-requests/:id/remind · POST /signature-requests/:id/cancel {reason}
      @mcp    contracts_signatures_list · contracts_signatures_send · contracts_signatures_cancel (owned by 04)
      @data   SignatureRequest (subject_type, contract_id, contract_version_id, proposal_version_id, status, signing_order, package_documents Json [{document_id, title, sort_order}], reminders_sent, signed_document_id, audit_certificate_document_id, signed_hash,
@@ -466,16 +465,16 @@
      RETENTION & LEGAL HOLD (spec section 13)
      @screen Files / Retention and holds
      @route  /files/retention?tab=policies|holds|requests · /files/retention/policies/new
-     @perm   VIEW + manage documents.retention.manage* · approve permanent deletion documents.deletions.approve* (a different person than the requester) · set legal hold on one document documents.retention.manage*
-     @api    GET/POST /retention-policies · PATCH /retention-policies/:id · POST /documents/:id/legal-hold {reason} · DELETE /documents/:id/legal-hold · GET /deletion-requests?status= · POST /deletion-requests/:id/approve|reject|execute
-     @mcp    documents_retention_policies_list · documents_legal_hold_set · documents_deletions_approve (sensitive)
-     @data   DocumentRetentionPolicy (name, description, category_id, scope, retain_days, anchor, action, enforced_by_module, is_active, is_default, archived_at) · DocumentCategory.default_retention_policy_id · Document (retention_policy_id, retention_expires_at, legal_hold, legal_hold_reason, legal_hold_set_by_user_id, legal_hold_set_at, purge_scheduled_at) ·
+     @perm   VIEW + manage documents.retention.manage* · approve permanent deletion documents.deletions.approve* (a different person than the requester) · set or release legal hold on a document or a folder documents.legal_hold.manage* (separate from policy administration)
+     @api    GET/POST /retention-policies · PATCH /retention-policies/:id · POST /documents/:id/legal-hold {reason} · DELETE /documents/:id/legal-hold · POST /folders/:id/legal-hold {reason} · DELETE /folders/:id/legal-hold · GET /deletion-requests?status= · POST /deletion-requests/:id/approve|reject|execute
+     @mcp    documents_retention_policies_list · documents_legal_hold_set · documents_folders_legal_hold_set · documents_deletions_approve (sensitive)
+     @data   DocumentRetentionPolicy (name, description, category_id, scope, retain_days, anchor, action, enforced_by_module, is_active, is_default, archived_at) · DocumentCategory.default_retention_policy_id · Document (retention_policy_id, retention_expires_at, legal_hold, legal_hold_reason, legal_hold_set_by_user_id, legal_hold_set_at, purge_scheduled_at) · Folder (legal_hold, legal_hold_reason, legal_hold_set_by_user_id, legal_hold_set_at) ·
              DocumentDeletionRequest (document_id, document_title, kind, status, reason, requested_by_user_id, approved_by_user_id, approved_at, rejected_reason, purged_storage_keys, executed_at)
      @ui     Tabs, Table, Dialog policy editor (Select anchor and action, number input days), AlertDialog for legal hold with a required reason, Badge
      @states loading · empty · error · no-access · policy in use warning
      @audit  policy created/changed (before and after), legal hold set/released (reason), deletion requested/approved/rejected/executed, retention run summary
      @note   Policy = category and/or scope + retain_days from an anchor (CREATED, LAST_MODIFIED, ARCHIVED, RECORD_CLOSED) then an action (ARCHIVE, SOFT_DELETE, PERMANENT_DELETE). enforced_by_module marks policies owned by another module (04 contract retention is enforced here
-             and read-only in this list). LEGAL HOLD beats every policy: while Document.legal_hold is true, soft delete, permanent delete, retention action and purge are all refused. Permanent deletion always needs an approved DocumentDeletionRequest and writes purged_storage_keys.
+             and read-only in this list). LEGAL HOLD beats every policy: while Document.legal_hold is true or any ancestor Folder.legal_hold is true (the hold covers the folder, its subfolders and documents added later), soft delete, permanent delete, retention action and purge are all refused. Permanent deletion always needs an approved DocumentDeletionRequest and writes purged_storage_keys.
      ===================================================================================================================== */
   function retention() {
     const P = [["Contract records", "Contract", "—", "2555", "RECORD_CLOSED", "ARCHIVE", "CONTRACTS", 1], ["Project records", "—", "PROJECT", "2555", "RECORD_CLOSED", "ARCHIVE", "", 1], ["Invoices and receipts", "Invoice", "—", "3650", "CREATED", "ARCHIVE", "", 1], ["HR documents", "HR document", "EMPLOYEE", "1825", "ARCHIVED", "PERMANENT_DELETE", "", 1], ["Temporary uploads", "Other", "—", "180", "LAST_MODIFIED", "SOFT_DELETE", "", 0]];
@@ -484,16 +483,16 @@
       '<div class="tabset">' + tabs([["p", "Policies", 5], ["h", "Legal holds", 3], ["r", "Deletion requests", 4]], "p") +
       pane("p", 1, tbl(["Policy", "Category", "Scope", ">Retain days", "Anchor", "Action", "Enforced by", "Active", ""], P.map((r) => [ink(r[0]), r[1], r[2] ? E(r[2]) : "—", r[3], E(r[4]), E(r[5], r[5] === "PERMANENT_DELETE" ? "red" : ""), r[6] ? E(r[6]) : "—", sw(r[7]), more])) + sp +
         cd("<b>Policy editor: Temporary uploads</b><span class='r'>" + btn("Save", "check", "sm primary") + "</span>", '<div class="g3">' + f("Name", box("Temporary uploads")) + f("Category", sel("Other", "tag")) + f("Scope", sel("Any scope", "layers")) + f("Retain for (days)", box("180")) + f("Counted from", sel("Last modified")) + f("Then", sel("Soft delete")) + "</div>" + sub("Applies to documents created after saving and, on request, to existing ones (a dry run lists them first). Contract policies are enforced by 04 and cannot be edited here.")) ) +
-      pane("h", 0, cd("<b>Documents on legal hold</b><span class='r'>" + btn("Place hold", "lock", "sm") + "</span>", tbl(["Document", "Reason", "Set by", "Since", "Retention", ""], [[ink("MSA, Acme Corp (signed)"), "Dispute with Acme, case 2026-114", "Sofia Jensen", "Oct 30", "blocked", btn("Release", "", "sm")], [ink("Offer letter, K. Lund"), "HR investigation", "Sofia Jensen", "Sep 14", "blocked", btn("Release", "", "sm")], [ink("Invoice INV-1988, Delta Studio"), "Tax audit", "Jonas Koch", "Aug 2", "blocked", btn("Release", "", "sm")]]).replace('class="panel" style="margin-top:0"', 'class="panel" style="margin:0;border:0"'), 1) + sub("While on hold, soft delete, permanent delete and retention actions are refused for the document and for all its versions.")) +
+      pane("h", 0, cd("<b>Documents and folders on legal hold</b><span class='r'>" + btn("Place hold", "lock", "sm") + "</span>", tbl(["Document", "Reason", "Set by", "Since", "Retention", ""], [[ink("MSA, Acme Corp (signed)"), "Dispute with Acme, case 2026-114", "Sofia Jensen", "Oct 30", "blocked", btn("Release", "", "sm")], [ink("Offer letter, K. Lund"), "HR investigation", "Sofia Jensen", "Sep 14", "blocked", btn("Release", "", "sm")], [ink("Invoice INV-1988, Delta Studio"), "Tax audit", "Jonas Koch", "Aug 2", "blocked", btn("Release", "", "sm")], [ink("Folder: Acme Corp / Disputes " + muted("Folder.legal_hold, 14 documents")), "Dispute with Acme, case 2026-114", "Sofia Jensen", "Oct 30", "blocked", btn("Release", "", "sm")]]).replace('class="panel" style="margin-top:0"', 'class="panel" style="margin:0;border:0"'), 1) + sub("While on hold, soft delete, permanent delete and retention actions are refused for the document and for all its versions.")) +
       pane("r", 0, tbl(["Document", "Kind", "Requested by", "Reason", "Status", "Approved by", ""], [[ink("Old brand assets 2019"), E("PERMANENT"), "Anna Meyer", "Customer request to erase", E("REQUESTED", "yellow"), "—", btn("Approve", "", "sm") + btn("Reject", "", "sm")], [ink("Analytics export October"), E("SOFT"), "Jonas Koch", "Quarantined file", E("EXECUTED", "green"), "—", more], [ink("Test uploads"), E("RETENTION"), "System", "Policy Temporary uploads", E("REQUESTED", "yellow"), "—", btn("Approve", "", "sm")], [ink("Draft proposal v1"), E("PERMANENT"), "Marco Silva", "Duplicate", E("REJECTED", "red"), "Sofia Jensen", more]])) + "</div>" +
-      dm(["DocumentRetentionPolicy · all columns in @data", "Document · retention_policy_id, retention_expires_at, legal_hold, legal_hold_reason, legal_hold_set_by_user_id, legal_hold_set_at, purge_scheduled_at", "DocumentDeletionRequest · kind, status, reason, requested_by_user_id, approved_by_user_id, rejected_reason, purged_storage_keys, executed_at"], []) + "</div>";
+      dm(["DocumentRetentionPolicy · all columns in @data", "Document · retention_policy_id, retention_expires_at, legal_hold, legal_hold_reason, legal_hold_set_by_user_id, legal_hold_set_at, purge_scheduled_at", "Folder · legal_hold, legal_hold_reason, legal_hold_set_by_user_id, legal_hold_set_at (inherited by subfolders and documents)", "DocumentDeletionRequest · kind, status, reason, requested_by_user_id, approved_by_user_id, rejected_reason, purged_storage_keys, executed_at"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      TRASH (spec section 13)
      @screen Files / Trash
      @route  /files/trash?type=documents|folders|vault
-     @perm   VIEW documents.documents.read (own deletions) · restore documents.documents.update · delete permanently documents.documents.delete* + an approved DocumentDeletionRequest (documents.deletions.approve*) · vault entries documents.vault.manage*
+     @perm   VIEW documents.documents.read (own deletions) · restore documents.documents.restore · delete permanently documents.documents.delete* + an approved DocumentDeletionRequest (documents.deletions.approve*) · vault entries documents.vault.manage*
      @api    GET /documents?status=DELETED · POST /documents/:id/restore · POST /deletion-requests {document_id, kind: PERMANENT, reason} · POST /documents/bulk {action: restore}
      @mcp    documents_documents_restore · documents_deletions_request
      @data   Document (status DELETED, deleted_at, deleted_by_user_id, purge_scheduled_at, legal_hold) · Folder (deleted_at) · VaultEntry (deleted_at) · DocumentSettings.soft_delete_recovery_days · DocumentDeletionRequest
@@ -520,15 +519,15 @@
      STORAGE USAGE & QUOTAS
      @screen Files / Storage
      @route  /files/storage?by=type|scope|category|owner
-     @perm   VIEW documents.storage.manage* (usage and cleanup suggestions) · quota is read-only here (plan, set in Admin billing: organizations.billing.manage)
+     @perm   VIEW documents.storage.manage* (usage and cleanup suggestions) · the quota is read-only here: it is the OrganizationEntitlement for documents.storage_bytes, set by the plan (organizations.billing.manage changes the plan) or by Logiqdev staff
      @api    GET /documents/storage-usage?group_by= · GET /documents/storage-usage/largest?limit= · POST /documents/bulk {action: archive|delete}
      @mcp    documents_storage_usage
-     @data   Document (size, type, scope, category_id, owner_membership_id, status) · DocumentVersion (size_bytes, storage_provider = PLATFORM) · DocumentSettings (default_storage_provider = PLATFORM, max_file_size_bytes)
+     @data   Document (size, type, scope, category_id, owner_membership_id, status) · DocumentVersion (size_bytes, storage_provider = PLATFORM) · DocumentSettings (default_storage_provider = PLATFORM, max_file_size_bytes) · OrganizationEntitlement (key documents.storage_bytes, limit_value, enforcement HARD|SOFT, source PLAN|TRIAL|OVERRIDE, valid_until; 01 §56)
      @ui     Quota bar (stacked Progress), Tabs, Table of largest files with checkboxes, Alert at 80 and 95 percent
      @states loading · error · quota near limit warning · no-access
      @audit  none for reads; cleanup actions are audited as documents are
      @note   Storage is the platform bucket only; there is no provider configuration. Usage is the sum of DocumentVersion.size_bytes for AVAILABLE versions (old versions count). Numbers are computed, never stored by hand.
-     @gap    The schema has no quota or plan limit column (no storage_quota_bytes on Organization or DocumentSettings), so the 100 GB limit below is not backed. Documented in gaps-17.md.
+     @note   The 100 GB limit is OrganizationEntitlement.limit_value for key documents.storage_bytes (no column on Organization or DocumentSettings; the same table holds the automation plan quotas, 20). HARD blocks new uploads at the limit, SOFT only warns.
      ===================================================================================================================== */
   function storage() {
     return '<div class="a-page">' + head("Storage", "How much space documents use on the platform bucket.", btn("Clean up suggestions", "sparkles")) +
@@ -540,7 +539,7 @@
       cd("<b>By scope</b>", [["Projects", 63, "39 GB"], ["Customers", 24, "15 GB"], ["Organization", 12, "7 GB"], ["Employees", 3, "1.4 GB"]].map((r) => row(r[0], "", bar(r[1]) + " " + r[2])).join(""), 1) + sp +
       cd("<b>Storage</b>", kv("Provider", E("PLATFORM")) + kv("Encryption at rest", "yes, per organization") + kv("Region", "EU (set by the platform)") + kv("Quota", "100 GB " + muted("plan"))) + sp +
       callout("zap", "At 80 percent the owner is notified; at 95 percent uploads from the portal are paused. Archived documents still count.") + "</div></div>" +
-      dm(["Document · size, type, scope, category_id, owner_membership_id, status", "DocumentVersion · size_bytes, storage_provider", "DocumentSettings · default_storage_provider PLATFORM, max_file_size_bytes"], ["Storage quota / plan limit has no column (gap)"]) + "</div>";
+      dm(["Document · size, type, scope, category_id, owner_membership_id, status", "DocumentVersion · size_bytes, storage_provider", "DocumentSettings · default_storage_provider PLATFORM, max_file_size_bytes", "OrganizationEntitlement · key documents.storage_bytes, limit_value, enforcement, source, valid_until (01 §56)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -571,24 +570,23 @@
      DOCUMENT TEMPLATES
      @screen Files / Document templates
      @route  /files/templates · /files/templates/new · /files/templates/:id
-     @perm   VIEW documents.documents.read · create from template documents.documents.create · manage templates documents.categories.manage (closest existing key)
-     @api    GET /document-templates · POST /document-templates · POST /document-templates/:id/generate {variables, folder_id}
+     @perm   VIEW documents.templates.read · create from template documents.documents.create · manage templates documents.templates.manage
+     @api    GET /document-templates · POST /document-templates · PATCH /document-templates/:id · POST /document-templates/:id/archive · POST /document-templates/:id/generate {variables, folder_id, title, owner_membership_id, project_id, company_id}
      @mcp    documents_templates_list · documents_templates_generate
-     @data   NONE in module 17: the schema has no document template table. Proposal templates (03) and contract templates (04) have their own tables; generated PDFs are stored as Document with source GENERATED.
+     @data   DocumentTemplate (name, description, category_id, folder_id, scope, source_version_id, variables Json [{key,label,type,required,default,source}], usage_count, last_used_at, created_by_user_id, archived_at) · Document (template_id, source = GENERATED) · DocumentVersion (source_version_id body) · DocumentCategory · Folder. Proposal (03) and contract (04) templates keep their own tables.
      @ui     Card grid, Dialog (variables form), Table, Tabs (Mine, Library)
      @states loading · empty · error · no-access
      @audit  template created/changed, document generated from a template (source GENERATED)
-     @note   MOCKUP ONLY until the gap is closed. Today the closest real behaviour is: pick a template in 03/04 and the generated PDF lands here as a Document (DocumentSource GENERATED). A neutral "template" for letters, NDAs and checklists needs its own model.
-     @gap    No DocumentTemplate model (name, description, category_id, folder_id, source version, variables Json, scope, archived_at) and no keys (documents.templates.read / manage). Documented in gaps-17.md.
+     @note   A template is a stored DocumentVersion with {{placeholders}}. Generating copies it, fills the variables (from the customer, project or typed values) and creates a normal Document at version 1 with source GENERATED and Document.template_id. Deleting the source document is blocked while an active template points at it. Generated PDFs of Proposals and Contracts also arrive here with source GENERATED but use their own templates.
      ===================================================================================================================== */
   function templates() {
     const T = [["Meeting notes", "DOCUMENT", "4 variables"], ["Project brief", "DOCUMENT", "9 variables"], ["Statement of work", "DOCUMENT", "12 variables"], ["Invoice cover letter", "DOCUMENT", "5 variables"], ["Weekly status report", "SPREADSHEET", "3 variables"], ["Onboarding checklist", "DOCUMENT", "6 variables"]];
     return '<div class="a-page">' + head("Document templates", "Start a new document from a prepared one.", btn("New template", "plus", "primary")) +
-      callout("sparkles", "This screen is not backed by the schema yet (see gaps-17.md). Generated PDFs from Proposals and Contracts already arrive in Files with source GENERATED.", "") + sp +
+      callout("sparkles", "Templates for letters, NDAs and checklists. Proposals and Contracts keep their own templates; their generated PDFs arrive in Files with source GENERATED.", "") + sp +
       '<div class="toolbar">' + search("Search templates") + sel("Category: Any", "tag") + sel("Scope: Any", "layers") + "</div>" +
       '<div class="fl-grid">' + T.map((t) => '<div class="fl-card"><div class="fl-thumb">' + I(TI[t[1]], 34) + '<span class="ext">TEMPLATE</span></div><div class="fl-meta"><b>' + t[0] + "</b><small>" + t[2] + "</small><div style='margin-top:8px'>" + btn("Use template", "plus", "sm") + "</div></div></div>").join("") + "</div>" +
       sp + cd("<b>Use template: Project brief</b>", '<div class="g3">' + f("Document title", box("Brief, Acme Rebrand Website")) + f("Customer", sel("Acme Corp", "building")) + f("Project", sel("Acme Rebrand Website", "folder")) + f("Folder", sel("Briefs", "folder")) + f("Owner", sel("Anna Meyer", "users")) + f("Category", sel("Specification", "tag")) + "</div>" + sub("Variables are filled from the customer and project; the result is a normal Document with version 1.")) +
-      dm(["Document · source GENERATED (existing)", "Folder · category defaults"], ["DocumentTemplate model and documents.templates.* keys do not exist (gap)"]) + "</div>";
+      dm(["DocumentTemplate · name, description, category_id, folder_id, scope, source_version_id, variables, usage_count, last_used_at, archived_at", "Document · source GENERATED, template_id", "DocumentVersion · source_version_id", "DocumentCategory · Folder · defaults"], []) + "</div>";
   }
 
   /* =====================================================================================================================

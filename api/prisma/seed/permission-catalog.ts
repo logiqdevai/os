@@ -41,11 +41,14 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'organizations.sso.manage', module: ModuleKey.ADMINISTRATION, resource: 'sso', action: 'manage', is_sensitive: true },
   { key: 'organizations.api_keys.manage', module: ModuleKey.ADMINISTRATION, resource: 'api_keys', action: 'manage', is_sensitive: true },
   { key: 'organizations.service_accounts.manage', module: ModuleKey.ADMINISTRATION, resource: 'service_accounts', action: 'manage', is_sensitive: true },
+  { key: 'organizations.mcp_calls.read', module: ModuleKey.ADMINISTRATION, resource: 'mcp_calls', action: 'read', is_sensitive: true, description: 'MCP tool call log: which agent, API key or service account called which tool, and confirmations.' },
   { key: 'organizations.audit.read', module: ModuleKey.ADMINISTRATION, resource: 'audit', action: 'read', is_sensitive: true },
   { key: 'organizations.access_reviews.read', module: ModuleKey.ADMINISTRATION, resource: 'access_reviews', action: 'read', is_sensitive: true },
   { key: 'organizations.access_reviews.manage', module: ModuleKey.ADMINISTRATION, resource: 'access_reviews', action: 'manage', is_sensitive: true },
   // Reviewers decide only the items assigned to them (AccessReviewItem.reviewer_membership_id); they do not need manage.
   { key: 'organizations.access_reviews.decide', module: ModuleKey.ADMINISTRATION, resource: 'access_reviews', action: 'decide', is_sensitive: true },
+  // Platform data retention and legal hold (01 §134); replaces the borrowed organizations.settings.manage.
+  { key: 'organizations.retention.manage', module: ModuleKey.ADMINISTRATION, resource: 'retention', action: 'manage', is_sensitive: true },
 
   // --- Users & members (01 §106–108, §131–133) ----------------------------------
   { key: 'users.members.read', module: ModuleKey.ADMINISTRATION, resource: 'members', action: 'read' },
@@ -77,6 +80,11 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
 
   // --- Customer Portal identity (01 §79) --------------------------------------------
   { key: 'portal.users.manage', module: ModuleKey.CUSTOMER_PORTAL, resource: 'users', action: 'manage', is_sensitive: true },
+  // Agency-side read and review keys (07 §16): read-only portal access, profile change review, preview as customer.
+  { key: 'portal.users.read', module: ModuleKey.CUSTOMER_PORTAL, resource: 'users', action: 'read' },
+  { key: 'portal.activity.read', module: ModuleKey.CUSTOMER_PORTAL, resource: 'activity', action: 'read' },
+  { key: 'portal.profile_changes.review', module: ModuleKey.CUSTOMER_PORTAL, resource: 'profile_changes', action: 'review', is_sensitive: true },
+  { key: 'portal.preview.use', module: ModuleKey.CUSTOMER_PORTAL, resource: 'preview', action: 'use' },
   { key: 'portal.projects.read', module: ModuleKey.CUSTOMER_PORTAL, resource: 'projects', action: 'read' },
   { key: 'portal.deliverables.approve', module: ModuleKey.CUSTOMER_PORTAL, resource: 'deliverables', action: 'approve' },
   { key: 'portal.requests.create', module: ModuleKey.CUSTOMER_PORTAL, resource: 'requests', action: 'create' },
@@ -95,10 +103,11 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   // --- Baseline entries for other modules (01 §46 examples). Each module extends its own
   //     set in its own spec; only the resources named in 01 are seeded here.
   // --- 02 CRM (02 §21) ---------------------------------------------------------------
-  ...crud(ModuleKey.CRM, 'crm', 'companies', ['merge']),
-  ...crud(ModuleKey.CRM, 'crm', 'contacts', ['merge']),
-  ...crud(ModuleKey.CRM, 'crm', 'leads', ['convert', 'assign']),
-  ...crud(ModuleKey.CRM, 'crm', 'deals', ['assign', 'change_stage']),
+  ...crud(ModuleKey.CRM, 'crm', 'companies', ['merge', 'assign']),
+  ...crud(ModuleKey.CRM, 'crm', 'contacts', ['merge', 'assign']),
+  ...crud(ModuleKey.CRM, 'crm', 'leads', ['convert', 'assign', 'merge']),
+  // approve_discount: order-level discount above the member's CrmDiscountPolicy limit (02 §10).
+  ...crud(ModuleKey.CRM, 'crm', 'deals', ['assign', 'change_stage', 'merge', 'approve_discount'], ['approve_discount']),
   ...crud(ModuleKey.CRM, 'crm', 'activities'),
   { key: 'crm.notes.private.read', module: ModuleKey.CRM, resource: 'notes.private', action: 'read', is_sensitive: true },
   { key: 'crm.financials.read', module: ModuleKey.CRM, resource: 'financials', action: 'read', is_sensitive: true },
@@ -113,6 +122,8 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'crm.targets.manage', module: ModuleKey.CRM, resource: 'targets', action: 'manage', is_sensitive: true },
   { key: 'crm.dashboards.manage', module: ModuleKey.CRM, resource: 'dashboards', action: 'manage' },
   { key: 'crm.scoring_rules.manage', module: ModuleKey.CRM, resource: 'scoring_rules', action: 'manage' },
+  // 02 §33: scheduled email delivery of saved reports (data leaves the app, so sensitive).
+  { key: 'crm.reports.schedule', module: ModuleKey.CRM, resource: 'reports', action: 'schedule', is_sensitive: true },
   // Platform custom fields, tags and saved views are defined by 02 §24–29.
   { key: 'platform.custom_fields.manage', module: ModuleKey.ADMINISTRATION, resource: 'custom_fields', action: 'manage', is_sensitive: true },
   { key: 'platform.tags.manage', module: ModuleKey.ADMINISTRATION, resource: 'tags', action: 'manage' },
@@ -123,6 +134,8 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'projects.milestones.manage', module: ModuleKey.PROJECTS, resource: 'milestones', action: 'manage' },
   { key: 'projects.workstreams.manage', module: ModuleKey.PROJECTS, resource: 'workstreams', action: 'manage' },
   { key: 'projects.deliverables.manage', module: ModuleKey.PROJECTS, resource: 'deliverables', action: 'manage' },
+  // Record a customer's acceptance on their behalf (07 §7); the acceptance_record keeps the acting member.
+  { key: 'projects.deliverables.accept_on_behalf', module: ModuleKey.PROJECTS, resource: 'deliverables', action: 'accept_on_behalf', is_sensitive: true },
   { key: 'projects.risks.manage', module: ModuleKey.PROJECTS, resource: 'risks', action: 'manage' },
   { key: 'projects.issues.manage', module: ModuleKey.PROJECTS, resource: 'issues', action: 'manage' },
   { key: 'projects.dependencies.manage', module: ModuleKey.PROJECTS, resource: 'dependencies', action: 'manage' },
@@ -147,6 +160,7 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'contracts.versions.create', module: ModuleKey.CONTRACTS, resource: 'versions', action: 'create' },
   { key: 'contracts.signatures.send', module: ModuleKey.CONTRACTS, resource: 'signatures', action: 'send', is_sensitive: true },
   { key: 'contracts.signatures.cancel', module: ModuleKey.CONTRACTS, resource: 'signatures', action: 'cancel', is_sensitive: true },
+  { key: 'contracts.signatures.read', module: ModuleKey.CONTRACTS, resource: 'signatures', action: 'read' },
   { key: 'contracts.templates.manage', module: ModuleKey.CONTRACTS, resource: 'templates', action: 'manage', is_sensitive: true },
   { key: 'contracts.clauses.manage', module: ModuleKey.CONTRACTS, resource: 'clauses', action: 'manage', is_sensitive: true },
   { key: 'contracts.types.manage', module: ModuleKey.CONTRACTS, resource: 'types', action: 'manage' },
@@ -209,6 +223,13 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'finance.dashboard.read', module: ModuleKey.FINANCE, resource: 'dashboard', action: 'read', is_sensitive: true },
   { key: 'finance.invoice_templates.manage', module: ModuleKey.FINANCE, resource: 'invoice_templates', action: 'manage' },
   { key: 'finance.adjustments.manage', module: ModuleKey.FINANCE, resource: 'adjustments', action: 'manage', is_sensitive: true },
+  { key: 'finance.adjustments.approve', module: ModuleKey.FINANCE, resource: 'adjustments', action: 'approve', is_sensitive: true, description: 'Approve credit notes and write-offs requested under a finance approval rule.' },
+  { key: 'finance.refunds.approve', module: ModuleKey.FINANCE, resource: 'refunds', action: 'approve', is_sensitive: true, description: 'Approve refunds requested with finance.payments.refund; the requester cannot approve their own.' },
+  { key: 'finance.approval_rules.manage', module: ModuleKey.FINANCE, resource: 'approval_rules', action: 'manage', is_sensitive: true, description: 'Amount thresholds and approver steps for invoices, refunds, credit notes, write-offs, ledger records and expense claims.' },
+  { key: 'finance.payment_links.manage', module: ModuleKey.FINANCE, resource: 'payment_links', action: 'manage', is_sensitive: true, description: 'Create, edit, disable and share payment links.' },
+  { key: 'finance.disputes.manage', module: ModuleKey.FINANCE, resource: 'disputes', action: 'manage', is_sensitive: true, description: 'Respond to payment disputes and submit evidence.' },
+  { key: 'finance.reports.export', module: ModuleKey.FINANCE, resource: 'reports', action: 'export', is_sensitive: true, description: 'Export finance and ledger reports to PDF, Excel and CSV.' },
+  { key: 'finance.reports.manage', module: ModuleKey.FINANCE, resource: 'reports', action: 'manage', description: 'Save report definitions and schedule e-mailed report delivery.' },
   { key: 'finance.categories.manage', module: ModuleKey.INCOME_EXPENSE, resource: 'categories', action: 'manage' },
   { key: 'finance.vat.read', module: ModuleKey.INCOME_EXPENSE, resource: 'vat', action: 'read' },
   { key: 'finance.vat.manage', module: ModuleKey.INCOME_EXPENSE, resource: 'vat', action: 'manage', is_sensitive: true },
@@ -220,6 +241,13 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'finance.profit_loss.read', module: ModuleKey.INCOME_EXPENSE, resource: 'profit_loss', action: 'read', is_sensitive: true },
   { key: 'finance.profitability.read', module: ModuleKey.INCOME_EXPENSE, resource: 'profitability', action: 'read', is_sensitive: true },
   { key: 'finance.ledger_settings.manage', module: ModuleKey.INCOME_EXPENSE, resource: 'ledger_settings', action: 'manage', is_sensitive: true },
+  { key: 'finance.budgets.read', module: ModuleKey.INCOME_EXPENSE, resource: 'budgets', action: 'read' },
+  { key: 'finance.budgets.manage', module: ModuleKey.INCOME_EXPENSE, resource: 'budgets', action: 'manage' },
+  { key: 'finance.recurring_expenses.read', module: ModuleKey.INCOME_EXPENSE, resource: 'recurring_expenses', action: 'read' },
+  { key: 'finance.expense_claims.create_own', module: ModuleKey.INCOME_EXPENSE, resource: 'expense_claims', action: 'create_own' },
+  { key: 'finance.expense_claims.read_own', module: ModuleKey.INCOME_EXPENSE, resource: 'expense_claims', action: 'read_own' },
+  { key: 'finance.expense_claims.read', module: ModuleKey.INCOME_EXPENSE, resource: 'expense_claims', action: 'read', is_sensitive: true },
+  { key: 'finance.expense_claims.approve', module: ModuleKey.INCOME_EXPENSE, resource: 'expense_claims', action: 'approve', is_sensitive: true },
   { key: 'employees.leave.read_own', module: ModuleKey.EMPLOYEES, resource: 'leave', action: 'read_own' },
   { key: 'employees.leave.read_all', module: ModuleKey.EMPLOYEES, resource: 'leave', action: 'read_all' },
   { key: 'employees.leave.request_own', module: ModuleKey.EMPLOYEES, resource: 'leave', action: 'request_own' },
@@ -242,10 +270,23 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'employees.directory.read', module: ModuleKey.EMPLOYEES, resource: 'directory', action: 'read' },
   { key: 'employees.availability.manage', module: ModuleKey.EMPLOYEES, resource: 'availability', action: 'manage' },
   { key: 'employees.profile.update_own', module: ModuleKey.EMPLOYEES, resource: 'profile', action: 'update_own' },
+  // Added for 10 gaps: field-level identity / bank / personal contact data, equipment, offboarding, import, HR settings.
+  { key: 'employees.personal_data.read', module: ModuleKey.EMPLOYEES, resource: 'personal_data', action: 'read', is_sensitive: true, is_field_level: true },
+  { key: 'employees.personal_data.manage', module: ModuleKey.EMPLOYEES, resource: 'personal_data', action: 'manage', is_sensitive: true, is_field_level: true },
+  { key: 'employees.equipment.read', module: ModuleKey.EMPLOYEES, resource: 'equipment', action: 'read' },
+  { key: 'employees.equipment.manage', module: ModuleKey.EMPLOYEES, resource: 'equipment', action: 'manage' },
+  { key: 'employees.employees.offboard', module: ModuleKey.EMPLOYEES, resource: 'employees', action: 'offboard', is_sensitive: true },
+  { key: 'employees.employees.import', module: ModuleKey.EMPLOYEES, resource: 'employees', action: 'import', is_sensitive: true },
+  { key: 'employees.settings.manage', module: ModuleKey.EMPLOYEES, resource: 'settings', action: 'manage', is_sensitive: true },
   { key: 'communications.sender_identities.manage', module: ModuleKey.COMMUNICATION, resource: 'sender_identities', action: 'manage', is_sensitive: true },
   { key: 'communications.suppressions.manage', module: ModuleKey.COMMUNICATION, resource: 'suppressions', action: 'manage', is_sensitive: true },
   { key: 'communications.analytics.read', module: ModuleKey.COMMUNICATION, resource: 'analytics', action: 'read' },
   { key: 'communications.settings.manage', module: ModuleKey.COMMUNICATION, resource: 'settings', action: 'manage', is_sensitive: true },
+  // Added for 11 gaps: recipient lists, consents / preference center, AI assist.
+  ...crud(ModuleKey.COMMUNICATION, 'communications', 'recipient_lists'),
+  { key: 'communications.consents.read', module: ModuleKey.COMMUNICATION, resource: 'consents', action: 'read' },
+  { key: 'communications.consents.manage', module: ModuleKey.COMMUNICATION, resource: 'consents', action: 'manage', is_sensitive: true },
+  { key: 'communications.ai.use', module: ModuleKey.COMMUNICATION, resource: 'ai', action: 'use' },
   { key: 'messaging.settings.manage', module: ModuleKey.MESSAGING, resource: 'settings', action: 'manage', is_sensitive: true },
   { key: 'messaging.users.manage', module: ModuleKey.MESSAGING, resource: 'users', action: 'manage' },
   { key: 'messaging.retention.manage', module: ModuleKey.MESSAGING, resource: 'retention', action: 'manage', is_sensitive: true },
@@ -258,6 +299,12 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'messaging.messages.post', module: ModuleKey.MESSAGING, resource: 'messages', action: 'post' },
   { key: 'messaging.messages.pin', module: ModuleKey.MESSAGING, resource: 'messages', action: 'pin' },
   { key: 'messaging.channel_members.manage', module: ModuleKey.MESSAGING, resource: 'channel_members', action: 'manage' },
+  // Added for 12 gaps: calls, admin read of private conversations, moderation, channel templates, analytics.
+  { key: 'messaging.calls.start', module: ModuleKey.MESSAGING, resource: 'calls', action: 'start' },
+  { key: 'messaging.messages.admin_read', module: ModuleKey.MESSAGING, resource: 'messages', action: 'admin_read', is_sensitive: true },
+  { key: 'messaging.moderation.manage', module: ModuleKey.MESSAGING, resource: 'moderation', action: 'manage' },
+  { key: 'messaging.templates.manage', module: ModuleKey.MESSAGING, resource: 'templates', action: 'manage' },
+  { key: 'messaging.analytics.read', module: ModuleKey.MESSAGING, resource: 'analytics', action: 'read' },
   { key: 'support.tickets.merge', module: ModuleKey.SUPPORT, resource: 'tickets', action: 'merge' },
   { key: 'support.tickets.escalate', module: ModuleKey.SUPPORT, resource: 'tickets', action: 'escalate' },
   { key: 'support.tickets.convert_to_task', module: ModuleKey.SUPPORT, resource: 'tickets', action: 'convert_to_task' },
@@ -270,10 +317,19 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'support.analytics.read', module: ModuleKey.SUPPORT, resource: 'analytics', action: 'read' },
   { key: 'support.settings.manage', module: ModuleKey.SUPPORT, resource: 'settings', action: 'manage' },
   { key: 'support.csat.read', module: ModuleKey.SUPPORT, resource: 'csat', action: 'read' },
+  // 13 §5 — publish customer-visible incident updates and portal announcements; 13 §1/§2 — read inboxes for pickers (manage stays for configuration).
+  { key: 'support.incidents.publish', module: ModuleKey.SUPPORT, resource: 'incidents', action: 'publish', is_sensitive: true },
+  { key: 'support.inboxes.read', module: ModuleKey.SUPPORT, resource: 'inboxes', action: 'read' },
   { key: 'notifications.templates.manage', module: ModuleKey.NOTIFICATIONS, resource: 'templates', action: 'manage' },
   { key: 'notifications.audit.read', module: ModuleKey.NOTIFICATIONS, resource: 'audit', action: 'read', is_sensitive: true },
   { key: 'notifications.preferences.manage_own', module: ModuleKey.NOTIFICATIONS, resource: 'preferences', action: 'manage_own' },
   { key: 'notifications.delivery_rules.manage', module: ModuleKey.NOTIFICATIONS, resource: 'delivery_rules', action: 'manage' },
+  // 14 §4, §5, §7, §9, §14 — the own inbox is implicit for every recipient (no key); the keys below are administrative.
+  { key: 'notifications.event_types.manage', module: ModuleKey.NOTIFICATIONS, resource: 'event_types', action: 'manage' },
+  { key: 'notifications.settings.manage', module: ModuleKey.NOTIFICATIONS, resource: 'settings', action: 'manage' },
+  { key: 'notifications.deliveries.retry', module: ModuleKey.NOTIFICATIONS, resource: 'deliveries', action: 'retry' },
+  { key: 'notifications.activity.read', module: ModuleKey.NOTIFICATIONS, resource: 'activity', action: 'read' },
+  { key: 'notifications.announcements.manage', module: ModuleKey.NOTIFICATIONS, resource: 'announcements', action: 'manage', is_sensitive: true },
   { key: 'docs.pages.create', module: ModuleKey.BUSINESS_DOCS, resource: 'pages', action: 'create' },
   { key: 'docs.pages.update', module: ModuleKey.BUSINESS_DOCS, resource: 'pages', action: 'update' },
   { key: 'docs.pages.archive', module: ModuleKey.BUSINESS_DOCS, resource: 'pages', action: 'archive' },
@@ -282,11 +338,19 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'docs.forms.anonymous_responses.read', module: ModuleKey.BUSINESS_DOCS, resource: 'forms.anonymous_responses', action: 'read', is_sensitive: true },
   { key: 'docs.ai.query', module: ModuleKey.BUSINESS_DOCS, resource: 'ai', action: 'query' },
   { key: 'docs.checklists.manage', module: ModuleKey.BUSINESS_DOCS, resource: 'checklists', action: 'manage' },
+  // 15 §2, §7, §10 — reader / search analytics, page import, page / subtree / space export.
+  { key: 'docs.analytics.read', module: ModuleKey.BUSINESS_DOCS, resource: 'analytics', action: 'read' },
+  { key: 'docs.pages.import', module: ModuleKey.BUSINESS_DOCS, resource: 'pages', action: 'import' },
+  { key: 'docs.pages.export', module: ModuleKey.BUSINESS_DOCS, resource: 'pages', action: 'export', is_sensitive: true },
   { key: 'documents.folders.manage', module: ModuleKey.DOCUMENTS, resource: 'folders', action: 'manage' },
   { key: 'documents.retention.manage', module: ModuleKey.DOCUMENTS, resource: 'retention', action: 'manage', is_sensitive: true },
   { key: 'documents.categories.manage', module: ModuleKey.DOCUMENTS, resource: 'categories', action: 'manage' },
   { key: 'documents.deletions.approve', module: ModuleKey.DOCUMENTS, resource: 'deletions', action: 'approve', is_sensitive: true },
   { key: 'documents.storage.manage', module: ModuleKey.DOCUMENTS, resource: 'storage', action: 'manage', is_sensitive: true },
+  { key: 'documents.documents.restore', module: ModuleKey.DOCUMENTS, resource: 'documents', action: 'restore' },
+  { key: 'documents.legal_hold.manage', module: ModuleKey.DOCUMENTS, resource: 'legal_hold', action: 'manage', is_sensitive: true, description: 'Place or release a legal hold on a document or folder (separate from retention policy administration).' },
+  { key: 'documents.templates.read', module: ModuleKey.DOCUMENTS, resource: 'templates', action: 'read' },
+  { key: 'documents.templates.manage', module: ModuleKey.DOCUMENTS, resource: 'templates', action: 'manage' },
   { key: 'time.entries.create_own', module: ModuleKey.TIME_TRACKING, resource: 'entries', action: 'create_own' },
   { key: 'time.entries.read_own', module: ModuleKey.TIME_TRACKING, resource: 'entries', action: 'read_own' },
   { key: 'time.entries.read_team', module: ModuleKey.TIME_TRACKING, resource: 'entries', action: 'read_team' },
@@ -298,6 +362,11 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'time.timesheets.submit_own', module: ModuleKey.TIME_TRACKING, resource: 'timesheets', action: 'submit_own' },
   { key: 'time.timesheets.approve', module: ModuleKey.TIME_TRACKING, resource: 'timesheets', action: 'approve' },
   { key: 'time.settings.manage', module: ModuleKey.TIME_TRACKING, resource: 'settings', action: 'manage' },
+  { key: 'time.entries.delete_own', module: ModuleKey.TIME_TRACKING, resource: 'entries', action: 'delete_own' },
+  { key: 'time.entries.create_team', module: ModuleKey.TIME_TRACKING, resource: 'entries', action: 'create_team', description: 'Log time on behalf of members of the team or project the actor manages.' },
+  { key: 'time.entries.update_team', module: ModuleKey.TIME_TRACKING, resource: 'entries', action: 'update_team', description: 'Correct time entries of members of the team or project the actor manages.' },
+  { key: 'time.entries.export', module: ModuleKey.TIME_TRACKING, resource: 'entries', action: 'export', is_sensitive: true, description: 'Export time entries and reports, and schedule e-mailed reports.' },
+  { key: 'time.imports.manage', module: ModuleKey.TIME_TRACKING, resource: 'imports', action: 'manage', is_sensitive: true },
   { key: 'calendar.availability.read', module: ModuleKey.CALENDAR, resource: 'availability', action: 'read' },
   { key: 'calendar.booking_links.manage', module: ModuleKey.CALENDAR, resource: 'booking_links', action: 'manage' },
   { key: 'calendar.calendars.manage', module: ModuleKey.CALENDAR, resource: 'calendars', action: 'manage' },
@@ -308,6 +377,12 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'calendar.events.update_own', module: ModuleKey.CALENDAR, resource: 'events', action: 'update_own' },
   { key: 'calendar.sync.manage_own', module: ModuleKey.CALENDAR, resource: 'sync', action: 'manage_own' },
   { key: 'calendar.resources.manage', module: ModuleKey.CALENDAR, resource: 'resources', action: 'manage' },
+  { key: 'calendar.availability.manage', module: ModuleKey.CALENDAR, resource: 'availability', action: 'manage', description: 'Edit availability schedules (own; organization / team schedules with wider scope).' },
+  { key: 'calendar.event_types.manage', module: ModuleKey.CALENDAR, resource: 'event_types', action: 'manage' },
+  { key: 'calendar.conferencing.manage', module: ModuleKey.CALENDAR, resource: 'conferencing', action: 'manage', is_sensitive: true, description: 'Connect and disconnect organization conferencing accounts.' },
+  { key: 'calendar.bookings.read', module: ModuleKey.CALENDAR, resource: 'bookings', action: 'read' },
+  { key: 'calendar.bookings.manage', module: ModuleKey.CALENDAR, resource: 'bookings', action: 'manage', description: 'Confirm, decline, cancel, reschedule and mark no-show on bookings.' },
+  { key: 'calendar.sync.manage', module: ModuleKey.CALENDAR, resource: 'sync', action: 'manage', is_sensitive: true, description: 'Organization-level calendar connections (shared calendars); personal ones use sync.manage_own.' },
   { key: 'automation.rules.read', module: ModuleKey.AUTOMATION, resource: 'rules', action: 'read' },
   { key: 'automation.rules.create', module: ModuleKey.AUTOMATION, resource: 'rules', action: 'create' },
   { key: 'automation.rules.update', module: ModuleKey.AUTOMATION, resource: 'rules', action: 'update' },
@@ -317,9 +392,14 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'automation.service_accounts.manage', module: ModuleKey.AUTOMATION, resource: 'service_accounts', action: 'manage', is_sensitive: true },
   { key: 'automation.actions.destructive.enable', module: ModuleKey.AUTOMATION, resource: 'actions.destructive', action: 'enable', is_sensitive: true },
   { key: 'automation.webhooks.manage', module: ModuleKey.AUTOMATION, resource: 'webhooks', action: 'manage', is_sensitive: true },
+  { key: 'automation.webhooks.read', module: ModuleKey.AUTOMATION, resource: 'webhooks', action: 'read' },
   { key: 'automation.jobs.read', module: ModuleKey.AUTOMATION, resource: 'jobs', action: 'read' },
   { key: 'automation.jobs.manage', module: ModuleKey.AUTOMATION, resource: 'jobs', action: 'manage', is_sensitive: true },
   { key: 'automation.settings.manage', module: ModuleKey.AUTOMATION, resource: 'settings', action: 'manage', is_sensitive: true },
+  { key: 'automation.runs.manage', module: ModuleKey.AUTOMATION, resource: 'runs', action: 'manage', is_sensitive: true, description: 'Retry, cancel, reprocess events and replay runs as a test.' },
+  { key: 'automation.templates.manage', module: ModuleKey.AUTOMATION, resource: 'templates', action: 'manage', description: 'Publish and unpublish organization rule templates.' },
+  { key: 'automation.rules.run', module: ModuleKey.AUTOMATION, resource: 'rules', action: 'run', description: 'Run a MANUAL rule on demand ("Run now").' },
+  { key: 'automation.approval_policies.manage', module: ModuleKey.AUTOMATION, resource: 'approval_policies', action: 'manage', is_sensitive: true },
   { key: 'projects.members.manage', module: ModuleKey.PROJECTS, resource: 'members', action: 'manage' },
 ];
 
@@ -356,6 +436,7 @@ const OPERATIONAL_MODULES: ModuleKey[] = [
 const TIME_TEAM_PERMISSIONS = [
   'time.entries.read_all', 'time.entries.read_team', 'time.entries.approve', 'time.entries.create_own', 'time.entries.read_own',
   'time.entries.update_own', 'time.reports.read', 'time.timesheets.submit_own', 'time.timesheets.approve',
+  'time.entries.create_team', 'time.entries.update_team', 'time.entries.export',
 ];
 
 export const ROLE_TEMPLATES: RoleTemplateSeed[] = [
@@ -449,7 +530,7 @@ export const ROLE_TEMPLATES: RoleTemplateSeed[] = [
   {
     slug: 'customer-owner', name: 'Customer Owner', type: RoleType.CUSTOMER_PORTAL, default_scope: ScopeType.CUSTOMER,
     description: 'Full portal access for the customer, including managing portal users.',
-    modules: [ModuleKey.CUSTOMER_PORTAL], permissions: ['portal.*'],
+    modules: [ModuleKey.CUSTOMER_PORTAL], permissions: ['portal.*', '!portal.profile_changes.review', '!portal.preview.use', '!portal.activity.read'],
   },
   {
     slug: 'customer-administrator', name: 'Customer Administrator', type: RoleType.CUSTOMER_PORTAL, default_scope: ScopeType.CUSTOMER,
@@ -493,21 +574,25 @@ const SELF_SERVICE_PERMISSIONS = [
   'employees.performance.read_own', 'time.entries.create_own', 'time.entries.read_own', 'time.entries.update_own',
   'time.timesheets.submit_own', 'calendar.availability.read', 'calendar.events.create', 'calendar.events.read_own',
   'calendar.events.update_own', 'calendar.events.delete_own', 'calendar.sync.manage_own',
-  'messaging.channels.read', 'messaging.messages.read', 'messaging.messages.post', 'docs.pages.read',
+  'time.entries.delete_own', 'calendar.availability.manage', 'calendar.bookings.read',
+  'finance.expense_claims.create_own', 'finance.expense_claims.read_own',
+  'messaging.channels.read', 'messaging.messages.read', 'messaging.messages.post', 'messaging.calls.start', 'docs.pages.read',
+  'notifications.activity.read',
 ];
 
 /** Day-to-day use of outbound communication, messaging and wiki, without organization-level configuration. */
 const COMMUNICATIONS_OPERATIONAL = [
   'communications.messages.*', 'communications.templates.*', 'communications.campaigns.*', 'communications.segments.*',
-  'communications.analytics.read',
+  'communications.analytics.read', 'communications.recipient_lists.*', 'communications.consents.read', 'communications.ai.use',
 ];
 const MESSAGING_OPERATIONAL = [
   'messaging.channels.read', 'messaging.channels.create', 'messaging.channels.manage', 'messaging.messages.read',
   'messaging.messages.post', 'messaging.messages.pin', 'messaging.channel_members.manage',
+  'messaging.calls.start', 'messaging.moderation.manage', 'messaging.templates.manage', 'messaging.analytics.read',
 ];
 const DOCS_OPERATIONAL = [
   'docs.pages.*', 'docs.forms.read', 'docs.forms.create', 'docs.forms.update', 'docs.forms.assign', 'docs.forms.review',
-  'docs.checklists.manage', 'docs.ai.query',
+  'docs.checklists.manage', 'docs.ai.query', 'docs.analytics.read',
 ];
 
 const ROLE_EXTRAS: Record<string, string[]> = {
@@ -516,12 +601,15 @@ const ROLE_EXTRAS: Record<string, string[]> = {
     'employees.leave.read_all', 'employees.attendance.read_all', 'employees.capacity.read',
   ],
   manager: [
+    'portal.users.read', 'portal.activity.read',
     ...COMMUNICATIONS_OPERATIONAL, ...MESSAGING_OPERATIONAL, ...DOCS_OPERATIONAL, 'documents.folders.manage',
     'employees.leave.read_all', 'employees.attendance.read_all', 'employees.capacity.read', 'employees.skills.read',
     'finance.dashboard.read', 'automation.rules.read', 'automation.runs.read',
+    'finance.expense_claims.approve',
   ],
   'project-manager': [
     'time.entries.read_team', 'time.reports.read', 'time.timesheets.approve', 'employees.capacity.read', 'employees.skills.read',
+    'time.entries.create_team', 'time.entries.update_team', 'time.entries.export',
     'docs.pages.create', 'docs.pages.update', 'documents.folders.manage', 'messaging.channels.create', 'messaging.messages.pin',
     'support.tickets.convert_to_task',
   ],
@@ -530,11 +618,12 @@ const ROLE_EXTRAS: Record<string, string[]> = {
   ],
   'finance-manager': [
     'time.rates.read', 'time.reports.read', 'employees.compensation.read', 'communications.messages.read',
+    'time.entries.export',
     'communications.messages.create', 'communications.messages.send', 'communications.templates.read',
   ],
   'support-agent': [
     'communications.messages.read', 'communications.messages.create', 'communications.messages.send',
-    'communications.templates.read', 'support.tickets.convert_to_task', 'support.ai.use',
+    'communications.templates.read', 'support.tickets.convert_to_task', 'support.ai.use', 'support.inboxes.read',
   ],
   developer: ['tasks.releases.manage'],
   employee: [],

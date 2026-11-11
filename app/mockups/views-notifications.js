@@ -3,7 +3,7 @@
    =====================================================================================================================
    SCHEMA-ALIGNED to api/prisma/schema.prisma: NotificationEventType, NotificationEvent, Notification, NotificationDelivery, NotificationTemplate, NotificationOrgSettings, NotificationOrgDefault,
    NotificationRecipientSettings, NotificationPreference, NotificationKeyword, NotificationDigest, NotificationPushDevice, NotificationDeliveryRule + platform AuditEvent (activity feed).
-   Enums are real values: NotificationChannel (IN_APP, EMAIL, SMS, PUSH, DESKTOP, SLACK), NotificationRecipientType (MEMBERSHIP, PORTAL_USER), NotificationCategory (GENERAL, MENTION, DIRECT_MESSAGE, REPLY, REACTION,
+   Enums are real values: NotificationChannel (IN_APP, EMAIL, SMS, PUSH, DESKTOP), NotificationRecipientType (MEMBERSHIP, PORTAL_USER), NotificationCategory (GENERAL, MENTION, DIRECT_MESSAGE, REPLY, REACTION,
    ASSIGNMENT, APPROVAL, STATUS_CHANGE, REMINDER, DUE_DATE, INVITATION, SHARE, SLA, SECURITY, BILLING, ANNOUNCEMENT, SYSTEM), NotificationPriority (LOW, NORMAL, IMPORTANT, CRITICAL), NotificationLevel (ALL,
    IMPORTANT_ONLY, MENTIONS_AND_DIRECT, NONE), NotificationDeliveryMode (IMMEDIATE, DIGEST, OFF), NotificationDigestFrequency (IMMEDIATE, HOURLY, DAILY, WEEKLY), NotificationEventStatus (RECEIVED, PROCESSING,
    PROCESSED, IGNORED, FAILED), NotificationDeliveryStatus (PENDING, QUEUED, SENT, DELIVERED, FAILED, SKIPPED, DIGESTED, EXPIRED, CANCELLED), NotificationSkipReason (PREFERENCE_OFF, LEVEL_FILTERED, RECORD_MUTED,
@@ -11,7 +11,7 @@
    SENDING, SENT, EMPTY, FAILED), NotificationPushPlatform (IOS, ANDROID, WEB, DESKTOP), NotificationDeliveryRuleKind (DEDUPLICATE, COALESCE, THROTTLE, SUPPRESS), NotificationCoalesceKey (RECORD, RECORD_AND_ACTOR,
    EVENT_TYPE, RECIPIENT). Reused: ModuleKey (01), RecordEntityType (02).
    Permission keys in the catalog: notifications.preferences.manage_own, notifications.defaults.manage, notifications.templates.manage, notifications.delivery_rules.manage, notifications.audit.read*.
-   Keys the spec needs but the catalog lacks are marked @gap on the screen and listed in gaps-14.md.
+   Schema gaps of this module were closed: Announcement, AnnouncementAcknowledgement, ActivityEvent, NotificationTemplateVersion, Notification.context_project_id / context_company_id, NotificationPreference.entity_label and the notifications.* keys.
    Comment tags (legend in README.md): @screen @route @perm @api @mcp @data @ui @states @audit @note @gap. Every screen ends with a "Data model" footer (REVIEW-ONLY, do not ship).
 
    RULES THAT APPLY TO EVERY SCREEN HERE:
@@ -48,7 +48,7 @@
   const PRI = { LOW: "", NORMAL: "", IMPORTANT: "yellow", CRITICAL: "red" };
   const DST = { PENDING: "", QUEUED: "blue", SENT: "blue", DELIVERED: "green", FAILED: "red", SKIPPED: "yellow", DIGESTED: "purple", EXPIRED: "", CANCELLED: "" };
   const EST = { RECEIVED: "blue", PROCESSING: "blue", PROCESSED: "green", IGNORED: "", FAILED: "red" };
-  const CHN = { IN_APP: "bell", EMAIL: "mail", SMS: "sms", PUSH: "phone", DESKTOP: "panel", SLACK: "hash" };
+  const CHN = { IN_APP: "bell", EMAIL: "mail", SMS: "sms", PUSH: "phone", DESKTOP: "panel" };
   const chn = (c) => '<span class="nt-ch" title="NotificationChannel ' + c + '">' + I(CHN[c], 13) + U.en(c) + "</span>";
   const CATICON = { GENERAL: "bell", MENTION: "at", DIRECT_MESSAGE: "chat", REPLY: "chat", REACTION: "star", ASSIGNMENT: "tasks", APPROVAL: "check", STATUS_CHANGE: "layers", REMINDER: "clock", DUE_DATE: "calendar", INVITATION: "mail", SHARE: "link", SLA: "flag", SECURITY: "shield", BILLING: "receipt", ANNOUNCEMENT: "sparkles", SYSTEM: "settings" };
   const catIc = (c, p) => '<span class="nt-ic' + (p === "CRITICAL" ? " crit" : p === "IMPORTANT" ? " imp" : "") + '" title="NotificationCategory ' + c + '">' + I(CATICON[c], 15) + "</span>";
@@ -88,7 +88,7 @@
      INBOX (spec §7) — the Activity Center inbox of the signed-in user
      @screen Inbox
      @route  /notifications/inbox?tab=unread|all|read|archived|snoozed&module=&category=&project=&q= · deep link /notifications/:notificationId opens the detail
-     @perm   own inbox: any member (recipient_membership_id = caller; no extra key) · preferences link notifications.preferences.manage_own · @gap the spec lists no key to READ the own inbox (implicit, see gaps-14.md)
+     @perm   own inbox: any member (recipient_membership_id = caller; no extra key) · preferences link notifications.preferences.manage_own · reading the own inbox needs no key (implicit for every recipient)
      @api    GET /notifications?state=&module=&category=&entity_type=&entity_id=&priority=&q=&cursor= · PATCH /notifications/:id {read|unread|archived|snoozed_until} · POST /notifications/bulk {ids|filter, action} · POST /notifications/read-all {filter?}
              · GET /notifications/unread-count · realtime channel (SSE/WebSocket) pushes new rows to the bell and this list
      @mcp    notifications_notifications_list · notifications_notifications_mark_read · notifications_notifications_snooze (own inbox only; an AI agent acts as the caller)
@@ -98,7 +98,7 @@
      @states loading skeleton rows · empty per tab ("You are all caught up") · error with retry · offline banner (list stays readable) · no-access (portal-only users see the portal inbox instead)
      @audit  mandatory/security notification read and action_taken are audited (notifications.audit.read); normal read/archive changes are not audited
      @note   "seen" (bell opened, seen_at) is different from "read" (clicked or marked, read_at): the bell badge counts rows with seen_at null, the list highlight uses read_at null. Project filter = Notification.entity_type PROJECT or
-             a record that belongs to the project. @gap Notification has no project_id/company_id context column, so "by project" cannot be indexed (gaps-14.md #2). Mentions = category MENTION or DIRECT_MESSAGE.
+             a record that belongs to the project. Filters use Notification.context_project_id / context_company_id (indexed plain ids copied from NotificationEvent by the emitting module). Mentions = category MENTION or DIRECT_MESSAGE.
              Mark all read respects the active filter and never touches rows with requires_action (those stay until acted on). Snoozed rows return on top at snoozed_until (a scheduled job clears the field and re-seen_at null).
      ===================================================================================================================== */
   function inbox() {
@@ -114,7 +114,7 @@
       pane("z", 0, nlist(part("snoozed"), { bulk: 1 })) +
       pane("x", 0, nlist(part("archived"), { bulk: 1 })) + "</div>" +
       '<div class="pager"><span class="muted">1–12 of 58 · cursor pagination, virtualized beyond 50 rows</span><span style="flex:1"></span>' + btn("Previous", "", "sm") + btn("Next", "", "sm") + "</div>" +
-      dm(["Notification · module, category, priority, title, body, entity_type, entity_id, entity_label, actor_membership_id, is_mandatory, requires_action, actions, action_taken, group_key, coalesced_count, seen_at, read_at, archived_at, snoozed_until", "SavedView · entity_type NOTIFICATION (saved inbox filters)"], ["Notification has no project_id / company_id context column (filter by project)", "No permission key to read the own inbox"]) + "</div>";
+      dm(["Notification · module, category, priority, title, body, entity_type, entity_id, entity_label, actor_membership_id, is_mandatory, requires_action, actions, action_taken, group_key, coalesced_count, seen_at, read_at, archived_at, snoozed_until", "SavedView · entity_type NOTIFICATION (saved inbox filters)", "Notification · context_project_id, context_company_id (indexed filters)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -211,17 +211,17 @@
      ACTIVITY FEED (spec §2 Activity, §7) — organization, project and customer scopes
      @screen Activity feed
      @route  /notifications/activity?scope=organization|project|customer&project=&company=&module=&actor=&from=&to=
-     @perm   @gap no key in the catalog: the feed needs notifications.activity.read (organization scope) and shows only records the caller can read; project/customer scopes use the owning module read keys · full audit trail
+     @perm   notifications.activity.read (organization-wide feed, scope-limited) and shows only records the caller can read; project/customer scopes use the owning module read keys · full audit trail
              remains notifications.audit.read* / 01 audit keys
      @api    GET /activity?scope=&project_id=&company_id=&module=&actor_id=&event_type=&from=&to=&q=&cursor= (read model over audit_events, filtered per record permission)
-     @mcp    notifications_activity_read (@gap, same key)
+     @mcp    notifications_activity_read (notifications.activity.read)
      @data   AuditEvent (actor_type, actor_user_id, actor_service_account_id, event_type, resource_type, resource_id, branch_id, metadata, created_at) · read-only join to the owning record for the label
      @ui     shadcn ToggleGroup (scope), filter bar with Popover+Command, grouped timeline (date headers), Avatar, Badge, Skeleton, "Load more" with cursor
      @states loading · empty ("No activity for these filters") · error · no-access (scope hidden when the caller lacks the key) · partial results note when records are hidden by permission
      @audit  the feed itself is a read model, no audit; export of the feed is audited
      @note   The feed does NOT create activity: owning modules write it (and audit_events stores it). Scope PROJECT shows events whose record belongs to a project (05); scope CUSTOMER shows events of one company (02) and can
-             be switched to "customer-visible only" to preview what the portal shows (07). @gap audit_events has no project_id, company_id or customer_visible column, and no human summary: today only resource_type/resource_id/metadata,
-             so project and customer scopes need an indexed context or a dedicated ActivityEvent read model (gaps-14.md #3).
+             be switched to "customer-visible only" to preview what the portal shows (07). Rows come from ActivityEvent (summary, project_id, company_id, customer_visible, event_key, entity_*), written by the owning modules;
+             audit_events stays the security and compliance trail. Customer scope reads only customer_visible rows.
      ===================================================================================================================== */
   function activity(scope) {
     scope = scope || "organization";
@@ -236,7 +236,7 @@
       '<div class="pager"><span class="muted">Showing ' + rows.length + " events</span><span style=\"flex:1\"></span>" + btn("Load more", "", "sm") + "</div></div><div>" +
       cd("<b>" + (scope === "customer" ? "Customer preview" : "Summary") + "</b>", scope === "customer" ? callout("shield", "Shows exactly what Acme Corp sees in the portal. Internal comments and internal-only events are removed (customer_visible).", "") : kv("Events today", "42") + kv("Most active module", "Tasks") + kv("Most active person", "Marco Silva") + kv("Automation actions", "7 by service accounts")) + gap() +
       cd("<b>Follow this " + (scope === "customer" ? "customer" : scope === "project" ? "project" : "feed") + "</b>", rowsw("Notify me of important activity", "Creates a NotificationPreference with is_following true", scope !== "organization") + rowsw("Digest instead of immediate", "NotificationDeliveryMode DIGEST", 0)) + "</div></div>" +
-      dm(["AuditEvent · actor_type, actor_user_id, actor_service_account_id, event_type, resource_type, resource_id, branch_id, metadata, created_at", "NotificationPreference · entity_type, entity_id, is_following (follow control)"], ["audit_events has no project_id, company_id, customer_visible or summary column", "No permission key notifications.activity.read"]) + "</div>";
+      dm(["ActivityEvent · event_key, module, summary, entity_type, entity_id, entity_label, actor_membership_id, actor_user_id, project_id, company_id, branch_id, customer_visible, audit_event_id, occurred_at", "AuditEvent (full audit trail link, notifications.audit.read*)", "NotificationPreference · entity_type, entity_id, is_following (follow control)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -334,14 +334,14 @@
      @states loading · empty per tab · error · record unreadable (row greyed with "No access", removable)
      @audit  not audited
      @note   The same control ("Follow", "Mute") appears in each module's record header and calls this API. Task watchers (06), channel mutes (12) and conversation mutes reuse this table instead of keeping their own store.
-             @gap the display label of the record is resolved at read time (NotificationPreference has no entity_label), cheap with a batch lookup but a deleted record has no label left.
+             The label comes from NotificationPreference.entity_label (snapshot taken when the mute or follow is created), so it survives deleted records.
      ===================================================================================================================== */
   function follows() {
     return '<div class="a-page">' + head("Following and muted", "Records you follow or silenced. Overrides module defaults.", btn("Follow a record", "plus", "primary")) +
       '<div class="tabset">' + tabs([["f", "Following", 7], ["m", "Muted", 3]], "f") +
       pane("f", 1, '<div class="toolbar">' + search("Search records") + sel("Type: All", "tag") + sel("Module: All", "grid") + "</div>" + tbl(["Record", "Type", "Level", "Delivery", "Since", ""], [[ink("Acme Rebrand Website"), "PROJECT", sel("All"), sel("Immediate"), "Oct 2", more], [ink("WEB-142 Pricing hero"), "TASK", sel("Important only"), sel("Immediate"), "Nov 3", more], [ink("Acme Corp"), "CRM_COMPANY", sel("All"), sel("Daily digest"), "Sep 14", more], [ink("TCK-2041"), "TICKET", sel("All"), sel("Immediate"), "Nov 10", more], [ink("CTR-0031 MSA Northwind"), "CONTRACT", sel("Mentions and direct"), sel("Immediate"), "Nov 1", more]])) +
       pane("m", 0, tbl(["Record", "Type", "Muted until", ""], [[ink("#random"), "CHANNEL", "Forever", btn("Unmute", "", "sm")], [ink("WEB-120 Migrate analytics"), "TASK", "Tomorrow 09:00", btn("Unmute", "", "sm")], [ink("Mobile App v2"), "PROJECT", "Nov 20", btn("Unmute", "", "sm")]]) + '<div class="sub-note">Muting never silences mandatory events (is_mandatory) for that record.</div>') + "</div>" +
-      dm(["NotificationPreference · entity_type, entity_id, scope_key, is_following, muted_until, level, delivery_mode, enabled"], ["No entity_label snapshot on NotificationPreference (label resolved at read time)"]) + "</div>";
+      dm(["NotificationPreference · entity_type, entity_id, scope_key, is_following, muted_until, level, delivery_mode, enabled, entity_label"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -356,8 +356,8 @@
      @states loading · empty ("No devices registered") + enable-browser-push prompt · browser permission denied (instructions) · error · device auto-disabled after repeated failures (disabled_at, failure_count)
      @audit  device registration and removal
      @note   A device belongs to the USER, not to a tenant; membership_id records the active membership at registration, delivery checks it per organization. Tokens are write-only here (never displayed). A token that fails
-             repeatedly is disabled (disabled_at) and the user sees "Needs re-registration". @gap push provider credentials (APNs, FCM, Web Push VAPID) are not in the BYOK provider list (OPENAI, RESEND, TWILIO, STRIPE,
-             VIVA_WALLET): needs a decision, see gaps-14.md #5.
+             repeatedly is disabled (disabled_at) and the user sees "Needs re-registration". Push credentials (APNs, FCM, Web Push VAPID) are platform-level, not per organization (not a BYOK provider);
+             organizations only see device counts and status.
      ===================================================================================================================== */
   function devices() {
     const dev = (n, p, ic, app, last, st, fail) => '<div class="rowx"><span class="nt-ic">' + I(ic, 15) + '</span><div class="grow"><b>' + n + "</b><small>" + p + " · " + app + " · last seen " + last + (fail ? " · " + fail + " failures" : "") + "</small></div>" + st + btn("Test", "send", "sm") + more + "</div>";
@@ -365,29 +365,29 @@
       cd("<b>Registered devices</b><span class='r muted'>NotificationPushDevice</span>", dev("iPhone 15", "IOS", "phone", "v2.4.1", "2 min ago", E("Active", "green")) + dev("Pixel 8", "ANDROID", "phone", "v2.4.0", "3 days ago", E("Active", "green")) + dev("Chrome on MacBook", "WEB", "globe", "Web Push", "now", E("Active", "green")) + dev("Old iPad", "IOS", "phone", "v2.1.0", "41 days ago", E("Disabled", "red"), 5) + dev("Agency Desktop", "DESKTOP", "panel", "v1.3.0", "1 h ago", E("Active", "green")), 1) + gap() +
       '<div class="g2" style="align-items:start">' + cd("<b>Browser permission</b>", callout("bell", "Chrome permission: <b>granted</b>. Push works while the tab is closed.", "") + '<div class="sub-note">If denied, the browser blocks the prompt; show the steps to re-enable it in site settings.</div>') +
       cd("<b>Privacy on devices</b>", rowsw("Show previews on lock screen", "NotificationRecipientSettings.show_previews", 1) + rowsw("Only critical and mentions on push", "Combine with level in preferences", 0)) + "</div>" +
-      dm(["NotificationPushDevice · platform, provider, device_name, app_version, locale, last_seen_at, failure_count, disabled_at (token and subscription are write-only)"], ["Push provider credentials (APNs, FCM, VAPID) have no IntegrationConnection provider"]) + "</div>";
+      dm(["NotificationPushDevice · platform, provider, device_name, app_version, locale, last_seen_at, failure_count, disabled_at (token and subscription are write-only)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      ANNOUNCEMENTS (category ANNOUNCEMENT; spec §4 Employees "announcement")
      @screen System announcements
      @route  /notifications/announcements · /notifications/announcements/new
-     @perm   @gap no key: needs notifications.announcements.manage (publish) ; reading = any member through the inbox
-     @api    @gap GET/POST/PATCH /announcements · POST /announcements/:id/publish (fans out one Notification per recipient, category ANNOUNCEMENT)
-     @mcp    @gap notifications_announcements_manage (sensitive)
+     @perm   notifications.announcements.manage (sensitive: create, publish, withdraw, portal audience) · reading = any recipient through the inbox
+     @api    GET/POST/PATCH /announcements · POST /announcements/:id/publish (fans out one Notification per recipient, category ANNOUNCEMENT)
+     @mcp    notifications_announcements_manage (sensitive)
      @data   NotificationCategory.ANNOUNCEMENT exists on Notification and NotificationEventType but NO table stores an announcement (title, audience, schedule, expiry, acknowledgement). Fan-out itself reuses Notification (expires_at, is_mandatory).
      @ui     Table, full-page create form with Markdown editor, audience Popover+Command (roles, teams, branches, portal), DateTimePicker, Switch, Dialog preview
      @states loading · empty · error · validation · scheduled / live / expired
      @audit  announcement published, edited, withdrawn
-     @note   Design only: the screen is built because the spec names announcements, but the data has no home. Everything on it is an @gap and is listed in gaps-14.md #1. Acknowledgement ("I have read this") is a
-             requirement for policy announcements and needs its own rows.
+     @note   Backed by Announcement (status AnnouncementStatus, audience Json, portal_visible, requires_ack, publish_at, expires_at, incident_id) and AnnouncementAcknowledgement. Acknowledgement ("I have read this") is a
+             requirement for policy announcements; one row per member or portal user.
      ===================================================================================================================== */
   function announcements() {
     return '<div class="a-page">' + head("Announcements", "Messages from administrators to members or customers.", btn("New announcement", "plus", "primary")) +
-      callout("flag", "Not backed by the schema yet. Notification category ANNOUNCEMENT exists, but there is no announcement table (see gaps).", "warn") + gap(10) +
+      callout("flag", "Publishing creates one Notification per recipient (category ANNOUNCEMENT, event announcement.published). Portal audience is sensitive.", "") + gap(10) +
       tbl(["Title", "Audience", "Severity", "Status", "Publish", "Expires", "Acknowledged", ""], [[ink("Holiday office hours"), "All members", E("NORMAL"), E("SCHEDULED", "blue"), "Dec 15 09:00", "Jan 3", "—", more], [ink("New expense policy"), "Finance team", E("IMPORTANT", "yellow"), E("LIVE", "green"), "Nov 4", "—", bar(78), more], [ink("Planned maintenance Sat 02:00"), "All members + portal", E("IMPORTANT", "yellow"), E("EXPIRED"), "Oct 30", "Nov 2", "n/a", more]]) + gap() +
-      cd("<b>New announcement</b><span class='r muted'>design only</span>", '<div class="g2" style="grid-template-columns:1.6fr 1fr;align-items:start"><div>' + f("Title", box("Short headline")) + f("Message", '<div class="editor"><div class="ed-bar">' + ["B", "I", "•", "Link"].map((x) => "<span>" + x + "</span>").join("") + '</div><div class="ed-body">Markdown body</div></div>') + "</div><div>" + f("Audience", sel("Everyone", "users")) + f("Severity", sel("Normal", "flag")) + f("Publish at", sel("Now", "calendar")) + f("Expires", sel("Never", "calendar")) + rowsw("Require acknowledgement", "Members must confirm they read it", 0) + rowsw("Also send email", "Uses the notification email template", 0) + "</div></div>") +
-      dm(["Notification · category ANNOUNCEMENT, is_mandatory, expires_at (the fan-out rows)", "NotificationEventType · key announcement.published"], ["No Announcement model (title, body, audience, severity, publish_at, expires_at, requires_ack, status)", "No acknowledgement rows", "No notifications.announcements.manage key"]) + "</div>";
+      cd("<b>New announcement</b><span class='r muted'>Announcement</span>", '<div class="g2" style="grid-template-columns:1.6fr 1fr;align-items:start"><div>' + f("Title", box("Short headline")) + f("Message", '<div class="editor"><div class="ed-bar">' + ["B", "I", "•", "Link"].map((x) => "<span>" + x + "</span>").join("") + '</div><div class="ed-body">Markdown body</div></div>') + "</div><div>" + f("Audience", sel("Everyone", "users")) + f("Severity", sel("Normal", "flag")) + f("Publish at", sel("Now", "calendar")) + f("Expires", sel("Never", "calendar")) + rowsw("Require acknowledgement", "Members must confirm they read it", 0) + rowsw("Also send email", "Uses the notification email template", 0) + "</div></div>") +
+      dm(["Announcement · title, body, severity, audience, portal_visible, requires_ack, status, publish_at, published_at, expires_at, withdrawn_at, incident_id, created_by_membership_id", "AnnouncementAcknowledgement · membership_id, portal_membership_id, acknowledged_at", "Notification · category ANNOUNCEMENT, is_mandatory, expires_at (the fan-out rows)", "NotificationEventType · key announcement.published"], []) + "</div>";
   }
 
   /* ---------------- admin: event catalog ---------------- */
@@ -408,9 +408,9 @@
      EVENT CATALOG (spec §4, §14 "register event types")
      @screen Event catalog
      @route  /notifications/admin/events?module=&category=&mandatory=&customer_visible=&scope=platform|organization
-     @perm   VIEW notifications.defaults.manage · register/edit organization event types @gap needs notifications.event_types.manage (today only defaults.manage exists) · platform rows (organization_id null) are read-only
+     @perm   VIEW notifications.defaults.manage · register/edit organization event types notifications.event_types.manage (register / edit / deprecate) · platform rows (organization_id null) are read-only
      @api    GET /notification-event-types?module=&category=&q= · POST /notification-event-types · PATCH /notification-event-types/:id · POST /notification-event-types/:id/deprecate
-     @mcp    notifications_event_types_manage (@gap key)
+     @mcp    notifications_event_types_manage
      @data   NotificationEventType (organization_id, key, module, name, description, category, priority, customer_visible, default_channels, mandatory_by_default, forced_channels, can_coalesce, coalesce_window_seconds, supports_digest, default_expiry_minutes, available_actions, payload_schema, is_active, deprecated_at, sort_order)
      @ui     Table with filter bar and saved views, row DropdownMenu, Switch inline for is_active, Badge, link to detail
      @states loading · empty · error · no-access · platform rows locked ("Defined by the platform")
@@ -425,16 +425,16 @@
       filterBar([["Module", "is any of", "Tasks, Finance, Support"], ["Active", "is", "yes"]], btn("Clear", "", "sm ghost") + btn("Save view", "plus", "sm")) +
       tbl(["Key", "Module", "Name", "Category", "Priority", "Default channels", "Mandatory", "Portal", "Coalesce", "Digest", "Active", ""], EV.map((e) => ['<a class="ink" href="#notifications/event">' + e[0] + "</a>" + (e[10] ? " " + E("organization", "purple") : ""), mod(e[1]), e[2], E(e[3]), E(e[4], PRI[e[4]]), e[5].map(chn).join(""), e[6] ? I("lock", 13) : "", e[7] ? I("check", 14) : "", e[8] ? I("check", 14) : "", e[9] ? I("check", 14) : "", sw(e[11]), more])) +
       '<div class="pager"><span class="muted">1–10 of 118</span><span style="flex:1"></span>' + btn("Previous", "", "sm") + btn("Next", "", "sm") + "</div>" +
-      dm(["NotificationEventType · key, module, name, category, priority, default_channels, mandatory_by_default, customer_visible, can_coalesce, supports_digest, is_active, deprecated_at, organization_id"], ["No notifications.event_types.manage permission key"]) + "</div>";
+      dm(["NotificationEventType · key, module, name, category, priority, default_channels, mandatory_by_default, customer_visible, can_coalesce, supports_digest, is_active, deprecated_at, organization_id"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      EVENT TYPE DETAIL (view/edit)
      @screen Event type
      @route  /notifications/admin/events/:eventTypeId · create at /notifications/admin/events/new
-     @perm   notifications.defaults.manage (organization defaults and mandatory flag) · notifications.templates.manage (templates tab) · @gap notifications.event_types.manage (edit definition)
+     @perm   notifications.defaults.manage (organization defaults and mandatory flag) · notifications.templates.manage (templates tab) · notifications.event_types.manage (edit definition)
      @api    GET/PATCH /notification-event-types/:id · POST /notification-event-types · GET /notification-event-types/:id/templates · GET /notification-event-types/:id/stats
-     @mcp    notifications_event_types_manage (@gap)
+     @mcp    notifications_event_types_manage
      @data   NotificationEventType (all columns) · NotificationTemplate (per channel and locale) · NotificationOrgDefault (this org's default for the event) · NotificationEvent (recent emits) · NotificationDeliveryRule (rules matching)
      @ui     Tabs (Settings, Templates, Defaults, Recent events, Rules), full-page form with sections, JSON editor for payload_schema (Monaco read-only for platform rows), Switch, multi-select channels, Table
      @states loading · saving · validation (key format, payload_schema must be valid JSON Schema) · locked platform row · error · no-access
@@ -453,7 +453,7 @@
       pane("d", 0, tbl(["Setting", "Value"], [["Enabled for organization", sw(1)], ["Channels (members)", chn("IN_APP") + chn("EMAIL")], ["Channels (portal)", muted("not customer visible")], ["Delivery mode", E("IMMEDIATE")], ["Mandatory", sw(0)]])) +
       pane("e", 0, tbl(["Received", "Entity", "Status", ">Notifications", "Idempotency key"], [["Nov 11 09:00", "PROJECT · Acme Rebrand", E("PROCESSED", "green"), "1", "proj_12:review:nov13"], ["Nov 10 09:00", "PROJECT · Mobile App v2", E("PROCESSED", "green"), "2", "proj_18:review:nov12"], ["Nov 9 09:00", "PROJECT · Data Warehouse", E("IGNORED"), "0", "proj_20:review:nov11"]])) +
       pane("r", 0, tbl(["Rule", "Kind", "Window", "Active"], [["One reminder per project per day", E("DEDUPLICATE"), "24 h", sw(1)]])) + "</div>" +
-      dm(["NotificationEventType · all columns", "NotificationTemplate · channel, locale, title, version", "NotificationOrgDefault · enabled, channels, portal_channels, delivery_mode, is_mandatory", "NotificationEvent · status, notification_count, idempotency_key", "NotificationDeliveryRule · kind, window_seconds"], ["notifications.event_types.manage not in catalog"]) + "</div>";
+      dm(["NotificationEventType · all columns", "NotificationTemplate · channel, locale, title, version", "NotificationOrgDefault · enabled, channels, portal_channels, delivery_mode, is_mandatory", "NotificationEvent · status, notification_count, idempotency_key", "NotificationDeliveryRule · kind, window_seconds"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -468,7 +468,7 @@
      @states loading · saving · validation (unknown variable, missing required variable) · empty · error · no-access · platform default read-only
      @audit  template created, changed (before/after body), activated, deactivated: audited (spec §13)
      @note   One template per event type, channel and locale; resolution order is recipient language, then org default locale, then platform default. Email applies organization branding (01 §15) around html_body. SMS body is plain
-             text with a length counter. Variables come from the event's payload_schema. @gap only the current version number exists (NotificationTemplate.version), no history table to roll back to (gaps-14.md #6).
+             text with a length counter. Variables come from the event's payload_schema. Each save writes a NotificationTemplateVersion snapshot (version, subject, title, body, html_body, changed_by_membership_id) used for history and rollback.
      ===================================================================================================================== */
   function templates() {
     return '<div class="a-page">' + head("Templates", "Wording of every notification, per channel and language.", btn("New template", "plus", "primary")) +
@@ -476,7 +476,7 @@
       tbl(["Event", "Channel", "Locale", "Title", "Scope", "Version", "Active", "Updated", ""], [[ink("task.assigned"), chn("EMAIL"), "en", "{{actor.name}} assigned you {{task.key}}", E("platform", ""), "5", sw(1), "Oct 12", btn("Customize", "edit", "sm")], [ink("task.assigned"), chn("EMAIL"), "en", "New task for you: {{task.key}}", E("organization", "purple"), "2", sw(1), "Nov 3 · Anna Meyer", btn("Edit", "edit", "sm")], [ink("task.assigned"), chn("PUSH"), "en", "{{task.key}} assigned to you", E("platform", ""), "1", sw(1), "Sep 30", btn("Customize", "edit", "sm")], [ink("invoice.payment_failed"), chn("EMAIL"), "en", "Payment failed for {{invoice.number}}", E("organization", "purple"), "4", sw(1), "Nov 8 · Kim Lund", btn("Edit", "edit", "sm")], [ink("invoice.payment_failed"), chn("SMS"), "en", "Payment for {{invoice.number}} failed. Retry {{retry_date}}.", E("platform", ""), "1", sw(0), "Sep 30", btn("Customize", "edit", "sm")], [ink("support.sla_breach"), chn("IN_APP"), "Default", "SLA breach in {{minutes}} min: {{ticket.key}}", E("platform", ""), "2", sw(1), "Oct 1", btn("Customize", "edit", "sm")]]) + gap() +
       cd("<b>Edit template · task.assigned · Email · en</b><span class='r'>" + btn("Send test", "send", "sm") + btn("Save new version", "check", "sm primary") + "</span>", '<div class="g2" style="grid-template-columns:1.2fr 1fr;align-items:start"><div>' + f("Subject", box("New task for you: {{task.key}}")) + f("Title (in-app and push)", box("{{actor.name}} assigned you {{task.key}}")) + f("Body", '<div class="editor"><div class="ed-bar">' + ["B", "I", "•", "Link", "{{ }}"].map((x) => "<span>" + x + "</span>").join("") + '</div><div class="ed-body">{{task.title}}\nDue {{task.due_date}} · Project {{project.name}}</div></div>') + '<div class="rowx" style="gap:8px;padding:0">' + f("CTA label", box("Open task")) + f("CTA URL", box("{{task.url}}")) + "</div>" + f("Variables", '<div class="rowx" style="gap:6px;padding:0;flex-wrap:wrap">' + ["actor.name", "task.key", "task.title", "task.due_date", "project.name", "task.url"].map(tok).join("") + "</div>", "From payload_schema of the event type. Unknown variables fail validation.") +
         "</div><div><div class='nt-mail'><div class='nt-mail-h'><b>New task for you: WEB-142</b><small>to anna@agency.com · from Agency OS via Resend (BYOK)</small></div><div class='nt-mail-b'><p>Marco Silva assigned you <b>WEB-142</b>.</p><p>Rebuild pricing page hero with new brand system<br><span class='muted'>Due Nov 14 · Project Acme Rebrand Website</span></p><p><span class='badge blue'>Open task</span></p></div></div><div class='sub-note'>Live preview with sample payload, branded by the organization (logo, colors).</div></div></div>") +
-      dm(["NotificationTemplate · event_type_id, channel, locale, subject, title, body, html_body, cta_label, cta_url, variables, version, is_active, organization_id", "NotificationEventType · payload_schema (variables)"], ["No template version history table (rollback)"]) + "</div>";
+      dm(["NotificationTemplate · event_type_id, channel, locale, subject, title, body, html_body, cta_label, cta_url, variables, version, is_active, organization_id", "NotificationTemplateVersion · version, subject, title, body, html_body, changed_by_membership_id, created_at", "NotificationEventType · payload_schema (variables)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -566,7 +566,7 @@
      DELIVERY DETAIL
      @screen Delivery detail
      @route  /notifications/admin/log/deliveries/:deliveryId
-     @perm   notifications.audit.read* (sensitive) · retry of FAILED rows is covered by the same key (@gap: no separate retry key, gaps-14.md #4)
+     @perm   notifications.audit.read* (sensitive) · retry of FAILED rows needs notifications.deliveries.retry
      @api    GET /notification-deliveries/:id · POST /notification-deliveries/:id/retry · GET /notification-deliveries/:id/provider-response
      @mcp    notifications_audit_read
      @data   NotificationDelivery (all columns, provider_response Json masked) · Notification · NotificationEvent · NotificationTemplate (template_id, version) · NotificationPushDevice / CommMessage (11)
@@ -588,7 +588,7 @@
      ORGANIZATION SETTINGS (spec §5, §8, §11)
      @screen Notification settings (organization)
      @route  /notifications/admin/settings
-     @perm   notifications.defaults.manage (@gap: a dedicated notifications.settings.manage key is cleaner, see gaps-14.md #4)
+     @perm   notifications.settings.manage (NotificationOrgSettings); defaults stay on notifications.defaults.manage
      @api    GET/PATCH /notification-settings
      @mcp    notifications_defaults_manage
      @data   NotificationOrgSettings (enabled_channels, portal_enabled_channels, email_sender_identity_id, sms_sender_identity_id, default_level, default_digest_frequency, default_digest_hour, default_digest_weekday, hide_previews_by_default, max_delivery_attempts, retry_backoff_seconds, retention_days, webhook_events_enabled) · IntegrationConnection (RESEND, TWILIO, read-only status) · CommSenderIdentity (11)
@@ -601,11 +601,11 @@
   function settings() {
     return '<div class="a-page">' + head("Notification settings", "Channels, senders, retries and retention for the whole organization.", btn("Save", "check", "primary")) +
       '<div class="g2" style="align-items:start"><div>' +
-      cd("<b>Channels</b><span class='r muted'>enabled_channels · portal_enabled_channels</span>", tbl(["Channel", "Members", "Customer portal", "Provider"], [[chn("IN_APP"), sw(1), sw(1), muted("internal, always on")], [chn("EMAIL"), sw(1), sw(1), E("Resend connected", "green")], [chn("SMS"), sw(0), sw(0), E("Twilio not connected", "yellow")], [chn("PUSH"), sw(1), sw(0), E("Devices: 38", "green")], [chn("DESKTOP"), sw(1), sw(0), muted("browser and desktop app")], [chn("SLACK"), sw(0), sw(0), E("No provider", "")]]), 1) + gap() +
+      cd("<b>Channels</b><span class='r muted'>enabled_channels · portal_enabled_channels</span>", tbl(["Channel", "Members", "Customer portal", "Provider"], [[chn("IN_APP"), sw(1), sw(1), muted("internal, always on")], [chn("EMAIL"), sw(1), sw(1), E("Resend connected", "green")], [chn("SMS"), sw(0), sw(0), E("Twilio not connected", "yellow")], [chn("PUSH"), sw(1), sw(0), E("Devices: 38", "green")], [chn("DESKTOP"), sw(1), sw(0), muted("browser and desktop app")]]), 1) + gap() +
       cd("<b>Senders</b>", f("Email sender identity", sel("Agency OS · notifications@agency.com", "mail"), "email_sender_identity_id · managed in Communication (11)") + f("SMS sender identity", sel("Not set", "sms"), "sms_sender_identity_id · needs the SMS channel")) + "</div><div>" +
       cd("<b>Defaults for new members</b>", f("Default level", sel("All", "bell")) + f("Default digest", '<div class="rowx" style="gap:8px;padding:0">' + sel("Daily") + sel("08:00") + sel("Monday") + "</div>", "default_digest_frequency, _hour, _weekday") + rowsw("Hide previews by default", "hide_previews_by_default · push and email show “New notification”", 0)) + gap() +
       cd("<b>Delivery and retention</b>", f("Max delivery attempts", box("3")) + f("Retry backoff (seconds)", box("120")) + f("Keep notifications and deliveries (days)", box("365"), "retention_days · empty keeps everything") + rowsw("Publish webhook events", "webhook_events_enabled · notification.created, delivered, failed, read", 1)) + "</div></div>" +
-      dm(["NotificationOrgSettings · all columns", "IntegrationConnection · RESEND, TWILIO (status, read-only)", "CommSenderIdentity (11)"], ["SLACK channel and push providers have no IntegrationConnection provider"]) + "</div>";
+      dm(["NotificationOrgSettings · all columns", "IntegrationConnection · RESEND, TWILIO (status, read-only)", "CommSenderIdentity (11)", "Push credentials are platform-level (not per organization); no SLACK channel until a provider exists"], []) + "</div>";
   }
 
   /* ---- routing ---- */

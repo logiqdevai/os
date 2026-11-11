@@ -18,60 +18,71 @@
 
 **Platform tables to reuse, not rebuild:** `custom_field_definitions` (custom fields, [02](./02-crm-sales-management.md)) · `taggings` (tags, [02](./02-crm-sales-management.md)) · `saved_views` (saved views, [02](./02-crm-sales-management.md)) · `crm_notes` (notes, polymorphic by entity type, [02](./02-crm-sales-management.md)) · `number_sequences` (document numbering, [03](./03-proposal-quotation-generator.md)) · `signature_requests` (e-signatures, [04](./04-contracts.md)) · `provider_webhook_events` (idempotent provider webhooks, [08](./08-financial-management-stripe-integration.md))
 
-### Owned tables (35)
+### Owned tables (43)
 
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | `User` | `users` | [L344](../../api/prisma/schema.prisma#L344) | 01 §4 — a global human identity. Never tenant-scoped. |
-| `PasswordResetToken` | `password_reset_tokens` | [L403](../../api/prisma/schema.prisma#L403) |  |
-| `UserAuthMethod` | `user_auth_methods` | [L419](../../api/prisma/schema.prisma#L419) | 01 §6, §74 — configured authentication factors per user (passkeys, OAuth links, MFA). |
-| `UserSession` | `user_sessions` | [L444](../../api/prisma/schema.prisma#L444) | 01 §72 — active sessions, revocable by the user or by security policy. |
-| `UserPreference` | `user_preferences` | [L473](../../api/prisma/schema.prisma#L473) | 01 §127 — user-specific preferences. These are not permissions. |
-| `Organization` | `organizations` | [L492](../../api/prisma/schema.prisma#L492) | 01 §8 — the tenant. Every major resource belongs to exactly one Organization (01 §9). |
-| `OrganizationSecurityPolicy` | `organization_security_policies` | [L770](../../api/prisma/schema.prisma#L770) | 01 §73–74 — organization security policy. |
-| `OrganizationDomain` | `organization_domains` | [L799](../../api/prisma/schema.prisma#L799) | 01 §70 — verified corporate email domains. |
-| `OrganizationModule` | `organization_modules` | [L821](../../api/prisma/schema.prisma#L821) | 01 §56 — which products are enabled for the organization. |
-| `Branch` | `branches` | [L841](../../api/prisma/schema.prisma#L841) | 01 §18 — an organizational unit inside an Organization. Never a tenant. |
-| `BranchManager` | `branch_managers` | [L932](../../api/prisma/schema.prisma#L932) | 01 §20 — responsible Members for a branch. |
-| `BranchHoliday` | `branch_holidays` | [L947](../../api/prisma/schema.prisma#L947) | 01 §122 — local holiday calendars consumed by Calendar (19) and Employees (10). |
-| `Team` | `teams` | [L967](../../api/prisma/schema.prisma#L967) | 01 §40 — functional collaboration group. Not a Branch. |
-| `TeamMembership` | `team_memberships` | [L1039](../../api/prisma/schema.prisma#L1039) | 01 §42 |
-| `Membership` | `memberships` | [L1067](../../api/prisma/schema.prisma#L1067) | 01 §24, 12 §81 — the authorization relationship between a User and an Organization; the subject of every per-module permission check. Employee data (10) is N… |
-| `MembershipBranch` | `membership_branches` | [L1301](../../api/prisma/schema.prisma#L1301) | 01 §21, §90 — a Member can belong to one or many branches. |
-| `MembershipModuleAccess` | `membership_module_access` | [L1320](../../api/prisma/schema.prisma#L1320) | 01 §56–57 — per-member product access, evaluated before feature permissions. |
-| `Permission` | `permissions` | [L1342](../../api/prisma/schema.prisma#L1342) | 01 §46 — the global permission catalog. Keys follow `<module>.<resource>.<action>`. Every module's "Permissions" section registers its keys here (06 §15, 07 … |
-| `Role` | `roles` | [L1364](../../api/prisma/schema.prisma#L1364) | 01 §44–45, §111 — reusable permission bundle. organization_id is null for system roles and platform-provided templates (01 §111) that organizations clone. |
-| `RolePermission` | `role_permissions` | [L1406](../../api/prisma/schema.prisma#L1406) | 01 §44, §53 — permissions bundled in a role, with optional explicit deny. |
-| `RoleAssignment` | `role_assignments` | [L1423](../../api/prisma/schema.prisma#L1423) | 01 §92–93 — a role given to a principal (Member or Service Account) within a scope. scope_id references the Branch, Team, Project (05), Customer (02) or reso… |
-| `PermissionGrant` | `permission_grants` | [L1450](../../api/prisma/schema.prisma#L1450) | 01 §49, §53 — explicit per-member allow or deny for one permission, outside any role. |
-| `Delegation` | `delegations` | [L1474](../../api/prisma/schema.prisma#L1474) | 01 §94 — temporary delegation of selected responsibilities. |
-| `AccessReview` | `access_reviews` | [L1502](../../api/prisma/schema.prisma#L1502) | 01 §98 — periodic access review (certification campaign) over an organization, branch, team or module. |
-| `AccessReviewItem` | `access_review_items` | [L1530](../../api/prisma/schema.prisma#L1530) | 01 §98 — one member's access inside an access review, with the reviewer's decision. |
-| `RoleVersion` | `role_versions` | [L1556](../../api/prisma/schema.prisma#L1556) | 01 §109 — immutable snapshot of a role each time it is published. |
-| `IntegrationConnection` | `integration_connections` | [L1582](../../api/prisma/schema.prisma#L1582) | 01 §157 — one connected third-party service of an organization (OpenAI, Resend, Stripe, Twilio ...) with the organization's OWN credentials, so provider keys… |
-| `IntegrationUsageDaily` | `integration_usage_daily` | [L1637](../../api/prisma/schema.prisma#L1637) | 01 §157 — daily usage of one connection for the usage view and spend guardrails. Written only by the integration layer. |
-| `Invitation` | `invitations` | [L1664](../../api/prisma/schema.prisma#L1664) |  |
-| `SsoConfiguration` | `sso_configurations` | [L1713](../../api/prisma/schema.prisma#L1713) | 01 §69 — identity provider configuration per organization. |
-| `SsoGroupMapping` | `sso_group_mappings` | [L1737](../../api/prisma/schema.prisma#L1737) | 01 §71 — external IdP group → role / team / branch / module access. |
-| `ServiceAccount` | `service_accounts` | [L1761](../../api/prisma/schema.prisma#L1761) | 01 §76 — non-human identity for automation. Permissions come from RoleAssignment. |
-| `ApiKey` | `api_keys` | [L1788](../../api/prisma/schema.prisma#L1788) | 01 §75 — API credential owned by a Member or a Service Account. Never inherits unlimited permissions. |
-| `CustomerPortalMembership` | `customer_portal_memberships` | [L1826](../../api/prisma/schema.prisma#L1826) | 01 §79 — a User's membership to a Customer (a CRM Company owned by docs/features/02, LOG-404) inside an agency Organization. customer_id has no relation unti… |
-| `AuditEvent` | `audit_events` | [L1863](../../api/prisma/schema.prisma#L1863) | Immutable audit event. Identity and access changes are written here by module 01; other modules append their own event types using the same table (06 §3, 07 … |
+| `PasswordResetToken` | `password_reset_tokens` | [L404](../../api/prisma/schema.prisma#L404) |  |
+| `UserAuthMethod` | `user_auth_methods` | [L420](../../api/prisma/schema.prisma#L420) | 01 §6, §74 — configured authentication factors per user (passkeys, OAuth links, MFA). |
+| `UserSession` | `user_sessions` | [L445](../../api/prisma/schema.prisma#L445) | 01 §72 — active sessions, revocable by the user or by security policy. |
+| `UserDevice` | `user_devices` | [L475](../../api/prisma/schema.prisma#L475) | 01 §72, §74 — browsers and devices a User has signed in from, for "trusted device" (skip MFA) and known-device alerts. User-level like UserSession (a device … |
+| `UserPreference` | `user_preferences` | [L497](../../api/prisma/schema.prisma#L497) | 01 §127 — user-specific preferences. These are not permissions. |
+| `Organization` | `organizations` | [L516](../../api/prisma/schema.prisma#L516) | 01 §8 — the tenant. Every major resource belongs to exactly one Organization (01 §9). |
+| `OrganizationSecurityPolicy` | `organization_security_policies` | [L850](../../api/prisma/schema.prisma#L850) | 01 §73–74 — organization security policy. |
+| `OrganizationDomain` | `organization_domains` | [L918](../../api/prisma/schema.prisma#L918) | 01 §70 — verified corporate email domains. |
+| `OrganizationRetentionPolicy` | `organization_retention_policies` | [L946](../../api/prisma/schema.prisma#L946) | 01 §134 — retention of platform data (audit events, sessions, invitations, webhook deliveries), one policy per data class. Documents and messages keep their … |
+| `OrganizationPlan` | `organization_plans` | [L970](../../api/prisma/schema.prisma#L970) | 01 §105 — the organization's OWN subscription to Logiqdev OS (plan, seats, limits). Not the customer-facing Subscription of module 08. Card data is never sto… |
+| `OrganizationPlanInvoice` | `organization_plan_invoices` | [L993](../../api/prisma/schema.prisma#L993) | 01 §105 — invoice issued by Logiqdev OS to the organization for its plan. |
+| `OrganizationModule` | `organization_modules` | [L1018](../../api/prisma/schema.prisma#L1018) | 01 §56 — which products are enabled for the organization. |
+| `OrganizationEntitlement` | `organization_entitlements` | [L1038](../../api/prisma/schema.prisma#L1038) | 01 §56 — what the organization's plan, trial or an operator override allows, per metered key (`documents.storage_bytes`, `automation.runs_per_month`, `automa… |
+| `Branch` | `branches` | [L1087](../../api/prisma/schema.prisma#L1087) | 01 §18 — an organizational unit inside an Organization. Never a tenant. |
+| `BranchManager` | `branch_managers` | [L1178](../../api/prisma/schema.prisma#L1178) | 01 §20 — responsible Members for a branch. |
+| `BranchHoliday` | `branch_holidays` | [L1193](../../api/prisma/schema.prisma#L1193) | 01 §122 — local holiday calendars consumed by Calendar (19) and Employees (10). |
+| `Team` | `teams` | [L1213](../../api/prisma/schema.prisma#L1213) | 01 §40 — functional collaboration group. Not a Branch. |
+| `TeamMembership` | `team_memberships` | [L1286](../../api/prisma/schema.prisma#L1286) | 01 §42 |
+| `Membership` | `memberships` | [L1314](../../api/prisma/schema.prisma#L1314) | 01 §24, 12 §81 — the authorization relationship between a User and an Organization; the subject of every per-module permission check. Employee data (10) is N… |
+| `MembershipBranch` | `membership_branches` | [L1570](../../api/prisma/schema.prisma#L1570) | 01 §21, §90 — a Member can belong to one or many branches. |
+| `MembershipModuleAccess` | `membership_module_access` | [L1589](../../api/prisma/schema.prisma#L1589) | 01 §56–57 — per-member product access, evaluated before feature permissions. |
+| `Permission` | `permissions` | [L1611](../../api/prisma/schema.prisma#L1611) | 01 §46 — the global permission catalog. Keys follow `<module>.<resource>.<action>`. Every module's "Permissions" section registers its keys here (06 §15, 07 … |
+| `Role` | `roles` | [L1633](../../api/prisma/schema.prisma#L1633) | 01 §44–45, §111 — reusable permission bundle. organization_id is null for system roles and platform-provided templates (01 §111) that organizations clone. |
+| `RolePermission` | `role_permissions` | [L1676](../../api/prisma/schema.prisma#L1676) | 01 §44, §53 — permissions bundled in a role, with optional explicit deny. |
+| `RoleAssignment` | `role_assignments` | [L1695](../../api/prisma/schema.prisma#L1695) | 01 §92–93 — a role given to a principal (Member or Service Account) within a scope. scope_id references the Branch, Team, Project (05), Customer (02) or reso… |
+| `PermissionGrant` | `permission_grants` | [L1722](../../api/prisma/schema.prisma#L1722) | 01 §49, §53 — explicit per-member allow or deny for one permission, outside any role. |
+| `Delegation` | `delegations` | [L1746](../../api/prisma/schema.prisma#L1746) | 01 §94 — temporary delegation of selected responsibilities. |
+| `AccessReview` | `access_reviews` | [L1782](../../api/prisma/schema.prisma#L1782) | 01 §98 — periodic access review (certification campaign) over an organization, branch, team or module. |
+| `AccessReviewItem` | `access_review_items` | [L1813](../../api/prisma/schema.prisma#L1813) | 01 §98 — one member's access inside an access review, with the reviewer's decision. |
+| `RoleVersion` | `role_versions` | [L1839](../../api/prisma/schema.prisma#L1839) | 01 §109 — immutable snapshot of a role each time it is published. |
+| `IntegrationConnection` | `integration_connections` | [L1865](../../api/prisma/schema.prisma#L1865) | 01 §157 — one connected third-party service of an organization (OpenAI, Resend, Stripe, Twilio ...) with the organization's OWN credentials, so provider keys… |
+| `IntegrationUsageDaily` | `integration_usage_daily` | [L1920](../../api/prisma/schema.prisma#L1920) | 01 §157 — daily usage of one connection for the usage view and spend guardrails. Written only by the integration layer. |
+| `Invitation` | `invitations` | [L1947](../../api/prisma/schema.prisma#L1947) |  |
+| `SsoConfiguration` | `sso_configurations` | [L2004](../../api/prisma/schema.prisma#L2004) | 01 §69 — identity provider configuration per organization. |
+| `SsoGroupMapping` | `sso_group_mappings` | [L2028](../../api/prisma/schema.prisma#L2028) | 01 §71 — external IdP group → role / team / branch / module access. |
+| `ServiceAccount` | `service_accounts` | [L2052](../../api/prisma/schema.prisma#L2052) | 01 §76 — non-human identity for automation. Permissions come from RoleAssignment. |
+| `ApiKey` | `api_keys` | [L2080](../../api/prisma/schema.prisma#L2080) | 01 §75 — API credential owned by a Member or a Service Account. Never inherits unlimited permissions. |
+| `McpToolCall` | `mcp_tool_calls` | [L2120](../../api/prisma/schema.prisma#L2120) | 01 §75, §136 — one MCP tool invocation by an AI agent, API key or service account (also members acting through an MCP client). Sensitive tools wait in AWAITI… |
+| `ApiKeyUsageDaily` | `api_key_usage_daily` | [L2178](../../api/prisma/schema.prisma#L2178) | 01 §75 — daily usage of one API key (requests, rejections, source IPs) for the key detail view and new-IP alerts. Written only by the API gateway; rows are n… |
+| `CustomerPortalMembership` | `customer_portal_memberships` | [L2204](../../api/prisma/schema.prisma#L2204) | 01 §79 — a User's membership to a Customer (a CRM Company owned by docs/features/02, LOG-404) inside an agency Organization. customer_id has no relation unti… |
+| `CustomerPortalMembershipProject` | `customer_portal_membership_projects` | [L2238](../../api/prisma/schema.prisma#L2238) | 07 §2, §4 — restricts a portal user to specific customer-visible projects. No rows = every customer-visible project of the company. |
+| `AuditEvent` | `audit_events` | [L2268](../../api/prisma/schema.prisma#L2268) | Immutable audit event. Identity and access changes are written here by module 01; other modules append their own event types using the same table (06 §3, 07 … |
 
-**Owned enums (32):** `AuthRole`, `UserStatus`, `AuthMethodType`, `OrganizationStatus`, `BranchStatus`, `BranchKind`, `MembershipType`, `MembershipStatus`, `TeamKind`, `RoleType`, `RoleStatus`, `ScopeType`, `PermissionEffect`, `ModuleKey`, `InvitationStatus`, `ProvisioningSource`, `SsoProtocol`, `DomainVerificationStatus`, `MfaPolicy`, `ServiceAccountStatus`, `DelegationStatus`, `InvitationPolicy`, `InvitationAudience`, `AccessReviewStatus`, `AccessReviewDecision`, `IntegrationProvider`, `IntegrationCategory`, `IntegrationStatus`, `IntegrationMode`, `IntegrationCredentialSource`, `AuditActorType`, `DocumentType`
+**Owned enums (43):** `AuthRole`, `UserStatus`, `AuthMethodType`, `OrganizationStatus`, `BranchStatus`, `BranchKind`, `MembershipType`, `MembershipStatus`, `TeamKind`, `RoleType`, `RoleStatus`, `ScopeType`, `PermissionEffect`, `ModuleKey`, `InvitationStatus`, `ProvisioningSource`, `SsoProtocol`, `DomainVerificationStatus`, `MfaPolicy`, `ServiceAccountStatus`, `DelegationStatus`, `InvitationPolicy`, `InvitationAudience`, `AccessReviewStatus`, `AccessReviewDecision`, `IntegrationProvider`, `IntegrationCategory`, `IntegrationStatus`, `IntegrationMode`, `IntegrationCredentialSource`, `AuditActorType`, `DocumentType`, `DomainTlsStatus`, `OrganizationRetentionDataClass`, `OrganizationRetentionAction`, `OrganizationPlanStatus`, `OrganizationPlanInvoiceStatus`, `EntitlementPeriod`, `EntitlementEnforcement`, `EntitlementSource`, `ReviewerStrategy`, `McpToolCallStatus`, `AuditOutcome`
 
 ### Reuses from other modules (foreign keys)
 
 | Module | Model (table) | Referenced by |
 | -- | -- | -- |
 | [02](./02-crm-sales-management.md) | `CrmCompany` (`crm_companies`) | `Invitation.customer` |
+| [05](./05-project-management.md) | `Project` (`projects`) | `CustomerPortalMembershipProject.project` |
 | [07](./07-customer-portal.md) | `CustomerPortalSettings` (`customer_portal_settings`) | `Organization.portal_settings` |
 | [09](./09-income-expense-management.md) | `LedgerSettings` (`ledger_settings`) | `Organization.ledger_settings` |
 | [10](./10-employee-management-system.md) | `Employee` (`employees`) | `Membership.employee` |
 | [10](./10-employee-management-system.md) | `EmployeeHrSettings` (`employee_hr_settings`) | `Organization.employee_hr_settings` |
+| [11](./11-communication-center.md) | `CommSettings` (`comm_settings`) | `Organization.comm_settings` |
 | [12](./12-messaging-team-communication.md) | `MessagingMemberSettings` (`messaging_member_settings`) | `Membership.messaging_settings` |
 | [12](./12-messaging-team-communication.md) | `MessagingPresence` (`messaging_presence`) | `Membership.messaging_presence` |
 | [12](./12-messaging-team-communication.md) | `MessagingSettings` (`messaging_settings`) | `Organization.messaging_settings` |
+| [13](./13-customer-support-communication-hub.md) | `SupportAgentProfile` (`support_agent_profiles`) | `Membership.support_agent_profile` |
 | [13](./13-customer-support-communication-hub.md) | `SupportSettings` (`support_settings`) | `Organization.support_settings` |
 | [14](./14-notifications-activity-center.md) | `NotificationOrgSettings` (`notification_org_settings`) | `Organization.notification_org_settings` |
 | [14](./14-notifications-activity-center.md) | `NotificationRecipientSettings` (`notification_recipient_settings`) | `CustomerPortalMembership.notification_settings`, `Membership.notification_settings` |
@@ -83,90 +94,93 @@
 
 ### Referenced by other modules
 
-- [02](./02-crm-sales-management.md): `CrmActivity`, `CrmAssignmentRule`, `CrmCompany`, `CrmCompanyBranch`, `CrmContact`, `CrmDashboardLayout`, `CrmDeal`, `CrmForecastSnapshot`, `CrmImportJob`, `CrmLead`, `CrmLeadScoringRule`, `CrmLeadSource`, `CrmLeadStatus`, `CrmLifecycleStage`, `CrmNote`, `CrmPipeline`, `CrmSalesTarget`, `CustomFieldDefinition`, `CustomFieldGroup`, `SavedView`, `Tag`
-- [03](./03-proposal-quotation-generator.md): `NumberSequence`, `Proposal`, `ProposalApproval`, `ProposalApprovalRule`, `ProposalComment`, `ProposalTemplate`
-- [04](./04-contracts.md): `Contract`, `ContractAiFinding`, `ContractApproval`, `ContractApprovalRule`, `ContractClause`, `ContractComment`, `ContractReview`, `ContractSignatory`, `ContractTemplate`, `ContractType`, `SignatureRequest`
-- [05](./05-project-management.md): `Project`, `ProjectAllocation`, `ProjectBranch`, `ProjectDeliverableReview`, `ProjectFavorite`, `ProjectGate`, `ProjectMember`, `ProjectStatus`, `ProjectStatusUpdateComment`, `ProjectTemplate`, `ProjectType`
+- [02](./02-crm-sales-management.md): `CrmActivity`, `CrmAssignmentRule`, `CrmCompany`, `CrmCompanyBranch`, `CrmContact`, `CrmDashboardLayout`, `CrmDeal`, `CrmDiscountPolicy`, `CrmDuplicateDismissal`, `CrmDuplicateRule`, `CrmForecastSnapshot`, `CrmImportJob`, `CrmImportMapping`, `CrmLead`, `CrmLeadScoringRule`, `CrmLeadSource`, `CrmLeadStatus`, `CrmLifecycleStage`, `CrmLossReason`, `CrmMergeLog`, `CrmNote`, `CrmPipeline`, `CrmReportSchedule`, `CrmSalesTarget`, `CustomFieldDefinition`, `CustomFieldGroup`, `SavedView`, `Tag`
+- [03](./03-proposal-quotation-generator.md): `NumberSequence`, `Proposal`, `ProposalAiFinding`, `ProposalApproval`, `ProposalApprovalRule`, `ProposalComment`, `ProposalTemplate`
+- [04](./04-contracts.md): `Contract`, `ContractAiFinding`, `ContractApproval`, `ContractApprovalRule`, `ContractClause`, `ContractComment`, `ContractReview`, `ContractSignatory`, `ContractTemplate`, `ContractType`, `SignatureConsentText`, `SignatureRequest`, `VerificationCode`
+- [05](./05-project-management.md): `Project`, `ProjectAllocation`, `ProjectBranch`, `ProjectDeliverableApprover`, `ProjectDeliverableReview`, `ProjectFavorite`, `ProjectGate`, `ProjectMember`, `ProjectStatus`, `ProjectStatusUpdateComment`, `ProjectTemplate`, `ProjectType`
 - [06](./06-task-management.md): `Cycle`, `Release`, `Task`, `TaskAssignee`, `TaskComment`, `TaskLabel`, `TaskStatus`, `TaskType`, `TaskWatcher`
-- [07](./07-customer-portal.md): `CustomerPortalProfileChangeRequest`, `CustomerPortalSettings`
-- [08](./08-financial-management-stripe-integration.md): `BillingProfile`, `Coupon`, `CreditNote`, `DunningPolicy`, `Invoice`, `InvoiceTemplate`, `Payment`, `PaymentProviderConnection`, `PaymentProviderObject`, `Product`, `ProviderWebhookEvent`, `Subscription`, `TaxRate`
-- [09](./09-income-expense-management.md): `FinancialPeriod`, `FinancialPeriodSummary`, `LedgerCategory`, `LedgerInsight`, `LedgerInvoiceImport`, `LedgerPaymentMethod`, `LedgerProfitabilitySnapshot`, `LedgerRecord`, `LedgerSettings`, `LedgerSettlement`, `LedgerSupplierProfile`, `PayrollEntry`, `PayrollSchedule`, `RecurringExpense`
-- [10](./10-employee-management-system.md): `AttendanceRecord`, `AttendanceSummary`, `CompanyHoliday`, `Employee`, `EmployeeAvailabilityEntry`, `EmployeeCapacityPeriod`, `EmployeeDocument`, `EmployeeHrNote`, `EmployeeHrSettings`, `EmployeePosition`, `EmployeeProfileChangeRequest`, `LeaveBalance`, `LeavePolicy`, `LeaveRequest`, `LeaveRequestApproval`, `LeaveType`, `PerformanceFeedback`, `PerformanceGoal`, `PerformanceImprovementPlan`, `PerformanceReview`, `PerformanceReviewCycle`, `Skill`
-- [11](./11-communication-center.md): `Campaign`, `CampaignApproval`, `CampaignRecipient`, `CommAiGeneration`, `CommConsent`, `CommDailyStat`, `CommDeliveryEvent`, `CommMessage`, `CommMessageRecipient`, `CommProviderAccount`, `CommRecipientList`, `CommRecipientListMember`, `CommSenderDomain`, `CommSenderIdentity`, `CommSignature`, `CommSuppression`, `CommTemplate`, `CommTemplateVersion`, `CommThread`, `CommTrackedLink`, `Segment`
-- [12](./12-messaging-team-communication.md): `Channel`, `ChannelCall`, `ChannelCallParticipant`, `ChannelMember`, `ChannelMemberRestriction`, `ChannelPin`, `ChannelReadState`, `ChannelSection`, `ChannelTemplate`, `Message`, `MessageAcknowledgement`, `MessageDraft`, `MessageMention`, `MessageReaction`, `MessageReadReceipt`, `MessageReminder`, `MessageReport`, `MessageThreadFollower`, `MessagingExportJob`, `MessagingIntegration`, `MessagingKeyword`, `MessagingMemberSettings`, `MessagingPresence`, `MessagingRetentionPolicy`, `MessagingSettings`, `MessagingUsageDaily`, `SavedMessage`
-- [13](./13-customer-support-communication-hub.md): `KnowledgeArticle`, `KnowledgeArticleFeedback`, `KnowledgeCategory`, `SlaPolicy`, `SupportAiSession`, `SupportAiSuggestion`, `SupportCannedResponse`, `SupportChannel`, `SupportConversation`, `SupportConversationParticipant`, `SupportCsatRating`, `SupportInbox`, `SupportIncident`, `SupportMessage`, `SupportSettings`, `Ticket`, `TicketCategory`, `TicketFollower`, `TicketStatus`
-- [14](./14-notifications-activity-center.md): `Notification`, `NotificationDelivery`, `NotificationDeliveryRule`, `NotificationDigest`, `NotificationEvent`, `NotificationEventType`, `NotificationKeyword`, `NotificationOrgDefault`, `NotificationOrgSettings`, `NotificationPreference`, `NotificationPushDevice`, `NotificationRecipientSettings`, `NotificationTemplate`
-- [15](./15-notion-business-docs.md): `CustomForm`, `FormAssignment`, `FormAssignmentRecipient`, `FormSubmission`, `WikiAiIndexEntry`, `WikiAiSuggestion`, `WikiChecklist`, `WikiChecklistRun`, `WikiPage`, `WikiPageAcknowledgement`, `WikiPageComment`, `WikiPageFavorite`, `WikiPageReviewer`, `WikiPageTemplate`, `WikiSpace`, `WikiSpaceMember`
-- [17](./17-documents-file-management.md): `Document`, `DocumentApproval`, `DocumentApprover`, `DocumentAttachment`, `DocumentCategory`, `DocumentDeletionRequest`, `DocumentFavorite`, `DocumentRecentAccess`, `DocumentRetentionPolicy`, `DocumentSettings`, `DocumentShare`, `DocumentStorageConnection`, `DocumentUploadJob`, `DocumentVersion`, `Folder`, `FolderTemplate`, `VaultAccessLog`, `VaultEntry`, `VaultEntryGrant`, `VaultKey`
-- [18](./18-time-tracking.md): `BillingRate`, `TimeActivityType`, `TimeEntry`, `TimeEntryAdjustment`, `TimeImportJob`, `TimeProjectSettings`, `TimeSuggestion`, `TimeTrackingSettings`, `TimeUtilizationPeriod`, `Timer`, `Timesheet`, `TimesheetAction`
-- [19](./19-calendar.md): `BookingLink`, `BookingLinkHost`, `Calendar`, `CalendarAvailabilitySchedule`, `CalendarBooking`, `CalendarConferencingAccount`, `CalendarConnection`, `CalendarEvent`, `CalendarEventAttendee`, `CalendarEventReminder`, `CalendarEventType`, `CalendarPreference`, `CalendarResource`, `CalendarShare`
-- [20](./20-automation-engine.md): `AutomationAiStep`, `AutomationApproval`, `AutomationInboundWebhook`, `AutomationRule`, `AutomationRuleTemplate`, `AutomationRuleVersion`, `AutomationRun`, `AutomationRunLock`, `AutomationSettings`, `OutboundWebhook`, `PlatformEvent`, `ScheduledJob`, `ScheduledJobRun`, `WebhookDelivery`
+- [07](./07-customer-portal.md): `CustomerPortalClientSettings`, `CustomerPortalProfileChangeRequest`, `CustomerPortalSettings`
+- [08](./08-financial-management-stripe-integration.md): `BillingProfile`, `Coupon`, `CreditNote`, `DunningPolicy`, `FinanceApproval`, `FinanceApprovalRule`, `FinanceReportSchedule`, `Invoice`, `InvoiceTemplate`, `Payment`, `PaymentDispute`, `PaymentLink`, `PaymentPayout`, `PaymentProviderConnection`, `PaymentProviderObject`, `Product`, `ProviderWebhookEvent`, `Subscription`, `TaxRate`
+- [09](./09-income-expense-management.md): `ExpenseClaim`, `FinancialPeriod`, `FinancialPeriodSummary`, `LedgerBalanceSnapshot`, `LedgerBudget`, `LedgerBudgetLine`, `LedgerCategory`, `LedgerInsight`, `LedgerInvoiceImport`, `LedgerPaymentMethod`, `LedgerProfitabilitySnapshot`, `LedgerRecord`, `LedgerSettings`, `LedgerSettlement`, `LedgerSupplierProfile`, `PayrollEntry`, `PayrollSchedule`, `RecurringExpense`, `VatReturn`
+- [10](./10-employee-management-system.md): `AttendanceRecord`, `AttendanceSummary`, `CompanyHoliday`, `Employee`, `EmployeeAvailabilityEntry`, `EmployeeCapacityPeriod`, `EmployeeDocument`, `EmployeeEquipment`, `EmployeeHrNote`, `EmployeeHrSettings`, `EmployeeImportJob`, `EmployeePosition`, `EmployeeProfileChangeRequest`, `LeaveBalance`, `LeavePolicy`, `LeaveRequest`, `LeaveRequestApproval`, `LeaveType`, `PerformanceCalibration`, `PerformanceFeedback`, `PerformanceFeedbackRequest`, `PerformanceGoal`, `PerformanceImprovementPlan`, `PerformanceReview`, `PerformanceReviewCycle`, `ProjectAllocationSkill`, `Skill`
+- [11](./11-communication-center.md): `Campaign`, `CampaignApproval`, `CampaignRecipient`, `CommAiGeneration`, `CommConsent`, `CommDailyStat`, `CommDeliveryEvent`, `CommMessage`, `CommMessageRecipient`, `CommProviderAccount`, `CommRecipientList`, `CommRecipientListMember`, `CommSenderDomain`, `CommSenderIdentity`, `CommSettings`, `CommSignature`, `CommSuppression`, `CommTemplate`, `CommTemplateVersion`, `CommThread`, `CommTopic`, `CommTopicSubscription`, `CommTrackedLink`, `Segment`
+- [12](./12-messaging-team-communication.md): `Channel`, `ChannelAccessRequest`, `ChannelCall`, `ChannelCallParticipant`, `ChannelInvitation`, `ChannelMember`, `ChannelMemberRestriction`, `ChannelPin`, `ChannelReadState`, `ChannelSection`, `ChannelTemplate`, `Message`, `MessageAcknowledgement`, `MessageDraft`, `MessageMention`, `MessageReaction`, `MessageReadReceipt`, `MessageReminder`, `MessageReport`, `MessageThreadFollower`, `MessagingExportJob`, `MessagingIntegration`, `MessagingKeyword`, `MessagingLegalHold`, `MessagingMemberSettings`, `MessagingPresence`, `MessagingRetentionPolicy`, `MessagingSettings`, `MessagingUsageDaily`, `SavedMessage`
+- [13](./13-customer-support-communication-hub.md): `KnowledgeArticle`, `KnowledgeArticleFeedback`, `KnowledgeCategory`, `SlaPolicy`, `SupportAgentProfile`, `SupportAiSession`, `SupportAiSuggestion`, `SupportCannedResponse`, `SupportChannel`, `SupportConversation`, `SupportConversationParticipant`, `SupportCsatRating`, `SupportInbox`, `SupportIncident`, `SupportIncidentUpdate`, `SupportMessage`, `SupportSettings`, `Ticket`, `TicketCategory`, `TicketFollower`, `TicketStatus`
+- [14](./14-notifications-activity-center.md): `ActivityEvent`, `Announcement`, `AnnouncementAcknowledgement`, `Notification`, `NotificationDelivery`, `NotificationDeliveryRule`, `NotificationDigest`, `NotificationEvent`, `NotificationEventType`, `NotificationKeyword`, `NotificationOrgDefault`, `NotificationOrgSettings`, `NotificationPreference`, `NotificationPushDevice`, `NotificationRecipientSettings`, `NotificationTemplate`, `NotificationTemplateVersion`
+- [15](./15-notion-business-docs.md): `CustomForm`, `FormAssignment`, `FormAssignmentRecipient`, `FormSubmission`, `WikiAiIndexEntry`, `WikiAiSuggestion`, `WikiChecklist`, `WikiChecklistRun`, `WikiPage`, `WikiPageAcknowledgement`, `WikiPageComment`, `WikiPageFavorite`, `WikiPageFeedback`, `WikiPageReviewRequest`, `WikiPageReviewer`, `WikiPageTemplate`, `WikiPageView`, `WikiPageViewDaily`, `WikiPageWatcher`, `WikiSearchQuery`, `WikiSpace`, `WikiSpaceMember`, `WikiTransferJob`
+- [17](./17-documents-file-management.md): `Document`, `DocumentApproval`, `DocumentApprover`, `DocumentAttachment`, `DocumentCategory`, `DocumentDeletionRequest`, `DocumentFavorite`, `DocumentRecentAccess`, `DocumentRetentionPolicy`, `DocumentSettings`, `DocumentShare`, `DocumentStorageConnection`, `DocumentTemplate`, `DocumentUploadJob`, `DocumentVersion`, `Folder`, `FolderTemplate`, `VaultAccessLog`, `VaultEntry`, `VaultEntryGrant`, `VaultKey`
+- [18](./18-time-tracking.md): `BillingRate`, `TimeActivityType`, `TimeEntry`, `TimeEntryAdjustment`, `TimeExport`, `TimeImportJob`, `TimeProjectSettings`, `TimeReportSchedule`, `TimeSuggestion`, `TimeTrackingSettings`, `TimeUtilizationPeriod`, `Timer`, `Timesheet`, `TimesheetAction`
+- [19](./19-calendar.md): `BookingLink`, `BookingLinkHost`, `BookingLinkStatsDaily`, `Calendar`, `CalendarAvailabilitySchedule`, `CalendarBooking`, `CalendarConferencingAccount`, `CalendarConnection`, `CalendarEvent`, `CalendarEventAttendee`, `CalendarEventReminder`, `CalendarEventType`, `CalendarPreference`, `CalendarResource`, `CalendarShare`
+- [20](./20-automation-engine.md): `AutomationAiStep`, `AutomationApproval`, `AutomationApprovalPolicy`, `AutomationInboundWebhook`, `AutomationRule`, `AutomationRuleTemplate`, `AutomationRuleVersion`, `AutomationRun`, `AutomationRunLock`, `AutomationSettings`, `OutboundWebhook`, `PlatformEvent`, `ScheduledJob`, `ScheduledJobRun`, `WebhookDelivery`
 
 ### Plain-id references from other modules
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `ProposalTemplate.branding` ([03](./03-proposal-quotation-generator.md), [L3141](../../api/prisma/schema.prisma#L3141)) — Branding overrides; organization branding (01 §15) is the fallback.
-- `ProposalAcceptance.customer_user_id` ([03](./03-proposal-quotation-generator.md), [L3533](../../api/prisma/schema.prisma#L3533)) — Customer Portal User (01 §79) when accepted through the portal; id only.
-- `Project.branch_id` ([05](./05-project-management.md), [L4826](../../api/prisma/schema.prisma#L4826)) — Primary branch (01 §32). Participating branches in ProjectBranch.
-- `ProjectStakeholder.portal_visible` ([05](./05-project-management.md), [L5002](../../api/prisma/schema.prisma#L5002)) — Whether the stakeholder sees the project in the Customer Portal (via 01 §79 identity).
-- `ProjectGate.customer_approver_user_id` ([05](./05-project-management.md), [L5385](../../api/prisma/schema.prisma#L5385)) — Customer approval gates are decided by a Customer Portal User (01 §79); id only.
-- `ProjectDeliverableReview.reviewer_user_id` ([05](./05-project-management.md), [L5617](../../api/prisma/schema.prisma#L5617)) — Customer Portal User (01 §79) when decided through the portal.
-- `ProjectStatusUpdateComment.author_user_id` ([05](./05-project-management.md), [L5641](../../api/prisma/schema.prisma#L5641)) — Customer Portal User (01 §79) when written from the portal.
-- `TaskComment.author_user_id` ([06](./06-task-management.md), [L6003](../../api/prisma/schema.prisma#L6003)) — Customer Portal User (01 §79) when written from the portal; id only.
-- `CustomerPortalSettings.branding` ([07](./07-customer-portal.md), [L6167](../../api/prisma/schema.prisma#L6167)) — Branding overrides on top of organization branding (01 §15).
-- `CustomerPortalSettings.default_role_slug` ([07](./07-customer-portal.md), [L6167](../../api/prisma/schema.prisma#L6167)) — Default customer role slug assigned to invited portal users (01 §79).
-- `Invoice.template_id` ([08](./08-financial-management-stripe-integration.md), [L6610](../../api/prisma/schema.prisma#L6610)) — Template / branding override; organization branding (01 §15) is the fallback.
-- `Invoice.approved_by_user_id` ([08](./08-financial-management-stripe-integration.md), [L6610](../../api/prisma/schema.prisma#L6610)) — 08 "Invoicing" — explicit invoice approval (01 §95); must differ from created_by_user_id (separation of duties, 01 §96). Null = not approved / not required.
-- `PaymentProviderConnection.integration_connection_id` ([08](./08-financial-management-stripe-integration.md), [L7029](../../api/prisma/schema.prisma#L7029)) — 01 §157 — the organization's own credentials for this provider account (API keys, webhook signing secret). Secrets never live on this row.
-- `PaymentProviderConnection.branch_id` ([08](./08-financial-management-stripe-integration.md), [L7029](../../api/prisma/schema.prisma#L7029)) — 01 §34 — limit the connection to one branch; null = whole organization.
-- `LedgerSettings.reporting_currency` ([09](./09-income-expense-management.md), [L7328](../../api/prisma/schema.prisma#L7328)) — Reporting currency; falls back to Organization.default_currency (01 §14).
-- `LedgerRecord.branch_id` ([09](./09-income-expense-management.md), [L7476](../../api/prisma/schema.prisma#L7476)) — Cost center / branch context (01 §34).
-- `LedgerRecord.department_id` ([09](./09-income-expense-management.md), [L7476](../../api/prisma/schema.prisma#L7476)) — Department = Team of kind DEPARTMENT (01 §43).
-- `RecurringExpense.department_id` ([09](./09-income-expense-management.md), [L7765](../../api/prisma/schema.prisma#L7765)) — Department = Team of kind DEPARTMENT (01 §43).
-- `PayrollSchedule.department_id` ([09](./09-income-expense-management.md), [L7840](../../api/prisma/schema.prisma#L7840)) — Department = Team of kind DEPARTMENT (01 §43).
-- `PayrollEntry.department_id` ([09](./09-income-expense-management.md), [L7887](../../api/prisma/schema.prisma#L7887)) — Department = Team of kind DEPARTMENT (01 §43).
-- `Employee.national_id_number` ([10](./10-employee-management-system.md), [L8571](../../api/prisma/schema.prisma#L8571)) — Sensitive identifiers (01 §60).
-- `Employee.department_team_id` ([10](./10-employee-management-system.md), [L8571](../../api/prisma/schema.prisma#L8571)) — Team of kind DEPARTMENT (01 §43).
-- `EmployeePosition.department_team_id` ([10](./10-employee-management-system.md), [L8713](../../api/prisma/schema.prisma#L8713)) — Team of kind DEPARTMENT (01 §43).
-- `EmployeeDocument.is_confidential` ([10](./10-employee-management-system.md), [L9655](../../api/prisma/schema.prisma#L9655)) — Restricted to HR / explicit grants (01 §60).
-- `CommProviderAccount.integration_connection_id` ([11](./11-communication-center.md), [L10057](../../api/prisma/schema.prisma#L10057)) — 01 §157 — the organization's own credentials (API key, webhook secret) for this provider. Secrets never live on this row.
-- `CommMessage.branding_snapshot` ([11](./11-communication-center.md), [L10331](../../api/prisma/schema.prisma#L10331)) — Branded layout applied (01 §15 / §120 snapshot at send time).
-- `CommMessage.recipient_user_id` ([11](./11-communication-center.md), [L10331](../../api/prisma/schema.prisma#L10331)) — Customer Portal User (01 §79); id only.
-- `CommMessageRecipient.user_id` ([11](./11-communication-center.md), [L10493](../../api/prisma/schema.prisma#L10493)) — Customer Portal User (01 §79); id only.
-- `MessageReaction.external_user_id` ([12](./12-messaging-team-communication.md), [L11810](../../api/prisma/schema.prisma#L11810)) — External participant reactor (01 §79); id only.
-- `MessageMention.external_user_id` ([12](./12-messaging-team-communication.md), [L11830](../../api/prisma/schema.prisma#L11830)) — External participant mentioned (01 §79); id only.
-- `ChannelCallParticipant.external_user_id` ([12](./12-messaging-team-communication.md), [L12372](../../api/prisma/schema.prisma#L12372)) — External participant (01 §79); id only.
-- `SupportConversation.customer_user_id` ([13](./13-customer-support-communication-hub.md), [L12764](../../api/prisma/schema.prisma#L12764)) — Customer Portal User (01 §79) when started from the portal/authenticated widget.
-- `SupportMessage.author_user_id` ([13](./13-customer-support-communication-hub.md), [L12867](../../api/prisma/schema.prisma#L12867)) — Customer Portal User (01 §79) when written from the portal/widget.
-- `SlaPolicy.use_business_hours` ([13](./13-customer-support-communication-hub.md), [L13015](../../api/prisma/schema.prisma#L13015)) — Count only business hours (Organization/Branch business_hours, 01 §14, §120) instead of calendar hours.
-- `Ticket.requester_user_id` ([13](./13-customer-support-communication-hub.md), [L13067](../../api/prisma/schema.prisma#L13067)) — Customer Portal User who opened / may view the ticket (01 §79).
-- `SupportCsatRating.rated_by_user_id` ([13](./13-customer-support-communication-hub.md), [L13393](../../api/prisma/schema.prisma#L13393)) — Customer Portal User who rated (01 §79).
-- `KnowledgeArticleFeedback.user_id` ([13](./13-customer-support-communication-hub.md), [L13569](../../api/prisma/schema.prisma#L13569)) — Customer Portal User (01 §79) when authenticated.
-- `NotificationEvent.actor_service_account_id` ([14](./14-notifications-activity-center.md), [L13891](../../api/prisma/schema.prisma#L13891)) — 01 ServiceAccount id when published by an integration.
-- `Notification.recipient_user_id` ([14](./14-notifications-activity-center.md), [L13947](../../api/prisma/schema.prisma#L13947)) — Customer Portal User (01 §79) — set with portal_membership_id for portal-scoped inboxes (14 §7).
-- `NotificationRecipientSettings.timezone` ([14](./14-notifications-activity-center.md), [L14187](../../api/prisma/schema.prisma#L14187)) — IANA time zone; null = the user's / organization's time zone (01 §127).
-- `NotificationRecipientSettings.language` ([14](./14-notifications-activity-center.md), [L14187](../../api/prisma/schema.prisma#L14187)) — Preferred notification language; null = user language (01 §127).
-- `WikiSpace.department_id` ([15](./15-notion-business-docs.md), [L14636](../../api/prisma/schema.prisma#L14636)) — Department = Team of kind DEPARTMENT (01 §43).
-- `WikiChecklist.department_id` ([15](./15-notion-business-docs.md), [L15004](../../api/prisma/schema.prisma#L15004)) — Department = Team of kind DEPARTMENT (01 §43).
-- `WikiChecklist.role_id` ([15](./15-notion-business-docs.md), [L15004](../../api/prisma/schema.prisma#L15004)) — Role (01) this checklist applies to; null = all roles.
-- `WikiChecklist.auto_assign` ([15](./15-notion-business-docs.md), [L15004](../../api/prisma/schema.prisma#L15004)) — Auto-start on member onboarding/offboarding (01 §130–131) when department/role match.
-- `FormAssignment.target_id` ([15](./15-notion-business-docs.md), [L15200](../../api/prisma/schema.prisma#L15200)) — memberships / teams / branches id or Department = Team of kind DEPARTMENT (01 §43) id; null for ORGANIZATION.
-- `Document.type` ([17](./17-documents-file-management.md), [L15878](../../api/prisma/schema.prisma#L15878)) — Legacy coarse file kind; kept for existing branding uploads (01 §15).
-- `TimeTrackingSettings.week_start` ([18](./18-time-tracking.md), [L16696](../../api/prisma/schema.prisma#L16696)) — 1 = Monday … 7 = Sunday; falls back to Organization.week_start (01 §14).
-- `TimeEntry.membership_id` ([18](./18-time-tracking.md), [L16876](../../api/prisma/schema.prisma#L16876)) — The member who performed the work (Member with an Employee record, 01 §80).
-- `TimeEntry.branch_id` ([18](./18-time-tracking.md), [L16876](../../api/prisma/schema.prisma#L16876)) — Branch scope for reporting (01 §123–124): the project's primary branch or the member's primary branch.
-- `Timesheet.expected_minutes` ([18](./18-time-tracking.md), [L17165](../../api/prisma/schema.prisma#L17165)) — Expected capacity for the period from working hours, leave and holidays (10, 01 §121–122).
-- `TimeUtilizationPeriod.leave_minutes` ([18](./18-time-tracking.md), [L17247](../../api/prisma/schema.prisma#L17247)) — Minutes of approved leave and holidays removed from capacity (10, 01 §122).
-- `CalendarPreference.timezone` ([19](./19-calendar.md), [L17516](../../api/prisma/schema.prisma#L17516)) — IANA zone override; falls back to User.timezone, then Branch/Organization (01 §120).
-- `CalendarResource.availability` ([19](./19-calendar.md), [L17630](../../api/prisma/schema.prisma#L17630)) — Hours the resource can be booked: { mon: [{start,end}], … }; null = branch business hours (01 §121).
-- `CalendarEvent.branch_id` ([19](./19-calendar.md), [L17671](../../api/prisma/schema.prisma#L17671)) — Branch whose business hours / holidays apply (01 §120–122); null = organization.
-- `CalendarAvailabilitySchedule.honor_holidays` ([19](./19-calendar.md), [L17897](../../api/prisma/schema.prisma#L17897)) — Respect branch holidays (01 §122) and approved leave (10) on top of the rules.
-- `BookingLink.branding` ([19](./19-calendar.md), [L17963](../../api/prisma/schema.prisma#L17963)) — Page branding overrides (01 §15 branding is the default).
-- `CalendarBooking.invitee_user_id` ([19](./19-calendar.md), [L18061](../../api/prisma/schema.prisma#L18061)) — Customer Portal user who booked (01 §79).
-- `AutomationSettings.default_service_account_id` ([20](./20-automation-engine.md), [L18477](../../api/prisma/schema.prisma#L18477)) — 20 §4, §14 — service account used when a rule has none of its own (01 §76).
-- `AutomationRule.run_as_service_account_id` ([20](./20-automation-engine.md), [L18629](../../api/prisma/schema.prisma#L18629)) — 20 §4, §14 — run under a service account instead of the owner (01 §76).
-- `ScheduledJob.branch_id` ([20](./20-automation-engine.md), [L19125](../../api/prisma/schema.prisma#L19125)) — 20 §7 — optional branch scope for branch-level module jobs (01 §34 branch reporting).
+- `ProposalTemplate.branding` ([03](./03-proposal-quotation-generator.md), [L3831](../../api/prisma/schema.prisma#L3831)) — Branding overrides; organization branding (01 §15) is the fallback.
+- `ProposalAcceptance.customer_user_id` ([03](./03-proposal-quotation-generator.md), [L4263](../../api/prisma/schema.prisma#L4263)) — Customer Portal User (01 §79) when accepted through the portal; id only.
+- `Project.branch_id` ([05](./05-project-management.md), [L5696](../../api/prisma/schema.prisma#L5696)) — Primary branch (01 §32). Participating branches in ProjectBranch.
+- `ProjectStakeholder.portal_visible` ([05](./05-project-management.md), [L5875](../../api/prisma/schema.prisma#L5875)) — Whether the stakeholder sees the project in the Customer Portal (via 01 §79 identity).
+- `ProjectGate.customer_approver_user_id` ([05](./05-project-management.md), [L6267](../../api/prisma/schema.prisma#L6267)) — Customer approval gates are decided by a Customer Portal User (01 §79); id only.
+- `ProjectDeliverableReview.reviewer_user_id` ([05](./05-project-management.md), [L6501](../../api/prisma/schema.prisma#L6501)) — Customer Portal User (01 §79) when decided through the portal.
+- `ProjectStatusUpdateComment.author_user_id` ([05](./05-project-management.md), [L6547](../../api/prisma/schema.prisma#L6547)) — Customer Portal User (01 §79) when written from the portal.
+- `TaskComment.author_user_id` ([06](./06-task-management.md), [L6909](../../api/prisma/schema.prisma#L6909)) — Customer Portal User (01 §79) when written from the portal; id only.
+- `CustomerPortalSettings.branding` ([07](./07-customer-portal.md), [L7073](../../api/prisma/schema.prisma#L7073)) — Branding overrides on top of organization branding (01 §15).
+- `CustomerPortalSettings.default_role_slug` ([07](./07-customer-portal.md), [L7073](../../api/prisma/schema.prisma#L7073)) — Default customer role slug assigned to invited portal users (01 §79).
+- `Invoice.template_id` ([08](./08-financial-management-stripe-integration.md), [L7550](../../api/prisma/schema.prisma#L7550)) — Template / branding override; organization branding (01 §15) is the fallback.
+- `Invoice.approved_by_user_id` ([08](./08-financial-management-stripe-integration.md), [L7550](../../api/prisma/schema.prisma#L7550)) — 08 "Invoicing" — explicit invoice approval (01 §95); must differ from created_by_user_id (separation of duties, 01 §96). Null = not approved / not required.
+- `PaymentProviderConnection.integration_connection_id` ([08](./08-financial-management-stripe-integration.md), [L7983](../../api/prisma/schema.prisma#L7983)) — 01 §157 — the organization's own credentials for this provider account (API keys, webhook signing secret). Secrets never live on this row.
+- `PaymentProviderConnection.branch_id` ([08](./08-financial-management-stripe-integration.md), [L7983](../../api/prisma/schema.prisma#L7983)) — 01 §34 — limit the connection to one branch; null = whole organization.
+- `FinanceApprovalRule.branch_id` ([08](./08-financial-management-stripe-integration.md), [L8267](../../api/prisma/schema.prisma#L8267)) — 01 §34 — limit to one branch / cost center; null = whole organization.
+- `FinanceApprovalRule.require_distinct_user` ([08](./08-financial-management-stripe-integration.md), [L8267](../../api/prisma/schema.prisma#L8267)) — The requester can never approve their own item (01 §96).
+- `LedgerSettings.reporting_currency` ([09](./09-income-expense-management.md), [L8560](../../api/prisma/schema.prisma#L8560)) — Reporting currency; falls back to Organization.default_currency (01 §14).
+- `LedgerRecord.branch_id` ([09](./09-income-expense-management.md), [L8717](../../api/prisma/schema.prisma#L8717)) — Cost center / branch context (01 §34).
+- `LedgerRecord.department_id` ([09](./09-income-expense-management.md), [L8717](../../api/prisma/schema.prisma#L8717)) — Department = Team of kind DEPARTMENT (01 §43).
+- `RecurringExpense.department_id` ([09](./09-income-expense-management.md), [L9006](../../api/prisma/schema.prisma#L9006)) — Department = Team of kind DEPARTMENT (01 §43).
+- `PayrollSchedule.department_id` ([09](./09-income-expense-management.md), [L9081](../../api/prisma/schema.prisma#L9081)) — Department = Team of kind DEPARTMENT (01 §43).
+- `PayrollEntry.department_id` ([09](./09-income-expense-management.md), [L9128](../../api/prisma/schema.prisma#L9128)) — Department = Team of kind DEPARTMENT (01 §43).
+- `Employee.national_id_number` ([10](./10-employee-management-system.md), [L10017](../../api/prisma/schema.prisma#L10017)) — Sensitive identifiers (01 §60).
+- `Employee.department_team_id` ([10](./10-employee-management-system.md), [L10017](../../api/prisma/schema.prisma#L10017)) — Team of kind DEPARTMENT (01 §43).
+- `EmployeePosition.department_team_id` ([10](./10-employee-management-system.md), [L10166](../../api/prisma/schema.prisma#L10166)) — Team of kind DEPARTMENT (01 §43).
+- `EmployeeDocument.is_confidential` ([10](./10-employee-management-system.md), [L11120](../../api/prisma/schema.prisma#L11120)) — Restricted to HR / explicit grants (01 §60).
+- `CommProviderAccount.integration_connection_id` ([11](./11-communication-center.md), [L11714](../../api/prisma/schema.prisma#L11714)) — 01 §157 — the organization's own credentials (API key, webhook secret) for this provider. Secrets never live on this row.
+- `CommMessage.branding_snapshot` ([11](./11-communication-center.md), [L11988](../../api/prisma/schema.prisma#L11988)) — Branded layout applied (01 §15 / §120 snapshot at send time).
+- `CommMessage.recipient_user_id` ([11](./11-communication-center.md), [L11988](../../api/prisma/schema.prisma#L11988)) — Customer Portal User (01 §79); id only.
+- `CommMessageRecipient.user_id` ([11](./11-communication-center.md), [L12152](../../api/prisma/schema.prisma#L12152)) — Customer Portal User (01 §79); id only.
+- `MessageReaction.external_user_id` ([12](./12-messaging-team-communication.md), [L13604](../../api/prisma/schema.prisma#L13604)) — External participant reactor (01 §79); id only.
+- `MessageMention.external_user_id` ([12](./12-messaging-team-communication.md), [L13624](../../api/prisma/schema.prisma#L13624)) — External participant mentioned (01 §79); id only.
+- `ChannelCallParticipant.external_user_id` ([12](./12-messaging-team-communication.md), [L14169](../../api/prisma/schema.prisma#L14169)) — External participant (01 §79); id only.
+- `SupportConversation.customer_user_id` ([13](./13-customer-support-communication-hub.md), [L14713](../../api/prisma/schema.prisma#L14713)) — Customer Portal User (01 §79) when started from the portal/authenticated widget.
+- `SupportMessage.author_user_id` ([13](./13-customer-support-communication-hub.md), [L14816](../../api/prisma/schema.prisma#L14816)) — Customer Portal User (01 §79) when written from the portal/widget.
+- `SlaPolicy.use_business_hours` ([13](./13-customer-support-communication-hub.md), [L14964](../../api/prisma/schema.prisma#L14964)) — Count only business hours (Organization/Branch business_hours, 01 §14, §120) instead of calendar hours.
+- `Ticket.requester_user_id` ([13](./13-customer-support-communication-hub.md), [L15016](../../api/prisma/schema.prisma#L15016)) — Customer Portal User who opened / may view the ticket (01 §79).
+- `SupportCsatRating.rated_by_user_id` ([13](./13-customer-support-communication-hub.md), [L15353](../../api/prisma/schema.prisma#L15353)) — Customer Portal User who rated (01 §79).
+- `KnowledgeArticleFeedback.user_id` ([13](./13-customer-support-communication-hub.md), [L15533](../../api/prisma/schema.prisma#L15533)) — Customer Portal User (01 §79) when authenticated.
+- `NotificationEvent.actor_service_account_id` ([14](./14-notifications-activity-center.md), [L15906](../../api/prisma/schema.prisma#L15906)) — 01 ServiceAccount id when published by an integration.
+- `Notification.recipient_user_id` ([14](./14-notifications-activity-center.md), [L15967](../../api/prisma/schema.prisma#L15967)) — Customer Portal User (01 §79) — set with portal_membership_id for portal-scoped inboxes (14 §7).
+- `NotificationRecipientSettings.timezone` ([14](./14-notifications-activity-center.md), [L16213](../../api/prisma/schema.prisma#L16213)) — IANA time zone; null = the user's / organization's time zone (01 §127).
+- `NotificationRecipientSettings.language` ([14](./14-notifications-activity-center.md), [L16213](../../api/prisma/schema.prisma#L16213)) — Preferred notification language; null = user language (01 §127).
+- `WikiSpace.department_id` ([15](./15-notion-business-docs.md), [L16835](../../api/prisma/schema.prisma#L16835)) — Department = Team of kind DEPARTMENT (01 §43).
+- `WikiChecklist.department_id` ([15](./15-notion-business-docs.md), [L17228](../../api/prisma/schema.prisma#L17228)) — Department = Team of kind DEPARTMENT (01 §43).
+- `WikiChecklist.role_id` ([15](./15-notion-business-docs.md), [L17228](../../api/prisma/schema.prisma#L17228)) — Role (01) this checklist applies to; null = all roles.
+- `WikiChecklist.auto_assign` ([15](./15-notion-business-docs.md), [L17228](../../api/prisma/schema.prisma#L17228)) — Auto-start on member onboarding/offboarding (01 §130–131) when department/role match.
+- `FormAssignment.target_id` ([15](./15-notion-business-docs.md), [L17424](../../api/prisma/schema.prisma#L17424)) — memberships / teams / branches id or Department = Team of kind DEPARTMENT (01 §43) id; null for ORGANIZATION.
+- `Document.type` ([17](./17-documents-file-management.md), [L18271](../../api/prisma/schema.prisma#L18271)) — Legacy coarse file kind; kept for existing branding uploads (01 §15).
+- `TimeTrackingSettings.week_start` ([18](./18-time-tracking.md), [L19158](../../api/prisma/schema.prisma#L19158)) — 1 = Monday … 7 = Sunday; falls back to Organization.week_start (01 §14).
+- `TimeEntry.membership_id` ([18](./18-time-tracking.md), [L19343](../../api/prisma/schema.prisma#L19343)) — The member who performed the work (Member with an Employee record, 01 §80).
+- `TimeEntry.branch_id` ([18](./18-time-tracking.md), [L19343](../../api/prisma/schema.prisma#L19343)) — Branch scope for reporting (01 §123–124): the project's primary branch or the member's primary branch.
+- `Timesheet.expected_minutes` ([18](./18-time-tracking.md), [L19632](../../api/prisma/schema.prisma#L19632)) — Expected capacity for the period from working hours, leave and holidays (10, 01 §121–122).
+- `TimeUtilizationPeriod.leave_minutes` ([18](./18-time-tracking.md), [L19714](../../api/prisma/schema.prisma#L19714)) — Minutes of approved leave and holidays removed from capacity (10, 01 §122).
+- `CalendarPreference.timezone` ([19](./19-calendar.md), [L20058](../../api/prisma/schema.prisma#L20058)) — IANA zone override; falls back to User.timezone, then Branch/Organization (01 §120).
+- `CalendarResource.availability` ([19](./19-calendar.md), [L20176](../../api/prisma/schema.prisma#L20176)) — Hours the resource can be booked: { mon: [{start,end}], … }; null = branch business hours (01 §121).
+- `CalendarEvent.branch_id` ([19](./19-calendar.md), [L20217](../../api/prisma/schema.prisma#L20217)) — Branch whose business hours / holidays apply (01 §120–122); null = organization.
+- `CalendarAvailabilitySchedule.honor_holidays` ([19](./19-calendar.md), [L20456](../../api/prisma/schema.prisma#L20456)) — Respect branch holidays (01 §122) and approved leave (10) on top of the rules.
+- `BookingLink.branding` ([19](./19-calendar.md), [L20522](../../api/prisma/schema.prisma#L20522)) — Page branding overrides (01 §15 branding is the default).
+- `CalendarBooking.invitee_user_id` ([19](./19-calendar.md), [L20621](../../api/prisma/schema.prisma#L20621)) — Customer Portal user who booked (01 §79).
+- `AutomationSettings.default_service_account_id` ([20](./20-automation-engine.md), [L21064](../../api/prisma/schema.prisma#L21064)) — 20 §4, §14 — service account used when a rule has none of its own (01 §76).
+- `AutomationRule.run_as_service_account_id` ([20](./20-automation-engine.md), [L21221](../../api/prisma/schema.prisma#L21221)) — 20 §4, §14 — run under a service account instead of the owner (01 §76).
+- `ScheduledJob.branch_id` ([20](./20-automation-engine.md), [L21765](../../api/prisma/schema.prisma#L21765)) — 20 §7 — optional branch scope for branch-level module jobs (01 §34 branch reporting).
+- `OutboundWebhook.previous_secret` ([20](./20-automation-engine.md), [L21877](../../api/prisma/schema.prisma#L21877)) — 01 §138 — secret rotation grace: deliveries are also verifiable with the previous (encrypted) secret until previous_secret_expires_at.
 
 <!-- schema-refs:end -->
 
@@ -186,7 +200,7 @@ Every capability of this module is built for **all access channels at once**. Ea
 | API key / service account | Explicit permission keys and scope, never a human's full access; usable on every endpoint and MCP tool of this module; audit actor `SERVICE_ACCOUNT` |
 | Webhooks and automation | Events, triggers and actions registered with [20](./20-automation-engine.md); automation runs as a service account or membership with the same checks |
 
-**Permission keys in the catalog today** (`api/prisma/seed/permission-catalog.ts`, 41 keys; `*` = sensitive):
+**Permission keys in the catalog today** (`api/prisma/seed/permission-catalog.ts`, 43 keys; `*` = sensitive):
 
 | Resource key prefix | Actions |
 | -- | -- |
@@ -200,8 +214,10 @@ Every capability of this module is built for **all access channels at once**. Ea
 | `organizations.branding` | manage |
 | `organizations.domains` | manage* |
 | `organizations.integrations` | read, manage* |
+| `organizations.mcp_calls` | read* |
 | `organizations.modules` | manage* |
 | `organizations.organization` | delete* |
+| `organizations.retention` | manage* |
 | `organizations.security` | manage* |
 | `organizations.service_accounts` | manage* |
 | `organizations.settings` | manage* |
@@ -344,7 +360,7 @@ A User may belong to both organizations without causing their data to become sha
 # 4. User Identity
 
 <!-- schema-section:start -->
-> **Schema:** `User` ([users](../../api/prisma/schema.prisma#L344)) — other modules: `CrmContact` ([crm_contacts](../../api/prisma/schema.prisma#L2472)) ([02](./02-crm-sales-management.md))
+> **Schema:** `User` ([users](../../api/prisma/schema.prisma#L344)) — other modules: `CrmContact` ([crm_contacts](../../api/prisma/schema.prisma#L2919)) ([02](./02-crm-sales-management.md))
 <!-- schema-section:end -->
 
 A User represents a human platform identity.
@@ -394,7 +410,7 @@ Deactivation must preserve historical activity, ownership references, comments, 
 # 6. Authentication
 
 <!-- schema-section:start -->
-> **Schema:** `UserAuthMethod` ([user_auth_methods](../../api/prisma/schema.prisma#L419)) · enum `AuthMethodType` ([L65](../../api/prisma/schema.prisma#L65))
+> **Schema:** `UserAuthMethod` ([user_auth_methods](../../api/prisma/schema.prisma#L420)) · enum `AuthMethodType` ([L65](../../api/prisma/schema.prisma#L65))
 <!-- schema-section:end -->
 
 The platform should support configurable authentication methods:
@@ -441,7 +457,7 @@ Each membership can have completely different permissions, roles, teams, branche
 # 8. Organization
 
 <!-- schema-section:start -->
-> **Schema:** `Organization` ([organizations](../../api/prisma/schema.prisma#L492)) — other modules: `CrmCompany` ([crm_companies](../../api/prisma/schema.prisma#L2358)) ([02](./02-crm-sales-management.md))
+> **Schema:** `Organization` ([organizations](../../api/prisma/schema.prisma#L516)) — other modules: `CrmCompany` ([crm_companies](../../api/prisma/schema.prisma#L2794)) ([02](./02-crm-sales-management.md))
 <!-- schema-section:end -->
 
 An Organization represents an entire company / tenant.
@@ -470,7 +486,7 @@ An Organization owns its platform data.
 # 9. Organization Isolation
 
 <!-- schema-section:start -->
-> **Schema:** `Organization` ([organizations](../../api/prisma/schema.prisma#L492))
+> **Schema:** `Organization` ([organizations](../../api/prisma/schema.prisma#L516))
 <!-- schema-section:end -->
 
 Every major platform resource should belong to exactly one Organization unless explicitly designed as a global system resource.
@@ -597,7 +613,7 @@ These roles should be permission-based rather than hardcoded wherever possible.
 # 14. Organization Profile
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `LedgerSettings` ([ledger_settings](../../api/prisma/schema.prisma#L7328)): `reporting_currency` ([09](./09-income-expense-management.md)) · `SlaPolicy` ([sla_policies](../../api/prisma/schema.prisma#L13015)): `use_business_hours` ([13](./13-customer-support-communication-hub.md)) · `TimeTrackingSettings` ([time_tracking_settings](../../api/prisma/schema.prisma#L16696)): `week_start` ([18](./18-time-tracking.md))
+> **Schema:** other modules: `LedgerSettings` ([ledger_settings](../../api/prisma/schema.prisma#L8560)): `reporting_currency` ([09](./09-income-expense-management.md)) · `SlaPolicy` ([sla_policies](../../api/prisma/schema.prisma#L14964)): `use_business_hours` ([13](./13-customer-support-communication-hub.md)) · `TimeTrackingSettings` ([time_tracking_settings](../../api/prisma/schema.prisma#L19158)): `week_start` ([18](./18-time-tracking.md))
 <!-- schema-section:end -->
 
 Organization settings should contain:
@@ -621,7 +637,7 @@ Organization settings should contain:
 # 15. Organization Branding
 
 <!-- schema-section:start -->
-> **Schema:** `Organization` ([organizations](../../api/prisma/schema.prisma#L492)): `branding` · enum `DocumentType` ([L322](../../api/prisma/schema.prisma#L322)) — other modules: `BookingLink` ([booking_links](../../api/prisma/schema.prisma#L17963)): `branding` ([19](./19-calendar.md)) · `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L10331)): `branding_snapshot` ([11](./11-communication-center.md)) · `CommTemplate` ([comm_templates](../../api/prisma/schema.prisma#L10181)) ([11](./11-communication-center.md)) · `CustomerPortalSettings` ([customer_portal_settings](../../api/prisma/schema.prisma#L6167)): `branding` ([07](./07-customer-portal.md)) · `Invoice` ([invoices](../../api/prisma/schema.prisma#L6610)): `template_id` ([08](./08-financial-management-stripe-integration.md)) · `InvoiceTemplate` ([invoice_templates](../../api/prisma/schema.prisma#L6583)) ([08](./08-financial-management-stripe-integration.md)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L11334)) ([12](./12-messaging-team-communication.md)) · `NotificationTemplate` ([notification_templates](../../api/prisma/schema.prisma#L14084)) ([14](./14-notifications-activity-center.md)) · `ProposalTemplate` ([proposal_templates](../../api/prisma/schema.prisma#L3141)): `branding` ([03](./03-proposal-quotation-generator.md))
+> **Schema:** `Organization` ([organizations](../../api/prisma/schema.prisma#L516)): `branding` · enum `DocumentType` ([L322](../../api/prisma/schema.prisma#L322)) — other modules: `BookingLink` ([booking_links](../../api/prisma/schema.prisma#L20522)): `branding` ([19](./19-calendar.md)) · `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L11988)): `branding_snapshot` ([11](./11-communication-center.md)) · `CommTemplate` ([comm_templates](../../api/prisma/schema.prisma#L11838)) ([11](./11-communication-center.md)) · `CustomerPortalSettings` ([customer_portal_settings](../../api/prisma/schema.prisma#L7073)): `branding` ([07](./07-customer-portal.md)) · `Invoice` ([invoices](../../api/prisma/schema.prisma#L7550)): `template_id` ([08](./08-financial-management-stripe-integration.md)) · `InvoiceTemplate` ([invoice_templates](../../api/prisma/schema.prisma#L7523)) ([08](./08-financial-management-stripe-integration.md)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13123)) ([12](./12-messaging-team-communication.md)) · `NotificationTemplate` ([notification_templates](../../api/prisma/schema.prisma#L16109)) ([14](./14-notifications-activity-center.md)) · `ProposalTemplate` ([proposal_templates](../../api/prisma/schema.prisma#L3831)): `branding` ([03](./03-proposal-quotation-generator.md))
 <!-- schema-section:end -->
 
 Organizations can configure:
@@ -642,7 +658,7 @@ Modules consume organization branding rather than implementing separate branding
 # 16. Branches
 
 <!-- schema-section:start -->
-> **Schema:** enum `BranchKind` ([L98](../../api/prisma/schema.prisma#L98)) — other modules: `CrmCompany` ([crm_companies](../../api/prisma/schema.prisma#L2358)) ([02](./02-crm-sales-management.md))
+> **Schema:** enum `BranchKind` ([L98](../../api/prisma/schema.prisma#L98)) — other modules: `CrmCompany` ([crm_companies](../../api/prisma/schema.prisma#L2794)) ([02](./02-crm-sales-management.md))
 <!-- schema-section:end -->
 
 Branches are organizational units inside an Organization.
@@ -669,7 +685,7 @@ The important distinction is:
 # 17. Branch Hierarchy
 
 <!-- schema-section:start -->
-> **Schema:** `Branch` ([branches](../../api/prisma/schema.prisma#L841)): `path`
+> **Schema:** `Branch` ([branches](../../api/prisma/schema.prisma#L1087)): `path`
 <!-- schema-section:end -->
 
 Branches may optionally support hierarchy.
@@ -703,7 +719,7 @@ The hierarchy depth should be configurable.
 # 18. Branch Data Model
 
 <!-- schema-section:start -->
-> **Schema:** `Branch` ([branches](../../api/prisma/schema.prisma#L841))
+> **Schema:** `Branch` ([branches](../../api/prisma/schema.prisma#L1087))
 <!-- schema-section:end -->
 
 A Branch may contain:
@@ -751,7 +767,7 @@ Archiving a branch must not delete its historical records.
 # 20. Branch Manager
 
 <!-- schema-section:start -->
-> **Schema:** `BranchManager` ([branch_managers](../../api/prisma/schema.prisma#L932))
+> **Schema:** `BranchManager` ([branch_managers](../../api/prisma/schema.prisma#L1178))
 <!-- schema-section:end -->
 
 A Branch can have one or more responsible Members.
@@ -769,7 +785,7 @@ Branch management permissions should be assignable independently of global organ
 # 21. User Branch Membership
 
 <!-- schema-section:start -->
-> **Schema:** `MembershipBranch` ([membership_branches](../../api/prisma/schema.prisma#L1301))
+> **Schema:** `MembershipBranch` ([membership_branches](../../api/prisma/schema.prisma#L1570))
 <!-- schema-section:end -->
 
 A Member can belong to:
@@ -851,7 +867,7 @@ Can access:
 # 24. Membership
 
 <!-- schema-section:start -->
-> **Schema:** `Membership` ([memberships](../../api/prisma/schema.prisma#L1067)) · enum `MembershipStatus` ([L115](../../api/prisma/schema.prisma#L115)) · enum `MembershipType` ([L108](../../api/prisma/schema.prisma#L108))
+> **Schema:** `Membership` ([memberships](../../api/prisma/schema.prisma#L1314)) · enum `MembershipStatus` ([L115](../../api/prisma/schema.prisma#L115)) · enum `MembershipType` ([L108](../../api/prisma/schema.prisma#L108))
 <!-- schema-section:end -->
 
 Membership is the authorization relationship between User and Organization.
@@ -905,7 +921,7 @@ Switching organizations must change the active data scope.
 # 26. Organization Switcher
 
 <!-- schema-section:start -->
-> **Schema:** `UserSession` ([user_sessions](../../api/prisma/schema.prisma#L444)): `active_organization_id`
+> **Schema:** `UserSession` ([user_sessions](../../api/prisma/schema.prisma#L445)): `active_organization_id`
 <!-- schema-section:end -->
 
 The global application should provide an organization switcher.
@@ -924,7 +940,7 @@ Switching organizations should never merge the navigation state or data context 
 # 27. Active Branch Context
 
 <!-- schema-section:start -->
-> **Schema:** `UserSession` ([user_sessions](../../api/prisma/schema.prisma#L444)): `active_branch_id`, `active_branch_ids`
+> **Schema:** `UserSession` ([user_sessions](../../api/prisma/schema.prisma#L445)): `active_branch_id`, `active_branch_ids`
 <!-- schema-section:end -->
 
 Users with multiple branch memberships should be able to select their active branch context.
@@ -1015,7 +1031,7 @@ Contract → Organization-wide or linked to relevant branch
 # 31. Organization-Wide vs Branch-Level Customers
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `CrmCompanyBranch` ([crm_company_branches](../../api/prisma/schema.prisma#L2455)) ([02](./02-crm-sales-management.md)) · enum `CrmBranchRelationType` ([L2206](../../api/prisma/schema.prisma#L2206)) ([02](./02-crm-sales-management.md))
+> **Schema:** other modules: `CrmCompanyBranch` ([crm_company_branches](../../api/prisma/schema.prisma#L2902)) ([02](./02-crm-sales-management.md)) · enum `CrmBranchRelationType` ([L2642](../../api/prisma/schema.prisma#L2642)) ([02](./02-crm-sales-management.md))
 <!-- schema-section:end -->
 
 The CRM should support both:
@@ -1045,7 +1061,7 @@ Branch relationships should be represented as relationships / ownership rather t
 # 32. Branch-Level Projects
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `Project` ([projects](../../api/prisma/schema.prisma#L4826)): `branch_id` ([05](./05-project-management.md)) · `ProjectBranch` ([project_branches](../../api/prisma/schema.prisma#L4965)) ([05](./05-project-management.md))
+> **Schema:** other modules: `Project` ([projects](../../api/prisma/schema.prisma#L5696)): `branch_id` ([05](./05-project-management.md)) · `ProjectBranch` ([project_branches](../../api/prisma/schema.prisma#L5838)) ([05](./05-project-management.md))
 <!-- schema-section:end -->
 
 Projects can be:
@@ -1061,7 +1077,7 @@ A project can have a primary branch and additional participating branches.
 # 33. Cross-Branch Projects
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `ProjectBranch` ([project_branches](../../api/prisma/schema.prisma#L4965)) ([05](./05-project-management.md))
+> **Schema:** other modules: `ProjectBranch` ([project_branches](../../api/prisma/schema.prisma#L5838)) ([05](./05-project-management.md))
 <!-- schema-section:end -->
 
 Projects involving multiple branches should support:
@@ -1085,7 +1101,7 @@ A global customer implementation may involve:
 # 34. Branch-Level Finance
 
 <!-- schema-section:start -->
-> **Schema:** `Branch` ([branches](../../api/prisma/schema.prisma#L841)): `cost_center_code` · `IntegrationConnection` ([integration_connections](../../api/prisma/schema.prisma#L1582)): `branch_id` — other modules: `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L7476)): `branch_id` ([09](./09-income-expense-management.md)) · `PaymentProviderConnection` ([payment_provider_connections](../../api/prisma/schema.prisma#L7029)): `branch_id` ([08](./08-financial-management-stripe-integration.md)) · `ScheduledJob` ([scheduled_jobs](../../api/prisma/schema.prisma#L19125)): `branch_id` ([20](./20-automation-engine.md))
+> **Schema:** `Branch` ([branches](../../api/prisma/schema.prisma#L1087)): `cost_center_code` · `IntegrationConnection` ([integration_connections](../../api/prisma/schema.prisma#L1865)): `branch_id` — other modules: `FinanceApprovalRule` ([finance_approval_rules](../../api/prisma/schema.prisma#L8267)): `branch_id` ([08](./08-financial-management-stripe-integration.md)) · `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8717)): `branch_id` ([09](./09-income-expense-management.md)) · `PaymentProviderConnection` ([payment_provider_connections](../../api/prisma/schema.prisma#L7983)): `branch_id` ([08](./08-financial-management-stripe-integration.md)) · `ScheduledJob` ([scheduled_jobs](../../api/prisma/schema.prisma#L21765)): `branch_id` ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 Finance can consume branch context for:
@@ -1105,7 +1121,7 @@ The identity layer only provides organizational/branch context.
 # 35. Branch-Level Employees
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `Employee` ([employees](../../api/prisma/schema.prisma#L8571)) ([10](./10-employee-management-system.md))
+> **Schema:** other modules: `Employee` ([employees](../../api/prisma/schema.prisma#L10017)) ([10](./10-employee-management-system.md))
 <!-- schema-section:end -->
 
 Employees may have:
@@ -1143,7 +1159,7 @@ A global MSA may be organization-wide while a local SOW is associated with the G
 # 37. Branch-Level Offers
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `CrmCompanyBranch` ([crm_company_branches](../../api/prisma/schema.prisma#L2455)) ([02](./02-crm-sales-management.md))
+> **Schema:** other modules: `CrmCompanyBranch` ([crm_company_branches](../../api/prisma/schema.prisma#L2902)) ([02](./02-crm-sales-management.md))
 <!-- schema-section:end -->
 
 Offers can optionally identify the branch responsible for the commercial relationship.
@@ -1161,7 +1177,7 @@ without duplicating the customer.
 # 38. Branch-Level Support
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `SupportInbox` ([support_inboxes](../../api/prisma/schema.prisma#L12686)) ([13](./13-customer-support-communication-hub.md))
+> **Schema:** other modules: `SupportInbox` ([support_inboxes](../../api/prisma/schema.prisma#L14633)) ([13](./13-customer-support-communication-hub.md))
 <!-- schema-section:end -->
 
 Support tickets may include:
@@ -1178,7 +1194,7 @@ This allows local support queues while retaining centralized customer context.
 # 39. Branch-Level Documents
 
 <!-- schema-section:start -->
-> **Schema:** other modules: enum `DocumentScope` ([L15425](../../api/prisma/schema.prisma#L15425)) ([17](./17-documents-file-management.md))
+> **Schema:** other modules: enum `DocumentScope` ([L17809](../../api/prisma/schema.prisma#L17809)) ([17](./17-documents-file-management.md))
 <!-- schema-section:end -->
 
 Documents may have:
@@ -1195,7 +1211,7 @@ Access is controlled by the permissions layer.
 # 40. Teams
 
 <!-- schema-section:start -->
-> **Schema:** `Team` ([teams](../../api/prisma/schema.prisma#L967))
+> **Schema:** `Team` ([teams](../../api/prisma/schema.prisma#L1213))
 <!-- schema-section:end -->
 
 Teams are collaborative groups of Members.
@@ -1248,7 +1264,7 @@ Teams should remain independent from physical Branch hierarchy.
 # 42. Team Membership
 
 <!-- schema-section:start -->
-> **Schema:** `TeamMembership` ([team_memberships](../../api/prisma/schema.prisma#L1039)): `is_lead` — other modules: `SupportInbox` ([support_inboxes](../../api/prisma/schema.prisma#L12686)) ([13](./13-customer-support-communication-hub.md))
+> **Schema:** `TeamMembership` ([team_memberships](../../api/prisma/schema.prisma#L1286)): `is_lead` — other modules: `SupportInbox` ([support_inboxes](../../api/prisma/schema.prisma#L14633)) ([13](./13-customer-support-communication-hub.md))
 <!-- schema-section:end -->
 
 Members can belong to multiple teams.
@@ -1265,7 +1281,7 @@ A team membership may include:
 # 43. Departments
 
 <!-- schema-section:start -->
-> **Schema:** enum `TeamKind` ([L123](../../api/prisma/schema.prisma#L123)) — other modules: `Employee` ([employees](../../api/prisma/schema.prisma#L8571)): `department_team_id` ([10](./10-employee-management-system.md)) · `EmployeePosition` ([employee_positions](../../api/prisma/schema.prisma#L8713)): `department_team_id` ([10](./10-employee-management-system.md)) · `FormAssignment` ([form_assignments](../../api/prisma/schema.prisma#L15200)): `target_id` ([15](./15-notion-business-docs.md)) · `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L7476)): `department_id` ([09](./09-income-expense-management.md)) · `PayrollEntry` ([payroll_entries](../../api/prisma/schema.prisma#L7887)): `department_id` ([09](./09-income-expense-management.md)) · `PayrollSchedule` ([payroll_schedules](../../api/prisma/schema.prisma#L7840)): `department_id` ([09](./09-income-expense-management.md)) · `RecurringExpense` ([recurring_expenses](../../api/prisma/schema.prisma#L7765)): `department_id` ([09](./09-income-expense-management.md)) · `WikiChecklist` ([wiki_checklists](../../api/prisma/schema.prisma#L15004)): `department_id` ([15](./15-notion-business-docs.md)) · `WikiPagePermission` ([wiki_page_permissions](../../api/prisma/schema.prisma#L14877)) ([15](./15-notion-business-docs.md)) · `WikiSpace` ([wiki_spaces](../../api/prisma/schema.prisma#L14636)): `department_id` ([15](./15-notion-business-docs.md)) · enum `WikiPrincipalType` ([L14488](../../api/prisma/schema.prisma#L14488)) ([15](./15-notion-business-docs.md))
+> **Schema:** enum `TeamKind` ([L123](../../api/prisma/schema.prisma#L123)) — other modules: `Employee` ([employees](../../api/prisma/schema.prisma#L10017)): `department_team_id` ([10](./10-employee-management-system.md)) · `EmployeePosition` ([employee_positions](../../api/prisma/schema.prisma#L10166)): `department_team_id` ([10](./10-employee-management-system.md)) · `FormAssignment` ([form_assignments](../../api/prisma/schema.prisma#L17424)): `target_id` ([15](./15-notion-business-docs.md)) · `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8717)): `department_id` ([09](./09-income-expense-management.md)) · `PayrollEntry` ([payroll_entries](../../api/prisma/schema.prisma#L9128)): `department_id` ([09](./09-income-expense-management.md)) · `PayrollSchedule` ([payroll_schedules](../../api/prisma/schema.prisma#L9081)): `department_id` ([09](./09-income-expense-management.md)) · `RecurringExpense` ([recurring_expenses](../../api/prisma/schema.prisma#L9006)): `department_id` ([09](./09-income-expense-management.md)) · `WikiChecklist` ([wiki_checklists](../../api/prisma/schema.prisma#L17228)): `department_id` ([15](./15-notion-business-docs.md)) · `WikiPagePermission` ([wiki_page_permissions](../../api/prisma/schema.prisma#L17101)) ([15](./15-notion-business-docs.md)) · `WikiSpace` ([wiki_spaces](../../api/prisma/schema.prisma#L16835)): `department_id` ([15](./15-notion-business-docs.md)) · enum `WikiPrincipalType` ([L16635](../../api/prisma/schema.prisma#L16635)) ([15](./15-notion-business-docs.md))
 <!-- schema-section:end -->
 
 Organizations may define departments such as:
@@ -1286,7 +1302,7 @@ Departments may be represented through teams or organizational units according t
 # 44. Roles
 
 <!-- schema-section:start -->
-> **Schema:** `Role` ([roles](../../api/prisma/schema.prisma#L1364)) · `RolePermission` ([role_permissions](../../api/prisma/schema.prisma#L1406))
+> **Schema:** `Role` ([roles](../../api/prisma/schema.prisma#L1633)) · `RolePermission` ([role_permissions](../../api/prisma/schema.prisma#L1676))
 <!-- schema-section:end -->
 
 Roles are reusable authorization bundles.
@@ -1314,7 +1330,7 @@ Roles should not be hardcoded to one module.
 # 45. Role Types
 
 <!-- schema-section:start -->
-> **Schema:** `Role` ([roles](../../api/prisma/schema.prisma#L1364)) · enum `RoleType` ([L131](../../api/prisma/schema.prisma#L131)) — other modules: `ProjectMember` ([project_members](../../api/prisma/schema.prisma#L4979)) ([05](./05-project-management.md))
+> **Schema:** `Role` ([roles](../../api/prisma/schema.prisma#L1633)) · enum `RoleType` ([L131](../../api/prisma/schema.prisma#L131)) — other modules: `ProjectMember` ([project_members](../../api/prisma/schema.prisma#L5852)) ([05](./05-project-management.md))
 <!-- schema-section:end -->
 
 Support:
@@ -1346,7 +1362,7 @@ These authorization concepts must remain interoperable.
 # 46. Permissions
 
 <!-- schema-section:start -->
-> **Schema:** `Permission` ([permissions](../../api/prisma/schema.prisma#L1342))
+> **Schema:** `Permission` ([permissions](../../api/prisma/schema.prisma#L1611))
 <!-- schema-section:end -->
 
 Permissions represent individual capabilities.
@@ -1398,7 +1414,7 @@ Modules may define additional domain-specific actions.
 # 48. Permission Resources
 
 <!-- schema-section:start -->
-> **Schema:** `RolePermission` ([role_permissions](../../api/prisma/schema.prisma#L1406)): `conditions`
+> **Schema:** `RolePermission` ([role_permissions](../../api/prisma/schema.prisma#L1676)): `conditions`
 <!-- schema-section:end -->
 
 Permissions may target:
@@ -1418,7 +1434,7 @@ A user may be allowed to read Projects but not read project financial informatio
 # 49. Resource-Level Permissions
 
 <!-- schema-section:start -->
-> **Schema:** `PermissionGrant` ([permission_grants](../../api/prisma/schema.prisma#L1450))
+> **Schema:** `PermissionGrant` ([permission_grants](../../api/prisma/schema.prisma#L1722))
 <!-- schema-section:end -->
 
 Support granular permissions for sensitive records.
@@ -1494,7 +1510,7 @@ Access is allowed only if all relevant conditions are satisfied.
 # 52. Permission Inheritance
 
 <!-- schema-section:start -->
-> **Schema:** `Branch` ([branches](../../api/prisma/schema.prisma#L841)): `path`
+> **Schema:** `Branch` ([branches](../../api/prisma/schema.prisma#L1087)): `path`
 <!-- schema-section:end -->
 
 Support inheritance where appropriate.
@@ -1520,7 +1536,7 @@ Inheritance must be explicit and visible to administrators.
 # 53. Permission Deny Rules
 
 <!-- schema-section:start -->
-> **Schema:** `PermissionGrant` ([permission_grants](../../api/prisma/schema.prisma#L1450)) · `RolePermission` ([role_permissions](../../api/prisma/schema.prisma#L1406)) · enum `PermissionEffect` ([L158](../../api/prisma/schema.prisma#L158))
+> **Schema:** `PermissionGrant` ([permission_grants](../../api/prisma/schema.prisma#L1722)) · `RolePermission` ([role_permissions](../../api/prisma/schema.prisma#L1676)) · enum `PermissionEffect` ([L158](../../api/prisma/schema.prisma#L158))
 <!-- schema-section:end -->
 
 The system should support explicit deny rules when required.
@@ -1573,7 +1589,7 @@ This is particularly important for enterprise organizations.
 # 56. Module Access
 
 <!-- schema-section:start -->
-> **Schema:** `MembershipModuleAccess` ([membership_module_access](../../api/prisma/schema.prisma#L1320)) · `OrganizationModule` ([organization_modules](../../api/prisma/schema.prisma#L821)) · enum `ModuleKey` ([L164](../../api/prisma/schema.prisma#L164))
+> **Schema:** `MembershipModuleAccess` ([membership_module_access](../../api/prisma/schema.prisma#L1589)) · `OrganizationEntitlement` ([organization_entitlements](../../api/prisma/schema.prisma#L1038)) · `OrganizationModule` ([organization_modules](../../api/prisma/schema.prisma#L1018)) · enum `EntitlementEnforcement` ([L1070](../../api/prisma/schema.prisma#L1070)) · enum `EntitlementPeriod` ([L1064](../../api/prisma/schema.prisma#L1064)) · enum `EntitlementSource` ([L1076](../../api/prisma/schema.prisma#L1076)) · enum `ModuleKey` ([L164](../../api/prisma/schema.prisma#L164))
 <!-- schema-section:end -->
 
 Organizations should be able to enable or disable access to platform products.
@@ -1599,7 +1615,7 @@ A Member may have access to Projects but not Finance.
 # 57. Product-Level Access
 
 <!-- schema-section:start -->
-> **Schema:** `MembershipModuleAccess` ([membership_module_access](../../api/prisma/schema.prisma#L1320))
+> **Schema:** `MembershipModuleAccess` ([membership_module_access](../../api/prisma/schema.prisma#L1589))
 <!-- schema-section:end -->
 
 Product access should be evaluated before feature permissions.
@@ -1650,7 +1666,7 @@ Projects:
 # 59. Sensitive Permissions
 
 <!-- schema-section:start -->
-> **Schema:** `Permission` ([permissions](../../api/prisma/schema.prisma#L1342)): `is_sensitive`
+> **Schema:** `Permission` ([permissions](../../api/prisma/schema.prisma#L1611)): `is_sensitive`
 <!-- schema-section:end -->
 
 Certain permissions should require elevated roles.
@@ -1671,7 +1687,7 @@ Examples:
 # 60. Field-Level Permissions
 
 <!-- schema-section:start -->
-> **Schema:** `Permission` ([permissions](../../api/prisma/schema.prisma#L1342)): `is_field_level` · `RolePermission` ([role_permissions](../../api/prisma/schema.prisma#L1406)): `conditions` — other modules: `BillingRate` ([billing_rates](../../api/prisma/schema.prisma#L16829)) ([18](./18-time-tracking.md)) · `Employee` ([employees](../../api/prisma/schema.prisma#L8571)): `national_id_number` ([10](./10-employee-management-system.md)) · `EmployeeCompensation` ([employee_compensations](../../api/prisma/schema.prisma#L8747)) ([10](./10-employee-management-system.md)) · `EmployeeDocument` ([employee_documents](../../api/prisma/schema.prisma#L9655)): `is_confidential` ([10](./10-employee-management-system.md)) · `EmployeeHrNote` ([employee_hr_notes](../../api/prisma/schema.prisma#L9700)) ([10](./10-employee-management-system.md))
+> **Schema:** `Permission` ([permissions](../../api/prisma/schema.prisma#L1611)): `is_field_level` · `RolePermission` ([role_permissions](../../api/prisma/schema.prisma#L1676)): `conditions` — other modules: `BillingRate` ([billing_rates](../../api/prisma/schema.prisma#L19296)) ([18](./18-time-tracking.md)) · `Employee` ([employees](../../api/prisma/schema.prisma#L10017)): `national_id_number` ([10](./10-employee-management-system.md)) · `EmployeeCompensation` ([employee_compensations](../../api/prisma/schema.prisma#L10200)) ([10](./10-employee-management-system.md)) · `EmployeeDocument` ([employee_documents](../../api/prisma/schema.prisma#L11120)): `is_confidential` ([10](./10-employee-management-system.md)) · `EmployeeHrNote` ([employee_hr_notes](../../api/prisma/schema.prisma#L11165)) ([10](./10-employee-management-system.md))
 <!-- schema-section:end -->
 
 Sensitive fields may require additional permissions.
@@ -1780,7 +1796,7 @@ Platform-level access must be heavily audited.
 # 65. Invitations
 
 <!-- schema-section:start -->
-> **Schema:** enum `InvitationAudience` ([L249](../../api/prisma/schema.prisma#L249)) · enum `ProvisioningSource` ([L196](../../api/prisma/schema.prisma#L196))
+> **Schema:** `Invitation` ([invitations](../../api/prisma/schema.prisma#L1947)): `valid_until` · enum `InvitationAudience` ([L249](../../api/prisma/schema.prisma#L249)) · enum `ProvisioningSource` ([L196](../../api/prisma/schema.prisma#L196))
 <!-- schema-section:end -->
 
 Organizations can invite users by:
@@ -1800,12 +1816,14 @@ Invitation configuration may specify:
 * Module access
 * Expiration
 
+> **Schema note:** an `Invitation` carries its own `scope_type` / `scope_id` / `valid_until` (an external collaborator is invited to one PROJECT or RESOURCE until a date), copied into the `RoleAssignment` on acceptance; `last_sent_at` and `send_count` track reminders (§66).
+
 ---
 
 # 66. Invitation Lifecycle
 
 <!-- schema-section:start -->
-> **Schema:** enum `InvitationStatus` ([L187](../../api/prisma/schema.prisma#L187))
+> **Schema:** `Invitation` ([invitations](../../api/prisma/schema.prisma#L1947)): `last_sent_at` · enum `InvitationStatus` ([L187](../../api/prisma/schema.prisma#L187))
 <!-- schema-section:end -->
 
 States:
@@ -1823,7 +1841,7 @@ Invitation history should be preserved.
 # 67. Bulk User Provisioning
 
 <!-- schema-section:start -->
-> **Schema:** `SsoConfiguration` ([sso_configurations](../../api/prisma/schema.prisma#L1713)): `scim_enabled` · enum `ProvisioningSource` ([L196](../../api/prisma/schema.prisma#L196))
+> **Schema:** `SsoConfiguration` ([sso_configurations](../../api/prisma/schema.prisma#L2004)): `scim_enabled` · enum `ProvisioningSource` ([L196](../../api/prisma/schema.prisma#L196))
 <!-- schema-section:end -->
 
 Enterprise organizations should support bulk provisioning.
@@ -1842,7 +1860,7 @@ Provisioned users should receive appropriate organization membership and branch 
 # 68. SCIM
 
 <!-- schema-section:start -->
-> **Schema:** `Membership` ([memberships](../../api/prisma/schema.prisma#L1067)): `external_id` · `SsoConfiguration` ([sso_configurations](../../api/prisma/schema.prisma#L1713)): `scim_enabled`
+> **Schema:** `Membership` ([memberships](../../api/prisma/schema.prisma#L1314)): `external_id` · `SsoConfiguration` ([sso_configurations](../../api/prisma/schema.prisma#L2004)): `scim_enabled`
 <!-- schema-section:end -->
 
 Enterprise identity management should support SCIM where available.
@@ -1862,7 +1880,7 @@ SCIM synchronization must not bypass platform authorization rules.
 # 69. SSO
 
 <!-- schema-section:start -->
-> **Schema:** `SsoConfiguration` ([sso_configurations](../../api/prisma/schema.prisma#L1713)) · enum `SsoProtocol` ([L206](../../api/prisma/schema.prisma#L206))
+> **Schema:** `SsoConfiguration` ([sso_configurations](../../api/prisma/schema.prisma#L2004)) · enum `SsoProtocol` ([L206](../../api/prisma/schema.prisma#L206))
 <!-- schema-section:end -->
 
 Organizations may configure SSO.
@@ -1882,7 +1900,7 @@ Supported concepts:
 # 70. Domain Verification
 
 <!-- schema-section:start -->
-> **Schema:** `OrganizationDomain` ([organization_domains](../../api/prisma/schema.prisma#L799)): `allow_discovery` · enum `DomainVerificationStatus` ([L212](../../api/prisma/schema.prisma#L212)) — other modules: `CommSenderDomain` ([comm_sender_domains](../../api/prisma/schema.prisma#L10088)) ([11](./11-communication-center.md))
+> **Schema:** `OrganizationDomain` ([organization_domains](../../api/prisma/schema.prisma#L918)): `allow_discovery` · enum `DomainVerificationStatus` ([L212](../../api/prisma/schema.prisma#L212)) — other modules: `CommSenderDomain` ([comm_sender_domains](../../api/prisma/schema.prisma#L11745)) ([11](./11-communication-center.md))
 <!-- schema-section:end -->
 
 Organizations may verify corporate email domains.
@@ -1905,7 +1923,7 @@ Domain ownership does not automatically grant organization membership.
 # 71. Group Mapping
 
 <!-- schema-section:start -->
-> **Schema:** `SsoGroupMapping` ([sso_group_mappings](../../api/prisma/schema.prisma#L1737))
+> **Schema:** `SsoGroupMapping` ([sso_group_mappings](../../api/prisma/schema.prisma#L2028))
 <!-- schema-section:end -->
 
 External identity groups can map to:
@@ -1929,7 +1947,7 @@ Example:
 # 72. User Sessions
 
 <!-- schema-section:start -->
-> **Schema:** `OrganizationSecurityPolicy` ([organization_security_policies](../../api/prisma/schema.prisma#L770)): `members_can_view_sessions` · `UserSession` ([user_sessions](../../api/prisma/schema.prisma#L444))
+> **Schema:** `OrganizationSecurityPolicy` ([organization_security_policies](../../api/prisma/schema.prisma#L850)): `members_can_view_sessions` · `UserDevice` ([user_devices](../../api/prisma/schema.prisma#L475)) · `UserSession` ([user_sessions](../../api/prisma/schema.prisma#L445))
 <!-- schema-section:end -->
 
 Users should be able to view active sessions where security policy permits.
@@ -1944,12 +1962,14 @@ Information may include:
 
 Users may revoke sessions.
 
+> **Schema note:** `UserDevice` (user-level, fingerprint hash only) records known browsers and devices; `trusted_at` lets a user skip MFA on a trusted device while the policy allows it, `revoked_at` removes trust. Keys: `users.sessions.read` / `users.sessions.revoke`.
+
 ---
 
 # 73. Security Policies
 
 <!-- schema-section:start -->
-> **Schema:** `OrganizationSecurityPolicy` ([organization_security_policies](../../api/prisma/schema.prisma#L770)): `allowed_countries` · enum `InvitationPolicy` ([L243](../../api/prisma/schema.prisma#L243))
+> **Schema:** `OrganizationSecurityPolicy` ([organization_security_policies](../../api/prisma/schema.prisma#L850)): `allowed_countries` · enum `InvitationPolicy` ([L243](../../api/prisma/schema.prisma#L243))
 <!-- schema-section:end -->
 
 Organizations may configure:
@@ -1968,7 +1988,7 @@ Organizations may configure:
 # 74. MFA
 
 <!-- schema-section:start -->
-> **Schema:** `OrganizationSecurityPolicy` ([organization_security_policies](../../api/prisma/schema.prisma#L770)) · `UserAuthMethod` ([user_auth_methods](../../api/prisma/schema.prisma#L419)) · enum `AuthMethodType` ([L65](../../api/prisma/schema.prisma#L65)) · enum `MfaPolicy` ([L220](../../api/prisma/schema.prisma#L220))
+> **Schema:** `OrganizationSecurityPolicy` ([organization_security_policies](../../api/prisma/schema.prisma#L850)) · `UserAuthMethod` ([user_auth_methods](../../api/prisma/schema.prisma#L420)) · `UserDevice` ([user_devices](../../api/prisma/schema.prisma#L475)) · enum `AuthMethodType` ([L65](../../api/prisma/schema.prisma#L65)) · enum `MfaPolicy` ([L220](../../api/prisma/schema.prisma#L220))
 <!-- schema-section:end -->
 
 Support configurable MFA policies.
@@ -1985,7 +2005,7 @@ Examples:
 # 75. API Access
 
 <!-- schema-section:start -->
-> **Schema:** `ApiKey` ([api_keys](../../api/prisma/schema.prisma#L1788)): `rotation_due_at`
+> **Schema:** `ApiKey` ([api_keys](../../api/prisma/schema.prisma#L2080)): `allowed_ip_ranges`, `rotation_due_at` · `ApiKeyUsageDaily` ([api_key_usage_daily](../../api/prisma/schema.prisma#L2178)) · `McpToolCall` ([mcp_tool_calls](../../api/prisma/schema.prisma#L2120)) · enum `McpToolCallStatus` ([L2167](../../api/prisma/schema.prisma#L2167))
 <!-- schema-section:end -->
 
 Users and organizations may have API credentials where supported.
@@ -2003,12 +2023,14 @@ API access must never automatically inherit unlimited human permissions.
 
 API credentials work on the REST API and on MCP tools. Both are checked by the central authorization service (§136) against the same permission keys, so a key can never do through MCP what it cannot do through the API.
 
+> **Schema note:** `ApiKey.allowed_ip_ranges` (CIDR) restricts where one key may be used, on top of the organization policy (`api_key.updated` audit). `ApiKeyUsageDaily` stores requests, rejections and source IPs per key and day for the key detail view and new-IP alerts. Key: `organizations.api_keys.manage`.
+
 ---
 
 # 76. Service Accounts
 
 <!-- schema-section:start -->
-> **Schema:** `ServiceAccount` ([service_accounts](../../api/prisma/schema.prisma#L1761)) · enum `ServiceAccountStatus` ([L228](../../api/prisma/schema.prisma#L228)) — other modules: `AutomationRule` ([automation_rules](../../api/prisma/schema.prisma#L18629)): `run_as_service_account_id` ([20](./20-automation-engine.md)) · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L18477)): `default_service_account_id` ([20](./20-automation-engine.md))
+> **Schema:** `ServiceAccount` ([service_accounts](../../api/prisma/schema.prisma#L2052)) · enum `ServiceAccountStatus` ([L228](../../api/prisma/schema.prisma#L228)) — other modules: `AutomationRule` ([automation_rules](../../api/prisma/schema.prisma#L21221)): `run_as_service_account_id` ([20](./20-automation-engine.md)) · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21064)): `default_service_account_id` ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 Organizations may create non-human service identities for automation.
@@ -2032,7 +2054,7 @@ Service accounts are the identity for unattended automation, integrations and AI
 # 77. External Collaborators
 
 <!-- schema-section:start -->
-> **Schema:** enum `MembershipType` ([L108](../../api/prisma/schema.prisma#L108)) — other modules: `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L11587)) ([12](./12-messaging-team-communication.md))
+> **Schema:** enum `MembershipType` ([L108](../../api/prisma/schema.prisma#L108)) — other modules: `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13379)) ([12](./12-messaging-team-communication.md))
 <!-- schema-section:end -->
 
 External users may be granted limited organization access.
@@ -2051,7 +2073,7 @@ They should have restricted permissions and explicit scope.
 # 78. Guest Access
 
 <!-- schema-section:start -->
-> **Schema:** enum `MembershipType` ([L108](../../api/prisma/schema.prisma#L108)) — other modules: `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L11587)) ([12](./12-messaging-team-communication.md))
+> **Schema:** enum `MembershipType` ([L108](../../api/prisma/schema.prisma#L108)) — other modules: `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13379)) ([12](./12-messaging-team-communication.md))
 <!-- schema-section:end -->
 
 Guest accounts may be restricted to:
@@ -2068,7 +2090,7 @@ Guest access must not imply organization-wide membership.
 # 79. Customer Portal Identity
 
 <!-- schema-section:start -->
-> **Schema:** `CustomerPortalMembership` ([customer_portal_memberships](../../api/prisma/schema.prisma#L1826)): `role_id` · `Invitation` ([invitations](../../api/prisma/schema.prisma#L1664)): `customer_id` · enum `InvitationAudience` ([L249](../../api/prisma/schema.prisma#L249)) · enum `MembershipType` ([L108](../../api/prisma/schema.prisma#L108)) · enum `RoleType` ([L131](../../api/prisma/schema.prisma#L131)) — other modules: `CalendarBooking` ([calendar_bookings](../../api/prisma/schema.prisma#L18061)): `invitee_user_id` ([19](./19-calendar.md)) · `CalendarEventAttendee` ([calendar_event_attendees](../../api/prisma/schema.prisma#L17767)) ([19](./19-calendar.md)) · `ChannelCallParticipant` ([channel_call_participants](../../api/prisma/schema.prisma#L12372)): `external_user_id` ([12](./12-messaging-team-communication.md)) · `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L11587)) ([12](./12-messaging-team-communication.md)) · `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L10331)): `recipient_user_id` ([11](./11-communication-center.md)) · `CommMessageRecipient` ([comm_message_recipients](../../api/prisma/schema.prisma#L10493)): `user_id` ([11](./11-communication-center.md)) · `CustomerPortalSettings` ([customer_portal_settings](../../api/prisma/schema.prisma#L6167)): `default_role_slug` ([07](./07-customer-portal.md)) · `KnowledgeArticleFeedback` ([knowledge_article_feedback](../../api/prisma/schema.prisma#L13569)): `user_id` ([13](./13-customer-support-communication-hub.md)) · `MessageMention` ([message_mentions](../../api/prisma/schema.prisma#L11830)): `external_user_id` ([12](./12-messaging-team-communication.md)) · `MessageReaction` ([message_reactions](../../api/prisma/schema.prisma#L11810)): `external_user_id` ([12](./12-messaging-team-communication.md)) · `Notification` ([notifications](../../api/prisma/schema.prisma#L13947)): `recipient_user_id` ([14](./14-notifications-activity-center.md)) · `ProjectDeliverableReview` ([project_deliverable_reviews](../../api/prisma/schema.prisma#L5617)): `reviewer_user_id` ([05](./05-project-management.md)) · `ProjectGate` ([project_gates](../../api/prisma/schema.prisma#L5385)): `customer_approver_user_id` ([05](./05-project-management.md)) · `ProjectStakeholder` ([project_stakeholders](../../api/prisma/schema.prisma#L5002)): `portal_visible` ([05](./05-project-management.md)) · `ProjectStatusUpdateComment` ([project_status_update_comments](../../api/prisma/schema.prisma#L5641)): `author_user_id` ([05](./05-project-management.md)) · `ProposalAcceptance` ([proposal_acceptances](../../api/prisma/schema.prisma#L3533)): `customer_user_id` ([03](./03-proposal-quotation-generator.md)) · `ProposalComment` ([proposal_comments](../../api/prisma/schema.prisma#L3458)) ([03](./03-proposal-quotation-generator.md)) · `SupportConversation` ([support_conversations](../../api/prisma/schema.prisma#L12764)): `customer_user_id` ([13](./13-customer-support-communication-hub.md)) · `SupportCsatRating` ([support_csat_ratings](../../api/prisma/schema.prisma#L13393)): `rated_by_user_id` ([13](./13-customer-support-communication-hub.md)) · `SupportMessage` ([support_messages](../../api/prisma/schema.prisma#L12867)): `author_user_id` ([13](./13-customer-support-communication-hub.md)) · `TaskComment` ([task_comments](../../api/prisma/schema.prisma#L6003)): `author_user_id` ([06](./06-task-management.md)) · `Ticket` ([tickets](../../api/prisma/schema.prisma#L13067)): `requester_user_id` ([13](./13-customer-support-communication-hub.md))
+> **Schema:** `CustomerPortalMembership` ([customer_portal_memberships](../../api/prisma/schema.prisma#L2204)): `role_id` · `Invitation` ([invitations](../../api/prisma/schema.prisma#L1947)): `customer_id` · enum `InvitationAudience` ([L249](../../api/prisma/schema.prisma#L249)) · enum `MembershipType` ([L108](../../api/prisma/schema.prisma#L108)) · enum `RoleType` ([L131](../../api/prisma/schema.prisma#L131)) — other modules: `CalendarBooking` ([calendar_bookings](../../api/prisma/schema.prisma#L20621)): `invitee_user_id` ([19](./19-calendar.md)) · `CalendarEventAttendee` ([calendar_event_attendees](../../api/prisma/schema.prisma#L20320)) ([19](./19-calendar.md)) · `ChannelCallParticipant` ([channel_call_participants](../../api/prisma/schema.prisma#L14169)): `external_user_id` ([12](./12-messaging-team-communication.md)) · `ChannelMember` ([channel_members](../../api/prisma/schema.prisma#L13379)) ([12](./12-messaging-team-communication.md)) · `CommMessage` ([comm_messages](../../api/prisma/schema.prisma#L11988)): `recipient_user_id` ([11](./11-communication-center.md)) · `CommMessageRecipient` ([comm_message_recipients](../../api/prisma/schema.prisma#L12152)): `user_id` ([11](./11-communication-center.md)) · `CustomerPortalSettings` ([customer_portal_settings](../../api/prisma/schema.prisma#L7073)): `default_role_slug` ([07](./07-customer-portal.md)) · `KnowledgeArticleFeedback` ([knowledge_article_feedback](../../api/prisma/schema.prisma#L15533)): `user_id` ([13](./13-customer-support-communication-hub.md)) · `MessageMention` ([message_mentions](../../api/prisma/schema.prisma#L13624)): `external_user_id` ([12](./12-messaging-team-communication.md)) · `MessageReaction` ([message_reactions](../../api/prisma/schema.prisma#L13604)): `external_user_id` ([12](./12-messaging-team-communication.md)) · `Notification` ([notifications](../../api/prisma/schema.prisma#L15967)): `recipient_user_id` ([14](./14-notifications-activity-center.md)) · `ProjectDeliverableReview` ([project_deliverable_reviews](../../api/prisma/schema.prisma#L6501)): `reviewer_user_id` ([05](./05-project-management.md)) · `ProjectGate` ([project_gates](../../api/prisma/schema.prisma#L6267)): `customer_approver_user_id` ([05](./05-project-management.md)) · `ProjectStakeholder` ([project_stakeholders](../../api/prisma/schema.prisma#L5875)): `portal_visible` ([05](./05-project-management.md)) · `ProjectStatusUpdateComment` ([project_status_update_comments](../../api/prisma/schema.prisma#L6547)): `author_user_id` ([05](./05-project-management.md)) · `ProposalAcceptance` ([proposal_acceptances](../../api/prisma/schema.prisma#L4263)): `customer_user_id` ([03](./03-proposal-quotation-generator.md)) · `ProposalComment` ([proposal_comments](../../api/prisma/schema.prisma#L4183)) ([03](./03-proposal-quotation-generator.md)) · `SupportConversation` ([support_conversations](../../api/prisma/schema.prisma#L14713)): `customer_user_id` ([13](./13-customer-support-communication-hub.md)) · `SupportCsatRating` ([support_csat_ratings](../../api/prisma/schema.prisma#L15353)): `rated_by_user_id` ([13](./13-customer-support-communication-hub.md)) · `SupportMessage` ([support_messages](../../api/prisma/schema.prisma#L14816)): `author_user_id` ([13](./13-customer-support-communication-hub.md)) · `TaskComment` ([task_comments](../../api/prisma/schema.prisma#L6909)): `author_user_id` ([06](./06-task-management.md)) · `Ticket` ([tickets](../../api/prisma/schema.prisma#L15016)): `requester_user_id` ([13](./13-customer-support-communication-hub.md))
 <!-- schema-section:end -->
 
 Customer Portal users should be separate from internal Members while still using the underlying identity infrastructure where appropriate.
@@ -2091,7 +2113,7 @@ This module owns the Customer Portal identity model:
 # 80. Employee vs Member
 
 <!-- schema-section:start -->
-> **Schema:** `Membership` ([memberships](../../api/prisma/schema.prisma#L1067)) — other modules: `Employee` ([employees](../../api/prisma/schema.prisma#L8571)) ([10](./10-employee-management-system.md)) · `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L16876)): `membership_id` ([18](./18-time-tracking.md))
+> **Schema:** `Membership` ([memberships](../../api/prisma/schema.prisma#L1314)) — other modules: `Employee` ([employees](../../api/prisma/schema.prisma#L10017)) ([10](./10-employee-management-system.md)) · `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L19343)): `membership_id` ([18](./18-time-tracking.md))
 <!-- schema-section:end -->
 
 Employee and Member are not synonymous.
@@ -2113,7 +2135,7 @@ Employee Management remains the source of truth for employment information.
 # 81. User Profile vs Employee Profile
 
 <!-- schema-section:start -->
-> **Schema:** `Membership` ([memberships](../../api/prisma/schema.prisma#L1067)) — other modules: `Employee` ([employees](../../api/prisma/schema.prisma#L8571)) ([10](./10-employee-management-system.md)) · `EmployeeCompensation` ([employee_compensations](../../api/prisma/schema.prisma#L8747)) ([10](./10-employee-management-system.md)) · `PayrollSchedule` ([payroll_schedules](../../api/prisma/schema.prisma#L7840)) ([09](./09-income-expense-management.md))
+> **Schema:** `Membership` ([memberships](../../api/prisma/schema.prisma#L1314)) — other modules: `Employee` ([employees](../../api/prisma/schema.prisma#L10017)) ([10](./10-employee-management-system.md)) · `EmployeeCompensation` ([employee_compensations](../../api/prisma/schema.prisma#L10200)) ([10](./10-employee-management-system.md)) · `PayrollSchedule` ([payroll_schedules](../../api/prisma/schema.prisma#L9081)) ([09](./09-income-expense-management.md))
 <!-- schema-section:end -->
 
 User Profile owns identity and authentication information.
@@ -2204,7 +2226,7 @@ The hierarchy is configurable rather than hardcoded.
 # 85. Resource Visibility
 
 <!-- schema-section:start -->
-> **Schema:** other modules: enum `DocumentScope` ([L15425](../../api/prisma/schema.prisma#L15425)) ([17](./17-documents-file-management.md))
+> **Schema:** other modules: enum `DocumentScope` ([L17809](../../api/prisma/schema.prisma#L17809)) ([17](./17-documents-file-management.md))
 <!-- schema-section:end -->
 
 Every major resource should be able to express visibility:
@@ -2263,7 +2285,7 @@ These teams can operate across branches.
 # 88. Branch-Restricted Teams
 
 <!-- schema-section:start -->
-> **Schema:** `Team` ([teams](../../api/prisma/schema.prisma#L967)): `branch_id`
+> **Schema:** `Team` ([teams](../../api/prisma/schema.prisma#L1213)): `branch_id`
 <!-- schema-section:end -->
 
 A team may be limited to one branch.
@@ -2298,7 +2320,7 @@ New branch permissions should apply after the transfer.
 # 90. Multi-Branch Membership
 
 <!-- schema-section:start -->
-> **Schema:** `MembershipBranch` ([membership_branches](../../api/prisma/schema.prisma#L1301))
+> **Schema:** `MembershipBranch` ([membership_branches](../../api/prisma/schema.prisma#L1570))
 <!-- schema-section:end -->
 
 Some users may permanently belong to multiple branches.
@@ -2317,7 +2339,7 @@ The system should support multiple branch assignments without duplicating users.
 # 91. Branch Manager Scope
 
 <!-- schema-section:start -->
-> **Schema:** `MembershipBranch` ([membership_branches](../../api/prisma/schema.prisma#L1301)): `include_children`
+> **Schema:** `MembershipBranch` ([membership_branches](../../api/prisma/schema.prisma#L1570)): `include_children`
 <!-- schema-section:end -->
 
 Branch Managers should be able to manage only their assigned branch unless additional permissions are granted.
@@ -2329,7 +2351,7 @@ Child-branch access can be inherited when configured.
 # 92. Role Assignment
 
 <!-- schema-section:start -->
-> **Schema:** `RoleAssignment` ([role_assignments](../../api/prisma/schema.prisma#L1423))
+> **Schema:** `RoleAssignment` ([role_assignments](../../api/prisma/schema.prisma#L1695))
 <!-- schema-section:end -->
 
 Roles may be assigned at:
@@ -2347,7 +2369,7 @@ The effective permission set is calculated from all applicable assignments.
 # 93. Temporary Permissions
 
 <!-- schema-section:start -->
-> **Schema:** `RoleAssignment` ([role_assignments](../../api/prisma/schema.prisma#L1423)): `valid_until`
+> **Schema:** `Invitation` ([invitations](../../api/prisma/schema.prisma#L1947)): `valid_until` · `RoleAssignment` ([role_assignments](../../api/prisma/schema.prisma#L1695)): `valid_until`
 <!-- schema-section:end -->
 
 Support time-limited access.
@@ -2363,7 +2385,7 @@ The permission automatically expires without requiring manual removal.
 # 94. Delegation
 
 <!-- schema-section:start -->
-> **Schema:** `Delegation` ([delegations](../../api/prisma/schema.prisma#L1474)) · enum `DelegationStatus` ([L235](../../api/prisma/schema.prisma#L235))
+> **Schema:** `Delegation` ([delegations](../../api/prisma/schema.prisma#L1746)) · enum `DelegationStatus` ([L235](../../api/prisma/schema.prisma#L235))
 <!-- schema-section:end -->
 
 Users may temporarily delegate selected responsibilities.
@@ -2385,7 +2407,7 @@ Delegation should have:
 # 95. Approval Permissions
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `Invoice` ([invoices](../../api/prisma/schema.prisma#L6610)): `approved_by_user_id` ([08](./08-financial-management-stripe-integration.md)) · `LeaveRequest` ([leave_requests](../../api/prisma/schema.prisma#L9160)) ([10](./10-employee-management-system.md)) · `ProposalApproval` ([proposal_approvals](../../api/prisma/schema.prisma#L3415)) ([03](./03-proposal-quotation-generator.md)) · enum `LeaveApproverStrategy` ([L8516](../../api/prisma/schema.prisma#L8516)) ([10](./10-employee-management-system.md)) · enum `LeaveRequestStatus` ([L8264](../../api/prisma/schema.prisma#L8264)) ([10](./10-employee-management-system.md))
+> **Schema:** other modules: `Invoice` ([invoices](../../api/prisma/schema.prisma#L7550)): `approved_by_user_id` ([08](./08-financial-management-stripe-integration.md)) · `LeaveRequest` ([leave_requests](../../api/prisma/schema.prisma#L10615)) ([10](./10-employee-management-system.md)) · `ProposalApproval` ([proposal_approvals](../../api/prisma/schema.prisma#L4138)) ([03](./03-proposal-quotation-generator.md)) · enum `LeaveApproverStrategy` ([L9962](../../api/prisma/schema.prisma#L9962)) ([10](./10-employee-management-system.md)) · enum `LeaveRequestStatus` ([L9709](../../api/prisma/schema.prisma#L9709)) ([10](./10-employee-management-system.md))
 <!-- schema-section:end -->
 
 Sensitive actions should support explicit approval rights.
@@ -2405,7 +2427,7 @@ Approval permissions are separate from general edit permissions.
 # 96. Separation of Duties
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `Invoice` ([invoices](../../api/prisma/schema.prisma#L6610)): `approved_by_user_id` ([08](./08-financial-management-stripe-integration.md))
+> **Schema:** other modules: `FinanceApprovalRule` ([finance_approval_rules](../../api/prisma/schema.prisma#L8267)): `require_distinct_user` ([08](./08-financial-management-stripe-integration.md)) · `Invoice` ([invoices](../../api/prisma/schema.prisma#L7550)): `approved_by_user_id` ([08](./08-financial-management-stripe-integration.md))
 <!-- schema-section:end -->
 
 The authorization model should support separation-of-duties rules.
@@ -2421,7 +2443,7 @@ The person generating a contract may require a different person to approve it.
 # 97. Permission Conflicts
 
 <!-- schema-section:start -->
-> **Schema:** `Permission` ([permissions](../../api/prisma/schema.prisma#L1342)): `is_sensitive`
+> **Schema:** `Permission` ([permissions](../../api/prisma/schema.prisma#L1611)): `is_sensitive`
 <!-- schema-section:end -->
 
 Administrators should be warned about potentially dangerous combinations.
@@ -2440,7 +2462,7 @@ Policies can define restricted combinations.
 # 98. Access Reviews
 
 <!-- schema-section:start -->
-> **Schema:** `AccessReview` ([access_reviews](../../api/prisma/schema.prisma#L1502)) · `AccessReviewItem` ([access_review_items](../../api/prisma/schema.prisma#L1530)) · enum `AccessReviewDecision` ([L263](../../api/prisma/schema.prisma#L263)) · enum `AccessReviewStatus` ([L255](../../api/prisma/schema.prisma#L255))
+> **Schema:** `AccessReview` ([access_reviews](../../api/prisma/schema.prisma#L1782)) · `AccessReviewItem` ([access_review_items](../../api/prisma/schema.prisma#L1813)) · enum `AccessReviewDecision` ([L263](../../api/prisma/schema.prisma#L263)) · enum `AccessReviewStatus` ([L255](../../api/prisma/schema.prisma#L255)) · enum `ReviewerStrategy` ([L1774](../../api/prisma/schema.prisma#L1774))
 <!-- schema-section:end -->
 
 Organizations should be able to periodically review access.
@@ -2453,12 +2475,14 @@ Review workflow:
 4. Remove unnecessary access.
 5. Record completion.
 
+> **Schema note:** `AccessReview.reviewer_strategy` (BRANCH_MANAGERS, TEAM_LEADS, LINE_MANAGER, SPECIFIC, with `reviewer_membership_ids`) decides how `AccessReviewItem.reviewer_membership_id` is resolved when the review starts.
+
 ---
 
 # 99. Permission Audit
 
 <!-- schema-section:start -->
-> **Schema:** enum `AuditActorType` ([L313](../../api/prisma/schema.prisma#L313))
+> **Schema:** enum `AuditActorType` ([L313](../../api/prisma/schema.prisma#L313)) · enum `AuditOutcome` ([L2259](../../api/prisma/schema.prisma#L2259))
 <!-- schema-section:end -->
 
 Audit important authorization changes:
@@ -2474,6 +2498,8 @@ Audit important authorization changes:
 * Module disabled
 * Admin promoted
 * Admin removed
+
+> **Schema note:** `AuditEvent.outcome` (`AuditOutcome`: SUCCESS, FAILURE, DENIED) backs the "outcome" filter; audit and member lists keep saved views through `RecordEntityType` values AUDIT_EVENT and MEMBERSHIP.
 
 ---
 
@@ -2526,7 +2552,7 @@ Where possible, modules should prefer archive/deactivation over destructive dele
 # 103. Organization Deletion
 
 <!-- schema-section:start -->
-> **Schema:** `Organization` ([organizations](../../api/prisma/schema.prisma#L492)): `deletion_requested_at`
+> **Schema:** `Organization` ([organizations](../../api/prisma/schema.prisma#L516)): `deletion_requested_at`
 <!-- schema-section:end -->
 
 Organization deletion must be restricted to authorized Owners / platform administrators.
@@ -2557,7 +2583,7 @@ Historical resources should retain their branch association.
 # 105. Organization Settings Permissions
 
 <!-- schema-section:start -->
-> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+> **Schema:** `OrganizationPlan` ([organization_plans](../../api/prisma/schema.prisma#L970)) · `OrganizationPlanInvoice` ([organization_plan_invoices](../../api/prisma/schema.prisma#L993)) · enum `OrganizationPlanInvoiceStatus` ([L909](../../api/prisma/schema.prisma#L909)) · enum `OrganizationPlanStatus` ([L901](../../api/prisma/schema.prisma#L901))
 <!-- schema-section:end -->
 
 Different administrative settings should have independent permissions.
@@ -2576,6 +2602,8 @@ Examples:
 * API
 
 Avoid one universal "Admin" permission when granular delegation is possible.
+
+> **Schema note:** `OrganizationPlan` and `OrganizationPlanInvoice` hold the organization's own subscription to the platform (plan, seats, limits, payment-method display data, platform invoices; key `organizations.billing.manage`). `OrganizationRetentionPolicy` sets retention and legal hold per platform data class (key `organizations.retention.manage`, sensitive).
 
 ---
 
@@ -2672,7 +2700,7 @@ The interface should show the source of each permission.
 # 109. Role Editor
 
 <!-- schema-section:start -->
-> **Schema:** `Role` ([roles](../../api/prisma/schema.prisma#L1364)): `restrictions`, `version` · `RoleVersion` ([role_versions](../../api/prisma/schema.prisma#L1556))
+> **Schema:** `Role` ([roles](../../api/prisma/schema.prisma#L1633)): `restrictions`, `version` · `RoleVersion` ([role_versions](../../api/prisma/schema.prisma#L1839))
 <!-- schema-section:end -->
 
 Role editor should allow administrators to:
@@ -2687,6 +2715,8 @@ Role editor should allow administrators to:
 * Publish
 * Duplicate
 * Deprecate
+
+> **Schema note:** `RolePermission.max_scope_type` limits the widest scope a permission may be used at in a role (for example read invoices only at BRANCH).
 
 ---
 
@@ -2717,7 +2747,7 @@ Permissions should be grouped by product:
 # 111. Role Templates
 
 <!-- schema-section:start -->
-> **Schema:** `Role` ([roles](../../api/prisma/schema.prisma#L1364)): `template_role_id`
+> **Schema:** `Role` ([roles](../../api/prisma/schema.prisma#L1633)): `template_role_id`
 <!-- schema-section:end -->
 
 Provide reusable default roles.
@@ -2900,7 +2930,7 @@ If legal/accounting separation is required, Finance should support the appropria
 # 120. Localization by Branch
 
 <!-- schema-section:start -->
-> **Schema:** `Branch` ([branches](../../api/prisma/schema.prisma#L841)): `branding` — other modules: `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L17671)): `branch_id` ([19](./19-calendar.md)) · `CalendarPreference` ([calendar_preferences](../../api/prisma/schema.prisma#L17516)): `timezone` ([19](./19-calendar.md)) · `CommSenderIdentity` ([comm_sender_identities](../../api/prisma/schema.prisma#L10120)) ([11](./11-communication-center.md)) · `SlaPolicy` ([sla_policies](../../api/prisma/schema.prisma#L13015)): `use_business_hours` ([13](./13-customer-support-communication-hub.md))
+> **Schema:** `Branch` ([branches](../../api/prisma/schema.prisma#L1087)): `branding` — other modules: `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L20217)): `branch_id` ([19](./19-calendar.md)) · `CalendarPreference` ([calendar_preferences](../../api/prisma/schema.prisma#L20058)): `timezone` ([19](./19-calendar.md)) · `CommSenderIdentity` ([comm_sender_identities](../../api/prisma/schema.prisma#L11777)) ([11](./11-communication-center.md)) · `SlaPolicy` ([sla_policies](../../api/prisma/schema.prisma#L14964)): `use_business_hours` ([13](./13-customer-support-communication-hub.md))
 <!-- schema-section:end -->
 
 Branches can override organization defaults for:
@@ -2920,7 +2950,7 @@ Organization defaults remain the fallback.
 # 121. Branch Business Hours
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L17671)): `branch_id` ([19](./19-calendar.md)) · `CalendarResource` ([calendar_resources](../../api/prisma/schema.prisma#L17630)): `availability` ([19](./19-calendar.md)) · `EmployeeWorkSchedule` ([employee_work_schedules](../../api/prisma/schema.prisma#L8939)) ([10](./10-employee-management-system.md)) · `TimeUtilizationPeriod` ([time_utilization_periods](../../api/prisma/schema.prisma#L17247)) ([18](./18-time-tracking.md)) · `Timesheet` ([timesheets](../../api/prisma/schema.prisma#L17165)): `expected_minutes` ([18](./18-time-tracking.md))
+> **Schema:** other modules: `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L20217)): `branch_id` ([19](./19-calendar.md)) · `CalendarResource` ([calendar_resources](../../api/prisma/schema.prisma#L20176)): `availability` ([19](./19-calendar.md)) · `EmployeeWorkSchedule` ([employee_work_schedules](../../api/prisma/schema.prisma#L10394)) ([10](./10-employee-management-system.md)) · `TimeUtilizationPeriod` ([time_utilization_periods](../../api/prisma/schema.prisma#L19714)) ([18](./18-time-tracking.md)) · `Timesheet` ([timesheets](../../api/prisma/schema.prisma#L19632)): `expected_minutes` ([18](./18-time-tracking.md))
 <!-- schema-section:end -->
 
 Each branch can define:
@@ -2937,7 +2967,7 @@ Calendar and scheduling modules can consume this information.
 # 122. Branch Holidays
 
 <!-- schema-section:start -->
-> **Schema:** `BranchHoliday` ([branch_holidays](../../api/prisma/schema.prisma#L947)) — other modules: `BookingLink` ([booking_links](../../api/prisma/schema.prisma#L17963)) ([19](./19-calendar.md)) · `CalendarAvailabilitySchedule` ([calendar_availability_schedules](../../api/prisma/schema.prisma#L17897)): `honor_holidays` ([19](./19-calendar.md)) · `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L17671)): `branch_id` ([19](./19-calendar.md)) · `CompanyHoliday` ([company_holidays](../../api/prisma/schema.prisma#L9251)) ([10](./10-employee-management-system.md)) · `TimeUtilizationPeriod` ([time_utilization_periods](../../api/prisma/schema.prisma#L17247)): `leave_minutes` ([18](./18-time-tracking.md)) · `Timesheet` ([timesheets](../../api/prisma/schema.prisma#L17165)): `expected_minutes` ([18](./18-time-tracking.md)) · enum `CompanyHolidayKind` ([L8299](../../api/prisma/schema.prisma#L8299)) ([10](./10-employee-management-system.md))
+> **Schema:** `BranchHoliday` ([branch_holidays](../../api/prisma/schema.prisma#L1193)) — other modules: `BookingLink` ([booking_links](../../api/prisma/schema.prisma#L20522)) ([19](./19-calendar.md)) · `CalendarAvailabilitySchedule` ([calendar_availability_schedules](../../api/prisma/schema.prisma#L20456)): `honor_holidays` ([19](./19-calendar.md)) · `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L20217)): `branch_id` ([19](./19-calendar.md)) · `CompanyHoliday` ([company_holidays](../../api/prisma/schema.prisma#L10706)) ([10](./10-employee-management-system.md)) · `TimeUtilizationPeriod` ([time_utilization_periods](../../api/prisma/schema.prisma#L19714)): `leave_minutes` ([18](./18-time-tracking.md)) · `Timesheet` ([timesheets](../../api/prisma/schema.prisma#L19632)): `expected_minutes` ([18](./18-time-tracking.md)) · enum `CompanyHolidayKind` ([L9744](../../api/prisma/schema.prisma#L9744)) ([10](./10-employee-management-system.md))
 <!-- schema-section:end -->
 
 Branches may have local holiday calendars.
@@ -2953,7 +2983,7 @@ Calendar and employee scheduling can consume branch-specific holiday context.
 # 123. Branch Reporting
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L16876)): `branch_id` ([18](./18-time-tracking.md))
+> **Schema:** other modules: `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L19343)): `branch_id` ([18](./18-time-tracking.md))
 <!-- schema-section:end -->
 
 Organization reporting should support:
@@ -2977,7 +3007,7 @@ The reporting modules remain responsible for calculations.
 # 124. Branch Filters
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L16876)): `branch_id` ([18](./18-time-tracking.md))
+> **Schema:** other modules: `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L19343)): `branch_id` ([18](./18-time-tracking.md))
 <!-- schema-section:end -->
 
 Common platform views should support branch filtering where relevant:
@@ -2996,7 +3026,7 @@ Common platform views should support branch filtering where relevant:
 # 125. Default Branch
 
 <!-- schema-section:start -->
-> **Schema:** `Membership` ([memberships](../../api/prisma/schema.prisma#L1067)): `default_branch_id`
+> **Schema:** `Membership` ([memberships](../../api/prisma/schema.prisma#L1314)): `default_branch_id`
 <!-- schema-section:end -->
 
 A Member may have a default branch used for navigation and creation workflows.
@@ -3012,7 +3042,7 @@ The default does not restrict him if he has broader permissions.
 # 126. Default Team
 
 <!-- schema-section:start -->
-> **Schema:** `Membership` ([memberships](../../api/prisma/schema.prisma#L1067)): `default_branch_id`
+> **Schema:** `Membership` ([memberships](../../api/prisma/schema.prisma#L1314)): `default_branch_id`
 <!-- schema-section:end -->
 
 A Member may have a primary team.
@@ -3030,7 +3060,7 @@ This can be used for:
 # 127. User Preferences
 
 <!-- schema-section:start -->
-> **Schema:** `User` ([users](../../api/prisma/schema.prisma#L344)): `default_organization_id` · `UserPreference` ([user_preferences](../../api/prisma/schema.prisma#L473)) — other modules: `NotificationRecipientSettings` ([notification_recipient_settings](../../api/prisma/schema.prisma#L14187)): `language`, `timezone` ([14](./14-notifications-activity-center.md))
+> **Schema:** `User` ([users](../../api/prisma/schema.prisma#L344)): `default_organization_id` · `UserPreference` ([user_preferences](../../api/prisma/schema.prisma#L497)) — other modules: `NotificationRecipientSettings` ([notification_recipient_settings](../../api/prisma/schema.prisma#L16213)): `language`, `timezone` ([14](./14-notifications-activity-center.md))
 <!-- schema-section:end -->
 
 User-specific preferences may include:
@@ -3051,7 +3081,7 @@ These preferences are not permissions.
 # 128. Organization Defaults
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `CommTemplateTranslation` ([comm_template_translations](../../api/prisma/schema.prisma#L10269)) ([11](./11-communication-center.md))
+> **Schema:** other modules: `CommTemplateTranslation` ([comm_template_translations](../../api/prisma/schema.prisma#L11926)) ([11](./11-communication-center.md))
 <!-- schema-section:end -->
 
 Organization defaults may include:
@@ -3091,7 +3121,7 @@ Organization onboarding should guide Owners through:
 # 130. Member Onboarding
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `WikiChecklist` ([wiki_checklists](../../api/prisma/schema.prisma#L15004)): `auto_assign` ([15](./15-notion-business-docs.md))
+> **Schema:** other modules: `WikiChecklist` ([wiki_checklists](../../api/prisma/schema.prisma#L17228)): `auto_assign` ([15](./15-notion-business-docs.md))
 <!-- schema-section:end -->
 
 New Members may receive an onboarding workflow based on role and branch.
@@ -3111,7 +3141,7 @@ Developer:
 # 131. Offboarding
 
 <!-- schema-section:start -->
-> **Schema:** `Membership` ([memberships](../../api/prisma/schema.prisma#L1067)): `offboarding` — other modules: `WikiChecklist` ([wiki_checklists](../../api/prisma/schema.prisma#L15004)): `auto_assign` ([15](./15-notion-business-docs.md))
+> **Schema:** `Membership` ([memberships](../../api/prisma/schema.prisma#L1314)): `offboarding` — other modules: `WikiChecklist` ([wiki_checklists](../../api/prisma/schema.prisma#L17228)): `auto_assign` ([15](./15-notion-business-docs.md))
 <!-- schema-section:end -->
 
 When a Member leaves:
@@ -3169,7 +3199,7 @@ The platform must not automatically reassign sensitive resources without policy 
 # 134. Audit History Preservation
 
 <!-- schema-section:start -->
-> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+> **Schema:** `OrganizationRetentionPolicy` ([organization_retention_policies](../../api/prisma/schema.prisma#L946)) · enum `OrganizationRetentionAction` ([L894](../../api/prisma/schema.prisma#L894)) · enum `OrganizationRetentionDataClass` ([L886](../../api/prisma/schema.prisma#L886))
 <!-- schema-section:end -->
 
 When a user is deactivated, historical records should continue showing the original actor.
@@ -3197,7 +3227,7 @@ Critical security changes should invalidate relevant sessions or permission cach
 # 136. Authorization API
 
 <!-- schema-section:start -->
-> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+> **Schema:** `McpToolCall` ([mcp_tool_calls](../../api/prisma/schema.prisma#L2120)): `permission_key` · enum `McpToolCallStatus` ([L2167](../../api/prisma/schema.prisma#L2167))
 <!-- schema-section:end -->
 
 Internal modules should consume a centralized authorization service.
@@ -3254,7 +3284,7 @@ UI hiding is not security.
 # 138. Webhooks
 
 <!-- schema-section:start -->
-> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21877)): `previous_secret` ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 Identity and organization events should support webhooks.
@@ -3278,12 +3308,14 @@ Examples:
 * `team.created`
 * `team.updated`
 
+> **Schema note:** `OutboundWebhook.previous_secret`, `secret_rotated_at` and `previous_secret_expires_at` give a grace window on secret rotation so in-flight deliveries stay verifiable. Keys: `automation.webhooks.read` (list and deliveries) and `automation.webhooks.manage`.
+
 ---
 
 # 139. Audit Events
 
 <!-- schema-section:start -->
-> **Schema:** enum `AuditActorType` ([L313](../../api/prisma/schema.prisma#L313))
+> **Schema:** enum `AuditActorType` ([L313](../../api/prisma/schema.prisma#L313)) · enum `AuditOutcome` ([L2259](../../api/prisma/schema.prisma#L2259))
 <!-- schema-section:end -->
 
 Security-sensitive events should produce immutable audit events.
@@ -3778,7 +3810,7 @@ Not covered here:
 # 157. Integration Connection Model
 
 <!-- schema-section:start -->
-> **Schema:** `IntegrationConnection` ([integration_connections](../../api/prisma/schema.prisma#L1582)) · `IntegrationUsageDaily` ([integration_usage_daily](../../api/prisma/schema.prisma#L1637)) · enum `IntegrationCategory` ([L282](../../api/prisma/schema.prisma#L282)) · enum `IntegrationMode` ([L300](../../api/prisma/schema.prisma#L300)) · enum `IntegrationProvider` ([L273](../../api/prisma/schema.prisma#L273)) · enum `IntegrationStatus` ([L291](../../api/prisma/schema.prisma#L291)) — other modules: `CommProviderAccount` ([comm_provider_accounts](../../api/prisma/schema.prisma#L10057)): `integration_connection_id` ([11](./11-communication-center.md)) · `PaymentProviderConnection` ([payment_provider_connections](../../api/prisma/schema.prisma#L7029)): `integration_connection_id` ([08](./08-financial-management-stripe-integration.md))
+> **Schema:** `IntegrationConnection` ([integration_connections](../../api/prisma/schema.prisma#L1865)) · `IntegrationUsageDaily` ([integration_usage_daily](../../api/prisma/schema.prisma#L1920)) · enum `IntegrationCategory` ([L282](../../api/prisma/schema.prisma#L282)) · enum `IntegrationMode` ([L300](../../api/prisma/schema.prisma#L300)) · enum `IntegrationProvider` ([L273](../../api/prisma/schema.prisma#L273)) · enum `IntegrationStatus` ([L291](../../api/prisma/schema.prisma#L291)) — other modules: `CommProviderAccount` ([comm_provider_accounts](../../api/prisma/schema.prisma#L11714)): `integration_connection_id` ([11](./11-communication-center.md)) · `PaymentProviderConnection` ([payment_provider_connections](../../api/prisma/schema.prisma#L7983)): `integration_connection_id` ([08](./08-financial-management-stripe-integration.md))
 <!-- schema-section:end -->
 
 An **Integration Connection** is one connected account of one provider for one organization.
@@ -3819,7 +3851,7 @@ The domain row keeps what is specific to the domain. **Credentials are never sto
 # 158. Credential Security
 
 <!-- schema-section:start -->
-> **Schema:** `IntegrationConnection` ([integration_connections](../../api/prisma/schema.prisma#L1582))
+> **Schema:** `IntegrationConnection` ([integration_connections](../../api/prisma/schema.prisma#L1865))
 <!-- schema-section:end -->
 
 Credentials are the most sensitive data the platform holds for a tenant.
@@ -3859,7 +3891,7 @@ Credentials are the most sensitive data the platform holds for a tenant.
 # 159. Resolving a Connection
 
 <!-- schema-section:start -->
-> **Schema:** `IntegrationConnection` ([integration_connections](../../api/prisma/schema.prisma#L1582)): `is_default`
+> **Schema:** `IntegrationConnection` ([integration_connections](../../api/prisma/schema.prisma#L1865)): `is_default`
 <!-- schema-section:end -->
 
 Modules never read a provider key. They ask the integration layer for a connection:
@@ -3885,7 +3917,7 @@ Resolution order:
 # 160. Platform Environment and Fallback
 
 <!-- schema-section:start -->
-> **Schema:** `IntegrationConnection` ([integration_connections](../../api/prisma/schema.prisma#L1582)) · enum `IntegrationCredentialSource` ([L307](../../api/prisma/schema.prisma#L307))
+> **Schema:** `IntegrationConnection` ([integration_connections](../../api/prisma/schema.prisma#L1865)) · enum `IntegrationCredentialSource` ([L307](../../api/prisma/schema.prisma#L307))
 <!-- schema-section:end -->
 
 **Stays in the platform environment** (infrastructure of the platform itself, not of a tenant):

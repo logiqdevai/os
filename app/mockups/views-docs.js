@@ -12,7 +12,7 @@
    EMAIL, SINGLE_CHOICE, MULTI_CHOICE, CHECKBOX, SCALE, DATE, FILE_UPLOAD, SIGNATURE, SECTION), FormAssignmentTargetType, FormAssignmentRecipientStatus, FormSubmissionStatus, WikiAiSourceType, WikiAiIndexStatus,
    WikiAiSuggestionKind, WikiAiSuggestionStatus.
    Permission keys (catalog): docs.pages.read / create / update / publish / archive / delete*, docs.spaces.manage, docs.checklists.manage, docs.forms.read / create / update / delete* / archive / export* / assign / review,
-   docs.forms.anonymous_responses.read*, docs.ai.query. (* sensitive). Gaps (page views/analytics, trash retention, import/export jobs, ack audience, page follow) are in gaps-15.md and marked @gap.
+   docs.forms.anonymous_responses.read*, docs.ai.query. (* sensitive). Closed gaps: WikiPageView(+Daily), WikiSearchQuery, WikiPageFeedback, trash (deleted_at), WikiTransferJob, WikiPageAckTarget, WikiPageWatcher, WikiPageReviewRequest, space publishing switches; keys docs.analytics.read, docs.pages.import, docs.pages.export*.
    Comment tags (legend in README.md): @screen @route @perm @api @mcp @data @ui @states @audit @note @gap. Every screen ends with a "Data model" footer (REVIEW-ONLY, do not ship).
 
    RULES THAT APPLY TO EVERY SCREEN HERE:
@@ -102,8 +102,8 @@
      @ui     Card, Table, Badge, Avatar, Command trigger (search), Tabs for Recent | Created by me | Shared with me
      @states loading skeleton · empty ("No spaces yet" + create space for docs.spaces.manage holders) · error · no-access
      @audit  none for reads
-     @note   "Recent" = pages the member opened or edited most recently.
-     @gap    There is no per-member page view log, so "Recent" cannot be backed today; see gaps-15.md (WikiPageView).
+     @note   "Recent" = the member's latest WikiPageView rows (index membership_id, viewed_at desc), one per page.
+     Reads are logged as WikiPageView (source UI | SEARCH | AI_CITATION), kept 180 days and rolled up into WikiPageViewDaily; no permission needed for the own list.
      ===================================================================================================================== */
   function home() {
     const rec = [["Production deploy runbook", "Engineering", "RUNBOOK", "PUBLISHED", "Edited 2 h ago by Marco Silva"], ["Expense policy", "Operations", "POLICY", "PUBLISHED", "Viewed yesterday"], ["Brand voice guide", "Company handbook", "HANDBOOK_CHAPTER", "PUBLISHED", "Viewed Nov 9"], ["Sprint 14 retro notes", "Engineering", "MEETING_NOTES", "DRAFT", "Edited Nov 8 by you"], ["Q4 sales kickoff", "Sales playbook", "MEETING_NOTES", "PUBLISHED", "Viewed Nov 7"]];
@@ -173,7 +173,7 @@
       cd("<b>Starter pages</b><span class='r muted'>WikiPageTemplate</span>", ["Space home", "Handbook chapter", "Runbook", "Meeting notes"].map((t, i) => '<div class="rowx">' + cb(i < 2) + '<div class="grow">' + t + "</div></div>").join(""), 1) + gap() +
       callout("shield", "<b>Permission check</b> You need docs.spaces.manage to create a space. Creating a PROJECT space also needs projects.projects.update on that project (05).") +
       "</div></div>" +
-      dm(["WikiSpace · every column written on create", "WikiSpaceMember · space_id, membership_id, level", "WikiPageTemplate · starter pages (copied)", "Team (department/team) · Branch · Project · Membership (read-only pickers)"], ["'Allow customer-visible pages' per space: no WikiSpace column (gaps-15.md #7)"]) + "</div>";
+      dm(["WikiSpace · every column written on create (incl. allow_customer_visible, members_can_publish, require_review_before_publish)", "WikiSpaceMember · space_id, membership_id, level", "WikiPageTemplate · starter pages (copied)", "Team (department/team) · Branch · Project · Membership (read-only pickers)"], ["WikiSpace.allow_customer_visible gates WikiPage.customer_visible"]) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -224,7 +224,7 @@
         cd("<b>Level matrix</b>", tbl(["Level", "Read", "Comment", "Edit", "Share and delete"], [["VIEW", "Yes", "No", "No", "No"], ["COMMENT", "Yes", "Yes", "No", "No"], ["EDIT", "Yes", "Yes", "Yes", "No"], ["MANAGE", "Yes", "Yes", "Yes", "Yes"]]).replace('class="panel"', 'class="panel" data-flush="1"')) + "</div>" + gap() + callout("shield", "Space levels combine with the global keys: a member with EDIT here but without docs.pages.update at the organization level cannot edit. The stricter of the two wins.")) +
       pane("t", 0, tbl(["Template", "Type", "Review cycle", "Used", ""], [[ink("Runbook"), ptp("RUNBOOK"), "180 days", 14, more], [ink("Incident postmortem"), ptp("PROCEDURE"), "None", 9, more], [ink("Architecture decision"), ptp("DECISION_RECORD"), "None", 21, more], [ink("Sprint retro"), ptp("MEETING_NOTES"), "None", 28, more]])) +
       pane("d", 0, cd("<b>Archive space</b>", '<div class="rowx"><div class="grow"><b>Archive Engineering</b><small>Hides the space and its 86 pages. Versions and audit stay. Reversible.</small></div>' + btn("Archive", "archive") + "</div>" + '<div class="rowx"><div class="grow"><b>Delete space</b><small>Permanent. Needs docs.pages.delete (sensitive) and typing the space name.</small></div>' + btn("Delete", "x") + "</div>", 1)) + "</div>" +
-      dm(["WikiSpace · name, slug, description, icon, color, kind, scope ids, owner_membership_id, default_visibility, is_private, archived_at", "WikiSpaceMember · membership_id, level, added_by_user_id", "WikiPageTemplate · space_id"], ["Members may publish / Require review before publish: no WikiSpace columns (gaps-15.md #8)"]) + "</div>";
+      dm(["WikiSpace · name, slug, description, icon, color, kind, scope ids, owner_membership_id, default_visibility, is_private, allow_customer_visible, members_can_publish, require_review_before_publish, archived_at, deleted_at", "WikiSpaceMember · membership_id, level, added_by_user_id", "WikiPageTemplate · space_id", "WikiPageReviewRequest · page_id, version_number, reviewer_membership_id, status PENDING | APPROVED | CHANGES_REQUESTED, decided_at, notes (approval when require_review_before_publish)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -246,7 +246,7 @@
              Every autosave bumps current_version_number and writes a WikiPageVersion; the published snapshot stays what readers see until "Publish changes" (published_version_number). locked_by_membership_id gives a soft
              edit lock (concurrent edits are merged by CRDT in production, the lock is for approval-style pages). Embedded record links render a live card (title, status) and respect the viewer's access to that record.
              The AI assistant may draft a section from the slash menu, as a suggestion the editor accepts (WikiPageVersion.ai_suggestion_id) and ai_generated is set only when AI wrote most of the page.
-     @gap    "Follow page" (notify on every update) has no table (gaps-15.md #6).
+     Follow = WikiPageWatcher (page_id, membership_id); notified (14) on publish and comments. Author, owner, reviewers and mentioned members follow implicitly. Needs docs.pages.read only.
      ===================================================================================================================== */
   function blk(inner, o) { o = o || {}; return '<div class="blk' + (o.sel ? " sel" : "") + '"><span class="gut">' + I("plus", 13) + I("menu", 13) + "</span>" + inner + "</div>"; }
   function editorCanvas(showSlash) {
@@ -294,7 +294,7 @@
       pane("l", 0, '<div class="dk-h">Records (WikiPageLink)</div>' + [["PROJECT", "Acme Rebrand Website"], ["PROJECT_MILESTONE", "Launch Nov 28"], ["WIKI_PAGE", "Incident response"], ["DOCUMENT", "Rollback checklist.pdf"]].map((r) => '<div class="rowx">' + I("link", 13) + '<div class="grow"><b>' + r[1] + "</b><small>" + U.en(r[0]) + "</small></div>" + more + "</div>").join("") + '<div class="dk-h">Backlinks</div><div class="rowx"><div class="grow"><b>Engineering home</b><small>mentions this page</small></div></div><div class="rowx"><div class="grow"><b>Project Acme Rebrand Website</b><small>Project.runbook_page_id</small></div></div>') +
       pane("a", 0, '<div class="dk-h">Who can open</div><div class="rowx">' + I("globe", 14) + '<div class="grow"><b>Everyone in the organization</b><small>visibility ORGANIZATION (from the space)</small></div>' + sel("View") + '</div><div class="rowx">' + av("MS") + '<div class="grow"><b>Marco Silva</b><small>owner</small></div>' + E("MANAGE", "purple") + '</div><div class="rowx">' + I("users", 14) + '<div class="grow"><b>Team: Engineering</b><small>WikiPagePermission TEAM</small></div>' + sel("Edit") + "</div>" + '<div style="padding:10px 12px">' + btn("Manage sharing", "send", "sm") + "</div>") + "</div></div></div>" +
       '<div class="sub-note" style="margin-top:8px">Mock: the slash menu and the format toolbar are shown open for review; in the product they appear on "/" and on text selection.</div>' +
-      dm(["WikiPage · title, icon, cover_document_id, page_type, status, content, visibility, customer_visible, owner_membership_id, review_interval_days, last_reviewed_at, next_review_at, requires_acknowledgement, current_version_number, published_version_number, locked_by_membership_id, ai_generated, word_count", "WikiPageComment · block_id, body, mentions, resolved_at, parent_comment_id", "WikiPageLink · entity_type, entity_id, label, block_id", "WikiPageAttachment · document_id (17)", "WikiPageReviewer · membership_id", "WikiPageFavorite", "Project.runbook_page_id (05) · taggings · custom fields (WIKI_PAGE)", "WikiAiIndexEntry · status (indexed flag)"], ["Follow page notifications: no table (gaps-15.md #6)"]) + "</div>";
+      dm(["WikiPage · title, icon, cover_document_id, page_type, status, content, visibility, customer_visible, owner_membership_id, review_interval_days, last_reviewed_at, next_review_at, requires_acknowledgement, current_version_number, published_version_number, locked_by_membership_id, ai_generated, word_count", "WikiPageComment · block_id, body, mentions, resolved_at, parent_comment_id", "WikiPageLink · entity_type, entity_id, label, block_id", "WikiPageAttachment · document_id (17)", "WikiPageReviewer · membership_id", "WikiPageFavorite", "Project.runbook_page_id (05) · taggings · custom fields (WIKI_PAGE)", "WikiAiIndexEntry · status (indexed flag)", "WikiPageWatcher · membership_id (Follow)", "WikiPageView · membership_id, version_number, source, viewed_at", "WikiPageFeedback · helpful, comment, version_number"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -392,7 +392,7 @@
      @audit  none for plain search; AI queries are logged through the shared AI layer
      @note   Keyword mode = Postgres full-text on WikiPage.search_vector (title weighted above body). Semantic mode = vector similarity over WikiAiIndexEntry chunks, grouped per page, each hit carries heading_path.
              Both modes filter by the caller's access BEFORE ranking. Archived pages and drafts of other people are excluded unless the filter says otherwise. The same endpoint feeds platform global search (01 §140).
-     @gap    No search query log or "no result" tracking (gaps-15.md #2).
+     Every query is logged as WikiSearchQuery (mode, filters, result_count, clicked_page_id) for top searches and zero-result tracking (docs.analytics.read).
      ===================================================================================================================== */
   function searchPage() {
     const r = [["Production deploy runbook", "Engineering / Runbooks", "RUNBOOK", "PUBLISHED", "…run <mark>deploy</mark> with release:deploy. Check the <mark>deploy</mark> freeze window before…", "MS", "Nov 11", "Deploy steps › Run the deploy"], ["Branching and releases", "Engineering / Handbook", "PROCEDURE", "PUBLISHED", "…hotfix branches are cut from the last <mark>deploy</mark>ed tag…", "AM", "Oct 22", "Hotfixes"], ["Release calendar and freezes", "Operations", "POLICY", "PUBLISHED", "…no <mark>deploy</mark> on Fridays after 16:00 unless approved by the incident commander…", "KL", "Oct 2", "Freeze windows"], ["Staging environment guide", "Engineering / Handbook", "GENERAL", "DRAFT", "…how to <mark>deploy</mark> a branch preview to staging…", "JK", "Nov 8", "Previews"]];
@@ -496,7 +496,7 @@
       pane("g", 1, '<div class="sp-grid">' + D.map((d) => '<div class="sp-card"><div class="top"><span class="sp-ic">' + I("users", 18) + "</span><div><b>" + d[0] + "</b><small>" + (d[6] ? "Onboarding" : "Offboarding") + "</small></div>" + sw(d[6]) + "</div>" + '<div class="rowx" style="padding:0">' + I("file", 14) + '<div class="grow"><b>' + d[2] + "</b><small>guide_page_id · " + E("ONBOARDING_GUIDE", "blue").replace("Onboarding guide", d[6] ? "Onboarding guide" : "Offboarding guide") + "</small></div></div>" +
         '<div class="rowx" style="padding:0">' + I("check", 14) + '<div class="grow"><b>' + d[1] + "</b><small>" + d[3] + " items · generates Tasks (06)</small></div></div><div class='meta'><span>" + d[4] + " active runs</span><span>Required reading " + d[5] + "% acknowledged</span></div></div>").join("") + "</div>") +
       pane("r", 0, tbl(["Page", "Audience", "Due", ">Acknowledged", "Progress", ""], [[ink("Security baseline"), "All engineers", "Nov 15", "18 of 24", bar(75), btn("Send reminder", "bell", "sm")], [ink("Code of conduct"), "Everyone", "Nov 30", "38 of 42", bar(90, "green"), btn("Send reminder", "bell", "sm")], [ink("Remote work policy"), "Everyone", "Nov 15", "29 of 42", bar(69), btn("Send reminder", "bell", "sm")], [ink("Data protection guide"), "Support, Sales", "Dec 1", "9 of 22", bar(41, "red"), btn("Send reminder", "bell", "sm")]])) + "</div>" +
-      dm(["WikiPage · page_type, requires_acknowledgement", "WikiChecklist · kind, department_id, role_id, guide_page_id, auto_assign, is_active", "WikiChecklistRun · status, progress_percent", "WikiPageAcknowledgement · membership_id, required_by, acknowledged_at, acknowledged_version_number"], ["Required-reading audience (who must acknowledge): gaps-15.md #5"]) + "</div>";
+      dm(["WikiPage · page_type, requires_acknowledgement", "WikiChecklist · kind, department_id, role_id, guide_page_id, auto_assign, is_active", "WikiChecklistRun · status, progress_percent", "WikiPageAcknowledgement · membership_id, required_by, acknowledged_at, acknowledged_version_number", "WikiPageAckTarget · principal_type, principal_id, due_at · WikiPage.ack_due_at"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -594,7 +594,7 @@
      @note   A daily job sets NEEDS_REVIEW + stale_flagged_at when next_review_at passed and notifies owner and reviewers (14). Marking reviewed sets last_reviewed_at and recomputes next_review_at; it does NOT create a
              version unless the content changed. AI flags (WikiAiSuggestion STALE_PAGE / CONTRADICTION) appear as extra rows with the reason and a link to the conflicting page. Re-acknowledgement is required when
              acknowledged_version_number < published_version_number of a page that requires acknowledgement.
-     @gap    Who must acknowledge (audience) is not stored; see gaps-15.md #5.
+     Audience = WikiPageAckTarget rows (principal_type WikiPrincipalType + principal_id, optional due_at; WikiPage.ack_due_at is the default). Publishing expands them into WikiPageAcknowledgement rows (also for new members), which gives the denominator of "17 of 24".
      ===================================================================================================================== */
   function reviews() {
     const rv = [["Database failover runbook", "Engineering", "JK", "Aug 2", "12 days overdue", "NEEDS_REVIEW", "Manual"], ["Expense policy", "Operations", "AM", "Nov 15", "due in 4 days", "PUBLISHED", ""], ["Remote work policy", "People and HR", "SJ", "Dec 1", "due in 20 days", "PUBLISHED", ""], ["Onboarding handbook", "Company handbook", "AM", "Jul 9", "126 days overdue", "NEEDS_REVIEW", "AI: contradicts Remote work policy"], ["Brand voice guide", "Company handbook", "KL", "Sep 20", "52 days overdue", "NEEDS_REVIEW", "AI: references retired tool"]];
@@ -603,7 +603,7 @@
       '<div class="tabset">' + tabs([["c", "Review cadence", 9], ["a", "Acknowledgements", 7]], "c") +
       pane("c", 1, filt([["Status", "is any of", "Needs review, Published"], ["Review due", "before", "Dec 31"], ["Space", "is", "Any"]], btn("Save view", "plus", "sm")) + '<div class="panel" style="margin-top:0"><table>' + th(["Page", "Space", "Owner", "Next review", "State", "Status", "Flag", ""]) + "<tbody>" + rv.map((r) => "<tr><td>" + ink(r[0]) + "</td><td>" + r[1] + "</td><td>" + wh(r[2]) + "</td><td>" + r[3] + "</td><td>" + (r[4].indexOf("overdue") > -1 ? '<span class="badge red">' + r[4] + "</span>" : r[4]) + "</td><td>" + pst(r[5]) + "</td><td>" + (r[6] ? '<span class="cite">' + I("sparkles", 11) + " " + r[6] + "</span>" : "") + "</td><td>" + btn("Mark reviewed", "check", "sm") + "</td></tr>").join("") + "</tbody></table></div>") +
       pane("a", 0, '<div class="g2" style="grid-template-columns:1.4fr 1fr;align-items:start">' + cd("<b>Security baseline</b><span class='r muted'>version 4 · 18 of 24 acknowledged</span>", [["MS", "v4", "Nov 5"], ["AM", "v4", "Nov 5"], ["JK", "v3", "Oct 1"], ["KL", "—", "pending"], ["SJ", "v4", "Nov 7"], ["LN", "—", "pending"]].map((r) => '<div class="rowx">' + av(r[0]) + '<div class="grow"><b>' + PEOPLE[r[0]][0] + "</b><small>" + (r[1] === "—" ? "Not acknowledged" : "Acknowledged " + r[1] + " on " + r[2]) + "</small></div>" + (r[1] === "v4" ? E("CURRENT", "green") : r[1] === "v3" ? E("RE-ACK NEEDED", "yellow") : E("PENDING", "red")) + "</div>").join(""), 1) + cd("<b>Required pages</b>", tbl(["Page", "Ack", "Due"], [["Security baseline", bar(75), "Nov 15"], ["Code of conduct", bar(90, "green"), "Nov 30"], ["Remote work policy", bar(69), "Nov 15"]]), 1) + "</div>") + "</div>" +
-      dm(["WikiPage · review_interval_days, last_reviewed_at, last_reviewed_by_membership_id, next_review_at, stale_flagged_at, status, requires_acknowledgement", "WikiPageReviewer", "WikiPageAcknowledgement · membership_id, required_by, acknowledged_at, acknowledged_version_number", "WikiAiSuggestion · kind STALE_PAGE | CONTRADICTION, related_page_id, rationale"], ["Acknowledgement audience: no stored target (gaps-15.md #5)"]) + "</div>";
+      dm(["WikiPage · review_interval_days, last_reviewed_at, last_reviewed_by_membership_id, next_review_at, stale_flagged_at, status, requires_acknowledgement", "WikiPageReviewer", "WikiPageAcknowledgement · membership_id, required_by, acknowledged_at, acknowledged_version_number", "WikiPageAckTarget · principal_type, principal_id, due_at (audience, denominator)", "WikiAiSuggestion · kind STALE_PAGE | CONTRADICTION, related_page_id, rationale"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -708,7 +708,7 @@
   /* =====================================================================================================================
      ANALYTICS (spec §2, §3, §6)
      @route  /docs/analytics?from=&to=&space=
-     @perm   docs.spaces.manage (space-level numbers for managed spaces) · organization totals need docs.spaces.manage at the organization scope
+     @perm   docs.spaces.manage (content health of managed spaces) · reader and search analytics docs.analytics.read
      @api    GET /docs/analytics/{summary|health|coverage|acknowledgements|ai} ?space_id=&from=&to=
      @mcp    docs_spaces_manage (read)
      @data   Computable now: WikiPage (status, page_type, next_review_at, stale_flagged_at, last_edited_at, owner_membership_id, word_count, requires_acknowledgement) · WikiPageAcknowledgement · WikiPageVersion (edit activity) · WikiPageComment · WikiAiIndexEntry (status)
@@ -717,7 +717,7 @@
      @states loading · empty ("Not enough data yet") · error · no-access
      @audit  none (read only)
      @note   Content health (stale, unowned, never reviewed, drafts older than 30 days), coverage (pages per space and type), edit activity from WikiPageVersion, acknowledgement and onboarding completion.
-     @gap    READER analytics (views, unique readers, popular pages, search terms, "was this helpful") needs WikiPageView, a search log and page feedback: gaps-15.md #1, #2. Shown below as "needs data" and not faked.
+     Reader analytics read WikiPageViewDaily (views, unique_readers), WikiSearchQuery (top and zero-result searches) and WikiPageFeedback ("was this helpful"). Needs docs.analytics.read.
      ===================================================================================================================== */
   function analytics() {
     const wk = [22, 31, 18, 40, 36, 28, 44, 39];
@@ -726,24 +726,24 @@
       '<div class="g2">' + cd("<b>Edit activity</b><span class='r muted'>WikiPageVersion per week</span>", '<div class="bars">' + wk.map((v) => '<span style="height:' + v * 2 + 'px" title="' + v + ' versions"></span>').join("") + '</div><div class="sub-note">Weeks 38 to 45 · 258 versions by 31 editors</div>') +
       cd("<b>Pages by status</b>", [["PUBLISHED", 391, "green"], ["DRAFT", 31, "yellow"], ["NEEDS_REVIEW", 9, "red"], ["ARCHIVED", 120, ""]].map((r) => '<div class="bar-row"><span class="l">' + U.en(r[0]) + '</span><span class="tr"><i style="width:' + Math.round(r[1] / 4) + "%;background:var(--" + (r[2] || "mute") + ')"></i></span><span class="v">' + r[1] + "</span></div>").join("")) + "</div>" + gap() +
       '<div class="g2">' + cd("<b>Coverage by space</b>", tbl(["Space", ">Pages", ">Needs review", "Owner coverage", ">Avg age"], [["Engineering", 86, 3, bar(96, "green"), "112 d"], ["Operations", 41, 1, bar(100, "green"), "88 d"], ["People and HR", 58, 2, bar(91, "green"), "140 d"], ["Company handbook", 64, 3, bar(78), "205 d"]]), 1) +
-      cd("<b>Reader analytics</b><span class='r'><span class='badge yellow'>needs data</span></span>", '<div class="sub-note" style="padding:14px 16px">Views, unique readers, most read pages, top searches and zero-result searches need a page view log and a search log that the schema does not have yet (gaps-15.md #1, #2). Not faked here.</div>', 1) + "</div>" + gap() +
+      cd("<b>Reader analytics</b><span class='r muted'>WikiPageViewDaily</span>", tbl(["Most read page", ">Views (30d)", ">Unique readers", "Helpful"], [[ink("Production deploy runbook"), 412, 88, "94%"], [ink("Security baseline"), 301, 120, "88%"], [ink("Expense policy"), 255, 97, "71%"]]) + '<div class="sub-note" style="padding:10px 16px">Top searches: "vpn" (41), "expense report" (33). Zero-result: "parental leave" (6) from WikiSearchQuery.result_count = 0.</div>', 1) + "</div>" + gap() +
       '<div class="g3">' + cd("<b>Acknowledgements</b>", [["Security baseline", 75], ["Code of conduct", 90], ["Remote work policy", 69]].map((r) => '<div class="rowx"><div class="grow">' + r[0] + "</div>" + bar(r[1]) + "</div>").join(""), 1) + cd("<b>Onboarding</b>", kv("Active runs", 6) + kv("Avg completion", "17 days") + kv("Overdue items", 3), 1) + cd("<b>AI usage</b>", kv("Questions (30 d)", 128) + kv("Answered with citations", "91%") + kv("Suggestions accepted", "14 of 22"), 1) + "</div>" +
-      dm(["WikiPage · status, page_type, owner_membership_id, next_review_at, stale_flagged_at, last_edited_at", "WikiPageVersion · created_at, created_by_membership_id", "WikiPageAcknowledgement · WikiChecklistRun · FormAssignmentRecipient · WikiAiIndexEntry · WikiAiSuggestion"], ["Page views, readers, search log, helpfulness feedback (WikiPageView, WikiSearchQuery, WikiPageFeedback)"]) + "</div>";
+      dm(["WikiPage · status, page_type, owner_membership_id, next_review_at, stale_flagged_at, last_edited_at", "WikiPageVersion · created_at, created_by_membership_id", "WikiPageAcknowledgement · WikiChecklistRun · FormAssignmentRecipient · WikiAiIndexEntry · WikiAiSuggestion", "WikiPageViewDaily · page_id, day, view_count, unique_readers", "WikiPageView (raw, 180 days) · WikiSearchQuery · query, mode, result_count, clicked_page_id · WikiPageFeedback · helpful"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      IMPORT AND EXPORT
      @route  /docs/import-export?tab=import|export
-     @perm   import docs.pages.create (+ EDIT in the target space) · export a page docs.pages.read · bulk export of a space docs.spaces.manage · form response export docs.forms.export*
+     @perm   import docs.pages.import (+ EDIT in the target space) · export docs.pages.export* (sensitive for subtree / space scope) · form response export docs.forms.export*
      @api    POST /docs/import {source: markdown|html|docx|notion|confluence|csv, space_id, parent_page_id, document_ids[]} · GET /docs/import/:jobId · POST /docs/export {scope: page|subtree|space, format: markdown|pdf|html|docx, include_attachments} · GET /docs/export/:jobId
-     @mcp    docs_pages_create (import) · docs_pages_read (export)
+     @mcp    docs_pages_import · docs_pages_export (sensitive)
      @data   WikiPage / WikiPageVersion / WikiPageAttachment written on import · Documents (17) for uploaded source files and generated export archives
      @ui     Tabs Import | Export, Dropzone (Documents upload), Select, Popover+Command for target, Progress for the job, Table of past jobs
      @states idle · uploading · parsing (progress) · preview with warnings (unsupported blocks) · done · failed with a downloadable report · no-access
      @audit  import started/finished (counts), export requested/downloaded (sensitive scopes)
      @note   Imports land as DRAFT pages with the importer as owner; links between imported pages are rewritten. Exports respect the caller's access: pages the caller cannot read are omitted from a subtree or space export.
              Export of an entire space is audited as a sensitive action.
-     @gap    Import/export jobs have no table (job state, counts, errors) and there are no docs.pages.export / docs.pages.import keys: gaps-15.md #4.
+     Jobs are WikiTransferJob rows (kind IMPORT | EXPORT, format WikiTransferFormat, scope WikiTransferScope, status, page_count, warning_count, error_report, result_document_id).
      ===================================================================================================================== */
   function importExport() {
     return '<div class="a-page">' + head("Import and export", "Bring pages in from other tools, or take a copy out.", "") +
@@ -753,7 +753,7 @@
         cd("<b>Destination</b>", f("Space", sel("Engineering", "layers")) + f("Parent page", sel("Runbooks", "file")) + f("Page type", sel("General", "tag")) + f("Owner", sel("Me", "users")) + '<div class="rowx"><div class="grow"><b>Keep folder structure as nested pages</b></div>' + sw(1) + '</div><div class="rowx"><div class="grow"><b>Import as draft</b><small>Always on, publishing is a separate step</small></div>' + sw(1) + "</div>") + gap() + btn("Start import", "inbox", "primary") + "</div></div>") +
       pane("e", 0, '<div class="g2" style="align-items:start">' + cd("<b>What to export</b>", f("Scope", sel("A page and its sub-pages")) + f("Page or space", sel("Engineering / Runbooks", "file")) + f("Format", sel("Markdown (zip)")) + '<div class="rowx"><div class="grow"><b>Include attachments</b><small>Documents embedded in pages (17)</small></div>' + sw(1) + '</div><div class="rowx"><div class="grow"><b>Include comments and version history</b></div>' + sw(0) + "</div>") + cd("<b>Rules</b>", '<div class="sub-note" style="padding:12px 16px">Pages you cannot read are left out. Exporting a whole space needs docs.spaces.manage and is audited as a sensitive action. Form responses are exported from the form (docs.forms.export).</div>' + '<div style="padding:0 16px 14px">' + btn("Export", "file", "primary") + "</div>", 1) + "</div>") +
       pane("h", 0, tbl(["Job", "Type", "Scope", "Status", "By", "When"], [["IMP-0031", E("IMPORT", "blue"), "24 Markdown files to Engineering", E("COMPLETED", "green"), "Marco Silva", "Nov 6"], ["EXP-0019", E("EXPORT"), "Space: Operations (zip)", E("COMPLETED", "green"), "Anna Meyer", "Oct 30"], ["IMP-0030", E("IMPORT", "blue"), "Notion export to Company handbook", E("FAILED", "red"), "Sofia Jensen", "Oct 12"]])) + "</div>" +
-      dm(["WikiPage · WikiPageVersion · WikiPageAttachment (written on import)", "Documents (17) · source files and export archives"], ["Import/export job table and the keys docs.pages.import, docs.pages.export (gaps-15.md #4)"]) + "</div>";
+      dm(["WikiPage · WikiPageVersion · WikiPageAttachment (written on import)", "Documents (17) · source files and export archives", "WikiTransferJob · kind, format, scope, space_id, page_id, source_document_ids, result_document_id, status, page_count, warning_count, error_report, requested_by_membership_id, finished_at"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -762,13 +762,12 @@
      @perm   VIEW docs.pages.read · archive/unarchive docs.pages.archive · delete permanently docs.pages.delete* (sensitive) · restore from trash docs.pages.archive
      @api    GET /docs/pages?status=ARCHIVED · POST /docs/pages/:id/unarchive · GET /docs/trash · POST /docs/pages/:id/restore · DELETE /docs/pages/:id (permanent)
      @mcp    docs_pages_archive · docs_pages_delete (sensitive, confirmation when an AI agent calls it)
-     @data   WikiPage (status ARCHIVED, archived_at) · WikiSpace (archived_at) · WikiPageVersion (kept on archive)
+     @data   WikiPage (status ARCHIVED, archived_at, deleted_at, deleted_by_membership_id) · WikiSpace (archived_at, deleted_at) · WikiPageVersion (kept on archive)
      @ui     Tabs Archived | Trash, Table with bulk bar (Restore, Delete forever), AlertDialog with typed confirmation for permanent delete
      @states loading · empty ("Nothing archived") · error · no-access
      @audit  page archived/unarchived/deleted (title, space, who)
-     @note   ARCHIVE is a status (WikiPageStatus ARCHIVED + archived_at): hidden from the tree, search and AI index, reversible, versions kept. TRASH (soft delete with a retention window, e.g. 30 days, then purge) is not
-             modelled: only archive and hard delete exist today.
-     @gap    Soft-delete / trash retention needs WikiPage.deleted_at, deleted_by_membership_id and a purge job: gaps-15.md #3.
+     @note   ARCHIVE is a status (WikiPageStatus ARCHIVED + archived_at): hidden from the tree, search and AI index, reversible, versions kept. TRASH = soft delete (WikiPage.deleted_at, deleted_by_membership_id; same on WikiSpace), purged after 30 days by a scheduled job, distinct from ARCHIVED.
+     Restore needs docs.pages.archive; purging early needs docs.pages.delete*. Trashed pages are hidden from tree, search and the AI index.
      ===================================================================================================================== */
   function trash() {
     const A = [["Old intranet home", "Legacy intranet", "RUNBOOK", "Oct 14", "Anna Meyer", 12], ["Q2 offsite plan", "Company handbook", "MEETING_NOTES", "Sep 30", "Kim Lund", 4], ["VPN setup (v1)", "Engineering", "PROCEDURE", "Sep 2", "Marco Silva", 7], ["Vendor list 2024", "Operations", "GENERAL", "Aug 19", "Anna Meyer", 2]];
@@ -777,8 +776,8 @@
       pane("a", 1, '<div class="toolbar">' + search("Search archived pages") + sel("Space: any", "layers") + sel("Type: any") + "</div>" + filt([["Archived", "before", "Dec 1"]], btn("Save view", "plus", "sm")) +
         '<div class="bulk"><span class="cb on"></span><b>2 selected</b><span style="flex:1"></span>' + btn("Restore", "reply", "sm") + btn("Delete forever", "x", "sm") + "</div>" +
         '<div class="panel" style="margin-top:0"><table>' + th(["", "Page", "Space", "Type", "Archived", "By", ">Versions", ""]) + "<tbody>" + A.map((r, i) => "<tr><td>" + cb(i < 2) + "</td><td>" + ink(r[0]) + "</td><td>" + r[1] + "</td><td>" + ptp(r[2]) + "</td><td>" + r[3] + "</td><td>" + r[4] + "</td><td class='num'>" + r[5] + "</td><td>" + btn("Restore", "", "sm") + "</td></tr>").join("") + "</tbody></table></div>" + pager("1–4 of 120")) +
-      pane("d", 0, callout("flag", "<b>Trash is not available yet.</b> Today a page is either archived (reversible) or permanently deleted (docs.pages.delete, sensitive). A 30 day recoverable trash needs a soft-delete column (gaps-15.md #3).") + gap(8) + tbl(["Page", "Deleted", "By", "Purges in"], [[ink("Sketch notes"), "Nov 5", "Anna Meyer", "24 days"], [ink("Draft: pricing"), "Nov 2", "Sofia Jensen", "21 days"]])) + "</div>" +
-      dm(["WikiPage · status ARCHIVED, archived_at, title, space_id, page_type", "WikiPageVersion · count", "WikiSpace · archived_at"], ["Soft-delete trash with retention: WikiPage.deleted_at / purge job"]) + "</div>";
+      pane("d", 0, callout("flag", "<b>Trash keeps deleted pages for 30 days.</b> Restore with docs.pages.archive; delete forever needs docs.pages.delete (sensitive). Archived pages are a separate, reversible status.") + gap(8) + tbl(["Page", "Deleted", "By", "Purges in"], [[ink("Sketch notes"), "Nov 5", "Anna Meyer", "24 days"], [ink("Draft: pricing"), "Nov 2", "Sofia Jensen", "21 days"]])) + "</div>" +
+      dm(["WikiPage · status ARCHIVED, archived_at, title, space_id, page_type", "WikiPageVersion · count", "WikiSpace · archived_at, deleted_at, deleted_by_membership_id", "WikiPage · deleted_at, deleted_by_membership_id (trash, purged after 30 days)"], []) + "</div>";
   }
 
   const MAP = { home, spaces, spaceNew, space, spaceSettings, page, pageNew, history, share, search: searchPage, templates, templateEdit, runbooks, onboarding, checklists, checklistEdit, runs, runDetail, reviews, forms, formBuilder, formResponses, ai, analytics, importExport, trash };

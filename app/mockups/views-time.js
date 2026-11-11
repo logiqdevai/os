@@ -7,7 +7,7 @@
    CUSTOM), TimesheetApproverPolicy (PROJECT_OWNER, TEAM_LEAD, MANAGER, SPECIFIC_MEMBER), TimesheetActionType (SUBMITTED, APPROVED, REJECTED, REOPENED, LOCKED, UNLOCKED), TimeRateKind (BILLING, COST), BillingRateScope
    (ORGANIZATION, PRODUCT, PROJECT, MEMBER, PROJECT_MEMBER), TimeSuggestionSource (CALENDAR, COMMIT, TASK_ACTIVITY, ATTENDANCE, AI), TimeSuggestionStatus (PENDING, ACCEPTED, DISMISSED, EXPIRED), TimeAdjustmentType
    (WRITE_OFF, WRITE_UP, WRITE_DOWN), TimeRoundingMode (NONE, NEAREST, UP, DOWN), TimeImportStatus (PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED).
-   Permission keys: time.entries.create_own / read_own / update_own / read_team / read_all / approve / unlock*, time.timesheets.submit_own / approve, time.rates.read* / manage*, time.reports.read, time.settings.manage.
+   Permission keys: time.entries.create_own / read_own / update_own / delete_own / read_team / create_team / update_team / read_all / approve / export* / unlock*, time.timesheets.submit_own / approve, time.rates.read* / manage*, time.reports.read, time.imports.manage*, time.settings.manage; adjustments reuse finance.adjustments.manage* (08).
    Comment tags (legend in README.md): @screen @route @perm @api @mcp @data @ui @states @audit @note @gap. Every screen ends with a "Data model" footer (REVIEW-ONLY, do not ship).
 
    RULES THAT APPLY TO EVERY SCREEN HERE:
@@ -18,7 +18,7 @@
        computed from the BillingRate resolution (PROJECT_MEMBER > PROJECT > MEMBER > PRODUCT > ORGANIZATION, effective_from/effective_to). COST rates come from 10 (EmployeeCompensation.cost_rate_hourly) and are a SENSITIVE field:
        they need time.rates.read* and are removed from the payload (not just hidden) for everyone else.
      - STATUS flow: DRAFT -> SUBMITTED (timesheet submit) -> APPROVED | REJECTED (with rejection_reason) -> INVOICED (08 marks it, invoice_id + invoice_line_item_id) ; is_locked / LOCKED after approval when
-       TimeTrackingSettings.lock_on_approval. Unlock needs time.entries.unlock* and a reason (unlock_reason), always audited. INVOICED entries cannot be edited or unlocked; corrections are TimeEntryAdjustment rows (08).
+       TimeTrackingSettings.lock_on_approval, and every entry dated before TimeTrackingSettings.locked_before_date (month-end close) is read-only for everyone. Unlock needs time.entries.unlock* and a reason (unlock_reason), always audited. INVOICED entries cannot be edited or unlocked; corrections are TimeEntryAdjustment rows (08).
      - Time Tracking NEVER creates invoices or ledger records. 08 pulls approved, uninvoiced, billable entries; 18 only exposes the list and the "mark invoiced" call.
      - Scope: read_own = my entries, read_team = members of the teams I lead, read_all = whole organization (and branch scope of 01 applies on top). Lists are filtered server-side.
      - The signed-in member in this mockup is Marco Silva (MS). Today is Wed Nov 11, 2026; the current week is Mon Nov 9 - Sun Nov 15 (TimeTrackingSettings.week_start = 1).
@@ -153,7 +153,7 @@
   /* =====================================================================================================================
      MY TIMESHEET — daily list (spec §4)
      @route  /time/day?date=2026-11-11 · ?range=week
-     @perm   VIEW time.entries.read_own · edit/delete time.entries.update_own
+     @perm   VIEW time.entries.read_own · edit time.entries.update_own · delete a DRAFT entry time.entries.delete_own
      @api    GET /time/entries?mine=1&from=&to= · PATCH /time/entries/:id · DELETE /time/entries/:id
      @mcp    time_entries_read · time_entries_update
      @data   TimeEntry (date, start_at, end_at, duration_minutes, project_id, task_id, activity_type_id, description, is_billable, status, source, calendar_event_id, attendance_record_id) · Timer (running) · TimeSuggestion (PENDING, inline cards) ·
@@ -162,7 +162,6 @@
      @states loading · empty day ("Nothing logged. Add time or accept a suggestion") · error · no-access · locked row (lock icon, edit disabled with the reason)
      @audit  every edit writes audit_events (before/after) on a TimeEntry; deleting is a soft delete (deleted_at)
      @note   Pre-fill from attendance (10) shows as a dashed hint "Attendance 08:58-17:31 (8:33 on site), 4:30 logged", it never creates entries. Entries with start_at/end_at show their clock range; duration-only entries show "-".
-     @gap    There is no delete permission key: time.entries.update_own is used for deleting a draft entry (see gaps-18.md).
      ===================================================================================================================== */
   function day() {
     const groups = [["Wed Nov 11", "Today · 4:30", EN.slice(0, 2), 1], ["Tue Nov 10", "3:45", EN.slice(2, 4)], ["Mon Nov 9", "5:30", EN.slice(4, 6)]];
@@ -173,13 +172,13 @@
       '<div class="panel" style="margin-top:0">' + '<div class="rowx"><div class="grow"><div class="input-fake">Quick add: type a task or project, a duration (1h30, 1:30, 90m) and press Enter</div></div>' + btn("Add", "plus", "primary") + "</div>" +
       groups.map((g) => '<div class="tm-day' + (g[3] ? " today" : "") + '"><div class="d"><b>' + g[0] + "</b>" + g[1] + "</div><div>" + g[2].map((r) => '<div class="tm-ev"><span class="t">' + (r[11] === "TIMER" ? "09:02 – 11:32" : r[11] === "CALENDAR" ? "10:00 – 10:45" : "-") + '</span><div class="grow"><b>' + r[4] + " · " + r[5] + "</b><small>" + PRJ[r[3]][0] + " · " + r[6] + " · " + U.en(r[11]) + "</small></div>" + bill(r[8], r[9]) + eb(r[10]) + '<span class="dur">' + hm(r[7]) + "</span>" + more + "</div>").join("") + "</div></div>").join("") + "</div>" +
       '<div class="tm-sp"></div>' + callout("lock", "<b>Locked rows.</b> Entries of approved or invoiced periods show a lock and cannot be edited. Unlock needs time.entries.unlock* and a reason; INVOICED entries are corrected by an adjustment in 08.", "warn") +
-      dm(["TimeEntry · date, start_at, end_at, duration_minutes, project_id, task_id, activity_type_id, description, is_billable, non_billable_category, status, source, calendar_event_id, deleted_at", "Timer · running timer row", "TimeSuggestion · PENDING", "Read-only: AttendanceRecord (10)"], ["No delete permission key (gaps-18.md #1)"]) + "</div>";
+      dm(["TimeEntry · date, start_at, end_at, duration_minutes, project_id, task_id, activity_type_id, description, is_billable, non_billable_category, status, source, calendar_event_id, deleted_at", "Timer · running timer row", "TimeSuggestion · PENDING", "Read-only: AttendanceRecord (10)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      ALL TIME ENTRIES — table with filters, saved views, bulk actions (spec §3, §10, §13)
      @route  /time/entries?scope=mine|team|all&view=<savedViewId>&filter=<json>&sort=&group=&q=
-     @perm   VIEW time.entries.read_own (scope mine) · read_team · read_all · bulk submit/approve time.entries.approve · amounts need time.rates.read* · export time.reports.read
+     @perm   VIEW time.entries.read_own (scope mine) · read_team · read_all · bulk submit/approve time.entries.approve · bulk delete of own drafts time.entries.delete_own · amounts need time.rates.read* · export time.entries.export*
      @api    GET /time/entries?filter=&sort=&group=&q=&cursor= · POST /time/entries/bulk {entry_ids|filter, action: set_billable|set_activity|move_project|delete|submit|approve} · GET/POST/PATCH /saved-views?entity_type=TIME_ENTRY
      @mcp    time_entries_read (same filter JSON) · time_entries_update
      @data   TimeEntry (all columns selectable) · SavedView (entity_type TIME_ENTRY, layout, visibility, team_id, filters, sorting, grouping, columns, search, is_default) · Project (company_id for the customer filter) · TimeActivityType
@@ -203,7 +202,7 @@
   /* =====================================================================================================================
      ADD / EDIT ENTRY — full page (spec §3, §6)
      @route  /time/entries/new?date=&task=&project=&from=suggestion:<id> · /time/entries/:id/edit
-     @perm   time.entries.create_own (for others: see gap) · edit time.entries.update_own · billable override reason follows TimeTrackingSettings.require_billable_override_reason · rate preview needs time.rates.read*
+     @perm   time.entries.create_own (for others in your team or project: time.entries.create_team) · edit time.entries.update_own (others: time.entries.update_team) · billable override reason follows TimeTrackingSettings.require_billable_override_reason · rate preview needs time.rates.read*
      @api    POST /time/entries {date, start_at?, end_at?, duration_minutes, project_id?, workstream_id?, milestone_id?, task_id?, ticket_id?, activity_type_id?, description?, is_billable?, billable_override_reason?,
              non_billable_category?, external_ref?} · PATCH /time/entries/:id
      @mcp    time_entries_create · time_entries_update
@@ -215,7 +214,6 @@
      @note   Duration and start/end are linked: enter start+end and the duration is computed, enter duration only and the times stay empty. Rounding (increment + mode) is applied to the saved duration and the original is kept in the audit event.
              Project is optional (internal time: admin, training, leave) unless require_project. Picking a task fills project, workstream and milestone. Projects with time_tracking_enabled = false or members_only (you are not a member) are not listed.
              Billable defaults follow the resolution order in the module header; changing it sets billable_overridden = true. The rate shown is a PREVIEW; the snapshot is taken at approval.
-     @gap    "Log time for someone else" (project managers) has no permission key (gaps-18.md #1).
      ===================================================================================================================== */
   function create() {
     return '<div class="a-page">' + head("Add time entry", "Log work you did. Rates are previewed here and snapshotted when the entry is approved.", btn("Cancel") + btn("Save as draft", "") + btn("Save entry", "check", "primary")) +
@@ -235,7 +233,7 @@
       cd("<b>Status</b>", kv("Status", eb("DRAFT")) + kv("Source", "Manual " + muted("TimeEntrySource MANUAL")) + kv("Timesheet", "Nov 9 – Nov 15 " + muted("Open")) + kv("Approver", "Anna Meyer") + '<div class="rowx" style="padding:10px 0 0"><div class="grow"><b>Create more</b><small>Keep date, project and activity for the next entry</small></div>' + sw(0) + "</div>") + sp +
       callout("lock", "<b>Locked or invoiced entries</b> open this form read-only with the reason (\"Approved by Anna Meyer Nov 8\", \"Invoiced on INV-2026-0142\"). Unlock needs time.entries.unlock* and a reason.", "warn") +
       "</div></div>" +
-      dm(["TimeEntry · every column written on create", "TimeActivityType · default_billable, default_non_billable_category", "TimeProjectSettings · time_tracking_enabled, members_only, require_task, default_billable, default_activity_type_id", "TimeTrackingSettings · require_*, min_entry_minutes, max_hours_per_day, rounding_*, allow_*", "BillingRate (preview) · EmployeeCompensation.cost_rate_hourly (10, preview)"], ["Log time for someone else: no permission key (gaps-18.md #1)"]) + "</div>";
+      dm(["TimeEntry · every column written on create", "TimeActivityType · default_billable, default_non_billable_category", "TimeProjectSettings · time_tracking_enabled, members_only, require_task, default_billable, default_activity_type_id", "TimeTrackingSettings · require_*, min_entry_minutes, max_hours_per_day, rounding_*, allow_*", "BillingRate (preview) · EmployeeCompensation.cost_rate_hourly (10, preview)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -502,15 +500,15 @@
   /* =====================================================================================================================
      REPORTS (spec §10)
      @route  /time/reports/:report?from=&to=&group=&project=&customer=&member=&team=&branch=&activity=&billable=
-     @perm   time.reports.read · amounts and margin need time.rates.read* · scope read_team / read_all and branch scope of 01 apply on top
-     @api    GET /time/reports/utilization|billable|by-project|by-customer|by-person|estimate-vs-actual|unbilled|compliance ?filters · POST /time/reports/export {report, filters, format}
+     @perm   time.reports.read · amounts and margin need time.rates.read* · scope read_team / read_all and branch scope of 01 apply on top · export and Schedule time.entries.export*
+     @api    GET /time/reports/utilization|billable|by-project|by-customer|by-person|estimate-vs-actual|unbilled|compliance ?filters · POST /time/reports/export {report, filters, format} · GET/POST /time/report-schedules · PATCH/DELETE /time/report-schedules/:id
      @mcp    time_reports_read
      @data   TimeEntry (aggregates) · TimeUtilizationPeriod (expected_minutes, logged_minutes, billable_minutes, leave_minutes, utilization_percent, billable_ratio) · Timesheet (compliance) · Project (budget_hours, company_id) · Task (estimate_hours, actual_hours) ·
-             TimeTrackingSettings (utilization_target_percent, utilization_billable_only, default_expected_hours_per_week, reporting_currency)
+             TimeTrackingSettings (utilization_target_percent, utilization_billable_only, default_expected_hours_per_week, reporting_currency) · TimeReportSchedule (name, report_key, saved_view_id, filters, format, frequency, day_of_week, day_of_month, time_of_day, timezone, recipient_membership_ids, recipient_emails, is_active, next_run_at, last_run_at, last_error) · TimeExport (one row per export)
      @ui     Tabs per report, filter bar with Popover+Command values, charts (stacked columns, horizontal bars, heat grid) with an accessible table fallback, ToggleGroup for group-by, DropdownMenu export (CSV, XLSX)
      @states loading skeleton · empty ("No time in this range") · partial (restricted scope notice) · error · no-access
-     @audit  exports are audited (who, filters, row count)
-     @note   Utilization = logged / expected hours (expected from 10 working hours, leave and holidays), billable utilization = billable / expected; both from TimeUtilizationPeriod snapshots which are recomputed nightly and when an approved
+     @audit  exports are logged in TimeExport and audited (who, filters, row count); schedule created/changed/deleted
+     @note   The Schedule button creates a TimeReportSchedule (the saved filters of the open report, format, frequency, recipients); the 20 engine job time.report_schedules.tick runs it, writes a TimeExport and e-mails the file through 14. Utilization = logged / expected hours (expected from 10 working hours, leave and holidays), billable utilization = billable / expected; both from TimeUtilizationPeriod snapshots which are recomputed nightly and when an approved
              entry changes. Estimate vs actual compares Task.estimate_hours / Project.budget_hours with approved + submitted entry minutes (Task.actual_hours is the rolled-up cache of approved entries). Reports never show cost columns without time.rates.read*.
      ===================================================================================================================== */
   function reports() {
@@ -531,7 +529,7 @@
       pane("m", 0, tbl(["Member", ">Hours", ">Billable", ">Billable ratio", ">Billable amount", ">Cost", ">Margin"], U1.map((r, i) => [wh(r[0].split(" ").map((x) => x[0]).join("")), hm(r[1] * 48), hm(r[2] * 48), Math.round(r[2] / r[1] * 100) + "%", eur(Math.round(r[2] * 48 / 60 * 88)), eur(Math.round(r[1] * 48 / 60 * 38)), (60 - i * 3) + "%"])) + '<div class="sub-note" style="margin-top:6px">Cost and margin columns need time.rates.read*.</div>') +
       pane("e", 0, cd("<b>Estimate vs actual</b><span class='r muted'>Project.budget_hours and Task.estimate_hours vs logged</span>", [["ACME", 480, 412], ["MOB", 700, 610], ["STR", 200, 188], ["POR", 400, 222], ["BRA", 120, 96]].map((r) => hb(PRJ[r[0]][0], [[r[2], r[2] / r[1] > 0.9 ? "r" : ""]], 720, r[2] + " / " + r[1] + " h · " + Math.round(r[2] / r[1] * 100) + "%", r[1])).join(""), 1) + sp +
         tbl(["Task", "Project", ">Estimate", ">Logged", ">Remaining", "Status"], [["WEB-142 Pricing hero", "Acme Rebrand Website", "6:00", "4:30", "1:30", '<span class="badge green">On track</span>'], ["WEB-139 Webhook retries", "Stripe Billing Migration", "10:00", "11:30", "-1:30", '<span class="badge red">Over</span>'], ["MOB-87 Offline mode", "Mobile App v2", "16:00", "12:00", "4:00", '<span class="badge green">On track</span>']])) + "</div>" +
-      dm(["TimeUtilizationPeriod · expected_minutes, logged_minutes, billable_minutes, leave_minutes, utilization_percent, billable_ratio", "TimeEntry · duration_minutes, billable_minutes, billable_amount, cost_amount, status, project_id, activity_type_id, membership_id, branch_id", "Timesheet · status, submitted_at (compliance)", "Project · budget_hours, company_id · Task · estimate_hours, actual_hours", "TimeTrackingSettings · utilization_target_percent, utilization_billable_only, reporting_currency"], ["Saved/scheduled reports have no table (gaps-18.md #2)"]) + "</div>";
+      dm(["TimeUtilizationPeriod · expected_minutes, logged_minutes, billable_minutes, leave_minutes, utilization_percent, billable_ratio", "TimeEntry · duration_minutes, billable_minutes, billable_amount, cost_amount, status, project_id, activity_type_id, membership_id, branch_id", "Timesheet · status, submitted_at (compliance)", "Project · budget_hours, company_id · Task · estimate_hours, actual_hours", "TimeTrackingSettings · utilization_target_percent, utilization_billable_only, reporting_currency"], ["TimeReportSchedule · name, report_key, filters, format CSV|XLSX|PDF, frequency DAILY|WEEKLY|MONTHLY, recipients, next_run_at (Schedule button)", "TimeExport · report_key, schedule_id, format, status, row_count, file_document_id (Export button)"]) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -563,15 +561,14 @@
   /* =====================================================================================================================
      IMPORT & EXPORT (spec §4, §13)
      @route  /time/io?tab=exports|imports
-     @perm   exports time.reports.read (rows follow scope) · imports time.settings.manage (see gaps for a dedicated key)
-     @api    POST /time/reports/export {report, filters, format: CSV|XLSX} -> file in 17 · GET /time/import-jobs · POST /time/import-jobs {source, file_document_id, mapping} · POST /time/import-jobs/:id/cancel
+     @perm   exports time.entries.export* (rows follow scope) · imports time.imports.manage*
+     @api    POST /time/reports/export {report, filters, format: CSV|XLSX|PDF} -> file in 17 · GET /time/exports?mine=1&schedule_id= · GET /time/import-jobs · POST /time/import-jobs {source, file_document_id, mapping} · POST /time/import-jobs/:id/cancel
      @mcp    time_reports_export · time_import_jobs_read
-     @data   TimeImportJob (source, file_document_id, status, mapping, total_rows, imported_rows, skipped_rows, failed_rows, errors, started_at, completed_at, created_by_membership_id) · TimeEntry (import_job_id, source IMPORTED, external_ref)
+     @data   TimeImportJob (source, file_document_id, status, mapping, total_rows, imported_rows, skipped_rows, failed_rows, errors, started_at, completed_at, created_by_membership_id) · TimeEntry (import_job_id, source IMPORTED, external_ref) · TimeExport (report_key, schedule_id, format, status, filters, row_count, file_document_id, expires_at, error, created_by_membership_id) · TimeReportSchedule
      @ui     Tabs, Table, Dialog with a 3-step wizard (upload to 17, map columns, preview), Progress, Badge, DropdownMenu
      @states loading · empty · processing (progress) · failed (error report download) · cancelled · no-access
-     @audit  import created/completed with counts; each export is audited
+     @audit  import created/completed with counts; each export is a TimeExport row and an audit event
      @note   Imports produce IMPORTED entries with external_ref to stay idempotent (a re-run skips rows whose external_ref exists = skipped_rows). Imported entries start as DRAFT and are never auto-approved. Source examples: Toggl CSV, Harvest CSV, generic CSV.
-     @gap    Export history (who exported what and when) has no table; the audit log is the only record (gaps-18.md #2).
      ===================================================================================================================== */
   function io() {
     return '<div class="a-page">' + head("Import & export", "Bring time in from other tools and take reports out.", btn("New import", "plus", "primary")) +
@@ -580,7 +577,7 @@
         cd("<b>Other exports</b>", [["Timesheets (one row per week)", "Timesheet totals, status, approver"], ["Utilization", "TimeUtilizationPeriod per person and week"], ["Ready to invoice", "Approved, billable, uninvoiced entries"], ["Payroll hours", "Approved hours per person and category"]].map((r) => '<div class="rowx"><div class="grow"><b>' + r[0] + "</b><small>" + r[1] + "</small></div>" + btn("Export", "file", "sm") + "</div>").join(""), 1) + "</div>") +
       pane("i", 0, tbl(["Source", "File", "Status", ">Rows", ">Imported", ">Skipped", ">Failed", "Started", "By", ""], [["Toggl CSV", "toggl-oct-2026.csv", E("COMPLETED", "green"), 312, 298, 14, 0, "Nov 2 10:14", wh("AM"), more], ["Generic CSV", "contractor-hours.csv", E("FAILED", "red"), 40, 0, 0, 40, "Oct 28 16:40", wh("AM"), btn("Errors", "file", "sm")], ["Harvest CSV", "harvest-q3.csv", E("PROCESSING", "blue"), 1204, 640, 12, 0, "Nov 11 09:20", wh("AM"), btn("Cancel", "x", "sm")]]) + sp +
         cd("<b>New import wizard</b><span class='r muted'>Dialog, 3 steps</span>", '<div class="tm-chain"><span class="step on">1 Upload file (17)</span>' + I("right", 12) + '<span class="step">2 Map columns</span>' + I("right", 12) + '<span class="step">3 Preview and import</span></div><div class="sub-note" style="margin-top:8px">Mapping is stored in TimeImportJob.mapping. Rows with an existing external_ref are skipped. Unknown projects or members become errors in TimeImportJob.errors.</div>')) + "</div>" +
-      dm(["TimeImportJob · source, file_document_id, status, mapping, total_rows, imported_rows, skipped_rows, failed_rows, errors, started_at, completed_at, created_by_membership_id", "TimeEntry · import_job_id, external_ref, source IMPORTED"], ["Export history has no table (gaps-18.md #2)", "No import/export permission keys (gaps-18.md #1)"]) + "</div>";
+      dm(["TimeImportJob · source, file_document_id, status, mapping, total_rows, imported_rows, skipped_rows, failed_rows, errors, started_at, completed_at, created_by_membership_id", "TimeEntry · import_job_id, external_ref, source IMPORTED"], ["TimeExport · report_key, schedule_id, format, status, filters, row_count, file_document_id, expires_at, created_by_membership_id (export history)", "TimeReportSchedule (scheduled exports)"]) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -589,7 +586,7 @@
      @perm   VIEW + edit time.settings.manage
      @api    GET/PATCH /time/settings · GET/POST/PATCH /time/activity-types · POST /time/activity-types/:id/archive
      @mcp    time_settings_manage
-     @data   TimeTrackingSettings (all columns) · TimeActivityType (name, slug, description, color, icon, default_billable, default_non_billable_category, is_default, sort_order, archived_at)
+     @data   TimeTrackingSettings (all columns, incl. locked_before_date, locked_before_set_at, locked_before_set_by_membership_id) · TimeActivityType (name, slug, description, color, icon, default_billable, default_non_billable_category, is_default, sort_order, archived_at)
      @ui     Tabs, settings rows with Switch / Select / Input / Popover+Command (default approver), sortable list (dnd-kit) for activity types, Dialog for new type, sticky save bar
      @states loading · saving · saved · validation · no-access · "applies to new entries only" notes on rules that are not retroactive
      @audit  every setting change with before/after
@@ -600,7 +597,7 @@
     const S = (t, h, c) => '<div class="setting"><div class="grow"><b>' + t + "</b><small>" + h + "</small></div>" + c + "</div>";
     return '<div class="a-page">' + head("Time tracking setup", "Organization-wide rules for time entries, rounding, approval and reminders.", btn("Discard") + btn("Save changes", "check", "primary")) +
       '<div class="tabset">' + tabs([["g", "Entries"], ["r", "Rounding"], ["a", "Approval"], ["c", "Capture"], ["t", "Activity types", 7], ["n", "Reminders"], ["u", "Utilization"]], "g") +
-      pane("g", 1, cd("<b>Entry rules</b>", S("Default billable", "default_billable · last in the billability resolution order", sw(1)) + S("Require reason when overriding billable", "require_billable_override_reason", sw(1)) + S("Require a project", "require_project", sw(0)) + S("Require a task or ticket", "require_task_or_ticket", sw(0)) + S("Require a description", "require_description", sw(1)) + S("Require an activity type", "require_activity_type", sw(1)) + S("Allow overlapping entries", "allow_overlapping_entries", sw(0)) + S("Allow future entries", "allow_future_entries", sw(1)) + S("Minimum entry length", "min_entry_minutes", box("5 min")) + S("Maximum hours per day", "max_hours_per_day · blocks saving over the limit", box("12 h")) + S("Edit window", "edit_window_days · entries older than this are read-only for members", box("30 days")), 1)) +
+      pane("g", 1, cd("<b>Entry rules</b>", S("Default billable", "default_billable · last in the billability resolution order", sw(1)) + S("Require reason when overriding billable", "require_billable_override_reason", sw(1)) + S("Require a project", "require_project", sw(0)) + S("Require a task or ticket", "require_task_or_ticket", sw(0)) + S("Require a description", "require_description", sw(1)) + S("Require an activity type", "require_activity_type", sw(1)) + S("Allow overlapping entries", "allow_overlapping_entries", sw(0)) + S("Allow future entries", "allow_future_entries", sw(1)) + S("Minimum entry length", "min_entry_minutes", box("5 min")) + S("Maximum hours per day", "max_hours_per_day · blocks saving over the limit", box("12 h")) + S("Edit window", "edit_window_days · entries older than this are read-only for members", box("30 days")) + S("Lock all time before", "locked_before_date · month-end close: entries dated before it are read-only for everyone, unlocking one needs time.entries.unlock*", box("Oct 31, 2026")), 1)) +
       pane("r", 0, cd("<b>Rounding</b>", S("Rounding mode", "TimeRoundingMode: NONE, NEAREST, UP, DOWN", sel("Nearest")) + S("Rounding increment", "rounding_increment_minutes", sel("15 minutes")) + '<div class="rowx"><div class="grow"><small>Example: a 2:07 timer saves as 2:00 (NEAREST, 15 min). The original value is kept in the audit event. Applies to new entries only.</small></div></div>', 1)) +
       pane("a", 0, cd("<b>Approval</b>", S("Require approval", "require_approval. Off: entries go straight to APPROVED when the week is submitted.", sw(1)) + S("Timesheet period", "period_type: WEEKLY, BIWEEKLY, SEMI_MONTHLY, MONTHLY, CUSTOM", sel("Weekly")) + S("Week starts on", "week_start", sel("Monday")) + S("Approver policy", "TimesheetApproverPolicy: PROJECT_OWNER, TEAM_LEAD, MANAGER, SPECIFIC_MEMBER", sel("Team lead")) + S("Default approver", "default_approver_membership_id · used for SPECIFIC_MEMBER and as fallback", sel("Anna Meyer", "users")) + S("Lock on approval", "lock_on_approval · changes then need unlock (time.entries.unlock*) with a reason", sw(1)) + S("Allow self-approval", "allow_self_approval · only for owners of a one-person team", sw(0)), 1)) +
       pane("c", 0, cd("<b>Capture</b>", S("Idle timeout", "idle_timeout_minutes · timer asks what to do with idle time", box("15 min")) + S("Auto-stop long timers", "timer_auto_stop_hours · stops a forgotten timer and notifies", box("10 h")) + S("Calendar capture", "calendar_capture_enabled · suggestions from 19", sw(1)) + S("AI suggestions", "ai_suggestions_enabled · needs the OpenAI connection of the organization", sw(0)) + S("Pre-fill from attendance", "attendance_prefill_enabled · a hint from 10, never creates entries", sw(1)), 1)) +

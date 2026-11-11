@@ -103,7 +103,7 @@
      OVERVIEW (agency)
      @screen Portal overview
      @route  /portal/dashboard
-     @perm   VIEW portal.settings.manage or portal.users.manage (read-only agency users: see @gap, no read key exists) · counts of tickets/deliverables follow support.tickets.read / projects.deliverables.read
+     @perm   VIEW portal.users.read or portal.activity.read (read-only agency users) or portal.settings.manage / portal.users.manage · counts of tickets/deliverables follow support.tickets.read / projects.deliverables.read
      @api    GET /portal/overview → { clients, users, invitations_by_status, pending_profile_changes, deliverables_awaiting_review, portal_requests_open } · built from counts over the owning modules
      @mcp    portal_overview_read
      @data   CustomerPortalSettings.enabled · CustomerPortalMembership (status, last_active_at) · Invitation (audience CUSTOMER_PORTAL, status) · CustomerPortalProfileChangeRequest (status PENDING) · ProjectDeliverable (status SUBMITTED) · Ticket (source PORTAL)
@@ -128,23 +128,22 @@
         ["SUP-2029 · Login redirect loop", "Initech · agency replied 4 days ago", "PENDING_CUSTOMER"]].map((r) => '<div class="rowx"><div class="grow"><b>' + r[0] + "</b><small>" + r[1] + "</small></div>" + E(r[2], "purple") + "</div>").join(""), 1) + "</div>" + sp() +
       '<div class="g2">' + cd("<b>Adoption</b><span class='r muted'>last 30 days, from audit_events and last_active_at</span>", [["Weekly active portal users", 74], ["Deliverables reviewed within 3 days", 62], ["Invoices paid through the portal", 81], ["Requests opened in the portal vs email", 58]].map((r) => '<div class="bar-row"><span class="l">' + r[0] + '</span><span class="tr"><i style="width:' + r[1] + '%"></i></span><span class="v">' + r[1] + "%</span></div>").join("")) +
       cd("<b>Portal features</b><span class='r muted'>CustomerPortalSettings.features</span>", ["projects", "requests", "conversations", "documents", "proposals", "contracts", "billing", "calendar", "vault", "ai"].map((k, i) => '<div class="rowx"><div class="grow">' + tok(k) + "</div>" + sw(i < 7) + "</div>").join(""), 1) + "</div>" +
-      dm(["CustomerPortalSettings · enabled, features, custom_domain", "CustomerPortalMembership · status, last_active_at · Invitation · audience, status", "CustomerPortalProfileChangeRequest · status · ProjectDeliverable · status · Ticket · source PORTAL, status category", "AuditEvent · event_type (adoption metrics)"], ["Read-only agency access to the portal has no permission key (portal.users.read, portal.activity.read): see gaps-07 #3", "Adoption percentages are computed, nothing stored"]) + "</div>";
+      dm(["CustomerPortalSettings · enabled, features, custom_domain", "CustomerPortalMembership · status, last_active_at · Invitation · audience, status", "CustomerPortalProfileChangeRequest · status · ProjectDeliverable · status · Ticket · source PORTAL, status category", "AuditEvent · event_type (adoption metrics)"], ["Adoption percentages are computed, nothing stored"]) + "</div>";
   }
 
   /* =====================================================================================================================
      CLIENTS — list
      @screen Portal clients
      @route  /portal/clients?q=&portal=&role=&owner=&activity=&view=
-     @perm   VIEW portal.users.manage (sees companies the caller's CRM scope allows: crm.companies.read) · enable/disable portal per client portal.settings.manage · bulk portal.users.manage*
+     @perm   VIEW portal.users.read (sees companies the caller's CRM scope allows: crm.companies.read) · enable/disable portal per client portal.settings.manage · bulk portal.users.manage*
      @api    GET /portal/clients?filter=&sort=&cursor= (CrmCompany type CUSTOMER joined with portal memberships) · POST /portal/clients/:companyId/enable · POST /portal/clients/bulk {company_ids|filter, action}
      @mcp    portal_clients_read · portal_clients_manage (sensitive: human confirmation when an AI agent calls it)
-     @data   CrmCompany (name, type CUSTOMER, account_manager_membership_id, customer_since, archived_at) · CustomerPortalMembership (customer_id, status, last_active_at, role_id) · Invitation (customer_id, status) · SavedView (entity_type CRM_COMPANY, visibility)
+     @data   CrmCompany (name, type CUSTOMER, account_manager_membership_id, customer_since, archived_at) · CustomerPortalClientSettings (company_id, enabled, disabled_at) · CustomerPortalMembership (customer_id, status, last_active_at, role_id) · Invitation (customer_id, status) · SavedView (entity_type CRM_COMPANY, visibility)
      @ui     Table with column chooser, filter bar (Popover+Command, multi-select), saved-views Select, bulk action bar, DropdownMenu row actions, "Save view" Dialog
      @states loading skeleton · empty ("No client has portal access yet" + Enable portal for a client) · no results (clear filters) · error · no-access
      @audit  bulk actions write one audit event per company (portal.client_disabled / portal.client_enabled) plus a summary event
      @note   A "client" is a CrmCompany of type CUSTOMER (02). There is no portal table per client: "portal enabled" = at least one non-deactivated CustomerPortalMembership or a pending Invitation for that company.
-             Disabling a client deactivates all its memberships (deactivated_at) and cancels pending invitations; it is reversible. Per-client feature switches do not exist in the schema (gap).
-     @gap    CustomerPortalSettings is organization-wide only; no per-client enabled flag, feature overrides or welcome message (gaps-07 #1).
+             Disabling a client deactivates all its memberships (deactivated_at) and cancels pending invitations; it is reversible. Per-client switches live in CustomerPortalClientSettings (enabled, features, disabled_at).
      ===================================================================================================================== */
   function clients() {
     return '<div class="a-page">' + head("Clients", "Customers with access to the portal.", btn("Export", "file") + btn("Enable portal for a client", "plus", "primary")) +
@@ -155,7 +154,7 @@
         CO.map((c, i) => [cb(i < 2), ink(c[0]) + "<small class='muted' style='display:block'>CrmCompany · CUSTOMER</small>", c[1] ? ES("ACTIVE", "green") : ES("DEACTIVATED"), c[2], c[0] === "Northwind Traders" ? "1" : c[0] === "Hooli Media" ? "1" : "0", [4, 1, 2, 0, 0, 1][i], c[4], c[5] ? '<span class="badge purple">' + c[5] + "</span>" : "0", c[6], wh(c[7]), c[8], more])) +
       pager("1–6 of 6 · 5 with portal access") +
       '<div class="sub-note">Row click opens the client page. Rows you cannot see (outside your CRM scope) are not counted anywhere.</div>' +
-      dm(["CrmCompany · name, type, account_manager_membership_id, customer_since, archived_at", "CustomerPortalMembership · customer_id, status, last_active_at · Invitation · customer_id, status", "SavedView · entity_type CRM_COMPANY (filters, sorting, columns, visibility)"], ["Per-client portal switch: gaps-07 #1"]) + "</div>";
+      dm(["CrmCompany · name, type, account_manager_membership_id, customer_since, archived_at", "CustomerPortalMembership · customer_id, status, last_active_at · Invitation · customer_id, status", "CustomerPortalClientSettings · company_id, enabled, disabled_at (no row = organization defaults)", "SavedView · entity_type CRM_COMPANY (filters, sorting, columns, visibility)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -176,7 +175,7 @@
     return '<div class="a-page">' + head("Enable portal for a client", "Choose the company, who gets access and with which role.", btn("Cancel") + btn("Send invitations", "send", "primary")) +
       '<div class="g2" style="grid-template-columns:1.6fr 1fr;align-items:start"><div>' +
       cd("<b>Company</b>", f("Customer (CRM company)", sel("Umbrella Studio · CUSTOMER · Marco Silva", "building"), "Only companies of type CUSTOMER you can see. The portal shows the company's customer-visible projects, documents, invoices and requests.") +
-        f("Portal home message", '<div class="editor"><div class="ed-bar">' + ["B", "I", "Link"].map((x) => "<span>" + x + "</span>").join("") + '</div><div class="ed-body">Optional. Overrides the organization welcome message for this client only.</div></div>', "Needs the per-client settings table (gap #1); until then the organization welcome message applies.")) + sp() +
+        f("Portal home message", '<div class="editor"><div class="ed-bar">' + ["B", "I", "Link"].map((x) => "<span>" + x + "</span>").join("") + '</div><div class="ed-body">Optional. Overrides the organization welcome message for this client only.</div></div>', "Stored in CustomerPortalClientSettings.welcome_message; empty = the organization welcome message applies.")) + sp() +
       cd("<b>People to invite</b><span class='r'>" + btn("Add person", "plus", "sm") + "</span>", tbl(["Contact (CrmContact)", "Email", "Role (Role.slug)", ""], [
         [wh("EM", "Studio director"), "eva.moll@umbrella.example", sel("Customer Owner"), more],
         [who("JS", "", "Jonas Sand", "Operations"), "j.sand@umbrella.example", sel("Customer Manager"), more],
@@ -188,7 +187,7 @@
       cd("<b>What they will see</b>", ["Projects marked customer-visible", "Deliverables, status updates, milestones", "Documents in customer-visible folders", "Invoices and subscriptions", "Requests (tickets) of their company"].map((t) => '<div class="rowx">' + I("check", 14) + '<div class="grow">' + t + "</div></div>").join("") + '<div class="sub-note">Visibility is decided by the owning modules. Nothing is exposed because of this invitation alone.</div>') + sp() +
       callout("shield", "<b>Sensitive permission.</b> Inviting portal users needs <code class='pk'>portal.users.manage</code> (sensitive). From the API or MCP it is a human-confirmed action.") +
       "</div></div>" +
-      dm(["Invitation · audience CUSTOMER_PORTAL, customer_id, email, role_id, message, expires_at, source, invited_by_user_id, token_hash, status", "CrmCompany · CrmContact · Role (type CUSTOMER_PORTAL)", "CustomerPortalSettings · default_role_slug"], ["Per-client welcome message / enabled flag: gaps-07 #1"]) + "</div>";
+      dm(["Invitation · audience CUSTOMER_PORTAL, customer_id, email, role_id, message, expires_at, source, invited_by_user_id, token_hash, status", "CrmCompany · CrmContact · Role (type CUSTOMER_PORTAL)", "CustomerPortalSettings · default_role_slug", "CustomerPortalClientSettings · enabled, default_role_slug, welcome_message (per-client override)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -198,7 +197,7 @@
      @perm   VIEW portal.users.manage · edit access portal.users.manage* · settings portal.settings.manage
      @api    GET /portal/clients/:companyId · GET /portal/clients/:companyId/{users|invitations|content|requests|approvals|profile-changes|activity} · POST /portal/clients/:companyId/disable
      @mcp    portal_clients_read · portal_clients_manage
-     @data   CrmCompany · CrmContact · CustomerPortalMembership · Invitation · Project (visibility CUSTOMER_VISIBLE, customer_id) · Ticket (company_id, source PORTAL) · ProjectDeliverable/ProjectDeliverableReview · CustomerPortalProfileChangeRequest · AuditEvent (resource_type CrmCompany)
+     @data   CrmCompany · CrmContact · CustomerPortalClientSettings · CustomerPortalMembership (+ CustomerPortalMembershipProject) · Invitation · Project (visibility CUSTOMER_VISIBLE, customer_id) · Ticket (company_id, source PORTAL) · ProjectDeliverable/ProjectDeliverableReview · CustomerPortalProfileChangeRequest · AuditEvent (resource_type CrmCompany)
      @ui     Tabs (Overview, Portal users, Invitations, Visible content, Requests, Approvals, Profile changes, Activity), Card, Table, DropdownMenu, Dialog for role change
      @states loading · not found · portal not enabled for this client (call to action) · error · no-access (client outside scope)
      @audit  role change, deactivation, resend, cancel, disable client, profile change decision
@@ -210,7 +209,7 @@
     return '<div class="a-page">' + head("Acme Corp", "CrmCompany · CUSTOMER since Mar 2024 · account manager Anna Meyer · portal.acme.example", btn("Preview as customer", "globe") + btn("Invite user", "plus") + sel("Manage", "settings")) +
       '<div class="tabset">' + tabs([["ov", "Overview"], ["us", "Portal users", 6], ["iv", "Invitations", 1], ["ct", "Visible content"], ["rq", "Requests", 2], ["ap", "Approvals", 3], ["pf", "Profile changes", 1], ["ac", "Activity"]], "ov") +
       pane("ov", 1, '<div class="mini-stats">' + stat("Portal users", 6, "5 active") + stat("Visible projects", 4, "of 6") + stat("Open requests", 2, "1 waiting on customer") + stat("Awaiting approval", 3, "oldest 3 days", 1) + stat("Outstanding", "€ 8,420", "2 invoices") + stat("Last active", "2 h ago", "Lena Kovac") + "</div>" +
-        '<div class="g2">' + cd("<b>Access summary</b>", kv("Portal", ES("ACTIVE", "green")) + kv("Owner (customer-side)", "Lena Kovac · Customer Owner") + kv("Default role for new users", role("customer-viewer")) + kv("Profile changes", "Need agency approval " + muted("(org policy)")) + kv("Custom domain", "portal.acme.example " + E("VERIFIED", "green")) + kv("Features", "All organization features " + muted("(no per-client override, gap #1)"))) +
+        '<div class="g2">' + cd("<b>Access summary</b>", kv("Portal", ES("ACTIVE", "green")) + kv("Owner (customer-side)", "Lena Kovac · Customer Owner") + kv("Default role for new users", role("customer-viewer")) + kv("Profile changes", "Need agency approval " + muted("(org policy)")) + kv("Custom domain", "portal.acme.example " + E("VERIFIED", "green")) + kv("Features", "All organization features " + muted("(no per-client override: CustomerPortalClientSettings.features is null)"))) +
         cd("<b>Agency team shown to this customer</b><span class='r muted'>name, role and photo only (07 §3)</span>", [["AM", "Account manager"], ["MS", "Project manager"], ["SJ", "Designer"]].map((r) => '<div class="rowx">' + av(r[0]) + '<div class="grow"><b>' + P[r[0]][0] + "</b><small>" + r[1] + "</small></div></div>").join(""), 1) + "</div>") +
       pane("us", 0, tbl(["User", "Role", "Status", "Joined", "Last active", ""], users.map((u) => [wh(u[0], u[1]), role(u[2]), ES(u[3], MSC[u[3]]), u[4], u[5], more]))) +
       pane("iv", 0, tbl(["Email", "Role", "Status", "Invited by", "Expires", ""], [["m.krause@acme.example", role("customer-manager"), ES("PENDING", "blue"), "Anna Meyer", "in 9 days", more]])) +
@@ -219,14 +218,14 @@
       pane("ap", 0, tbl(["Deliverable", "Project", "Status", "Waiting since"], [["Pricing page hero v3", "Acme Rebrand Website", E("SUBMITTED", "purple"), "3 days"], ["Brand guidelines PDF", "Acme Rebrand Website", E("READY_FOR_REVIEW", "purple"), "1 day"], ["Email template pack", "Acme Lifecycle Emails", E("SUBMITTED", "purple"), "6 hours"]])) +
       pane("pf", 0, tbl(["Requested by", "Changes", "Status", "Submitted"], [[wh("TB"), "Billing address, VAT number", ES("PENDING", "yellow"), "Nov 10"]])) +
       pane("ac", 0, '<div class="tl"><div class="ev"><b>Lena Kovac approved “Homepage wireframes”</b><small>deliverable.accepted · 2 h ago</small></div><div class="ev"><b>Tom Becker paid invoice INV-2026-0112</b><small>invoice.paid · Yesterday</small></div><div class="ev"><b>Dan Hughes suspended by Anna Meyer</b><small>membership.suspended · 41 days ago</small></div></div>') + "</div>" +
-      dm(["CrmCompany · CrmContact · CustomerPortalMembership · Invitation", "Project.visibility · ProjectDeliverable.customer_visible · Task.customer_visible · Document/Folder.customer_visible (read-only counts)", "Ticket · ProjectDeliverableReview · CustomerPortalProfileChangeRequest · AuditEvent"], ["Per-client feature/branding override: gaps-07 #1"]) + "</div>";
+      dm(["CrmCompany · CrmContact · CustomerPortalMembership · Invitation", "Project.visibility · ProjectDeliverable.customer_visible · Task.customer_visible · Document/Folder.customer_visible (read-only counts)", "CustomerPortalClientSettings · enabled, features, default_role_slug, welcome_message, branding, disabled_at", "Ticket · ProjectDeliverableReview · CustomerPortalProfileChangeRequest · AuditEvent"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      PORTAL USERS — list
      @screen Portal users
      @route  /portal/users?q=&company=&role=&status=&activity=&view=
-     @perm   VIEW portal.users.manage · invite/role/suspend/deactivate portal.users.manage* (every write is a sensitive, audited action; separation: you cannot change your own role)
+     @perm   VIEW portal.users.read · invite/role/suspend/deactivate portal.users.manage* (every write is a sensitive, audited action; separation: you cannot change your own role)
      @api    GET /portal/users?filter=&sort=&cursor= · PATCH /portal/users/:membershipId {role_id|status} · POST /portal/users/bulk {ids|filter, action, role_id?}
      @mcp    portal_users_read · portal_users_manage (sensitive)
      @data   CustomerPortalMembership (customer_id, user_id, role_id, status, invited_by_user_id, joined_at, last_active_at, deactivated_at) · User (name, email) · Role (slug, type CUSTOMER_PORTAL) · CrmCompany (name) · SavedView
@@ -244,21 +243,21 @@
       bulk(2, sel("Change role…", "key") + btn("Resend invite", "mail", "sm") + btn("Suspend", "lock", "sm") + btn("Deactivate", "x", "sm")) +
       tbl(["", "User", "Company", "Role", "Status", "Joined", "Last active", "Invited by", ""], R.map((r, i) => [cb(i === 2 || i === 7), wh(r[0], r[0] === "EM" ? "eva.moll@hooli.example" : P[r[0]][0].toLowerCase().replace(" ", ".") + "@" + r[1].split(" ")[0].toLowerCase() + ".example"), r[1], role(r[2]), ES(r[3], MSC[r[3]]), r[4], r[5], r[6], more])) +
       pager("1–8 of 16") +
-      dm(["CustomerPortalMembership · customer_id, user_id, role_id, status, invited_by_user_id, joined_at, last_active_at, deactivated_at", "User · name, email · Role · slug, type CUSTOMER_PORTAL · CrmCompany · name", "SavedView · filters, sorting, columns"], ["Read-only agency access has no key (portal.users.read): gaps-07 #3"]) + "</div>";
+      dm(["CustomerPortalMembership · customer_id, user_id, role_id, status, invited_by_user_id, joined_at, last_active_at, deactivated_at", "User · name, email · Role · slug, type CUSTOMER_PORTAL · CrmCompany · name", "SavedView · filters, sorting, columns"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      PORTAL USER — detail
      @screen Portal user
      @route  /portal/user?membership=<id>&tab=profile|access|activity|notifications
-     @perm   VIEW portal.users.manage · role/status changes portal.users.manage* · reset MFA / revoke sessions portal.users.manage* (and 01 session keys)
+     @perm   VIEW portal.users.read · role/status/project-scope changes portal.users.manage* · reset MFA / revoke sessions portal.users.manage* (and 01 session keys)
      @api    GET /portal/users/:membershipId · PATCH /portal/users/:membershipId · POST /portal/users/:membershipId/{suspend|reactivate|deactivate|revoke-sessions|reset-mfa}
      @mcp    portal_users_read · portal_users_manage (sensitive)
      @data   CustomerPortalMembership · User · Role (permissions via RolePermission) · AuditEvent (actor_user_id) · NotificationPreference/NotificationRecipientSettings (membership relations, 14) · UserSession (01)
      @ui     Header card, Tabs, Select for role (Dialog confirms effective-permission diff), permission list (read-only), Switch for notification channels (read-only for agency)
      @states loading · not found · error · no-access
      @audit  membership.role_assigned (before/after), membership.suspended, membership.deactivated, user.sessions_revoked
-     @note   Effective permissions = the role's keys only; a portal user has no per-user overrides in the schema (gap #5 asks for optional project scoping). Customer-side notification preferences are the user's own (14 §6):
+     @note   Effective permissions = the role's keys only; a portal user has no per-user permission overrides; optional project scoping lives in CustomerPortalMembershipProject. Customer-side notification preferences are the user's own (14 §6):
              the agency can read, not change them.
      ===================================================================================================================== */
   function user() {
@@ -267,25 +266,24 @@
       pane("pf", 1, '<div class="g2">' + cd("<b>Membership</b>", kv("Status", ES("ACTIVE", "green")) + kv("Company", "Acme Corp") + kv("Role", role("customer-finance")) + kv("Invited by", "Anna Meyer") + kv("Joined", "Apr 2, 2024") + kv("Last active", "Yesterday 16:42") + kv("Deactivated", "—")) +
         cd("<b>Identity</b><span class='r muted'>User (01)</span>", kv("Name", "Tom Becker") + kv("Email", "tom.becker@acme.example " + E("VERIFIED", "green")) + kv("Language / time zone", "English · Europe/Berlin") + kv("MFA", "Enabled (authenticator app)") + kv("Sign-in method", "Password + MFA") + kv("Linked contact", "CrmContact · Tom Becker, Finance Manager")) + "</div>") +
       pane("ac", 0, '<div class="g2">' + cd("<b>Effective permissions</b><span class='r muted'>from role customer-finance</span>", KEYS.map((k) => '<div class="rowx">' + (ROLES["customer-finance"][1].indexOf(k) >= 0 ? I("check", 14) : I("x", 14)) + '<div class="grow">' + lk(k) + (SENS[k] ? " " + E("SENSITIVE", "red") : "") + "</div></div>").join(""), 1) +
-        cd("<b>Scope</b>", kv("Scope type", "CUSTOMER (Role.default_scope)") + kv("Customer", "Acme Corp only") + kv("Projects", "All customer-visible " + muted("(no per-user restriction, gap #5)")) + kv("Organization", "Logiqdev") + '<div class="sub-note">Every request is checked against organization_id, then customer_id of this membership. A wrong customer returns 404.</div>') + "</div>") +
+        cd("<b>Scope</b>", kv("Scope type", "CUSTOMER (Role.default_scope)") + kv("Customer", "Acme Corp only") + kv("Projects", "All customer-visible " + muted("(no CustomerPortalMembershipProject rows = no per-user restriction)")) + kv("Organization", "Logiqdev") + '<div class="sub-note">Every request is checked against organization_id, then customer_id of this membership. A wrong customer returns 404.</div>') + "</div>") +
       pane("lg", 0, '<div class="tl"><div class="ev"><b>Paid invoice INV-2026-0112</b><small>invoice.paid · Yesterday 16:42 · IP 84.x.x.x</small></div><div class="ev"><b>Signed in</b><small>user.login · Yesterday 16:31 · Chrome on macOS</small></div><div class="ev"><b>Updated company billing address</b><small>portal.profile_change_requested · Nov 10</small></div><div class="ev"><b>Downloaded “MSA 2024.pdf”</b><small>document.downloaded (CONTRACTS category, sensitive) · Nov 2</small></div></div>') +
       pane("nt", 0, tbl(["Event", "In-app", "Email", "SMS"], [["Invoice created", sw(1), sw(1), sw(0)], ["Payment confirmation", sw(1), sw(1), sw(0)], ["Approval requests", sw(1), sw(1), sw(0)], ["Request updates", sw(1), sw(0), sw(0)]]) + '<div class="sub-note">Read-only for the agency. Source: NotificationPreference per CustomerPortalMembership (14).</div>') + "</div>" +
-      dm(["CustomerPortalMembership · customer_id, user_id, role_id, status, last_active_at", "Role · RolePermission · User · UserSession", "AuditEvent · actor_user_id · NotificationPreference (membership)"], ["Per-user project scope: gaps-07 #5"]) + "</div>";
+      dm(["CustomerPortalMembership · customer_id, user_id, role_id, status, last_active_at", "Role · RolePermission · User · UserSession", "CustomerPortalMembershipProject · portal_membership_id, project_id (empty = every customer-visible project of the company)", "AuditEvent · actor_user_id · NotificationPreference (membership)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      INVITATIONS — list
      @screen Portal invitations
      @route  /portal/invitations?status=&company=&role=&invited_by=&view=
-     @perm   VIEW portal.users.manage · send/resend/cancel portal.users.manage*
+     @perm   VIEW portal.users.read · send/resend/cancel portal.users.manage*
      @api    GET /invitations?audience=CUSTOMER_PORTAL&filter= · POST /invitations/:id/resend · POST /invitations/:id/cancel · POST /invitations/bulk
      @mcp    portal_invitations_read · portal_invitations_manage (sensitive)
-     @data   Invitation (audience CUSTOMER_PORTAL, customer_id, email, role_id, status, source, message, invited_by_user_id, expires_at, accepted_at, cancelled_at, rejected_at, portal_membership_id, created_at)
+     @data   Invitation (audience CUSTOMER_PORTAL, customer_id, email, role_id, status, source, message, invited_by_user_id, expires_at, last_sent_at, send_count, accepted_at, cancelled_at, rejected_at, portal_membership_id, created_at)
      @ui     Table with filter bar, bulk bar, DropdownMenu row actions, Dialog for confirmation
      @states loading · empty ("No invitations") · no results · error · no-access
      @audit  invitation.sent, invitation.resent, invitation.cancelled, invitation.accepted
      @note   Status values are InvitationStatus: PENDING, ACCEPTED, EXPIRED, CANCELLED, REJECTED. Resending creates a new token (token_hash) and pushes expires_at. Accepted rows link to the created membership.
-     @gap    Reminder history (last_sent_at, send_count) is not stored: the "Sent" column cannot be filled from the schema (gaps-07 #2).
      ===================================================================================================================== */
   function invitations() {
     const R = [["m.krause@acme.example", "Acme Corp", "customer-manager", "PENDING", "Anna Meyer", "Nov 2", "Nov 20"], ["p.nair@northwind.example", "Northwind Traders", "customer-finance", "PENDING", "Anna Meyer", "Oct 28", "Nov 13"], ["eva.moll@hooli.example", "Hooli Media", "customer-owner", "PENDING", "Sofia Jensen", "Nov 8", "Nov 22"], ["s.voss@initech.example", "Initech", "customer-viewer", "ACCEPTED", "Sofia Jensen", "Jun 2", "Jun 16"], ["old@globex.example", "Globex", "customer-viewer", "EXPIRED", "Marco Silva", "Sep 1", "Sep 15"], ["x@acme.example", "Acme Corp", "customer-viewer", "CANCELLED", "Anna Meyer", "Sep 10", "Sep 24"], ["jc@northwind.example", "Northwind Traders", "customer-manager", "REJECTED", "Anna Meyer", "Aug 4", "Aug 18"]];
@@ -295,7 +293,7 @@
       bulk(2, btn("Resend", "mail", "sm") + btn("Cancel invitation", "x", "sm")) +
       tbl(["", "Email", "Company", "Role", "Status", "Invited by", "Created", "Expires", ""], R.map((r, i) => [cb(i < 2), ink(r[0]), r[1], role(r[2]), ES(r[3], ISC[r[3]]), r[4], r[5], r[6], more])) +
       pager("1–7 of 11") +
-      dm(["Invitation · audience, customer_id, email, role_id, status, source, message, invited_by_user_id, expires_at, accepted_at, cancelled_at, rejected_at, portal_membership_id"], ["Resend count / last sent: gaps-07 #2"]) + "</div>";
+      dm(["Invitation · audience, customer_id, email, role_id, status, source, message, invited_by_user_id, expires_at, last_sent_at, send_count (\"Sent\" column, resend limits), accepted_at, cancelled_at, rejected_at, portal_membership_id"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -355,16 +353,15 @@
      APPROVALS (deliverable reviews)
      @screen Deliverable approvals
      @route  /portal/approvals?status=&company=&project=&due=&view=
-     @perm   VIEW projects.deliverables.read (05) · remind / withdraw projects.deliverables.update · record an acceptance on the customer's behalf needs projects.deliverables.accept_on_behalf (see @gap)
+     @perm   VIEW projects.deliverables.read (05) · remind / withdraw projects.deliverables.update · record an acceptance on the customer's behalf needs projects.deliverables.accept_on_behalf* (sensitive; the acting member is kept in acceptance_record)
      @api    GET /deliverables?customer_visible=true&status=SUBMITTED,READY_FOR_REVIEW,CHANGES_REQUESTED&filter= · POST /deliverables/:id/remind · GET /deliverables/:id/reviews
      @mcp    projects_deliverables_read · portal_approvals_remind
-     @data   ProjectDeliverable (name, status, due_date, customer_visible, submitted_at, accepted_at, document_ids, acceptance_record, milestone_id) · ProjectDeliverableReview (decision, comment, reviewer_user_id, reviewer_membership_id, document_version_ids, decided_at) · ProjectAcceptanceCriterion · DocumentApproval/DocumentApprover (kind PORTAL_USER)
+     @data   ProjectDeliverable (name, status, approval_mode ANY_ONE|ALL, due_date, customer_visible, submitted_at, accepted_at, document_ids, acceptance_record, milestone_id) · ProjectDeliverableApprover (portal_membership_id, required, notified_at, reminded_at) · ProjectDeliverableReview (decision, comment, reviewer_user_id, reviewer_membership_id, document_version_ids, decided_at) · ProjectAcceptanceCriterion · DocumentApproval/DocumentApprover (kind PORTAL_USER)
      @ui     Table with filter bar, Tabs (Deliverables / Document approvals), Popover for the review history, Button for reminders
      @states loading · empty ("Nothing is waiting for a customer") · no results · error · no-access
      @audit  deliverable.reminder_sent, and (from the customer side) deliverable.accepted / changes_requested / rejected with the portal user as actor
      @note   Decision values are DeliverableStatus: ACCEPTED, CHANGES_REQUESTED, REJECTED; each decision is a ProjectDeliverableReview row and sets the deliverable's status. The agency cannot decide for the customer from here.
              Document approvals (17 §10) with DocumentApprover.kind PORTAL_USER are listed in the second tab.
-     @gap    There is no list of who is REQUIRED to approve a deliverable (reviewers/approvers per deliverable): any portal user with portal.deliverables.approve may decide (gaps-07 #4).
      ===================================================================================================================== */
   function approvals() {
     const R = [["Pricing page hero v3", "Acme Rebrand Website", "Acme Corp", "SUBMITTED", "Nov 14", "3 days", 2, "Design handoff"], ["Brand guidelines PDF", "Acme Rebrand Website", "Acme Corp", "READY_FOR_REVIEW", "Nov 18", "1 day", 1, "Launch"], ["Email template pack", "Acme Lifecycle Emails", "Acme Corp", "SUBMITTED", "Nov 20", "6 h", 0, "Templates"], ["Checkout flow prototype", "Northwind Storefront", "Northwind Traders", "SUBMITTED", "Nov 15", "1 day", 0, "UX sign-off"], ["Homepage wireframes", "Acme Rebrand Website", "Acme Corp", "ACCEPTED", "Nov 5", "—", 2, "Design handoff"], ["Logo variants", "Globex Brand Refresh", "Globex", "CHANGES_REQUESTED", "Nov 8", "—", 1, "Brand"], ["Analytics report template", "Initech Data Setup", "Initech", "REJECTED", "Oct 30", "—", 2, "Reporting"]];
@@ -375,7 +372,7 @@
         fbar([["Status", "is any of", "Submitted, Ready for review, Changes requested"], ["Customer visible", "is", "true"], ["Due", "before", "Nov 30"]], btn("Clear", "", "sm ghost") + btn("Save view", "plus", "sm")) +
         tbl(["", "Deliverable", "Project", "Company", "Status", "Due", "Waiting", ">Reviews", "Milestone", ""], R.map((r, i) => [cb(i === 0), ink(r[0]), r[1], r[2], E(r[3], DSC[r[3]]), r[4], r[5], r[6], r[7], more])) + pager("1–7 of 19")) +
       pane("da", 0, tbl(["Document", "Approver (DocumentApprover)", "Kind", "Status", "Requested"], [["Statement of work v2", wh("RO"), E("PORTAL_USER"), E("PENDING", "yellow"), "Nov 9"], ["Content guidelines", wh("DH"), E("PORTAL_USER"), E("PENDING", "yellow"), "Nov 7"]])) + "</div>" +
-      dm(["ProjectDeliverable · status, due_date, customer_visible, submitted_at, accepted_at, acceptance_record, document_ids", "ProjectDeliverableReview · decision, comment, reviewer_user_id, document_version_ids, decided_at", "DocumentApproval · DocumentApprover.kind PORTAL_USER"], ["Required reviewers per deliverable: gaps-07 #4", "Accept on behalf of the customer: permission key missing (gaps-07 #3)"]) + "</div>";
+      dm(["ProjectDeliverable · status, due_date, customer_visible, submitted_at, accepted_at, acceptance_record, document_ids", "ProjectDeliverableReview · decision, comment, reviewer_user_id, document_version_ids, decided_at", "ProjectDeliverableApprover · required, notified_at, reminded_at · ProjectDeliverable.approval_mode", "DocumentApproval · DocumentApprover.kind PORTAL_USER"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -400,16 +397,16 @@
       cd("<b>Review history</b><span class='r muted'>ProjectDeliverableReview</span>", '<div class="tl"><div class="ev"><b>Submitted for review (v3)</b><small>Marco Silva · Nov 8 · SUBMITTED</small></div><div class="ev"><b>Changes requested</b> ' + E("CHANGES_REQUESTED", "yellow") + '<small>Lena Kovac · Nov 6 · reviewed v2 · “Keep the monthly price visible by default.”</small></div><div class="ev"><b>Submitted for review (v2)</b><small>Marco Silva · Nov 4</small></div><div class="ev"><b>Changes requested</b> ' + E("CHANGES_REQUESTED", "yellow") + "<small>Tom Becker · Nov 1 · reviewed v1 · “Contrast on the plan cards is too low.”</small></div></div>") +
       "</div><div>" +
       cd("<b>Details</b>", kv("Status", E("SUBMITTED", "purple")) + kv("Customer visible", sw(1)) + kv("Owner", "Marco Silva") + kv("Submitted", "Nov 8 (3 days ago)") + kv("Due", "Nov 14") + kv("Milestone", "Design handoff · Nov 20") + kv("Proposal reference", "Section 2.3 (03)") + kv("Reviews", "2 · both CHANGES_REQUESTED")) + sp() +
-      cd("<b>Who can decide</b>", ["LK", "TB", "DH"].map((a) => '<div class="rowx">' + av(a) + '<div class="grow"><b>' + P[a][0] + "</b><small>" + (a === "TB" ? "Customer Finance: cannot approve deliverables (no portal.deliverables.approve)" : "portal.deliverables.approve") + "</small></div></div>").join("") + '<div class="sub-note">Derived from roles. No per-deliverable required approvers exist yet (gap #4).</div>') +
+      cd("<b>Who can decide</b>", ["LK", "TB", "DH"].map((a) => '<div class="rowx">' + av(a) + '<div class="grow"><b>' + P[a][0] + "</b><small>" + (a === "TB" ? "Customer Finance: cannot approve deliverables (no portal.deliverables.approve)" : "portal.deliverables.approve") + "</small></div></div>").join("") + '<div class="sub-note">Derived from roles. Required approvers come from ProjectDeliverableApprover (approval_mode ANY_ONE | ALL); with none, any user holding portal.deliverables.approve may decide.</div>') +
       "</div></div>" +
-      dm(["ProjectDeliverable · status, acceptance_record, submitted_at, accepted_at, document_ids, due_date, proposal_reference", "ProjectDeliverableReview · decision, comment, reviewer_user_id, reviewer_membership_id, document_version_ids, decided_at", "ProjectAcceptanceCriterion · requirement, verification_method, status"], ["Required approvers: gaps-07 #4"]) + "</div>";
+      dm(["ProjectDeliverable · status, acceptance_record, submitted_at, accepted_at, document_ids, due_date, proposal_reference", "ProjectDeliverableReview · decision, comment, reviewer_user_id, reviewer_membership_id, document_version_ids, decided_at", "ProjectDeliverableApprover · portal_membership_id, required · ProjectDeliverable.approval_mode (ANY_ONE | ALL)", "ProjectAcceptanceCriterion · requirement, verification_method, status"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      PROFILE CHANGE REQUESTS
      @screen Profile change requests
      @route  /portal/profile-changes?status=&company=&view=
-     @perm   VIEW/DECIDE portal.users.manage* (gap #3 asks for a dedicated portal.profile_changes.review key) · applying the change writes the CRM record, which needs crm.companies.update / crm.contacts.update from the service
+     @perm   VIEW/DECIDE portal.profile_changes.review* (sensitive) · applying the change writes the CRM record, which needs crm.companies.update / crm.contacts.update from the service
      @api    GET /portal/profile-changes?filter= · POST /portal/profile-changes/:id/approve {review_note?} · POST /portal/profile-changes/:id/reject {review_note}
      @mcp    portal_profile_changes_read · portal_profile_changes_review (sensitive)
      @data   CustomerPortalProfileChangeRequest (company_id, contact_id, requested_by_user_id, changes {field:{from,to}}, status, reviewed_by_membership_id, reviewed_at, review_note, created_at) · CrmCompany/CrmContact (target) · CustomerPortalSettings.profile_changes_require_approval
@@ -426,14 +423,14 @@
         [["Acme Corp", "TB", "Nov 10", "Company", [["address.street", "Hauptstr. 12", "Königsallee 88"], ["address.city", "Berlin", "Düsseldorf"], ["vat_number", "DE812345678", "DE298765432"]]], ["Northwind Traders", "PN", "Nov 9", "Contact · Priya Nair", [["phone", "+44 20 7946 0001", "+44 20 7946 0188"], ["job_title", "Operations", "Head of Operations"]]], ["Globex", "DH", "Nov 6", "Company", [["website", "globex.com", "globex.example"]]]].map((r) =>
           cd("<b>" + r[0] + " · " + r[3] + "</b><span class='r muted'>requested by " + P[r[1]][0] + " · " + r[2] + "</span>", tbl(["Field", "Current (CRM)", "Proposed"], r[4].map((c) => [lk(c[0]), '<span class="old">' + c[1] + "</span>", '<span class="new">' + c[2] + "</span>"])) + '<div class="rowx" style="margin-top:8px"><div class="grow"><small>Applies to CrmCompany' + (r[3] !== "Company" ? "/CrmContact" : "") + " when approved</small></div>" + btn("Reject", "x", "sm") + btn("Approve", "check", "sm primary") + "</div>") + sp(8)).join("")) +
       pane("de", 0, tbl(["Company", "Requested by", "Fields", "Status", "Decided by", "Decided", "Note"], [["Acme Corp", wh("LK"), "phone", ES("APPROVED", "green"), "Anna Meyer", "Oct 30", "—"], ["Initech", wh("SV"), "legal_name", ES("REJECTED", "red"), "Sofia Jensen", "Oct 22", "Please send the registration certificate first"], ["Globex", wh("DH"), "email", ES("AUTO_APPLIED", "blue"), "—", "Sep 14", "Applied immediately (policy was off)"]])) + "</div>" +
-      dm(["CustomerPortalProfileChangeRequest · company_id, contact_id, requested_by_user_id, changes, status, reviewed_by_membership_id, reviewed_at, review_note", "PortalProfileChangeStatus · PENDING, APPROVED, REJECTED, AUTO_APPLIED", "CrmCompany · CrmContact (target) · CustomerPortalSettings.profile_changes_require_approval"], ["Dedicated review key portal.profile_changes.review: gaps-07 #3"]) + "</div>";
+      dm(["CustomerPortalProfileChangeRequest · company_id, contact_id, requested_by_user_id, changes, status, reviewed_by_membership_id, reviewed_at, review_note", "PortalProfileChangeStatus · PENDING, APPROVED, REJECTED, AUTO_APPLIED", "CrmCompany · CrmContact (target) · CustomerPortalSettings.profile_changes_require_approval"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      ACCESS & ROLES
      @screen Customer roles and access
      @route  /portal/access?tab=roles|matrix|channels
-     @perm   VIEW portal.users.manage · edit roles/permissions portal.users.manage* (role administration itself is 01's roles.manage; this screen only shows CUSTOMER_PORTAL roles)
+     @perm   VIEW portal.users.read · edit roles/permissions portal.users.manage* (role administration itself is 01's roles.manage; this screen only shows CUSTOMER_PORTAL roles)
      @api    GET /roles?type=CUSTOMER_PORTAL · GET /permissions?module=CUSTOMER_PORTAL · PUT /roles/:id/permissions
      @mcp    roles_read · roles_manage (01)
      @data   Role (slug, name, type CUSTOMER_PORTAL, default_scope CUSTOMER, modules) · RolePermission · Permission (key, module CUSTOMER_PORTAL, is_sensitive) · CustomerPortalMembership (count per role) · CustomerPortalSettings.default_role_slug
@@ -451,7 +448,7 @@
         KEYS.map((k) => "<tr><td>" + lk(k) + (SENS[k] ? " " + E("SENSITIVE", "red") : "") + "</td>" + Object.keys(ROLES).map((s) => "<td>" + (ROLES[s][1].indexOf(k) >= 0 ? cb(1) : cb(0)) + "</td>").join("") + "</tr>").join("") + "</tbody></table></div>" +
         '<div class="sub-note">Customer Owner holds portal.* (all). System roles are locked; copy a role to customize. Rows are the 15 catalog keys.</div>') +
       pane("ch", 0, tbl(["Channel", "Customer-side", "Agency-side admin"], [["UI", "Navigation and buttons hidden by key; 403/404 state", "Screens in this app"], ["REST API", "Same endpoints, Customer Portal identity, scoped to customer_id", "/portal/* + owning module endpoints"], ["MCP", "Portal AI assistant tools, customer-scoped data only", "portal_* tools, sensitive ones human-confirmed"], ["API key / service account", "Not issued to customers", "Explicit portal.* keys, audit actor SERVICE_ACCOUNT"], ["Webhooks & automation", "Events: deliverable.accepted, invoice.paid, request.created…", "Registered with 20 Automation"]])) + "</div>" +
-      dm(["Role · slug, type CUSTOMER_PORTAL, default_scope CUSTOMER, modules · RolePermission · Permission · is_sensitive", "CustomerPortalMembership · role_id (counts) · CustomerPortalSettings · default_role_slug"], ["Per-user project scope: gaps-07 #5"]) + "</div>";
+      dm(["Role · slug, type CUSTOMER_PORTAL, default_scope CUSTOMER, modules · RolePermission · Permission · is_sensitive", "CustomerPortalMembership · role_id (counts) · CustomerPortalSettings · default_role_slug"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -461,24 +458,23 @@
      @perm   portal.settings.manage (domain verification also needs the 01 domain key)
      @api    GET/PUT /portal/settings {custom_domain, branding, welcome_message, support_email} · POST /portal/settings/domain/verify · POST /portal/settings/logo (upload to 17)
      @mcp    portal_settings_manage
-     @data   CustomerPortalSettings (custom_domain, branding Json, welcome_message, support_email, updated_at) · Organization branding (01 §15: logo, colors, favicon, email branding) · OrganizationDomain (domain, status, verification_token, verified_at) · Branch branding (01 §120)
+     @data   CustomerPortalSettings (custom_domain, branding Json, welcome_message, support_email, updated_at) · Organization branding (01 §15: logo, colors, favicon, email branding) · OrganizationDomain (domain, status, verification_token, verified_at, dns_check Json, tls_status PENDING|ISSUED|FAILED, tls_expires_at, last_checked_at) · Branch branding (01 §120)
      @ui     Form with live preview (split layout), Input, color picker (Popover), file Dropzone (uploads to 17), Select, Switch, Badge for domain status, Dialog for DNS instructions
      @states loading · saving · saved (toast) · validation errors inline (contrast ratio below AA is a warning, invalid hostname is an error) · domain pending verification · error · no-access
      @audit  portal.settings_changed (before/after of branding keys, domain)
      @note   branding Json holds overrides ON TOP of organization branding: { logo_document_id, favicon_document_id, primary_token, accent_token, login_background_document_id, hide_powered_by, email_footer }.
              An empty key inherits the organization value. Branch-level branding applies when the customer belongs to a branch (01 §120): shown as inherited. The preview here uses tokens; real colors are stored as values.
-     @gap    SSL/certificate status and DNS check results for the custom domain have no column (OrganizationDomain.status only): gaps-07 #6.
      ===================================================================================================================== */
   function branding() {
     return '<div class="a-page">' + head("Branding & domain", "How the portal looks to customers. Overrides the organization branding.", btn("Reset to organization", "x") + btn("Save changes", "check", "primary")) +
       '<div class="g2" style="grid-template-columns:1.1fr 1fr;align-items:start"><div>' +
       cd("<b>Identity</b>", f("Logo", '<div class="drop">' + I("clip", 16) + " Logo.svg · inherited from organization · <b>Replace</b></div>") + f("Favicon", '<div class="drop">' + I("clip", 16) + " favicon.png · inherited</div>") + f("Primary color", '<div class="rowx" style="padding:0;gap:8px"><span class="swatch" style="background:var(--blue)"></span>' + box("#2F6FED") + "</div>", "Used for buttons and links. Contrast against white is checked (AA).") + f("Accent color", '<div class="rowx" style="padding:0;gap:8px"><span class="swatch" style="background:var(--purple)"></span>' + box("#7B5CE0") + "</div>") + f("Login background", '<div class="drop">' + I("clip", 16) + " Optional image</div>")) + sp() +
       cd("<b>Text</b>", f("Welcome message", '<div class="editor"><div class="ed-bar"><span>B</span><span>I</span><span>Link</span></div><div class="ed-body">Welcome to your project space. Review designs, approve work and see invoices in one place.</div></div>', "CustomerPortalSettings.welcome_message") + f("Support email", box("support@logiqdev.example"), "CustomerPortalSettings.support_email · shown in the footer and on error pages") + f("Email footer", box("Logiqdev GmbH · Königsallee 1, Düsseldorf"))) + sp() +
-      cd("<b>Custom domain</b><span class='r'>" + E("PENDING", "yellow") + "</span>", f("Domain", box("portal.logiqdev.example"), "CustomerPortalSettings.custom_domain · unique across organizations") + '<div class="panel" style="margin-top:0"><table>' + th(["Type", "Name", "Value", "Status"]) + "<tbody><tr><td>CNAME</td><td>portal</td><td>cname.portal.logiqdev.example</td><td>" + E("PENDING", "yellow") + "</td></tr><tr><td>TXT</td><td>_verify.portal</td><td>lq-verify=8f2c…</td><td>" + E("VERIFIED", "green") + '</td></tr></tbody></table></div><div class="rowx">' + btn("Check DNS", "globe", "sm") + '<div class="grow muted">Verification uses OrganizationDomain. Certificate status is not tracked (gap #6).</div></div>') + sp() +
+      cd("<b>Custom domain</b><span class='r'>" + E("PENDING", "yellow") + "</span>", f("Domain", box("portal.logiqdev.example"), "CustomerPortalSettings.custom_domain · unique across organizations") + '<div class="panel" style="margin-top:0"><table>' + th(["Type", "Name", "Value", "Status"]) + "<tbody><tr><td>CNAME</td><td>portal</td><td>cname.portal.logiqdev.example</td><td>" + E("PENDING", "yellow") + "</td></tr><tr><td>TXT</td><td>_verify.portal</td><td>lq-verify=8f2c…</td><td>" + E("VERIFIED", "green") + '</td></tr></tbody></table></div><div class="rowx">' + btn("Check DNS", "globe", "sm") + '<div class="grow muted">Verification uses OrganizationDomain. Certificate and DNS status: OrganizationDomain.tls_status, tls_expires_at, dns_check, last_checked_at.</div></div>') + sp() +
       '<div class="rowx"><div class="grow"><b>Hide “Powered by Logiqdev”</b><small>White-label (Phase 2)</small></div>' + sw(0) + "</div>" +
       "</div><div>" + '<div class="cpf-mini"><div class="cpf-mini-h">Preview · customer login</div><div class="cpf-mini-b"><div class="cpf-brand"><span class="cpf-logo">L</span><b>Logiqdev Client Portal</b></div><h3>Welcome back</h3><p class="muted">Welcome to your project space. Review designs, approve work and see invoices in one place.</p><div class="input-fake">Email</div><div class="input-fake" style="margin-top:6px">Password</div><button class="btn primary" style="margin-top:10px;width:100%">Sign in</button><div class="sub-note" style="text-align:center">Powered by Logiqdev</div></div></div>' + sp() +
       callout("sparkles", "Branch branding (01 §120) wins when a customer belongs to a branch: Düsseldorf branch customers see the branch logo. Shown as inherited here.") + "</div></div>" +
-      dm(["CustomerPortalSettings · custom_domain, branding (Json), welcome_message, support_email", "OrganizationDomain · domain, status, verification_token, verified_at · Organization branding (01 §15)"], ["Certificate / DNS check status: gaps-07 #6"]) + "</div>";
+      dm(["CustomerPortalSettings · custom_domain, branding (Json), welcome_message, support_email", "OrganizationDomain · domain, status, verification_token, verified_at, dns_check, tls_status, tls_expires_at, last_checked_at · Organization branding (01 §15)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -501,17 +497,17 @@
       '<div class="tabset">' + tabs([["ge", "General"], ["fe", "Features"], ["se", "Security"], ["wi", "Widget"]], "ge") +
       pane("ge", 1, '<div class="g2">' + cd("<b>General</b>", '<div class="rowx"><div class="grow"><b>Portal enabled</b><small>Off blocks every customer sign-in. Agency data is untouched.</small></div>' + sw(1) + "</div>" + f("Default role for invited users", sel("Customer Viewer", "key"), "default_role_slug. A new invitation preselects it.") + '<div class="rowx"><div class="grow"><b>Profile changes need agency approval</b><small>profile_changes_require_approval. Off applies edits to the CRM immediately (AUTO_APPLIED).</small></div>' + sw(1) + "</div>") +
         cd("<b>Customer-facing contact</b>", f("Support email", box("support@logiqdev.example")) + f("Welcome message", box("Welcome to your project space…"), "Edited with the branding on the Branding screen.")) + "</div>") +
-      pane("fe", 0, tbl(["Feature (key)", "Backed by", "Enabled"], FE.map((r) => [tok(r[0]) + " " + r[1], r[2], sw(r[3])])) + '<div class="sub-note">CustomerPortalSettings.features. Per-client overrides are not supported yet (gap #1).</div>') +
+      pane("fe", 0, tbl(["Feature (key)", "Backed by", "Enabled"], FE.map((r) => [tok(r[0]) + " " + r[1], r[2], sw(r[3])])) + '<div class="sub-note">CustomerPortalSettings.features. Per-client overrides: CustomerPortalClientSettings.features (null = inherit).</div>') +
       pane("se", 0, '<div class="g2">' + cd("<b>Authentication</b><span class='r muted'>owned by 01 §79</span>", kv("Methods", "Email + password, magic link, SSO (OIDC)") + kv("MFA", "Required for Owner / Administrator / Finance / Legal") + kv("Session length", "12 hours · 30 days with remember me") + kv("Allowed email domains per company", "Optional (CRM company domains)") + '<div class="sub-note">Configured in Administration, shown here for reference.</div>') + cd("<b>Sensitive actions</b>", ["Accept proposal (portal.proposals.accept)", "Sign contract (portal.contracts.sign)", "Pay invoice (portal.invoices.pay)", "Manage subscription (portal.subscriptions.manage)", "Manage portal users (portal.users.manage)"].map((t) => '<div class="rowx"><div class="grow">' + t + "</div>" + E("MFA RE-PROMPT") + "</div>").join(""), 1) + "</div>") +
       pane("wi", 0, '<div class="g2">' + cd("<b>Embeddable widget</b><span class='r muted'>widget_settings · 13 §5</span>", '<div class="rowx"><div class="grow"><b>Support chat</b></div>' + sw(1) + '</div><div class="rowx"><div class="grow"><b>Request form</b></div>' + sw(1) + "</div>" + f("Allowed origins", box("https://acme.example, https://app.globex.example")) + f("Position", sel("Bottom right", "panel"))) + cd("<b>Install snippet</b>", '<div class="codeblk">&lt;script src="https://portal.logiqdev.example/widget.js" data-org="…" async&gt;&lt;/script&gt;</div>' + btn("Copy", "clip", "sm")) + "</div>") + "</div>" +
-      dm(["CustomerPortalSettings · enabled, features, default_role_slug, profile_changes_require_approval, widget_settings, welcome_message, support_email"], ["Per-client overrides: gaps-07 #1"]) + "</div>";
+      dm(["CustomerPortalSettings · enabled, features, default_role_slug, profile_changes_require_approval, widget_settings, welcome_message, support_email", "CustomerPortalClientSettings · features, default_role_slug, welcome_message, branding (per-client overrides; null = inherit)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      ACTIVITY
      @screen Portal activity
      @route  /portal/activity?actor=&company=&event=&from=&to=&view=
-     @perm   VIEW audit.events.read (01) restricted to portal events · export needs the audit export key
+     @perm   VIEW portal.activity.read (portal events only; full audit needs organizations.audit.read*) · export needs the audit export key
      @api    GET /audit-events?actor_type=USER&event_type=portal.*,deliverable.*,invoice.*&membership_scope=customer&filter=
      @mcp    audit_events_read
      @data   AuditEvent (event_type, actor_user_id, actor_type, resource_type, resource_id, metadata, ip_address, user_agent, created_at) · CustomerPortalMembership (to resolve the company)
@@ -526,13 +522,13 @@
       '<div class="toolbar">' + search("Search event, resource, actor") + sel("Table", "grid") + sel("Sort: Newest ↓", "sort") + sel("Views: Approvals and payments", "star") + "</div>" +
       fbar([["Event", "is any of", "login, approvals, signatures, payments"], ["Company", "is any of", "Any"], ["Date", "between", "Oct 12 – Nov 11"]], btn("Clear", "", "sm ghost") + btn("Save view", "plus", "sm")) +
       tbl(["When", "Actor", "Company", "Event (event_type)", "Resource", "Detail", "IP"], R.map((r) => [r[0], wh(r[1]), r[2], lk(r[3]), r[4], r[5], r[6]])) + pager("1–7 of 412") +
-      dm(["AuditEvent · event_type, actor_type, actor_user_id, resource_type, resource_id, metadata, ip_address, user_agent, created_at", "CustomerPortalMembership (company resolution)"], ["Read key portal.activity.read: gaps-07 #3"]) + "</div>";
+      dm(["AuditEvent · event_type, actor_type, actor_user_id, resource_type, resource_id, metadata, ip_address, user_agent, created_at", "CustomerPortalMembership (company resolution)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      ===== CUSTOMER-FACING SHELL (PREVIEW AS CUSTOMER) =====
      Shared notes for every cp-* screen:
-     @perm   the previewed user's role (here Customer Owner, customer-owner = portal.*). The agency needs portal.settings.manage to open the preview. Nav items are hidden when the role lacks the key.
+     @perm   the previewed user's role (here Customer Owner, customer-owner = portal.*). The agency needs portal.preview.use to open the preview (read-only, every open is audited). Nav items are hidden when the role lacks the key.
      @api    the same REST API as the internal app, with the Customer Portal identity and scope customer_id; lists are filtered server-side to customer-visible records only.
      @mcp    portal AI assistant tools (phase 2) use the same permission layer, customer-scoped.
      @audit  login, approvals, signatures, payments, sensitive downloads, user management by the customer user
@@ -617,7 +613,7 @@
           f("Your decision", '<div class="rowx" style="gap:8px;padding:0"><span class="seg on">Approve</span><span class="seg">Request changes</span><span class="seg">Reject</span></div>') + f("Comment", '<div class="editor"><div class="ed-bar"><span>B</span><span>I</span></div><div class="ed-body">Required when you request changes or reject.</div></div>') +
           '<div class="rowx"><div class="grow muted">You previously asked for changes on v1 and v2.</div>' + btn("Submit decision", "check", "primary") + "</div>") + "</div></div>") +
       pane("hi", 0, tbl(["Deliverable", "Your decision", "By", "Date", "Comment"], [["Homepage wireframes", E("ACCEPTED", "green"), wh("LK"), "Nov 5", "Looks good"], ["Pricing page hero v2", E("CHANGES_REQUESTED", "yellow"), wh("LK"), "Nov 6", "Keep the monthly price visible"], ["Logo variants", E("REJECTED", "red"), wh("TB"), "Oct 30", "Off brand"]])) + "</div>" +
-      dm(["ProjectDeliverable · ProjectDeliverableReview · ProjectAcceptanceCriterion", "DocumentApproval · DocumentApprover.portal_user_id"], ["Required reviewers: gaps-07 #4"]));
+      dm(["ProjectDeliverable · ProjectDeliverableReview · ProjectAcceptanceCriterion", "ProjectDeliverableApprover · required (who must approve) · ProjectDeliverable.approval_mode", "DocumentApproval · DocumentApprover.portal_user_id"], []));
   }
 
   /* @screen Customer requests

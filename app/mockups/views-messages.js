@@ -10,7 +10,7 @@
    MessageDeliveryStatus (SCHEDULED, SENDING, SENT, DELIVERED, FAILED, RETRYING, DELETED), MessageMentionKind, MessageAttachmentKind, MessagingPresenceState, MessageReminderStatus, MessagingRetentionScope/Action,
    MessagingExportStatus/Format, MessageReportStatus, ChannelRestrictionKind (MUTED, BANNED), MessagingIntegrationKind/Status, ChannelCallKind (VOICE, VIDEO, HUDDLE), ChannelCallStatus, ChannelTemplateTrigger.
    Permission keys (catalog, 15): messaging.channels.read/create/manage · messaging.messages.read/post/pin/delete_any* · messaging.channel_members.manage · messaging.external_users.manage* · messaging.users.manage ·
-   messaging.settings.manage* · messaging.retention.manage* · messaging.integrations.manage* · messaging.audit.read* · messaging.data.export*  (* = sensitive). Missing keys are listed in gaps-12.md and marked @gap below.
+   messaging.settings.manage* · messaging.retention.manage* · messaging.integrations.manage* · messaging.audit.read* · messaging.data.export*  (* = sensitive). Also: messaging.calls.start · messaging.messages.admin_read* · messaging.moderation.manage · messaging.templates.manage · messaging.analytics.read.
    Comment tags (legend in README.md): @screen @route @perm @api @mcp @data @ui @states @audit @note @gap. Every screen ends with a "Data model" footer (REVIEW-ONLY, do not ship).
 
    RULES THAT APPLY TO EVERY SCREEN HERE:
@@ -223,7 +223,7 @@
      @mcp    messaging_messages_post (posting policy enforced server-side)
      @data   Channel (kind ANNOUNCEMENT, posting_policy ADMINS_ONLY, require_acknowledgement) · Message (is_announcement, requires_acknowledgement) · MessageAcknowledgement (membership_id, acknowledged_at) · ChannelPin
      @ui     Alert (posting restriction), Progress bar (acknowledged of members), Sheet listing who has not acknowledged, Button
-     @states loading · empty · no-access · composer disabled for non-posters with "Request to post" (creates a notification to the owner)
+     @states loading · empty · no-access · composer disabled for non-posters with "Request to post" (creates a ChannelAccessRequest, kind POST, decided by channel admins with messaging.channel_members.manage)
      @audit  announcement posted, acknowledgement reminders sent
      @note   The acknowledgement bar counts MessageAcknowledgement rows against active members at posting time. Non-acknowledgers get a reminder through notifications (14); the list of who has not acknowledged is for
              admins only.
@@ -268,7 +268,7 @@
       '<div class="mg-ih">Rules for this channel</div><div class="mg-ip">External participants see only EXTERNAL messages, cannot browse other channels or the member directory, cannot see presence of employees, files are served by signed links.</div>' + btn("Manage external access", "shield", "sm") + "</div>";
     return channel({ name: "acme-corp", kind: "CUSTOMER", shared: "Acme Corp", topic: "Shared space with Acme Corp · first response target 2 h in business hours", avs: ["AM", "KL", "LK", "DW"], count: 7, tabs: ["Messages", "Files · 9", "Pins · 1", "Tickets · 1", "Approvals · 1"], pins: [1, "Welcome and ways of working"], msgs, info,
       banner: I("globe", 14) + " <b>External participants can read this channel</b> · they see EXTERNAL messages only · 2 guests: Lena Kovac, Dana Whitfield · priority customer messages notify the account team", bannerCls: "ext",
-      foot: dm(["Channel · kind CUSTOMER, company_id, external_access_enabled", "ChannelMember · external_user_id, role, guest_kind, access_expires_at, external_label · Message · visibility", "ChannelNotificationSetting · priority_customer_messages · Ticket · channel_id (13)"], ["Ticket from message: no Ticket.source_message_id: gaps-12.md"]),
+      foot: dm(["Channel · kind CUSTOMER, company_id, external_access_enabled", "ChannelMember · external_user_id, role, guest_kind, access_expires_at, external_label · Message · visibility", "ChannelNotificationSetting · priority_customer_messages · Ticket · channel_id, source_message_id (13)"], []),
       comp: composer("Message #acme-corp", { vis: 1 }) });
   }
 
@@ -277,7 +277,7 @@
      @screen Messages · Direct message with Marco Silva
      @route  /messages/dm/:channelId (Channel.kind DIRECT, dm_key unique per pair) · new DM: /messages/dm/new?to=<membershipId>
      @perm   messaging.channels.read + messaging.messages.read/post (membership of the DM) · DMs have no moderation by default; admin access to private messages only when MessagingSettings.admin_private_message_access_enabled
-             and the caller holds a dedicated key (@gap: messaging.messages.admin_read*, see gaps-12.md)
+             and the caller holds a dedicated key (messaging.messages.admin_read*)
      @api    POST /channels {kind: DIRECT, member_ids:[x]} (idempotent by dm_key) · GET/POST messages as in a channel · POST /messages/:id/remind {remind_at, preset} · GET /presence?ids=
      @mcp    messaging_messages_post · messaging_messages_read (DMs only for the calling identity)
      @data   Channel (kind DIRECT, dm_key, default_notification_level) · ChannelMember · Message (kind USER / VOICE) · MessageAttachment (VOICE_MESSAGE, duration_seconds) · MessageReadReceipt (read_receipts_direct) ·
@@ -405,7 +405,7 @@
       row("SJ", "Sofia Jensen", "CHANNEL", '<span class="mention">@channel</span> staging is down for 10 minutes.', "# dev", "Nov 9", 0) + "</div>" +
       '<div class="sub-note" style="margin:10px 0">Keyword alerts (MessagingKeyword): “invoice”, “VAT”. A message that contains a keyword you set appears here and notifies according to ChannelNotificationSetting.notify_keywords.</div>' +
       cd("<b>Reactions on your messages</b><span class='r muted'>MessageReaction</span>", [["🔥", "Marco Silva and 1 other", "“Updated the hero…”", "# acme-rebrand", "9:20 AM"], ["👍", "Lena Kovac", "“Absolutely. I’ll book it…”", "# acme-rebrand", "Yesterday"], ["✅", "Kim Lund", "“Approved just now.”", "DM", "9:12 AM"]].map((r) => '<div class="rowx"><span class="mg-emo">' + r[0] + '</span><div class="grow"><b>' + r[1] + " reacted</b><small>" + r[2] + " in " + r[3] + "</small></div><span class=\"muted\">" + r[4] + "</span></div>").join(""), 1) +
-      dm(["MessageMention · kind, membership_id, team_id, role_id, mentioned_channel_id", "MessageReaction · emoji, membership_id", "MessagingKeyword · keyword, match_whole_word, case_sensitive, is_enabled", "NOTIFICATION (14) · read state"], ["Read/unread state of a single mention is not stored in module 12 (MessageMention has no read_at): use the Notification row (14) or add MessageMention.read_at. See gaps-12.md"]));
+      dm(["MessageMention · kind, membership_id, team_id, role_id, mentioned_channel_id", "MessageReaction · emoji, membership_id", "MessagingKeyword · keyword, match_whole_word, case_sensitive, is_enabled", "MessageMention.read_at · read / unread state of the Mentions inbox (index membership_id, read_at)", "NOTIFICATION (14) · delivery of the mention notification"], []));
   }
 
   /* =====================================================================================================================
@@ -509,7 +509,7 @@
       cd("<b>Linked records</b><span class='r muted'>TaskLink · MessageRecordShare</span>", '<div class="rowx"><div class="grow"><b>WEB-139 Stripe webhook retries failing</b><small>Task · In review · linked by Anna Meyer</small></div>' + E("TASK") + '</div><div class="rowx"><div class="grow muted">No ticket yet</div>' + btn("Create ticket", "support", "sm") + "</div>" + '<div class="rowx"><div class="grow muted">Not converted to a task from this thread</div>' + btn("Convert to task", "tasks", "sm") + "</div>", 1) +
       gap(cd("<b>Followers</b><span class='r muted'>MessageThreadFollower · 4</span>", [["SJ", "author"], ["JK", "replied"], ["AM", "replied"], ["KL", "mentioned · muted"]].map((r) => '<div class="rowx">' + wh(r[0], r[1]) + "<span style=\"flex:1\"></span>" + more + "</div>").join(""), 1)) +
       gap(cd("<b>Participants' files</b>", '<div class="rowx">' + I("file", 16) + '<div class="grow"><b>repro.har</b><small>Other · 420 KB</small></div></div>', 1)) + "</div></div>" +
-      dm(["Message · parent_message_id, reply_count, last_reply_at, quoted_message_id", "MessageThreadFollower · root_message_id, membership_id, muted, source", "TaskLink · entity_type MESSAGE (06) · MessageRecordShare · Ticket · channel_id (13)"], ["Task has no typed source_message_id; the link is a generic TaskLink row with entity_type MESSAGE (no schema gap, but a decision for the Tasks module). Ticket has channel_id only: no Ticket.source_message_id (see gaps-12.md)"]));
+      dm(["Message · parent_message_id, reply_count, last_reply_at, quoted_message_id", "MessageThreadFollower · root_message_id, membership_id, muted, source", "TaskLink · entity_type MESSAGE (06; the generic link is the Task back-reference, no typed column) · MessageRecordShare · Ticket · channel_id, source_message_id, source CHANNEL_MESSAGE (13)"], []));
   }
 
   /* =====================================================================================================================
@@ -527,7 +527,7 @@
      @states each dialog: validation errors inline · saving · saved (toast with link to the created record and Undo where reversible) · permission error (control disabled with the reason)
      @audit  message edited (version), deleted (who, reason), converted (source message to Task/Ticket), forwarded, reported
      @note   Convert to task prefills the title from the first line and the description with a permalink and a quote; the new task receives a TaskLink back to the message and the thread gets a record card. Create ticket
-             pre-fills requester from the external author in client channels (Ticket.requester_user_id) and sets Ticket.channel_id; TicketSource has no CHAT_MESSAGE value (MANUAL is used, see @gap in gaps-12.md).
+             pre-fills requester from the external author in client channels (Ticket.requester_user_id) and sets Ticket.channel_id; the ticket gets Ticket.source_message_id (the message) and source CHANNEL_MESSAGE; the Task back-reference is the generic TaskLink (entity_type MESSAGE).
      ===================================================================================================================== */
   function actions() {
     const dlg = (ic, t, sub, body, foot) => '<div class="mg-dlg"><div class="mg-dlg-h">' + I(ic, 16) + "<div><b>" + t + "</b><small>" + sub + "</small></div></div><div class=\"mg-dlg-b\">" + body + '</div><div class="mg-dlg-f">' + foot + "</div></div>";
@@ -540,16 +540,16 @@
       dlg("support", "Create ticket", "Opens a Ticket (13) with this channel as context", src + f("Subject", box("Pricing table approval in the portal")) + '<div class="g2" style="gap:10px">' + f("Inbox", sel("Client support", "inbox")) + f("Priority", sel("Medium")) + f("Type", sel("Request")) + f("Requester", sel("Lena Kovac · Acme Corp", "users")) + "</div>" + '<div class="rowx" style="padding:4px 0">' + cb(1) + '<div class="grow">Copy the message and attachments to the ticket</div></div>', btn("Cancel") + btn("Create ticket", "plus", "primary")) +
       dlg("link", "Forward message", "Needs post permission in the target", src + f("To", sel("Search channels and people…", "search")) + f("Add a note", box("Optional")) + '<div class="sub-note">Forwarding from a client channel into an internal one keeps the External flag off; into another client channel is blocked unless an admin allows it.</div>', btn("Cancel") + btn("Forward", "", "primary")) +
       dlg("clock", "Remind me", "MessageReminder (preset or custom)", '<div class="mg-presets">' + ["In 20 minutes", "In 1 hour", "In 3 hours", "Tomorrow 9:00", "Next week", "Custom…"].map((t, i) => '<span class="seg' + (i === 3 ? " on" : "") + '">' + t + "</span>").join("") + "</div>" + f("Note", box("Optional note to yourself")), btn("Cancel") + btn("Set reminder", "", "primary")) +
-      dlg("flag", "Report message", "Goes to the moderation queue (MessageReport)", src + f("Reason", sel("Spam or abuse")) + f("Details", box("What is wrong with this message?")) + '<div class="sub-note">The author is not notified. Admins with messaging.channels.manage review it in Moderation.</div>', btn("Cancel") + btn("Send report", "", "primary")) +
+      dlg("flag", "Report message", "Goes to the moderation queue (MessageReport)", src + f("Reason", sel("Spam or abuse")) + f("Details", box("What is wrong with this message?")) + '<div class="sub-note">The author is not notified. Admins with messaging.moderation.manage review it in Moderation.</div>', btn("Cancel") + btn("Send report", "", "primary")) +
       dlg("send", "Schedule message", "Message.status SCHEDULED · scheduled_for", f("Send at", '<div class="rowx" style="gap:8px;padding:0">' + sel("Nov 12", "calendar") + sel("9:00 AM", "clock") + "</div>", "Your timezone (Europe/Lisbon). Recipients see it only when it is sent.") + '<div class="mg-presets">' + ["Tomorrow 9:00", "Monday 9:00", "In 1 hour"].map((t) => '<span class="seg">' + t + "</span>").join("") + "</div>", btn("Cancel") + btn("Schedule", "", "primary")) +
-      "</div>" + dm(["MessageVersion · version, body, edited_by_user_id", "Message · is_edited, deleted_at, delete_reason, scheduled_for, forwarded_from_message_id", "TaskLink (06) · Ticket (13) · MessageRecordShare · MessageReminder · MessageReport"], ["Ticket.source has no value for a chat message and Ticket has no source_message_id: see gaps-12.md"]));
+      "</div>" + dm(["MessageVersion · version, body, edited_by_user_id", "Message · is_edited, deleted_at, delete_reason, scheduled_for, forwarded_from_message_id", "TaskLink (06) · Ticket (13) · source_message_id, source CHANNEL_MESSAGE · MessageRecordShare · MessageReminder · MessageReport"], []));
   }
 
   /* =====================================================================================================================
      HUDDLES, VOICE AND VIDEO CALLS (spec §44)
      @screen Messages · Huddles & calls
      @route  /messages/calls · a live call opens in a dock above the channel (/messages/c/:id?call=:callId)
-     @perm   start/join: channel member + MessagingSettings.calls_enabled (@gap: messaging.calls.start, see gaps-12.md) · recording access follows documents.documents.read on the recording document
+     @perm   start/join: channel member + MessagingSettings.calls_enabled + messaging.calls.start · recording access follows documents.documents.read on the recording document
      @api    POST /channels/:id/calls {kind: HUDDLE|VOICE|VIDEO, title?} · POST /calls/:id/join|leave|end · GET /channels/:id/calls · realtime call.state; provider tokens via MessagingSettings.call_provider (not a BYOK provider of the 5: Meet/Zoom handled by 19 calendar links)
      @mcp    messaging_calls_start (planned, same service)
      @data   ChannelCall (kind, status, started_by_membership_id, provider, meeting_url, calendar_event_id, message_id, screen_sharing_used, started_at, ended_at, duration_seconds, recording_document_id, participant_count) ·
@@ -569,14 +569,14 @@
       tbl(["Call", "Channel", "Started by", "Kind", "Status", ">Duration", ">People", "Recording", "Calendar", ""], [
         ["Hero review", "# acme-rebrand", wh("MS", ""), E("HUDDLE"), E("IN_PROGRESS", "green"), "24 min", "4", "—", "—", more], ["Weekly standup", "# dev", wh("JK", ""), E("VIDEO"), E("ENDED"), "18 min", "9", "standup-nov-11.mp4", "Standup · Nov 11", more],
         ["Client call: homepage notes", "# acme-rebrand", wh("AM", ""), E("VIDEO"), E("ENDED"), "42 min", "5", "call-acme-nov-10.mp4", "Calendar event " + muted("(19)"), more], ["Ring Kim", "Direct message", wh("MS", ""), E("VOICE"), E("MISSED", "yellow"), "0 min", "1", "—", "—", more], ["Cutover sync", "Group DM", wh("JK", ""), E("HUDDLE"), E("FAILED", "red"), "—", "1", "—", "—", more]]) +
-      dm(["ChannelCall · kind, status, started_by_membership_id, provider, meeting_url, calendar_event_id, message_id, screen_sharing_used, started_at, ended_at, duration_seconds, recording_document_id, participant_count", "ChannelCallParticipant · membership_id, external_user_id, joined_at, left_at, state", "MessagingSettings · calls_enabled, call_provider"], ["Permission key to start/record calls is missing (messaging.calls.start): see gaps-12.md"]));
+      dm(["ChannelCall · kind, status, started_by_membership_id, provider, meeting_url, calendar_event_id, message_id, screen_sharing_used, started_at, ended_at, duration_seconds, recording_document_id, participant_count", "ChannelCallParticipant · membership_id, external_user_id, joined_at, left_at, state", "MessagingSettings · calls_enabled, call_provider"], []));
   }
 
   /* =====================================================================================================================
      CHANNEL DIRECTORY (spec §6, §7, §8)
      @screen Messages · Browse channels (directory with filters, saved views and bulk actions)
      @route  /messages/directory?kind=&visibility=&status=&member=&owner=&project=&company=&view=
-     @perm   VIEW messaging.channels.read (PUBLIC + DISCOVERABLE for everyone; PRIVATE/HIDDEN only members or messaging.channels.manage) · join: self-join of discoverable public channels · create: messaging.channels.create ·
+     @perm   VIEW messaging.channels.read (PUBLIC + DISCOVERABLE for everyone; PRIVATE/HIDDEN only members or messaging.channels.manage) · join: self-join of discoverable public channels; PRIVATE / HIDDEN: "Request to join" creates a ChannelAccessRequest (kind JOIN, status PENDING | APPROVED | DENIED | CANCELLED) decided with messaging.channel_members.manage · create: messaging.channels.create ·
              bulk archive/owner/retention: messaging.channels.manage · retention policy picker needs messaging.retention.manage*
      @api    GET /channels?kind=&visibility=&status=&member=&owner=&project_id=&company_id=&posting_policy=&external=&q=&sort=&cursor= · POST /channels/:id/join · POST /channels/bulk {channel_ids[], action: archive|owner|retention, ...}
      @mcp    messaging_channels_read · messaging_channels_manage (bulk)
@@ -608,7 +608,7 @@
      @screen Messages · Create channel
      @route  /messages/channels/new?kind=&project=&company=&template=&from=<entityType>:<id> · a quick-create dialog (name, kind, members) uses the same fields
      @perm   messaging.channels.create · visibility HIDDEN/PRIVATE and posting policy: same key · adding members messaging.channel_members.manage · enabling external access / inviting guests messaging.external_users.manage* ·
-             retention policy picker messaging.retention.manage* · linking a project/customer needs projects.projects.read / crm.companies.read on it · templates messaging.channels.manage
+             retention policy picker messaging.retention.manage* · linking a project/customer needs projects.projects.read / crm.companies.read on it · templates messaging.templates.manage
      @api    POST /channels {kind, name, slug, display_name, description, purpose, topic, icon, color, visibility, posting_policy, team_id?, branch_id?, project_id?, company_id?, entity_type?, entity_id?, external_access_enabled,
              read_receipts_enabled?, default_notification_level?, auto_join, require_acknowledgement, is_confidential, retention_policy_id?, template_id?, expires_at?, auto_archive_at?, members[{membership_id|team_id|role_id, role, source}],
              guests[{email, name, guest_kind, access_expires_at, external_label, role}]} · GET /channels/check-name?slug=
@@ -621,7 +621,7 @@
      @note   DIRECT and GROUP_DIRECT are not created here: they are created by the New message flow (idempotent by dm_key). Choosing PROJECT or CUSTOMER requires a link and defaults the members to the project team / the
              account team (source PROJECT / CUSTOMER). PROJECT/CUSTOMER with external access invites guests: each guest gets guest_kind and an optional expiry. A template (ChannelTemplate) fills defaults and pins but never overrides
              what the user typed. Naming rules (MessagingSettings.channel_naming_rules, spec §94) are validated live: e.g. project channels must start with “proj-”.
-     @gap    Secure guest invitations (token, status, resend) have no table: ChannelMember only holds the accepted person. See gaps-12.md (ChannelInvitation).
+     @data   Guest invitations: ChannelInvitation (email, name, role, guest_kind, external_label, access_expires_at, token_hash, status PENDING | ACCEPTED | EXPIRED | REVOKED, invited_by_user_id, expires_at, accepted_at, external_user_id); acceptance creates the ChannelMember. Needs messaging.external_users.manage*.
      ===================================================================================================================== */
   function create() {
     const kinds = [["PUBLIC", "hash", "Everyone in the organization can find and join."], ["PRIVATE", "lock", "Invite only. Not visible to others."], ["PROJECT", "folder", "Linked to a project. Members follow the project team."], ["CUSTOMER", "globe", "Linked to a customer. Guests can be invited."], ["ANNOUNCEMENT", "flag", "Few post, many read. Acknowledgements supported."], ["RECORD", "link", "Tied to one record: a deal, invoice, ticket."]];
@@ -645,7 +645,7 @@
       gap(cd("<b>Template & lifecycle</b>", f("Template", sel("New project channel", "layers"), "ChannelTemplate · trigger PROJECT_CREATED") + f("Retention policy", sel("Organization default · 3 years", "clock")) + f("Auto-archive on", sel("When the project completes + 30 days"), "Channel.auto_archive_at is set from the rule") + f("Expires on", sel("No expiry", "calendar"), "Channel.expires_at (temporary channels)"))) +
       gap(cd("<b>Summary</b>", '<div class="mg-sum">' + chName("proj-acme-website-launch", "PROJECT") + "<small>Project channel · linked to Acme Rebrand Website · Acme Corp</small></div>" + kv("Members", "3 people + Web team (9) + 3 PMs") + kv("Guests", "2, expire Dec 31") + kv("Pinned from template", "Project overview, dashboard link") + kv("Retention", "3 years, then archive") + callout("shield", "External access is on. Staff will see an External / Internal switch in the composer.", "warn"))) +
       "</div></div>" +
-      dm(["Channel · kind, name, slug, display_name, description, purpose, topic, icon, color, visibility, posting_policy, team_id, branch_id, project_id, company_id, entity_type, entity_id, external_access_enabled, read_receipts_enabled, default_notification_level, auto_join, require_acknowledgement, is_confidential, retention_policy_id, template_id, expires_at, auto_archive_at", "ChannelMember · role, source, guest_kind, access_expires_at, external_label, is_required, invited_by_user_id", "ChannelTemplate · MessagingRetentionPolicy · MessagingSettings.channel_naming_rules"], ["Guest invitation (token, status, resend, accepted_at) has no table: gaps-12.md"]));
+      dm(["Channel · kind, name, slug, display_name, description, purpose, topic, icon, color, visibility, posting_policy, team_id, branch_id, project_id, company_id, entity_type, entity_id, external_access_enabled, read_receipts_enabled, default_notification_level, auto_join, require_acknowledgement, is_confidential, retention_policy_id, template_id, expires_at, auto_archive_at", "ChannelMember · role, source, guest_kind, access_expires_at, external_label, is_required, invited_by_user_id", "ChannelTemplate · MessagingRetentionPolicy · MessagingSettings.channel_naming_rules", "ChannelInvitation · channel_id, email, role, guest_kind, access_expires_at, status, expires_at"], []));
   }
 
   /* =====================================================================================================================
@@ -719,7 +719,7 @@
      CHANNEL TEMPLATES (spec §93-95)
      @screen Messages · Channel templates (list + editor)
      @route  /messages/templates · /messages/templates/new · /messages/templates/:id
-     @perm   VIEW messaging.channels.read · create/edit/delete messaging.channels.manage (@gap: a dedicated messaging.templates.manage is suggested in gaps-12.md) · retention policy field needs messaging.retention.manage*
+     @perm   VIEW messaging.channels.read · create/edit/delete messaging.templates.manage · retention policy field needs messaging.retention.manage*
      @api    GET|POST|PATCH|DELETE /channel-templates · POST /channel-templates/:id/apply {project_id | company_id}
      @mcp    messaging_channel_templates_manage (planned)
      @data   ChannelTemplate (name, description, channel_kind, trigger MANUAL | PROJECT_CREATED | CUSTOMER_CREATED, name_pattern, default_description, default_purpose, default_topic, posting_policy, visibility, external_access, member_rules,
@@ -740,14 +740,14 @@
         f("Pinned content", '<div class="rowx" style="gap:6px;padding:0;flex-wrap:wrap">' + tok("Project overview card") + tok("Link: project dashboard") + tok("Welcome message") + btn("Add", "plus", "sm") + "</div>", "pinned_content: posted and pinned on creation") +
         f("Discussion sections", '<div class="rowx" style="gap:6px;padding:0;flex-wrap:wrap">' + tok("Design") + tok("Development") + tok("Approvals") + btn("Add", "plus", "sm") + "</div>", "discussion_sections: starter threads") + f("Archive rule", sel("30 days after the project completes"), "archive_rule") + f("Retention policy", sel("Organization default · 3 years", "clock")) +
         '<div class="rowx"><div class="grow"><b>External access</b><small>ChannelTemplate.external_access</small></div>' + sw(0) + "</div>") + "</div></div>" +
-      dm(["ChannelTemplate · name, channel_kind, trigger, name_pattern, default_description, default_purpose, default_topic, posting_policy, visibility, external_access, member_rules, pinned_content, discussion_sections, archive_rule, retention_policy_id, is_active", "Channel · template_id"], ["No dedicated permission key for templates (messaging.templates.manage): gaps-12.md"]));
+      dm(["ChannelTemplate · name, channel_kind, trigger, name_pattern, default_description, default_purpose, default_topic, posting_policy, visibility, external_access, member_rules, pinned_content, discussion_sections, archive_rule, retention_policy_id, is_active", "Channel · template_id"], []));
   }
 
   /* =====================================================================================================================
      ADMIN DASHBOARD (spec §66-67, §104)
      @screen Messages · Admin overview (users, channels, guests, storage, usage, moderation)
      @route  /messages/admin?range=7d|30d|90d&branch=&team=
-     @perm   usage numbers messaging.settings.manage* or messaging.users.manage (@gap: messaging.analytics.read suggested) · moderation snapshot messaging.channels.manage · audit link messaging.audit.read* · data export messaging.data.export*
+     @perm   usage numbers messaging.settings.manage* or messaging.users.manage messaging.analytics.read · moderation snapshot messaging.moderation.manage · audit link messaging.audit.read* · data export messaging.data.export*
      @api    GET /messaging/admin/overview?range= (aggregates MessagingUsageDaily) · GET /messaging/admin/storage · GET /messaging/admin/health (integrations, queues)
      @mcp    messaging_admin_overview_read (read-only, planned)
      @data   MessagingUsageDaily (messages_count, direct_messages_count, threads_count, thread_replies_count, reactions_count, files_count, files_bytes, active_members_count, active_channels_count, external_messages_count, mentions_count,
@@ -767,15 +767,15 @@
       cd("<b>Needs attention</b>", '<div class="rowx"><div class="grow"><b>3 open reports</b><small>MessageReport OPEN</small></div>' + btn("Review", "", "sm") + '</div><div class="rowx"><div class="grow"><b>2 guests expire in 7 days</b><small>ChannelMember.access_expires_at</small></div>' + btn("Review", "", "sm") + '</div><div class="rowx"><div class="grow"><b>GitHub integration error</b><small>MessagingIntegration status ERROR · last_error 401</small></div>' + btn("Fix", "", "sm") + '</div><div class="rowx"><div class="grow"><b>Retention run pending</b><small>“Client channels 7 years” last applied 31 days ago</small></div>' + btn("Open", "", "sm") + "</div>", 1) +
       gap(cd("<b>Storage by kind</b><span class='r muted'>files_bytes</span>", [["Public channels", 38], ["Project channels", 34], ["Customer channels", 19], ["Direct messages", 9]].map((r) => '<div class="rowx"><div class="grow">' + r[0] + '</div><span class="bar"><i style="width:' + r[1] + '%"></i></span><span class="muted">' + r[1] + "%</span></div>").join(""), 1)) +
       gap(cd("<b>People</b>", kv("Members", "52") + kv("Guests / external", "9") + kv("Deactivated", "4") + kv("Presence hidden", "6"))) + "</div></div>" +
-      dm(["MessagingUsageDaily · messages_count, direct_messages_count, threads_count, thread_replies_count, reactions_count, files_count, files_bytes, active_members_count, active_channels_count, external_messages_count, mentions_count, avg_response_seconds", "Channel · MessageReport · MessagingIntegration · MessagingExportJob"], ["Analytics read permission (messaging.analytics.read) missing: gaps-12.md"]));
+      dm(["MessagingUsageDaily · messages_count, direct_messages_count, threads_count, thread_replies_count, reactions_count, files_count, files_bytes, active_members_count, active_channels_count, external_messages_count, mentions_count, avg_response_seconds", "Channel · MessageReport · MessagingIntegration · MessagingExportJob"], []));
   }
 
   /* =====================================================================================================================
      MODERATION (spec §49-50)
      @screen Messages · Moderation (reports and restrictions)
      @route  /messages/admin/moderation?tab=reports|restrictions&status=
-     @perm   review reports and set restrictions messaging.channels.manage · delete others’ messages messaging.messages.delete_any* · ban in a channel messaging.channel_members.manage · read a reported private message: only the reported message
-             is shown (not the conversation) unless admin access is enabled (@gap messaging.messages.admin_read*) · audit link messaging.audit.read*
+     @perm   review reports and set restrictions messaging.moderation.manage · delete others’ messages messaging.messages.delete_any* · ban in a channel messaging.channel_members.manage · read a reported private message: only the reported message
+             is shown (not the conversation) unless admin access is enabled and the caller holds messaging.messages.admin_read* · audit link messaging.audit.read*
      @api    GET /messaging/reports?status=&channel_id=&cursor= · PATCH /messaging/reports/:id {status, action_taken, resolution_note} · POST /channels/:id/restrictions · DELETE /restrictions/:id (lift)
      @mcp    messaging_moderation_review (planned, sensitive: human confirmation)
      @data   MessageReport (message_id, reporter_membership_id, reporter_user_id, reason, details, status OPEN | UNDER_REVIEW | ACTIONED | DISMISSED, reviewed_by_user_id, reviewed_at, action_taken, resolution_note) ·
@@ -791,7 +791,7 @@
         tbl(["Message", "Channel", "Reason", "Reporter", "Reported", "Status", ""], [["“Send me the client list or…”", chName("sales", "PRIVATE"), "Harassment", "Anonymous to the author", "9:50 AM", E("OPEN", "red"), btn("Review", "", "sm primary")], ["“lol that’s a stupid idea”", chName("dev", "PUBLIC"), "Rude", "Marco Silva", "Yesterday", E("UNDER_REVIEW", "yellow"), btn("Review", "", "sm")], ["Pasted card number 4242…", chName("acme-corp", "CUSTOMER"), "Sensitive data", "Kim Lund", "Nov 9", E("OPEN", "red"), btn("Review", "", "sm")], ["Link to unknown site", chName("general", "PUBLIC"), "Spam", "Anna Meyer", "Nov 4", E("ACTIONED", "green"), btn("View", "", "sm")]]) +
         cd("<b>Review: card number in a client channel</b>", '<div class="mg-src">' + av("DW") + "<div><b>Dana Whitfield</b> <span class=\"muted\">· Client</span><div>Here is our card: 4242 4242 ...</div></div></div>" + kv("Reported by", "Kim Lund · Nov 9") + kv("Reason", "Sensitive data") + f("Decision", sel("Delete message and warn")) + f("Resolution note", box("Removed. Asked the client to use the billing portal.")) + '<div class="rowx" style="padding:0;gap:8px">' + btn("Dismiss", "", "sm") + btn("Mark under review", "", "sm") + btn("Apply decision", "check", "sm primary") + "</div>") + "</div>") +
       pane("x", 0, tbl(["Person", "Scope", "Kind", "Reason", "Until", "Created by", ""], [[wh("DW", ""), chName("acme-corp", "CUSTOMER"), E("MUTED", "yellow"), "Off-topic posts", "Nov 14", "Kim Lund", btn("Lift", "", "sm")], [wh("KL", "Former contractor"), "Organization-wide", E("BANNED", "red"), "Contract ended", muted("permanent"), "Anna Meyer", btn("Lift", "", "sm")]]) + '<div style="margin-top:8px">' + btn("Add restriction", "plus", "primary") + "</div>") + "</div>" +
-      dm(["MessageReport · message_id, reason, details, status, reviewed_by_user_id, action_taken, resolution_note", "ChannelMemberRestriction · kind, reason, expires_at, lifted_at · Message · deleted_at, delete_reason"], ["Read access to reported private messages needs a dedicated key (messaging.messages.admin_read*): gaps-12.md"]));
+      dm(["MessageReport · message_id, reason, details, status, reviewed_by_user_id, action_taken, resolution_note", "ChannelMemberRestriction · kind, reason, expires_at, lifted_at · Message · deleted_at, delete_reason"], []));
   }
 
   /* =====================================================================================================================
@@ -807,7 +807,7 @@
      @states loading · empty ("No external users") · error · no-access · guests disabled by organization (banner)
      @audit  guest invited, extended, expired (system), removed; access to a channel by a guest
      @note   Guests expire automatically at access_expires_at (default MessagingSettings.guest_default_expiry_days for TEMPORARY). One person with several memberships is one row with their channels. External participants never see the
-             member directory. Pending invitations are not stored yet (@gap ChannelInvitation, gaps-12.md).
+             member directory. Pending invitations are ChannelInvitation rows (status PENDING until accepted, expired or revoked; resend updates last_sent_at).
      ===================================================================================================================== */
   function guests() {
     return page(head("Guests & external users", "People outside the organization who can read or post in channels.", btn("Invite guest", "plus", "primary")) + pill(["All · 9", "Customers · 5", "Partners · 2", "Temporary · 2", "Expiring in 30 days · 2", "Expired · 1"], 0) +
@@ -818,7 +818,7 @@
         ["<span class=\"cbw\">" + cb(0) + "</span>", who("PN", "y", "Petra Novak", "petra@northwind.example"), "Northwind · Partner", E("PARTNER", "blue"), "3", E("GUEST"), "Nov 18, 2026", "Kim Lund", "Nov 9", more], ["<span class=\"cbw\">" + cb(0) + "</span>", who("TB", "g", "Tom Bell", "tom@freelance.example"), "Freelancer · Temporary", E("TEMPORARY", "yellow"), "1", E("GUEST"), "Nov 17, 2026", "Anna Meyer", "Nov 10", more],
         ["<span class=\"cbw\">" + cb(0) + "</span>", who("OP", "", "Olga Popova", "olga@globex.example"), "Globex · Guest", E("CUSTOMER", "purple"), "2", E("EXTERNAL", "purple"), "Expired Nov 1", "Kim Lund", "Oct 28", btn("Renew", "", "sm") + more]]) +
       '<div class="sub-note" style="margin-top:8px">Organization policy: guest access ' + ES("ENABLED", "green") + " · default expiry for Temporary guests 14 days (MessagingSettings.guest_access_enabled, guest_default_expiry_days). Pending invitations: not stored yet.</div>" +
-      dm(["ChannelMember · external_user_id, role, guest_kind, access_expires_at, external_label, invited_by_user_id, last_viewed_at", "User (01) · CrmCompany (02) · MessagingSettings · guest_access_enabled, guest_default_expiry_days"], ["Pending/expired invitations (token, status): no table. gaps-12.md"]));
+      dm(["ChannelMember · external_user_id, role, guest_kind, access_expires_at, external_label, invited_by_user_id, last_viewed_at", "ChannelInvitation · email, status, expires_at, accepted_at, revoked_at, last_sent_at", "User (01) · CrmCompany (02) · MessagingSettings · guest_access_enabled, guest_default_expiry_days"], []));
   }
 
   /* =====================================================================================================================
@@ -846,7 +846,7 @@
           callout("shield", "<b>Dry run:</b> 14,882 messages and 311 files older than 365 days would be deleted. This cannot be undone after the 7 day grace period.", "warn")) + "</div></div>") +
       pane("e", 0, '<div class="g2" style="grid-template-columns:1.5fr 1fr;align-items:start"><div>' + tbl(["Requested", "By", "Format", "Scope", ">Messages", ">Channels", "Status", ""], [["Nov 11, 9:20", "Anna Meyer", E("JSON"), "# acme-corp, all dates", "642", "1", E("COMPLETED", "green"), btn("Download", "down", "sm")], ["Nov 11, 9:44", "Anna Meyer", E("HTML"), "# acme-rebrand, Nov 1–11", "—", "—", '<span class="bar"><i style="width:62%"></i></span> ' + E("RUNNING", "blue"), muted("62%")], ["Oct 20", "Kim Lund", E("CSV"), "All client channels", "—", "—", E("FAILED", "red"), btn("Retry", "", "sm")], ["Sep 30", "Anna Meyer", E("JSON"), "# general", "11,820", "1", E("EXPIRED"), muted("link expired")]]) + "</div><div>" +
         cd("<b>New export</b>", f("Channels", sel("Choose channels…", "hash")) + '<div class="g2" style="gap:12px">' + f("From", sel("Nov 1", "calendar")) + f("To", sel("Nov 11", "calendar")) + "</div>" + f("Format", '<div class="seg-row">' + ["JSON", "CSV", "HTML"].map((s, i) => '<span class="seg' + (i === 0 ? " on" : "") + '">' + s + "</span>").join("") + "</div>") + '<div class="rowx"><div class="grow"><b>Include internal notes</b><small>Needs messaging.data.export*</small></div>' + sw(1) + '</div><div class="rowx"><div class="grow"><b>Include confidential channels</b></div>' + sw(0) + '</div><div class="rowx" style="padding-top:12px">' + btn("Request export", "down", "primary") + "</div>") + "</div></div>") + "</div>" +
-      dm(["MessagingRetentionPolicy · name, scope, branch_id, team_id, channel_kind, action, retention_days, applies_to_attachments, applies_to_reactions, applies_to_metadata, is_default, last_applied_at", "MessagingExportJob · status, format, filters, started_at, completed_at, result_document_id, expires_at, message_count, channel_count, error", "Channel.retention_policy_id"], ["Legal hold (suspend retention on a channel or search result) is not in the schema, see gaps-12.md"]));
+      dm(["MessagingRetentionPolicy · name, scope, branch_id, team_id, channel_kind, action, retention_days, applies_to_attachments, applies_to_reactions, applies_to_metadata, is_default, last_applied_at", "MessagingExportJob · status, format, filters, started_at, completed_at, result_document_id, expires_at, message_count, channel_count, error", "Channel.retention_policy_id", "MessagingLegalHold · name, reason, channel_ids, membership_ids, date_from, date_to, released_at (retention and deletion jobs skip held content while released_at is null; messaging.retention.manage*)"], []));
   }
 
   /* =====================================================================================================================
@@ -877,7 +877,7 @@
       pane("c", 0, cd("<b>Calls & voice messages</b>", setting("Enable huddles and calls", "calls_enabled", sw(1)) + setting("Call provider", "call_provider", sel("Built-in huddle")) + setting("Voice messages", "voice_messages_enabled", sw(1)) + setting("Allow recording", "recordings are saved to Documents (17)", sw(0)), 1)) +
       pane("l", 0, cd("<b>Rate limits</b><span class='r muted'>rate_limits (Json)</span>", setting("Messages per user per minute", "protects against runaway bots and loops", sel("60")) + setting("Mentions per message", "", sel("20")) + setting("Links per message", "", sel("10")) + setting("New guests can post links", "", sw(0)), 1)) +
       pane("p", 0, cd("<b>Privacy & security</b>", setting("Admin access to private conversations", "admin_private_message_access_enabled · explicit, logged, shown in the employee privacy notice. Needs messaging.messages.admin_read* (gap)", sw(0)) + setting("Sensitive content controls", "sensitive_content_controls · warn when a message looks like a card number, IBAN or password", sw(1)) + setting("Block pasting API keys", "detects secrets in messages", sw(1)), 1) + gap(callout("lock", "Direct messages are private by default. Admin access, when enabled, is limited, logged and visible in the audit log.", ""))) + "</div>" +
-      dm(["MessagingSettings · every column listed in the @data tag (one row per organization)"], ["Admin read of private messages needs messaging.messages.admin_read* (gaps-12.md)"]));
+      dm(["MessagingSettings · every column listed in the @data tag (one row per organization)"], []));
   }
 
   /* =====================================================================================================================

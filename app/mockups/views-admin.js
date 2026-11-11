@@ -662,7 +662,7 @@
              ServiceAccount (name, purpose, owner_membership_id, status ACTIVE|SUSPENDED|REVOKED, expires_at) · RoleAssignment (service_account_id: where a service account's permissions come from)
      @ui     Tabs, Table, Dialog+Form (create), "show once" Dialog with CopyButton, AlertDialog (rotate/revoke), DropdownMenu
      @states loading · empty · error · no-access
-     @audit  api_key.created | api_key.rotated | api_key.revoked | service_account.created | service_account.suspended | service_account.revoked
+     @audit  api_key.created | api_key.updated | api_key.rotated | api_key.revoked | service_account.created | service_account.suspended | service_account.revoked
      @note   NEVER inherits a human's full access (§75): effective permissions = owner's permissions ∩ key.scopes (if set) ∩ key scope (scope_type/scope_id). Only the key_prefix is stored for display;
              the secret is shown ONCE at creation. No status column on ApiKey: derive Active / Expires soon (expires_at or rotation_due_at within 14 days) / Expired / Revoked in the API.
              Keys work on REST and MCP identically (same authorization service). Service accounts are non-human: audit actor_type SERVICE_ACCOUNT; they do not count as employees or seats.
@@ -1030,13 +1030,12 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
      @api    POST /invitations {emails[], audience, type, role_id, scope_type, scope_id, branch_id, team_id, modules[], customer_id?, message, expires_in_days} -> per-email result array ·
              POST /invitations/validate (dry run: invalid / already member / domain not allowed) · GET /invitations/link (source INVITATION_LINK) · POST /invitations/import (CSV, source BULK_IMPORT)
      @mcp    users_members_invite (sensitive types need human confirmation)
-     @data   Invitation (email, type, audience, role_id, branch_id, team_id, modules[], status, source, message, expires_at, customer_id, invited_by_user_id) · OrganizationSecurityPolicy (restrict_invitations_to_domains,
+     @data   Invitation (email, type, audience, role_id, branch_id, team_id, scope_type, scope_id, valid_until, modules[], status, source, message, expires_at, last_sent_at, send_count, customer_id, invited_by_user_id) · OrganizationSecurityPolicy (restrict_invitations_to_domains,
              allowed_email_domains, invitation_policy) · Role (modules default) · Branch · Team
      @ui     Form (react-hook-form + zod), Textarea turned into email chips, ToggleGroup (audience), Select (type, expiry), Combobox = Popover+Command (role, branch, team, customer), Checkbox grid (modules), Alert, Button
      @states idle · validating (per-chip spinner) · per-email errors · submitting · partial success (some sent, some failed) · no-access · policy blocks (ADMINS_ONLY)
      @audit  invitation.sent (one per email) · invitation.bulk_imported
-     @note   Tokens are single-use, only token_hash is stored. Module access defaults to Role.modules and may only be NARROWED, never widened beyond the role. External collaborators need a RESOURCE scope and an end date.
-     @gap    Invitation has no scope_type / scope_id / valid_until: an external collaborator invite cannot carry "only project X until Jan 31" (see gaps-01b.md #1).
+     @note   Tokens are single-use, only token_hash is stored. Module access defaults to Role.modules and may only be NARROWED, never widened beyond the role. External collaborators need a RESOURCE or PROJECT scope (Invitation.scope_type / scope_id) and an end date (Invitation.valid_until); both are copied into the RoleAssignment on accept.
      ===================================================================================================================== */
   function inviteNew() {
     const mods = ["PROJECTS", "TASKS", "TIME_TRACKING", "DOCUMENTS", "CALENDAR", "MESSAGING", "SUPPORT", "CRM", "FINANCE", "PROPOSALS", "CONTRACTS", "COMMUNICATION"];
@@ -1071,12 +1070,11 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
      @api    GET /members/:id · PATCH /members/:id {job_title, ...} · GET /members/:id/role-assignments · POST /members/:id/role-assignments · PUT /members/:id/branches · PUT /members/:id/teams ·
              GET /members/:id/sessions · DELETE /sessions/:id · GET /members/:id/devices · GET /audit-events?actor_user_id=|resource_id= · GET /api-keys?membership_id= · GET /service-accounts?owner_membership_id=
      @mcp    users_members_read · users_members_manage* · users_roles_assign* · users_sessions_revoke* · organizations_audit_read* · organizations_api_keys_manage*
-     @data   Membership · User · UserAuthMethod · RoleAssignment · PermissionGrant · MembershipBranch · BranchManager · TeamMembership · MembershipModuleAccess · UserSession · NotificationPushDevice · AuditEvent · ApiKey · ServiceAccount
+     @data   Membership · User · UserAuthMethod · RoleAssignment · PermissionGrant · MembershipBranch · BranchManager · TeamMembership · MembershipModuleAccess · UserSession · UserDevice (fingerprint_hash, label, platform, browser, first_seen_at, last_seen_at, trusted_at, revoked_at) · NotificationPushDevice · AuditEvent · ApiKey · ServiceAccount
      @ui     Tabs (URL synced), Card, Table, Dialog (assign role, add branch/team), AlertDialog (suspend, offboard, revoke), DropdownMenu, Switch, Badge
      @states loading per tab · 404 · error · no-access (tab hidden) · read-only banner for Owner when the caller is not an Owner
      @audit  membership.updated · membership.role_assigned | role_removed · membership.branch_assigned · membership.team_assigned | team_removed · session.revoked · membership.suspended | membership.offboarded
-     @note   Each tab loads lazily. Tabs the caller may not see are removed, not disabled. Exactly one primary branch. "Devices" = push/desktop registrations (NotificationPushDevice) next to the browser sessions.
-     @gap    No table for trusted/known devices of a user (fingerprint, first seen, trusted_at): Devices shows push registrations only (gaps-01b.md #6).
+     @note   Each tab loads lazily. Tabs the caller may not see are removed, not disabled. Exactly one primary branch. "Devices" = known browsers/devices (UserDevice: trusted_at / revoked_at, skip MFA on trusted) plus push/desktop registrations (NotificationPushDevice) next to the browser sessions.
      ===================================================================================================================== */
   function memberDetail() {
     const sessions = [["MacBook · Chrome 131", "85.74.x.x", "Athens, GR", "Athens +1", "Today 08:12", "Now", "Nov 25", 1], ["iPhone · Safari", "85.74.x.x", "Athens, GR", "All", "Nov 9", "2h ago", "Nov 23", 0], ["Windows · Edge 130", "94.66.x.x", "Athens, GR", "Athens", "Nov 2", "6d ago", "Nov 16", 0]];
@@ -1105,7 +1103,7 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
       pane("k", 0, cd("<b>API keys owned by Anna</b><span class='r'>" + btn("Create key for Anna", "plus", "sm") + "</span>", tb(["Name", "Key", "Scope", "Permissions", "Expires", "Last used", ""], [["<b class='ink'>Zapier sync</b>", '<span class="key">lq_live_4f9a…</span>', "Organization", keyList(["tasks.tasks.read", "tasks.tasks.create"]), "Dec 31, 2026", "2m ago", more], ["<b class='ink'>Reporting export</b>", '<span class="key">lq_live_9e03…</span>', "Branch · Athens", keyList(["finance.invoices.read"]), "Nov 30, 2026", "Never", more]], 1), 1) +
         '<div style="height:12px"></div>' + cd("<b>Service accounts owned</b>", '<div class="rowx"><div class="grow"><b>Lead intake</b><small>ServiceAccount.owner_membership_id · Sales Manager (ORGANIZATION) · 1 key</small></div>' + S("ACTIVE") + "</div>", 1) +
         callout("shield", "Offboarding Anna requires reassigning these credentials first (§133). A key never gets more than its owner holds.", "warn")) + "</div>" +
-      dm(["Membership · User · UserAuthMethod", "RoleAssignment · PermissionGrant · MembershipModuleAccess", "MembershipBranch · BranchManager · TeamMembership", "UserSession · NotificationPushDevice (platform, device_name, app_version, last_seen_at, failure_count, disabled_at)", "AuditEvent · ApiKey (membership_id) · ServiceAccount (owner_membership_id)"], ["Trusted / known devices per user: no table, only sessions and push registrations (gaps-01b.md #6)"]) + "</div>";
+      dm(["Membership · User · UserAuthMethod", "RoleAssignment · PermissionGrant · MembershipModuleAccess", "MembershipBranch · BranchManager · TeamMembership", "UserSession · UserDevice (fingerprint_hash, label, platform, browser, first_seen_at, last_seen_at, trusted_at, revoked_at) · NotificationPushDevice (platform, device_name, app_version, last_seen_at, failure_count, disabled_at)", "AuditEvent · ApiKey (membership_id) · ServiceAccount (owner_membership_id)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -1116,13 +1114,12 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
      @api    GET /permissions (full catalog, grouped by module) · POST /roles {name, description, type, default_scope, modules[], restrictions, template_role_id?, permissions:[{key, effect, conditions}]} ·
              PUT /roles/:id · POST /roles/:id/publish {note}
      @mcp    users_roles_manage* (publish needs human confirmation)
-     @data   Role (name, slug, description, type, status, default_scope, modules, restrictions, template_role_id, version) · RolePermission (effect ALLOW|DENY, conditions) · Permission (key, module, resource, action, is_sensitive, is_field_level)
+     @data   Role (name, slug, description, type, status, default_scope, modules, restrictions, template_role_id, version) · RolePermission (effect ALLOW|DENY, max_scope_type, conditions) · Permission (key, module, resource, action, is_sensitive, is_field_level)
      @ui     Accordion per ModuleKey, ToggleGroup chips (ALLOW / DENY / none, cycle on click), Checkbox (group, indeterminate), Command search, Form + zod, Sheet (diff before publish), AlertDialog (publish)
      @states loading · conflict 409 · validation (name taken: unique(organization_id, slug)) · read-only for SYSTEM/template roles · locked chips for permissions the editor does not hold
      @audit  role.created · role.updated · role.published
      @note   Counts here come from the REAL seeded catalog (249 keys). Chip legend: green = ALLOW, red x = DENY (DENY always wins), outline = not granted, * = sensitive (Permission.is_sensitive), F = field-level (hides fields, not records).
              Scope: Role.default_scope is the scope a new assignment starts with; the actual scope is chosen per RoleAssignment. A role can only grant keys of modules listed in Role.modules.
-     @gap    Per-permission scope limits (e.g. "invoices.read only for BRANCH") are not modelled: RolePermission has only effect + conditions JSON (gaps-01b.md #7).
      ===================================================================================================================== */
   function roleNew() {
     const mods = Object.keys(PERMS);
@@ -1145,7 +1142,7 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
       cd("<b>Summary</b>", '<div class="mini-stats" style="grid-template-columns:repeat(3,1fr);margin:0">' + stat("Allowed", allow, "keys") + stat("Denied", deny, "keys") + stat("Sensitive", 0, sens + " in catalog") + "</div>" + kv("Modules with grants", "6 of " + mods.length) + kv("Members who will get it", "0 (draft)")) +
       cd("<b>Restrictions</b><span class='r muted'>Role.restrictions (JSON)</span>", sw2("Require MFA", "require_mfa", 1) + sw2("Hide billing rates", "hide_rates", 1) + sw2("Hide customer contact details", "hide_customer_contacts", 0)) +
       cd("<b>Who can assign this role</b>", kv("Assign permission", keyc("users.roles.assign")) + kv("Assignable scopes", sc("Organization") + " " + sc("Branch") + " " + sc("Team") + " " + sc("Project")) + callout("shield", "Privilege escalation: you can only ALLOW permissions you hold yourself. Locked chips are permissions you do not have.", "warn")) + "</div></div>" +
-      dm(["Role · name, slug, description, type, status, default_scope, modules, restrictions, template_role_id, version", "RolePermission · permission_id, effect, conditions", "Permission · key, module, resource, action, is_sensitive, is_field_level (" + permCount() + " seeded keys)"], ["Per-permission scope (e.g. read only within BRANCH): RolePermission has no scope column (gaps-01b.md #7)"]) + "</div>";
+      dm(["Role · name, slug, description, type, status, default_scope, modules, restrictions, template_role_id, version", "RolePermission · permission_id, effect, max_scope_type (widest ScopeType the permission may be used at), conditions", "Permission · key, module, resource, action, is_sensitive, is_field_level (" + permCount() + " seeded keys)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -1198,16 +1195,15 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
      @screen Create API key · Create service account · API key detail
      @route  /admin/api-keys/new · /admin/api-keys/:id · /admin/service-accounts/new
      @perm   organizations.api_keys.manage* · organizations.service_accounts.manage* · the creator can only select permission keys they hold; a key can never exceed its owner
-     @api    POST /api-keys {name, owner:{membership_id|service_account_id}, scope_type, scope_id, scopes[], expires_at, rotation_due_at} -> 201 {id, key_prefix, secret} (secret returned ONCE) ·
+     @api    POST /api-keys {name, owner:{membership_id|service_account_id}, scope_type, scope_id, scopes[], allowed_ip_ranges[], expires_at, rotation_due_at} -> 201 {id, key_prefix, secret} (secret returned ONCE) ·
              POST /api-keys/:id/rotate · POST /api-keys/:id/revoke · POST /service-accounts {name, purpose, owner_membership_id, expires_at, role_assignments[{role_id, scope_type, scope_id}]}
      @mcp    organizations_api_keys_manage* · organizations_service_accounts_manage* (human confirmation, never an AI alone)
-     @data   ApiKey (name, key_prefix, key_hash, scopes[], scope_type, scope_id, expires_at, rotation_due_at, last_used_at, rotated_from_id, revoked_at, membership_id | service_account_id) · ServiceAccount (name, purpose, owner_membership_id, status, expires_at) · RoleAssignment (service_account_id)
+     @data   ApiKey (name, key_prefix, key_hash, scopes[], scope_type, scope_id, allowed_ip_ranges[] (CIDR), expires_at, rotation_due_at, last_used_at, rotated_from_id, revoked_at, membership_id | service_account_id) · ServiceAccount (name, purpose, owner_membership_id, status, expires_at) · RoleAssignment (service_account_id) · ApiKeyUsageDaily (api_key_id, date, requests, rejected, last_ip, seen_ips[]; detail view + new-IP alert)
      @ui     Form + zod, RadioGroup (owner kind), Combobox (owner, scope target), Command multi-select grouped by module (scopes), DatePicker/Select (expiry), TagInput (IP allow-list), Dialog "show once" with CopyButton + acknowledgement Checkbox, AlertDialog
      @states idle · validation · creating · SECRET REVEAL (state 2, shown below the form in this mock) · error · no-access
-     @audit  api_key.created | api_key.rotated | api_key.revoked | service_account.created | service_account.suspended | service_account.revoked
+     @audit  api_key.created | api_key.updated | api_key.rotated | api_key.revoked | service_account.created | service_account.suspended | service_account.revoked
      @note   The secret is displayed exactly once, in a modal that cannot be dismissed until the admin ticks "I have stored it". Only key_prefix + key_hash persist. A key works for REST and MCP identically.
              Effective permissions = owner permissions ∩ scopes ∩ scope_type/scope_id. Empty scopes = all of the owner's (warn loudly, and forbid it for keys owned by Owner/Admin roles).
-     @gap    IP allow-list per key and a per-key usage/request log have no columns/tables (ApiKey has no allowed_ip_ranges; only last_used_at). See gaps-01b.md #2 and #3.
      ===================================================================================================================== */
   function apikeyNew() {
     const pick = [["tasks.tasks", [["read", 1], ["create", 1], ["update", 0], ["delete", 0, 1]]], ["crm.leads", [["read", 1], ["create", 1], ["update", 0]]], ["projects.projects", [["read", 1], ["update", 0]]], ["finance.invoices", [["read", 0], ["approve", 0, 1]]]];
@@ -1221,24 +1217,24 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
         pick.map((p) => '<div class="pr"><span class="nm key">' + p[0] + '</span><div class="acts">' + p[1].map((x) => chip(x[0], x[1], x[2] ? 1 : 0)).join("") + "</div></div>").join("") +
         '<div class="sub-note" style="padding:10px 16px">Selected: ' + keyList(["tasks.tasks.read", "tasks.tasks.create", "crm.leads.read", "crm.leads.create", "projects.projects.read"]) + "</div>", 1) +
       cd("<b>Lifetime & network</b>", '<div class="g2">' + fl("Expires", sel("In 90 days · Feb 9, 2027", "calendar"), "ApiKey.expires_at · none is allowed only with a rotation date") + fl("Rotate by", sel("In 60 days · Jan 10, 2027", "calendar"), "rotation_due_at: reminder via Notifications") + "</div>" +
-        fl("IP allow-list <span class='badge yellow'>gap</span>", '<div style="display:flex;gap:6px;flex-wrap:wrap">' + tok("203.0.113.0/24") + tok("198.51.100.17") + '<span class="tok" style="border-style:dashed;color:var(--ash)">+ Add CIDR</span></div>', "Requests from other addresses get 403. Needs ApiKey.allowed_ip_ranges (not in the schema yet); org-wide ranges live in the security policy.") +
+        fl("IP allow-list <span class='r muted'>ApiKey.allowed_ip_ranges</span>", '<div style="display:flex;gap:6px;flex-wrap:wrap">' + tok("203.0.113.0/24") + tok("198.51.100.17") + '<span class="tok" style="border-style:dashed;color:var(--ash)">+ Add CIDR</span></div>', "Requests from other addresses get 403. Needs ApiKey.allowed_ip_ranges (not in the schema yet); org-wide ranges live in the security policy.") +
         sw2("Notify me when the key is used from a new IP", "NotificationEventType · api_key.new_ip (module 14)", 1)) +
       foot("The secret is shown once after creating.", btn("Cancel", "") + btn("Create key", "key", "primary")) + "</div>" +
       '<div class="stack">' +
       cd("<b>Effective access preview</b>", kv("Owner", "Lead intake") + kv("Owner holds", "Sales Manager · 41 keys") + kv("Key scopes", "5 keys") + kv("Scope", E("ORGANIZATION")) + callout("check", "Result: 5 permissions, organization-wide, from allowed IPs only.")) +
       /* @impl STATE 2 — secret reveal Dialog. Not dismissable by outside click/Escape until the acknowledgement checkbox is ticked. The full secret is held in memory only; never logged, never put in the URL, never fetched again. */
       cd("<b>State 2 · Secret created</b><span class='r'><span class='badge green'>Shown once</span></span>", '<div class="reveal"><small>Your new API key</small><div class="secret">lq_live_4f9a2c81d0e7b3a65f12c8e94d07ab3e<span>' + btn("Copy", "", "sm") + "</span></div></div>" + callout("lock", "<b>Copy it now.</b> Logiqdev stores only a hash, so this value cannot be shown again. If you lose it, rotate the key.", "warn") + '<div class="setting" style="padding:10px 0;border:0"><div class="grow"><b>I have stored this key safely</b><small>Enables “Done”</small></div>' + cb(1) + '</div><button class="btn primary" style="width:100%">Done</button>') + "</div></div>" +
-      dm(["ApiKey · name, key_prefix, key_hash, scopes, scope_type, scope_id, expires_at, rotation_due_at, membership_id | service_account_id", "ServiceAccount · RoleAssignment (what the owner may do)"], ["Per-key IP allow-list (gaps-01b.md #2)", "Per-key usage log / request counts (gaps-01b.md #3)"]) + "</div>";
+      dm(["ApiKey · name, key_prefix, key_hash, scopes, scope_type, scope_id, allowed_ip_ranges, expires_at, rotation_due_at, membership_id | service_account_id", "ServiceAccount · RoleAssignment (what the owner may do)"], []) + "</div>";
   }
   function apikey() {
     const use = [["Today", 412, 0], ["Yesterday", 388, 2], ["Nov 9", 301, 0], ["Nov 8", 94, 0]];
     return '<div class="a-page">' + back("apikeys", "API keys") + '<div class="cd" style="margin-bottom:14px"><div class="hdr-card"><span class="avatar xl sq n">' + I("link", 18) + '</span><div class="nm"><h2>Website lead form <span class="badge green">Active</span></h2><div class="muted"><span class="key">lq_live_c21d…</span> · owner Lead intake (service account) · created Nov 3 · rotated from <span class="key">lq_live_77b0…</span></div></div>' + btn("Edit scopes", "edit") + btn("Rotate", "zap") + btn("Revoke", "x") + "</div></div>" +
       '<div class="g-main"><div class="stack">' +
-      cd("<b>Permissions</b><span class='r muted'>ApiKey.scopes ∩ owner permissions</span>", '<div class="pr"><span class="nm key">crm.leads</span><div class="acts">' + chip("create", 1, 0) + chip("read", 0, 0) + "</div></div>" + kv("Scope", E("ORGANIZATION")) + kv("IP allow-list", muted("not set") + " <span class='badge yellow'>gap</span>")) +
-      cd("<b>Requests · last 4 days</b><span class='r muted'>ApiKey.last_used_at only · usage log is a gap</span>", tb(["Day", ">Requests", ">Rejected (403/429)"], use.map((u) => [u[0], '<span class="num">' + u[1] + "</span>", '<span class="num">' + u[2] + "</span>"]), 1), 1) +
+      cd("<b>Permissions</b><span class='r muted'>ApiKey.scopes ∩ owner permissions</span>", '<div class="pr"><span class="nm key">crm.leads</span><div class="acts">' + chip("create", 1, 0) + chip("read", 0, 0) + "</div></div>" + kv("Scope", E("ORGANIZATION")) + kv("IP allow-list", muted("not set") + " <span class='r muted'>allowed_ip_ranges</span>")) +
+      cd("<b>Requests · last 4 days</b><span class='r muted'>ApiKeyUsageDaily.requests / rejected</span>", tb(["Day", ">Requests", ">Rejected (403/429)"], use.map((u) => [u[0], '<span class="num">' + u[1] + "</span>", '<span class="num">' + u[2] + "</span>"]), 1), 1) +
       cd("<b>Rotation history</b><span class='r muted'>rotated_from_id</span>", '<div class="tl"><div class="ev"><b class="key">api_key.rotated</b><small>lq_live_77b0… → lq_live_c21d… · Petros R. · Nov 3 · old key valid for 24h grace</small></div><div class="ev"><b class="key">api_key.created</b><small>lq_live_77b0… · Anna M. · Mar 2026</small></div></div>') + "</div>" +
       '<div class="stack">' + cd("<b>Lifetime</b>", kv("Expires", "Mar 1, 2027") + kv("Rotate by", "Feb 1") + kv("Last used", "1h ago") + kv("Status", "Derived: Active")) + cd("<b>Owner</b>", '<div class="rowx"><div class="grow"><b>Lead intake</b><small>ServiceAccount · Sales Manager (ORGANIZATION)</small></div>' + S("ACTIVE") + "</div>", 1) + "</div></div>" +
-      dm(["ApiKey · all columns except key_hash", "ServiceAccount · RoleAssignment", "AuditEvent · api_key.*"], ["Per-key request log (gaps-01b.md #3)"]) + "</div>";
+      dm(["ApiKey · all columns except key_hash (incl. allowed_ip_ranges)", "ApiKeyUsageDaily · date, requests, rejected, last_ip, seen_ips", "ServiceAccount · RoleAssignment", "AuditEvent · api_key.* (api_key.updated on allow-list change)"], []) + "</div>";
   }
   function serviceNew() {
     return '<div class="a-page">' + back("apikeys", "API keys & service accounts") + head("Create service account", "A non-human identity for integrations and automation. Not an employee and not a seat (§76).", btn("Cancel", "") + btn("Create service account", "check", "primary")) +
@@ -1255,23 +1251,22 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
      WEBHOOKS: list · create · detail with delivery log (OutboundWebhook + WebhookDelivery, owned by module 20, administered here)
      @screen Webhooks · Create webhook · Webhook detail
      @route  /admin/webhooks · /admin/webhooks/new · /admin/webhooks/:id?tab=overview|deliveries|settings
-     @perm   automation.webhooks.manage* (the only webhook key in the catalog; there is no read-only key, see gap) · secrets shown once
+     @perm   VIEW automation.webhooks.read · create/edit/rotate/test/retry automation.webhooks.manage* · secrets shown once
      @api    GET/POST /webhooks · GET/PATCH/DELETE /webhooks/:id · POST /webhooks/:id/test · POST /webhooks/:id/rotate-secret · GET /webhooks/:id/deliveries?status= · POST /webhook-deliveries/:id/retry
-     @mcp    automation_webhooks_manage*
-     @data   OutboundWebhook (name, description, url, secret, signing_algorithm, subscribed_events[], headers, content_type, api_version, status ACTIVE|PAUSED|DISABLED, max_attempts, retry_backoff_seconds, timeout_seconds, disable_after_failures, consecutive_failures, last_*_at, disabled_reason) ·
+     @mcp    automation_webhooks_read · automation_webhooks_manage*
+     @data   OutboundWebhook (name, description, url, secret, signing_algorithm, subscribed_events[], headers, content_type, api_version, previous_secret + previous_secret_expires_at + secret_rotated_at (rotation grace), status ACTIVE|PAUSED|DISABLED, max_attempts, retry_backoff_seconds, timeout_seconds, disable_after_failures, consecutive_failures, last_*_at, disabled_reason) ·
              WebhookDelivery (event_key, status PENDING|RETRY_SCHEDULED|SUCCEEDED|FAILED|DEAD_LETTERED, payload, request_headers, attempt, max_attempts, next_retry_at, response_status_code, response_body, error_message, duration_ms, delivery_key)
      @ui     Table, Form, Command multi-select (events), Dialog (secret once), Tabs, Sheet (delivery payload), Badge, AlertDialog
      @states loading · empty · error · auto-disabled banner (consecutive_failures >= disable_after_failures) · no-access
      @audit  webhook.created | webhook.updated | webhook.secret_rotated | webhook.paused | webhook.deleted
      @note   Signature: HMAC (signing_algorithm) over the body with `secret`, header carries delivery_key as idempotency id. URL must be https and not resolve to a private network (SSRF guard). Headers may hold a bearer token: write-only like secrets.
-     @gap    No "read webhooks" key and no secret rotation grace (only one `secret` column): see gaps-01b.md #8.
      ===================================================================================================================== */
   function webhooks() {
     const W = [["CRM to Slack bridge", "https://hooks.partner.example/lq/crm", ["crm.deal.won", "crm.lead.created"], "ACTIVE", 0, "12m ago", "99.8%"], ["Billing sync", "https://erp.acme.example/api/lq", ["finance.invoice.paid", "finance.invoice.overdue"], "ACTIVE", 2, "1h ago", "97.1%"], ["Zapier catch hook", "https://hooks.zapier.example/abc", ["tasks.task.created"], "PAUSED", 0, "Nov 2", "—"], ["Old staging", "https://staging.old.example/hook", ["*"], "DISABLED", 50, "Oct 14", "0%"]];
     return '<div class="a-page">' + head("Webhooks", "Signed outbound HTTP calls for platform events. Managed in Automation (20) and administered here with the same authorization (§75).", btn("Delivery log", "list") + '<a href="#admin/webhooknew" class="btn primary">' + I("plus", 14) + "Create webhook</a>") +
       FB([["Status", "is any of", "Active, Paused"], ["Event", "contains", "crm."]], sel("Sort: Last delivery")) +
       tb(["Webhook", "URL", "Events", "Status", ">Failures in a row", "Last delivery", "Success (7d)", ""], W.map((w) => clk("webhook", ["<b class='ink'>" + w[0] + "</b>", '<span class="key">' + w[1] + "</span>", keyList(w[2]), S(w[3]), '<span class="num">' + w[4] + "</span>", muted(w[5]), w[6], more]))) +
-      dm(["OutboundWebhook · name, url, subscribed_events, status, consecutive_failures, last_delivery_at, disabled_reason", "WebhookDelivery · status (7-day success rate)"], ["No read-only permission key; secret rotation grace (gaps-01b.md #8)"]) + "</div>";
+      dm(["OutboundWebhook · name, url, subscribed_events, status, consecutive_failures, last_delivery_at, disabled_reason", "WebhookDelivery · status (7-day success rate)"], []) + "</div>";
   }
   function webhookNew() {
     const evs = [["crm.deal.won", 1], ["crm.lead.created", 1], ["finance.invoice.paid", 0], ["projects.project.completed", 0], ["tasks.task.created", 0], ["support.ticket.created", 0]];
@@ -1295,8 +1290,8 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
         /* @impl Delivery detail (Sheet): everything WebhookDelivery stores. `response_body` is truncated by the API; request headers have the signature but never the secret. "Retry" only for FAILED/DEAD_LETTERED. */
         cd("<b class='key'>finance.invoice.overdue</b><span class='r'>" + S("RETRY_SCHEDULED") + "</span>", kv("delivery_key", '<span class="key">9c1e…b72</span>') + kv("Attempt", "2 of 5") + kv("Next retry", "in 4 min") + kv("Response", "503 Service Unavailable") + kv("Duration", "10,000 ms (timeout 10 s)") + '<div class="muted" style="margin:10px 0 6px">payload</div><div class="diff"><div class="ctxl">{ "event": "finance.invoice.overdue",</div><div class="ctxl">  "invoice": "INV-2058", "days_overdue": 7,</div><div class="ctxl">  "amount_minor": 480000, "currency": "EUR" }</div></div><div class="muted" style="margin:10px 0 6px">response_body</div><div class="diff"><div class="del">Service temporarily unavailable</div></div>' + btn("Retry now", "zap", "sm")) + "</div>") +
       pane("o", 0, '<div class="g2">' + cd("<b>Subscribed events</b>", keyList(["finance.invoice.paid", "finance.invoice.overdue"]) + '<div style="height:8px"></div>' + kv("Last success", "12m ago") + kv("Last failure", "1h ago") + kv("Disabled", muted("no"))) + cd("<b>Policy</b>", kv("Attempts", 5) + kv("Backoff", "60 s") + kv("Timeout", "10 s") + kv("Auto-disable", "50 failures")) + "</div>") +
-      pane("s", 0, callout("edit", "Same fields as the create page. The secret is never displayed: use <b>Rotate secret</b> (the old one stops working immediately, see gap #8).")) + "</div>" +
-      dm(["OutboundWebhook · all columns except secret", "WebhookDelivery · event_key, status, payload, request_headers, attempt, response_status_code, response_body, error_message, duration_ms, next_retry_at, delivery_key"], ["Secret rotation grace period (gaps-01b.md #8)"]) + "</div>";
+      pane("s", 0, callout("edit", "Same fields as the create page. The secret is never displayed: use <b>Rotate secret</b> (the old one stays valid until previous_secret_expires_at, the grace window).")) + "</div>" +
+      dm(["OutboundWebhook · all columns except secret / previous_secret (secret_rotated_at, previous_secret_expires_at shown)", "WebhookDelivery · event_key, status, payload, request_headers, attempt, response_status_code, response_body, error_message, duration_ms, next_retry_at, delivery_key"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -1306,12 +1301,11 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
      @perm   organizations.audit.read* (sensitive event types are hidden without it) · export writes data.exported · scope: branch callers see only events whose branch_id is in their scope
      @api    GET /audit-events (cursor) · GET /audit-events/:id · GET /audit-events/:id/related · POST /audit-events/export {filters, format} · GET /audit-event-types
      @mcp    organizations_audit_read*
-     @data   AuditEvent (actor_type, actor_user_id, actor_service_account_id, event_type, resource_type, resource_id, branch_id, metadata, ip_address, user_agent, created_at) · audit-event-types.ts (80 types: resource, description, sensitive, notifyAdmins)
+     @data   AuditEvent (actor_type, actor_user_id, actor_service_account_id, event_type, outcome, resource_type, resource_id, branch_id, metadata, ip_address, user_agent, created_at) · audit-event-types.ts (80 types: resource, description, sensitive, notifyAdmins)
      @ui     Filter bar (UI.filters), Popover+Command (event type grouped by resource), DateRangePicker, Table (cursor), Sheet/aside, Tabs, JSON diff viewer
      @states loading · empty result · error · no-access · export queued
-     @note   IMMUTABLE. Filters persist to the URL; saved views use SavedView. The "outcome" filter is DERIVED from the event type (…_failed, login_failed, denied) because AuditEvent has no outcome column.
+     @note   IMMUTABLE. Filters persist to the URL; saved views use SavedView (entity_type AUDIT_EVENT; the members list uses MEMBERSHIP). The "outcome" filter uses AuditEvent.outcome (AuditOutcome: SUCCESS | FAILURE | DENIED).
              Metadata never contains secrets (stripped on write). IP and user agent are personal data: shown only with the audit permission, retention applies.
-     @gap    AuditEvent.outcome (SUCCESS|FAILURE|DENIED) missing; SavedView.entity_type has no AUDIT_EVENT value (gaps-01b.md #4).
      ===================================================================================================================== */
   function audit2() {
     const Ev = [
@@ -1328,14 +1322,14 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
     return '<div class="a-page">' + head("Audit log", "Immutable AuditEvents from every module (§99–100, §139). Filter, inspect, export.", btn("Export", "file") + btn("Retention policy", "settings")) +
       '<div class="tabset">' + tabs([["e", "Events"], ["t", "Event types", AUDIT_TYPES.length]], "e") +
       pane("e", 1,
-        /* @impl Filter fields: Actor (member / service account Combobox) · Actor type (AuditActorType) · Event type (multi, grouped by resource) · Resource type + id · Branch · IP · Date range · Outcome (derived). Saved views = SavedView (gap #4). */
+        /* @impl Filter fields: Actor (member / service account Combobox) · Actor type (AuditActorType) · Event type (multi, grouped by resource) · Resource type + id · Branch · IP · Date range · Outcome (AuditEvent.outcome). Saved views = SavedView (AUDIT_EVENT). */
         FB([["Actor type", "is any of", "User, Service account"], ["Event type", "is any of", "membership.*, user.mfa_disabled"], ["Date", "between", "Nov 1 – Nov 11"], ["Outcome", "is", "Failure"]], sel("Branch: Any", "building") + btn("Save view", "plus", "sm")) +
         '<div class="g-main" style="grid-template-columns:minmax(0,1fr) 380px"><div class="panel" style="margin-top:0"><div class="tbl-scroll"><table><thead><tr><th>When</th><th>Actor</th><th>Event type</th><th>Resource</th><th>Scope</th><th>Outcome</th><th>IP</th></tr></thead><tbody>' +
         Ev.map((e, i) => '<tr class="clk" onclick="location.hash=\'#admin/auditevent\'" ' + (i === 0 ? 'style="background:var(--elevated)"' : "") + '><td class="muted">' + e[0] + "</td><td>" + who(e[1], e[2], e[3], en(e[4])) + '</td><td><span class="badge key ' + e[9] + '">' + e[5] + "</span></td><td>" + e[6] + '</td><td class="muted">' + e[7] + "</td><td>" + (e[10] === "OK" ? '<span class="badge green">Success</span>' : '<span class="badge red">Failure</span>') + '</td><td class="mono muted">' + e[8] + "</td></tr>").join("") + "</tbody></table></div></div>" +
         cd("<b class='key'>membership.admin_promoted</b><span class='r'><a href='#admin/auditevent' style='text-decoration:underline'>Open</a></span>", kv("actor_type", E("USER")) + kv("actor_user_id", "Petros R.") + kv("resource", "membership · mem_7c1…") + kv("branch_id", muted("— organization-wide")) + kv("ip_address", '<span class="mono">85.74.x.x</span>') + '<div class="muted" style="margin:10px 0 6px">metadata</div><div class="diff"><div class="del">-  "role": "Finance Manager"</div><div class="add">+  "role": "Admin"</div></div>') + "</div>") +
       pane("t", 0, callout("lock", "These are the canonical <span class='key'>event_type</span> values (audit-event-types.ts). <span class='badge yellow'>Sensitive</span> types are hidden without " + keyc("organizations.audit.read") + "; <span class='badge purple'>Notifies admins</span> raise a security notification (§146).") + '<div style="height:12px"></div>' +
         Object.keys(grouped).map((r) => '<div class="cd" style="margin-bottom:12px"><div class="cd-h"><b class="mono">' + r + '</b><span class="r muted">' + grouped[r].length + ' types</span></div><div class="cd-b flush">' + tb(["event_type", "Description", "Flags"], grouped[r].map((t) => ['<span class="key">' + t[0] + "</span>", t[2], (t[3] & 1 ? '<span class="badge yellow">Sensitive</span> ' : "") + (t[3] & 2 ? '<span class="badge purple">Notifies admins</span>' : "") || muted("—")]), 1) + "</div></div>").join("")) + "</div>" +
-      dm(["AuditEvent · all columns", "api/src/shared/constants/audit-event-types.ts · " + AUDIT_TYPES.length + " event types"], ["AuditEvent.outcome (success / failure / denied) is derived from the type name (gaps-01b.md #4)", "Saved audit views: SavedView.entity_type has no audit value"]) + "</div>";
+      dm(["AuditEvent · all columns", "api/src/shared/constants/audit-event-types.ts · " + AUDIT_TYPES.length + " event types"], ["Saved audit views: SavedView.entity_type = AUDIT_EVENT (membership lists use MEMBERSHIP)"]) + "</div>";
   }
   function auditEvent() {
     return '<div class="a-page">' + back("audit", "Audit log") + '<div class="cd" style="margin-bottom:14px"><div class="hdr-card"><span class="avatar xl sq n">' + I("file", 18) + '</span><div class="nm"><h2><span class="key">membership.admin_promoted</span> <span class="badge yellow">Sensitive</span> <span class="badge purple">Notifies admins</span></h2><div class="muted">Nov 11, 2026 09:41:07 UTC · evt_3b9f2c… · membership resource</div></div>' + btn("Copy event id", "") + btn("Open member", "users") + "</div></div>" +
@@ -1352,16 +1346,15 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
      ORGANIZATION SETTINGS: Branding · Domains (+ add domain) · Data retention · Billing & plan · Organization lifecycle
      @screen Branding · Domains · Add domain · Data retention · Billing & plan · Danger zone
      @route  /admin/branding · /admin/domains · /admin/domains/new · /admin/retention · /admin/billing · /admin/lifecycle
-     @perm   branding organizations.branding.manage · domains organizations.domains.manage* · retention organizations.settings.manage* (+ documents.retention.manage* / messaging.retention.manage* for those modules) ·
+     @perm   branding organizations.branding.manage · domains organizations.domains.manage* · retention organizations.retention.manage* (+ documents.retention.manage* / messaging.retention.manage* for those modules) ·
              billing organizations.billing.manage* · lifecycle: transfer users.members.transfer_ownership*, delete organizations.organization.delete* (Owner only)
      @api    PATCH /organization {branding} · POST /organization/logo · GET/POST /domains · POST /domains/:id/verify · PATCH /domains/:id · POST /organization/delete-request · POST /organization/cancel-deletion
      @mcp    organizations_settings_manage* · organizations_domains_manage* · organizations_organization_delete* (never by an AI alone)
-     @data   Organization (branding, logo_url, status, deletion_requested_at, deletion_scheduled_at, deleted_at, settings) · OrganizationDomain (domain, status, verification_token, verified_at, allow_discovery, auto_provision) · DocumentRetentionPolicy (17) · MessagingRetentionPolicy (12)
+     @data   Organization (branding, logo_url, status, deletion_requested_at, deletion_scheduled_at, deleted_at, settings) · OrganizationDomain (domain, status, verification_token, verified_at, allow_discovery, auto_provision) · OrganizationRetentionPolicy (data_class, retention_days, action, legal_hold) · OrganizationPlan · OrganizationPlanInvoice · DocumentRetentionPolicy (17) · MessagingRetentionPolicy (12)
      @ui     Form, color picker, file upload, Switch, Table, CopyButton, Stepper (domain verify), AlertDialog with typed confirmation ("delete logiqdev"), Progress
      @states loading · saving · error · verification pending / failed · deletion pending (banner everywhere) · no-access
      @audit  organization.updated · domain.verified | domain.revoked · organization.status_changed · organization.deletion_requested
      @note   Branding is the FALLBACK of proposals, invoices, portal and emails (modules may override). Deleting needs the Owner, a typed name, recent MFA and a 30-day grace: status PENDING_DELETION (OrganizationStatus).
-     @gap    Data retention for audit events, sessions and invitations has no table/columns (only documents and messaging have retention policies); a plan/subscription of the ORGANIZATION itself (seats, limits, invoices from Logiqdev) has no model (gaps-01b.md #5 and #9).
      ===================================================================================================================== */
   function branding() {
     return '<div class="a-page">' + head("Branding", "Organization.branding (JSON). Used by proposals, invoices, the customer portal and emails unless a module overrides it.", btn("Discard", "") + btn("Save branding", "check", "primary")) +
@@ -1387,22 +1380,22 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
       dm(["OrganizationDomain · domain, status, verification_token, allow_discovery, auto_provision", "OrganizationSecurityPolicy · restrict_invitations_to_domains"], []) + "</div>";
   }
   function retention() {
-    const row = (t, s, v, g) => '<div class="setting"><div class="grow"><b>' + t + "</b><small>" + s + (g ? " <span class='badge yellow'>gap</span>" : "") + "</small></div>" + sel(v).replace('class="sel"', 'class="sel" style="width:190px"') + "</div>";
+    const row = (t, s, v) => '<div class="setting"><div class="grow"><b>' + t + "</b><small>" + s + "</small></div>" + sel(v).replace('class="sel"', 'class="sel" style="width:190px"') + "</div>";
     return '<div class="a-page">' + head("Data retention", "How long data is kept before it is removed or anonymized (§100, §103). Some modules own their policy.", btn("Save", "check", "primary")) +
       callout("lock", "Audit events are immutable: retention only <b>archives</b> them after the period; legal holds suspend deletion.", "warn") + '<div style="height:12px"></div>' +
       '<div class="g-main"><div class="stack">' +
-      cd("<b>Platform data (this module)</b><span class='r'><span class='badge yellow'>not in schema</span></span>", row("Audit events", "AuditEvent · IP address and user agent are scrubbed after the period", "2 years", 1) + row("Sessions", "UserSession · revoked and expired rows", "90 days", 1) + row("Invitations", "Invitation · non-pending rows", "1 year", 1) + row("Webhook deliveries", "WebhookDelivery · payloads and responses", "30 days", 1), 1) +
+      cd("<b>Platform data (this module)</b><span class='r muted'>OrganizationRetentionPolicy</span>", row("Audit events", "AUDIT_EVENTS · IP address and user agent are scrubbed after the period (ANONYMIZE / ARCHIVE)", "2 years") + row("Sessions", "SESSIONS · revoked and expired rows (DELETE)", "90 days") + row("Invitations", "INVITATIONS · non-pending rows (DELETE)", "1 year") + row("Webhook deliveries", "WEBHOOK_DELIVERIES · payloads and responses (DELETE)", "30 days"), 1) +
       cd("<b>Owned by other modules</b>", '<div class="rowx"><div class="grow"><b>Documents</b><small>DocumentRetentionPolicy · documents.retention.manage*</small></div><a style="text-decoration:underline">Open in Documents</a></div><div class="rowx"><div class="grow"><b>Messaging</b><small>MessagingRetentionPolicy · messaging.retention.manage*</small></div><a style="text-decoration:underline">Open in Messaging</a></div>', 1) + "</div>" +
-      '<div class="stack">' + cd("<b>Legal hold</b>", sw2("Suspend all deletion", "e.g. during a dispute", 0) + callout("shield", "Turning this on is audited and notifies admins.")) + "</div></div>" +
-      dm(["DocumentRetentionPolicy (17) · MessagingRetentionPolicy (12)"], ["Retention for AuditEvent, UserSession, Invitation, WebhookDelivery: no table (gaps-01b.md #5)"]) + "</div>";
+      '<div class="stack">' + cd("<b>Legal hold</b>", sw2("Suspend all deletion", "OrganizationRetentionPolicy.legal_hold · e.g. during a dispute", 0) + callout("shield", "Turning this on is audited and notifies admins.")) + "</div></div>" +
+      dm(["OrganizationRetentionPolicy · data_class (AUDIT_EVENTS | SESSIONS | INVITATIONS | WEBHOOK_DELIVERIES), retention_days, action (ARCHIVE | DELETE | ANONYMIZE), legal_hold, legal_hold_reason, last_run_at, updated_by_membership_id", "DocumentRetentionPolicy (17) · MessagingRetentionPolicy (12)"], []) + "</div>";
   }
   function billing() {
     return '<div class="a-page">' + head("Billing & plan", "Your Logiqdev OS subscription: plan, seats and invoices from the platform (not your customers’ billing).", btn("Change plan", "layers") + btn("Update payment method", "dollar")) +
-      callout("dollar", "<b>No schema yet.</b> Billing here means the organization’s own plan. The Billing module (08) is about invoicing YOUR customers; its Subscription table is customer-facing. See gaps-01b.md #9.", "warn") + '<div style="height:12px"></div>' +
+      callout("dollar", "Billing here means the organization’s own plan (OrganizationPlan). The Billing module (08) is about invoicing YOUR customers; its Subscription table is customer-facing.") + '<div style="height:12px"></div>' +
       '<div class="mini-stats">' + stat("Plan", "Business", "€15 / seat / month") + stat("Seats used", "24 / 30", "service accounts are free") + stat("Next invoice", "€360", "Dec 1") + stat("Included integrations", "Twilio SMS trial", "IntegrationConnection PLATFORM") + "</div>" +
       '<div class="g2">' + cd("<b>Usage vs. limits</b>", '<div class="kvr"><span>Seats</span><b>24 of 30</b></div><div class="meter"><i style="width:80%"></i></div><div class="kvr" style="margin-top:8px"><span>Storage</span><b>212 GB of 500 GB</b></div><div class="meter g"><i style="width:42%"></i></div><div class="kvr" style="margin-top:8px"><span>Automation runs</span><b>8.4k of 10k</b></div><div class="meter y"><i style="width:84%"></i></div>') +
       cd("<b>Invoices from Logiqdev</b>", tb(["Invoice", "Period", ">Amount", "Status", ""], [["LQ-2026-11", "Nov 2026", '<span class="num">€360.00</span>', S("COMPLETED"), btn("PDF", "", "sm")], ["LQ-2026-10", "Oct 2026", '<span class="num">€345.00</span>', S("COMPLETED"), btn("PDF", "", "sm")]], 1), 1) + "</div>" +
-      dm(["Organization.settings (JSON, unspecified)"], ["Organization plan / subscription / seats / limits / platform invoices: no model", "Permission organizations.billing.manage exists but nothing implements it"]) + "</div>";
+      dm(["OrganizationPlan · plan_key, status, seats, limits, trial_ends_at, current_period_start/end, cancel_at_period_end, payment_provider_ref, payment_method (display only)", "OrganizationPlanInvoice · number, status, currency, amount_minor, period_start/end, issued_at, paid_at, pdf_url"], []) + "</div>";
   }
   function lifecycle() {
     return '<div class="a-page">' + head("Organization lifecycle", "Status, ownership transfer, export and deletion. Owner only (§103).") +
@@ -1420,24 +1413,23 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
      @screen New access review · Access review detail
      @route  /admin/access-reviews/new · /admin/access-reviews/:id
      @perm   organizations.access_reviews.manage* (create/start/apply/complete/cancel) · .read* · .decide* (only items assigned to the reviewer)
-     @api    POST /access-reviews {name, description, scope_type, scope_id, modules[], starts_at, due_at} · POST /access-reviews/:id/start · GET /access-reviews/:id/items?decision=&reviewer= · PATCH /access-review-items/:id {decision, comment} · POST /access-reviews/:id/apply
+     @api    POST /access-reviews {name, description, scope_type, scope_id, modules[], reviewer_strategy, reviewer_membership_ids[], starts_at, due_at} · POST /access-reviews/:id/start · GET /access-reviews/:id/items?decision=&reviewer= · PATCH /access-review-items/:id {decision, comment} · POST /access-reviews/:id/apply
      @mcp    organizations_access_reviews_manage* · _decide*
-     @data   AccessReview · AccessReviewItem (access_snapshot JSON: roles, grants, module access, branch scopes) · Membership · RoleAssignment
+     @data   AccessReview (reviewer_strategy BRANCH_MANAGERS | TEAM_LEADS | LINE_MANAGER | SPECIFIC, reviewer_membership_ids[]) · AccessReviewItem (access_snapshot JSON: roles, grants, module access, branch scopes) · Membership · RoleAssignment
      @ui     Form, Select, DatePicker, Table + ToggleGroup, Sheet (snapshot), AlertDialog (apply), Progress
      @states draft · in progress · reviewer sees only own items · completed read-only · cancelled
      @audit  access_review.created | started | decision_recorded | decision_applied | completed | cancelled
      @note   Reviewer can never review themselves (separation of duties). Items are created on Start from the in-scope members.
-     @gap    AccessReview has no reviewer_strategy column (who reviews whom: branch managers / team leads / manager / custom): the choice cannot be stored (gaps-01b.md #10).
      ===================================================================================================================== */
   function reviewNew() {
     return '<div class="a-page">' + back("reviews", "Access reviews") + head("New access review", "Periodic certification (§98). Define who is reviewed, by whom, and by when.", btn("Cancel", "") + btn("Save as draft", "") + btn("Create and start", "check", "primary")) +
       '<div class="g-main"><div class="stack">' +
       cd("<b>Review</b>", fl("Name", inp("Q1 2027 access review"), "", 1) + fl("Description", ta("Quarterly certification of all members and their module access.")) + '<div class="g2">' + fl("Starts", sel("Jan 4, 2027", "calendar")) + fl("Due", sel("Jan 31, 2027", "calendar"), "reminders go to reviewers at 7 and 1 day before", 1) + "</div>") +
       cd("<b>Scope: who is reviewed</b>", fl("Scope", '<div class="seg"><button class="on">Organization</button><button>Branch</button><button>Branch + children</button><button>Team</button></div>', "AccessReview.scope_type: ORGANIZATION | BRANCH | BRANCH_HIERARCHY | TEAM") + fl("Target", sel("— whole organization —", "building")) + fl("Only members with access to modules", '<div style="display:flex;gap:6px;flex-wrap:wrap">' + tok("FINANCE") + tok("EMPLOYEES") + '<span class="tok" style="border-style:dashed;color:var(--ash)">+ Add</span></div>', "AccessReview.modules[] · empty = everyone") + callout("users", "<b>24 members</b> match. Owner and the reviewers themselves are included but reviewed by someone else.")) +
-      cd("<b>Reviewers</b><span class='r'><span class='badge yellow'>gap</span></span>", fl("Who reviews each member", '<div class="seg"><button class="on">Branch managers</button><button>Team leads</button><button>Line manager</button><button>Specific people</button></div>', "Not stored in the schema today (gap #10). The start action would write reviewer_membership_id per item.") + kv("Resolved reviewers", "Anna Meyer (14), Elena Papadaki (8), Petros R. (2)") + callout("shield", "A reviewer never reviews themselves. Members without a manager fall back to an Admin.", "warn")) +
+      cd("<b>Reviewers</b><span class='r muted'>AccessReview.reviewer_strategy</span>", fl("Who reviews each member", '<div class="seg"><button class="on">Branch managers</button><button>Team leads</button><button>Line manager</button><button>Specific people</button></div>', "Stored in AccessReview.reviewer_strategy (+ reviewer_membership_ids for SPECIFIC). Start writes reviewer_membership_id per item.") + kv("Resolved reviewers", "Anna Meyer (14), Elena Papadaki (8), Petros R. (2)") + callout("shield", "A reviewer never reviews themselves. Members without a manager fall back to an Admin.", "warn")) +
       foot("Starting snapshots the current access of every member into AccessReviewItem.access_snapshot.", btn("Cancel", "") + btn("Create and start", "check", "primary")) + "</div>" +
       '<div class="stack">' + cd("<b>What reviewers see</b>", tb(["Member", "Access snapshot"], [["Marco Silva", "Developer · 7 modules · Athens"], ["Sofia Jensen", "Employee · 10 modules"]], 1), 1) + "</div></div>" +
-      dm(["AccessReview · name, description, scope_type, scope_id, modules, starts_at, due_at", "AccessReviewItem · created on start"], ["reviewer_strategy (gaps-01b.md #10)"]) + "</div>";
+      dm(["AccessReview · name, description, scope_type, scope_id, modules, reviewer_strategy, reviewer_membership_ids, starts_at, due_at", "AccessReviewItem · created on start, reviewer_membership_id resolved from reviewer_strategy"], []) + "</div>";
   }
   function review() {
     const It = [["Marco Silva", "MS", "g", "Anna Meyer", "CERTIFIED", "", "Developer · 7 modules · Athens"], ["Sofia Jensen", "SJ", "y", "Anna Meyer", "MODIFIED", "Remove Finance module access", "Employee · 10 modules"], ["Ivan Petrov", "IP", "p", "Anna Meyer", "REVOKED", "Left the team in October", "Developer · suspended"], ["Jon Kim", "JK", "r", "Anna Meyer", "PENDING", "", "Developer · 7 modules"], ["Nikos Georgiou", "NG", "g", "Elena Papadaki", "PENDING", "", "Sales Manager · 7 modules"]];
@@ -1450,7 +1442,7 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
         cd("<b>Sofia Jensen</b><span class='r'>" + E("MODIFIED", "yellow") + "</span>", '<div class="muted" style="margin-bottom:6px">access_snapshot (frozen at start)</div>' + kv("Roles", "Employee (ORGANIZATION)") + kv("Grants", "none") + kv("Branches", "Thessaloniki (primary)") + kv("Modules", "10 · incl. FINANCE") + kv("Last active", "1h ago") + kv("MFA", '<span class="badge yellow">Off</span>') + '<div class="muted" style="margin:10px 0 6px">Decision</div>' + '<div class="seg"><button>Certify</button><button>Revoke</button><button class="on">Modify</button></div>' + fl("Comment (required)", inp("Remove Finance module access"), "") + fl("Change to apply", sel("MembershipModuleAccess · FINANCE = off", "layers"), "applied through the normal services") + btn("Save decision", "check", "sm")) + "</div>") +
       pane("r", 0, tb(["Reviewer", ">Assigned", ">Decided", "Progress", "Status"], [["Anna Meyer", '<span class="num">14</span>', '<span class="num">10</span>', '<span class="bar"><i style="width:71%"></i></span> 71%', E("IN_PROGRESS", "blue")], ["Elena Papadaki", '<span class="num">8</span>', '<span class="num">3</span>', '<span class="bar"><i style="width:38%"></i></span> 38%', '<span class="badge red">Overdue reminder</span>'], ["Petros R.", '<span class="num">2</span>', '<span class="num">1</span>', '<span class="bar"><i style="width:50%"></i></span> 50%', E("IN_PROGRESS", "blue")]])) +
       pane("a", 0, cd("<b>Activity</b><span class='r muted'>AuditEvent</span>", '<div class="tl"><div class="ev"><b class="key">access_review.decision_recorded</b><small>Anna M. · Ivan Petrov REVOKED · 2h ago</small></div><div class="ev"><b class="key">access_review.started</b><small>Petros R. · Nov 1 · 24 items</small></div><div class="ev"><b class="key">access_review.created</b><small>Petros R. · Oct 28</small></div></div>')) + "</div>" +
-      dm(["AccessReview · status, scope_type, scope_id, modules, starts_at, due_at, completed_at", "AccessReviewItem · membership_id, reviewer_membership_id, decision, decided_at, comment, access_snapshot, applied_at"], ["reviewer_strategy (gaps-01b.md #10)"]) + "</div>";
+      dm(["AccessReview · status, scope_type, scope_id, modules, reviewer_strategy, starts_at, due_at, completed_at", "AccessReviewItem · membership_id, reviewer_membership_id, decision, decided_at, comment, access_snapshot, applied_at"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -1484,7 +1476,7 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
      NOTIFICATION PREFERENCES (self + organization defaults) · owned by module 14, surfaced in Admin
      @screen Notification preferences
      @route  /admin/notifications?tab=mine|defaults
-     @perm   own preferences: notifications.preferences.manage_own (every role) · organization defaults: notifications.defaults.manage-class permission of module 14 (see note)
+     @perm   own preferences: notifications.preferences.manage_own (every role) · organization defaults: notifications.defaults.manage* (module 14 catalog key)
      @api    GET/PATCH /me/notification-settings · PUT /me/notification-preferences {event_type_id|module, channel, enabled, level, delivery_mode} · GET/PUT /notification-defaults
      @mcp    notifications_preferences_manage_own
      @data   NotificationRecipientSettings (level, channel switches, dnd_*, timezone, digest_frequency, digest_channel) · NotificationPreference (event_type_id|module, channel, enabled, level, delivery_mode, muted_until) · NotificationOrgDefault (channels, portal_channels, delivery_mode, digest_frequency, is_mandatory) · NotificationEventType (forced_channels, mandatory_by_default)
@@ -1504,7 +1496,7 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
         cd("<b>Digest</b>", fl("Frequency", sel("Daily", "mail"), "NotificationDigestFrequency: IMMEDIATE | HOURLY | DAILY | WEEKLY") + fl("Channel", sel("Email", "mail")) + fl("Hour", sel("08:00", "clock"))) + cd("<b>Channels</b>", sw2("In-app", "in_app_enabled", 1) + sw2("Email", "email_enabled", 1) + sw2("SMS", "Needs a Twilio connection · <a style='text-decoration:underline'>Connect</a>", 0) + sw2("Push", "push_enabled", 1) + sw2("Sound", "sound_enabled", 1)) + "</div></div>") +
       pane("d", 0, callout("shield", "Organization defaults (NotificationOrgDefault) apply to members who have not chosen otherwise. <b>Mandatory</b> events cannot be switched off by members.") + '<div style="height:12px"></div>' + grid(1)) +
       pane("p", 0, callout("globe", "Portal users have their own channels (<span class='key'>portal_channels</span>, default In-app + Email). Customer-visible event types only.") + '<div style="height:12px"></div>' + tb(["Event", "Customer visible", "Portal channels"], [["Proposal ready to review", cb(1), tok("IN_APP") + " " + tok("EMAIL")], ["Invoice issued", cb(1), tok("IN_APP") + " " + tok("EMAIL")], ["Ticket reply", cb(1), tok("IN_APP") + " " + tok("EMAIL")]])) + "</div>" +
-      dm(["NotificationRecipientSettings · NotificationPreference · NotificationOrgDefault · NotificationEventType", "NotificationDigest (frequency)"], ["The permission for editing ORGANIZATION defaults is not in the Admin catalog: confirm the module 14 key"]) + "</div>";
+      dm(["NotificationRecipientSettings · NotificationPreference · NotificationOrgDefault · NotificationEventType", "NotificationDigest (frequency)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -1570,7 +1562,7 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
   }
 
   /* Enhanced MEMBERS list: same data as members(), with the shared filter bar, saved views, sort, bulk actions. @route /admin/members?... @perm users.members.read
-     @note Saved views = SavedView (entity_type = MEMBERSHIP is not in RecordEntityType: gap #4). Bulk actions need the per-action permission for each selected row. */
+     @note Saved views = SavedView (entity_type = MEMBERSHIP, RecordEntityType). Bulk actions need the per-action permission for each selected row. */
   function members2() {
     const base = members();
     const bar = FB([["Role", "is any of", "Developer, Project Manager"], ["Branch", "is", "Athens"], ["MFA", "is", "Off"]], sel("Sort: Last active") + btn("Save view", "plus", "sm")) +
