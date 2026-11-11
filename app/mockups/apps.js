@@ -37,18 +37,17 @@
         items([{ l: "Setup", i: "settings", k: "settings" }, { l: "Archive", i: "archive" }]),
       ], "plus") },
     /* @impl Tasks — ModuleKey TASKS · docs/features/06 · VIEW tasks.tasks.read · CREATE tasks.tasks.create
-       @data Task, TaskStatus, TaskLabel, Cycle (sprints), Release, TaskAssignee, TaskWatcher.
-       @note "Teams" in this panel are Team rows of module 01 (kind TEAM/DEPARTMENT), "Views" are SavedView rows (module 02 platform table).
-             Linear-style: the panel is the filter; keep URLs shareable (`/tasks?team=web&view=active`). */
+       @data Task, TaskStatus, TaskType, TaskLabel, Cycle (sprints), Release, ReleaseDeployment, Team.task_key (key prefix).
+       @note "Teams" are Team rows of module 01 (kind TEAM/DEPARTMENT) that have a task_key; "Views" are SavedView rows (entity_type TASK, module 02 platform table). The page of one task is /tasks/WEB-142 (alias of "My tasks" here).
+             Linear-style: the panel is the filter; keep URLs shareable (`/tasks/teams/web/board?cycle=14`). */
     { id: "tasks", label: "Tasks", icon: "tasks", newLabel: "New task",
+      alias: { detail: "mine" },
       panel: P("Tasks", [
-        items([{ l: "Inbox", i: "inbox", c: 4 }, { l: "My tasks", i: "tasks", active: 1 }]),
-        sec("Teams", [
-          { l: "Web", dot: "blue", open: 1, children: ["Active", "Backlog", "Sprints", "Board"] },
-          { l: "Mobile", dot: "green", children: ["Active", "Backlog", "Sprints", "Board"] },
-          { l: "Design", dot: "yellow", children: ["Active", "Backlog", "Board"] },
-        ]),
+        items([{ l: "My tasks", i: "tasks", k: "mine" }, { l: "Workload", i: "users", k: "workload" }, { l: "Reports", i: "chart", k: "reports" }]),
+        sec("Web team", [{ l: "Board", i: "layers", k: "board" }, { l: "Backlog", i: "inbox", k: "backlog", c: 2 }, { l: "Cycles", i: "time", k: "cycles" }, { l: "Task page", i: "file", k: "detail" }]),
+        sec("Organization", [{ l: "Releases", i: "flag", k: "releases" }]),
         sec("Views", [{ l: "Overdue", i: "filter" }, { l: "Unassigned", i: "filter" }, { l: "Client requests", i: "filter" }, { l: "Blocked", i: "filter" }], "plus"),
+        items([{ l: "Setup", i: "settings", k: "settings" }]),
       ], "edit") },
     /* @impl Time — ModuleKey TIME_TRACKING · docs/features/18 · VIEW time.entries.read_own (read_team / read_all widen the scope) · CREATE time.entries.create_own */
     { id: "time", label: "Time", icon: "clock", newLabel: "Start timer", panel: simple("Time tracking", ["Timer", "My timesheet", "Team timesheets", "Approvals", "Reports"]) },

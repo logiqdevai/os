@@ -1,6 +1,6 @@
 /* Main-area views. Each app owns its layout: Tasks ≈ Linear, Messages ≈ Slack, Support ≈ Intercom, Campaigns ≈ Mailchimp/Customer.io.
 
-   !! NOT YET SCHEMA-ALIGNED !!  These screens (Tasks, Messages, Support, Campaigns, Projects) were designed from the product description before the
+   !! NOT YET SCHEMA-ALIGNED !!  These screens (Messages, Support, Campaigns) were designed from the product description before the
    "schema first" rule. Status labels, field names, columns and sample data here are ILLUSTRATIVE. Before implementing any of them:
      1. read the owned models + enums of the module in api/prisma/schema.prisma (module numbers are given per screen),
      2. read the module's permission keys in api/prisma/seed/permission-catalog.ts,
@@ -8,16 +8,15 @@
      4. add the "Data model" footer like views-admin.js does.
    The LAYOUT and INTERACTION patterns are the approved design; the data details are not.
 
-   @impl General rules for all screens in this file: see README.md. Mock-only: sample arrays, inline styles, the `st()`/`prio()` helper SVGs.
+   @impl General rules for all screens in this file: see README.md. Mock-only: sample arrays, inline styles, the `st()` helper SVGs.
    Production: lists with > ~50 rows use cursor pagination + virtualization; every list is filtered server-side by the caller's branch/team/project scope. */
 (function () {
   const I = (n, s) => LQ.icon(n, s);
   const AV = LQ.av;
 
-  /* ---------- Linear-style status / priority glyphs ----------
+  /* ---------- Linear-style status glyph ----------
      @impl st(kind): status icon by TaskStatus category (backlog = dashed circle, todo = empty circle, in progress = half-filled, done = check).
        Render from TaskStatus.category (06), NOT from a hard-coded kind; org-defined statuses must map to one of these categories.
-     @impl prio(level): priority glyph (urgent = red square "!", high/medium/low = 3/2/1 bars, none = dim bars). Map from the Task priority enum of 06. */
   function st(k) {
     const c = { backlog: "var(--ash)", todo: "var(--mute)", prog: "var(--yellow)", done: "var(--blue)" }[k];
     const w = (x) => '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex:none">' + x + "</svg>";
@@ -25,58 +24,6 @@
     if (k === "todo") return w('<circle cx="7" cy="7" r="5.5" stroke="' + c + '" stroke-width="1.5"/>');
     if (k === "prog") return w('<circle cx="7" cy="7" r="5.5" stroke="' + c + '" stroke-width="1.5"/><path d="M7 3.5a3.5 3.5 0 0 1 0 7z" fill="' + c + '"/>');
     return w('<circle cx="7" cy="7" r="6.25" fill="' + c + '"/><path d="M4.5 7.2l1.7 1.7 3.3-3.4" stroke="var(--on-accent)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>');
-  }
-  function prio(l) {
-    if (l === 4) return '<span class="prio-urg" title="Urgent">!</span>';
-    const h = [4, 7, 10];
-    return '<svg width="14" height="14" viewBox="0 0 14 14" style="flex:none;color:var(--mute)" title="Priority">' +
-      h.map((v, i) => '<rect x="' + (1 + i * 4.5) + '" y="' + (12 - v) + '" width="3" height="' + v + '" rx="1" fill="currentColor" opacity="' + (l === 0 ? 0.2 : i < l ? 1 : 0.25) + '"/>').join("") + "</svg>";
-  }
-
-  /* ================= TASKS (Linear-like) =================
-     @screen Tasks · My tasks (list grouped by status)
-     @route  /tasks (default = "My tasks"), /tasks/team/:teamSlug/:view, /tasks/:taskKey (detail as a side peek or full page; Linear style)
-     @perm   VIEW tasks.tasks.read · ACTION create tasks.tasks.create, edit inline tasks.tasks.update, assign tasks.tasks.assign, bulk tasks.bulk.execute,
-             delete tasks.tasks.delete (sensitive). "Internal" comments need tasks.comments.internal.read (clients never see them).
-     @api    GET /tasks?assignee=me&team=&status_category=&label=&cycle=&sort=&cursor= · PATCH /tasks/:id · POST /tasks
-     @mcp    tasks_tasks_read, tasks_tasks_create, tasks_tasks_update, tasks_tasks_assign
-     @data   module 06: Task (key e.g. WEB-142, title, status, priority, labels, assignees, due date, project_id), TaskStatus, TaskLabel, TaskAssignee, Cycle.
-             Project name comes from module 05, assignee from Membership/User (01).
-     @ui     shadcn Table-like list (use a div grid + roving tabindex, not <table>), Badge (labels), Avatar, DropdownMenu (row/inline editors), Popover+Command (status/assignee pickers), ToggleGroup (All/Active/Backlog).
-     @states loading skeleton rows · empty ("No tasks assigned to you") · error · no-access
-     @note   Rows are inline-editable (click status icon -> status picker, priority glyph -> priority picker). Keyboard-first (j/k move, c create, s status, a assign).
-             Grouping, ordering and visible columns ("Display" button) are per-user saved views (SavedView, module 02 platform table).
-             Row highlight (.sel) = keyboard focus / open peek. Labels column hides under 1250px width (CSS), keep it priority-ordered. */
-  const TASKS = [
-    ["In progress", "prog", [
-      ["WEB-142", "Rebuild pricing page hero with new brand system", 3, [["Frontend", "blue"]], "Acme Rebrand", ["MS", "g"], "Nov 14"],
-      ["WEB-139", "Stripe webhook retries failing intermittently", 4, [["Bug", "red"], ["Billing", "purple"]], "Stripe Billing Migration", ["AM", ""], "Nov 12"],
-      ["MOB-87", "Offline mode for task sync", 2, [["Feature", "green"]], "Mobile App v2", ["SJ", "y"], "Nov 20"],
-    ]],
-    ["Todo", "todo", [
-      ["WEB-151", "Client approval flow for design deliverables", 3, [["Portal", "purple"]], "Customer Portal Build", ["MS", "g"], "Nov 18"],
-      ["WEB-148", "Add VAT number validation to checkout", 2, [["Billing", "purple"]], "Stripe Billing Migration", ["AM", ""], "Nov 19"],
-      ["DES-33", "Illustration set for onboarding emails", 1, [["Design", "yellow"]], "Brand Strategy Sprint", ["SJ", "y"], "Nov 25"],
-      ["MOB-92", "Push notification permission copy", 0, [], "Mobile App v2", ["JK", "r"], "—"],
-    ]],
-    ["Backlog", "backlog", [
-      ["WEB-120", "Migrate analytics events to new schema", 1, [["Tech debt", "yellow"]], "Data Warehouse Setup", ["AM", ""], "—"],
-      ["WEB-117", "Support dark mode in embedded widgets", 1, [["Frontend", "blue"]], "Acme Rebrand", ["MS", "g"], "—"],
-      ["MOB-71", "Investigate cold-start performance on Android", 2, [["Bug", "red"]], "Mobile App v2", ["JK", "r"], "—"],
-    ]],
-  ];
-  function tasks() {
-    return '<div class="tk"><div class="tk-head"><div class="tk-title">' + I("tasks", 16) + ' My tasks <span class="badge">10</span></div>' +
-      '<div class="pills" style="margin:0"><button class="pill active">All</button><button class="pill">Active</button><button class="pill">Backlog</button></div>' +
-      '<span style="flex:1"></span><button class="btn sm">' + I("filter", 13) + ' Filter</button><button class="btn sm">' + I("sort", 13) + ' Display</button></div>' +
-      '<div class="tk-list">' + TASKS.map(function (g) {
-        return '<div class="tk-grp"><div class="tk-grp-h">' + st(g[1]) + "<b>" + g[0] + '</b><span class="n">' + g[2].length + '</span><button class="btn ghost sm icon" style="margin-left:auto">' + I("plus", 14) + "</button></div>" +
-          g[2].map(function (r, i) {
-            return '<div class="tk-row' + (g[1] === "prog" && i === 1 ? " sel" : "") + '">' + prio(r[2]) + '<span class="id">' + r[0] + "</span>" + st(g[1]) + '<span class="t">' + r[1] + "</span>" +
-              '<span class="lbls">' + r[3].map((l) => '<span class="badge ' + l[1] + '">' + l[0] + "</span>").join("") + "</span>" +
-              '<span class="proj">' + I("folder", 12) + r[4] + "</span>" + '<span class="due">' + r[6] + "</span>" + AV(r[5][0], r[5][1]) + "</div>";
-          }).join("") + "</div>";
-      }).join("") + "</div></div>";
   }
 
   /* ================= MESSAGES (Slack-like) =================
@@ -219,7 +166,6 @@
   }
 
   window.VIEWS = {
-    tasks: { html: tasks },
     messages: { html: messages, fill: 1 },
     support: { html: support, fill: 1 },
     campaigns: { html: campaigns },

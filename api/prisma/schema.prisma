@@ -972,6 +972,8 @@ model Team {
   branch_id       String?
   name            String
   slug            String?
+  /// 06 §3 — short key that prefixes task identifiers of this team (e.g. WEB gives WEB-142). Unique per organization; null = the team has no task key yet.
+  task_key        String?
   description     String?
   kind            TeamKind  @default(TEAM)
   archived_at     DateTime?
@@ -1026,6 +1028,7 @@ model Team {
   crm_dashboard_layouts  CrmDashboardLayout[]
 
   @@unique([organization_id, slug])
+  @@unique([organization_id, task_key])
   @@index([organization_id])
   @@index([parent_team_id])
   @@index([branch_id])
@@ -5833,7 +5836,7 @@ model Cycle {
 model Task {
   id                         String                   @id @default(uuid())
   organization_id            String
-  /// Sequential per organization; shown with the team key (e.g. ENG-123).
+  /// Sequential per organization; shown with Team.task_key (e.g. WEB-142).
   number                     Int
   team_id                    String?
   /// 06 §2 — project context consumed from 05 (project, workstream, milestone); all optional.
