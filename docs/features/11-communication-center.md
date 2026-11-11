@@ -16,6 +16,28 @@ The Communication Center should serve as the agency's primary communication hub,
 
 ---
 
+<!-- schema-refs:start -->
+
+## Data model (Prisma)
+
+> Generated from [`api/prisma/schema.prisma`](../../api/prisma/schema.prisma) by `node docs/scripts/sync-feature-schema-refs.mjs` — do not edit by hand.
+> Before implementing API or app code for this module, read these models in the schema and reuse the existing
+> tables, enums and services of the modules listed under "Reuses". Never redefine a table owned by another module.
+
+**Platform tables to reuse, not rebuild:** `audit_events` (activity & change history, [01](./01-users-organizations-permissions.md)) · `custom_field_definitions` (custom fields, [02](./02-crm-sales-management.md)) · `taggings` (tags, [02](./02-crm-sales-management.md)) · `saved_views` (saved views, [02](./02-crm-sales-management.md)) · `crm_notes` (notes, polymorphic by entity type, [02](./02-crm-sales-management.md)) · `number_sequences` (document numbering, [03](./03-proposal-quotation-generator.md)) · `signature_requests` (e-signatures, [04](./04-contracts.md)) · `provider_webhook_events` (idempotent provider webhooks, [08](./08-financial-management-stripe-integration.md))
+
+**Owned tables:** none yet — this module is not modelled in the schema. Add its tables in a new banner section
+`// NN Module name — docs/features/11-communication-center.md` and re-run the script.
+
+### Plain-id references from other modules
+
+Plain-string ids (no Prisma relation) that other modules already store for records this module will own. Turn them into relations when this module is modelled.
+
+- `CrmContact.consent` ([02](./02-crm-sales-management.md), [L1723](../../api/prisma/schema.prisma#L1723)) — Marketing consent per channel (consumed by 11 Communication Center).
+- `ProposalDelivery.communication_id` ([03](./03-proposal-quotation-generator.md), [L2577](../../api/prisma/schema.prisma#L2577)) — Communication record id (11); id only.
+
+<!-- schema-refs:end -->
+
 ## Email Management
 
 Support professional email communication including:

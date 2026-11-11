@@ -8,6 +8,42 @@
 >
 > **Consumed by:** every module that marks a record customer-visible.
 
+<!-- schema-refs:start -->
+
+## Data model (Prisma)
+
+> Generated from [`api/prisma/schema.prisma`](../../api/prisma/schema.prisma) by `node docs/scripts/sync-feature-schema-refs.mjs` — do not edit by hand.
+> Before implementing API or app code for this module, read these models in the schema and reuse the existing
+> tables, enums and services of the modules listed under "Reuses". Never redefine a table owned by another module.
+
+**Platform tables to reuse, not rebuild:** `audit_events` (activity & change history, [01](./01-users-organizations-permissions.md)) · `custom_field_definitions` (custom fields, [02](./02-crm-sales-management.md)) · `taggings` (tags, [02](./02-crm-sales-management.md)) · `saved_views` (saved views, [02](./02-crm-sales-management.md)) · `crm_notes` (notes, polymorphic by entity type, [02](./02-crm-sales-management.md)) · `number_sequences` (document numbering, [03](./03-proposal-quotation-generator.md)) · `signature_requests` (e-signatures, [04](./04-contracts.md)) · `provider_webhook_events` (idempotent provider webhooks, [08](./08-financial-management-stripe-integration.md))
+
+### Owned tables (1)
+
+| Model | Table | Schema line | Purpose |
+| -- | -- | -- | -- |
+| `CustomerPortalSettings` | `customer_portal_settings` | [L5043](../../api/prisma/schema.prisma#L5043) | 07 §14, §18 — portal branding, white-label and feature toggles per organization. |
+
+### Reuses from other modules (foreign keys)
+
+| Module | Model (table) | Referenced by |
+| -- | -- | -- |
+| [01](./01-users-organizations-permissions.md) | `Organization` (`organizations`) | `CustomerPortalSettings.organization` |
+
+### Referenced by other modules
+
+- [01](./01-users-organizations-permissions.md): `Organization`
+
+### Plain-id references from other modules
+
+Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
+
+- `ProjectDeliverable.acceptance_record` ([05](./05-project-management.md), [L4116](../../api/prisma/schema.prisma#L4116)) — Customer acceptance evidence: portal user id, contact id, comment (07 §7).
+- `Task.customer_visible` ([06](./06-task-management.md), [L4755](../../api/prisma/schema.prisma#L4755)) — Visible in the Customer Portal (05 §60, 07 §4).
+- `Release.notes` ([06](./06-task-management.md), [L4983](../../api/prisma/schema.prisma#L4983)) — Release notes (markdown), publishable to the portal (07) and knowledge base (13 §6).
+
+<!-- schema-refs:end -->
+
 ## 1. Purpose
 
 Develop a modern, secure Customer Portal that gives customers complete visibility into their engagement with the agency and lets them collaborate without email chains or manual status updates: monitor progress, review and approve deliverables, submit requests, access documents, sign proposals and contracts, and manage billing.

@@ -10,6 +10,68 @@
 >
 > **Consumed by:** 02 CRM (§14 sales tasks), 05 Projects (§22–23, §59), 07 Customer Portal (customer-visible tasks), 13 Support (§4 ticket-to-task), 18 Time Tracking, 19 Calendar (due dates projected).
 
+<!-- schema-refs:start -->
+
+## Data model (Prisma)
+
+> Generated from [`api/prisma/schema.prisma`](../../api/prisma/schema.prisma) by `node docs/scripts/sync-feature-schema-refs.mjs` — do not edit by hand.
+> Before implementing API or app code for this module, read these models in the schema and reuse the existing
+> tables, enums and services of the modules listed under "Reuses". Never redefine a table owned by another module.
+
+**Platform tables to reuse, not rebuild:** `audit_events` (activity & change history, [01](./01-users-organizations-permissions.md)) · `custom_field_definitions` (custom fields, [02](./02-crm-sales-management.md)) · `taggings` (tags, [02](./02-crm-sales-management.md)) · `saved_views` (saved views, [02](./02-crm-sales-management.md)) · `crm_notes` (notes, polymorphic by entity type, [02](./02-crm-sales-management.md)) · `number_sequences` (document numbering, [03](./03-proposal-quotation-generator.md)) · `signature_requests` (e-signatures, [04](./04-contracts.md)) · `provider_webhook_events` (idempotent provider webhooks, [08](./08-financial-management-stripe-integration.md))
+
+### Owned tables (15)
+
+| Model | Table | Schema line | Purpose |
+| -- | -- | -- | -- |
+| **Configuration** | | | |
+| `TaskStatus` | `task_statuses` | [L4658](../../api/prisma/schema.prisma#L4658) | 06 §3 — configurable statuses with workflow transitions. Scoped to a Team when team_id is set, otherwise organization-wide. |
+| `TaskType` | `task_types` | [L4683](../../api/prisma/schema.prisma#L4683) | 06 §3 — task types (task, bug, feature, improvement, chore, follow-up …). |
+| `TaskLabel` | `task_labels` | [L4705](../../api/prisma/schema.prisma#L4705) | 06 §3 — Linear-style labels. Platform tags (02 §36) also apply to tasks. |
+| `Cycle` | `cycles` | [L4726](../../api/prisma/schema.prisma#L4726) | 06 §4 — cycles / sprints, per team or project. |
+| **Task** | | | |
+| `Task` | `tasks` | [L4755](../../api/prisma/schema.prisma#L4755) | 06 §3 — the Task record. Work hierarchy: Organization → Team → Project → Workstream/Milestone → Task → Subtask. Project is optional for personal and CRM work. |
+| `TaskAssignee` | `task_assignees` | [L4845](../../api/prisma/schema.prisma#L4845) | 06 §3 — additional assignees beyond the primary assignee. |
+| `TaskLabelAssignment` | `task_label_assignments` | [L4858](../../api/prisma/schema.prisma#L4858) |  |
+| `TaskDependency` | `task_dependencies` | [L4871](../../api/prisma/schema.prisma#L4871) | 06 §3 — blocks / related / duplicates between tasks, including cross-project links. |
+| `TaskChecklistItem` | `task_checklist_items` | [L4888](../../api/prisma/schema.prisma#L4888) | 06 §3 — checklists inside a task. |
+| `TaskComment` | `task_comments` | [L4904](../../api/prisma/schema.prisma#L4904) | 06 §7 — comments with threads, mentions and reactions. Customer-visible comments surface in 07. |
+| `TaskAttachment` | `task_attachments` | [L4933](../../api/prisma/schema.prisma#L4933) | 06 §8 — attachments are Documents (17); id only until 17 exists. |
+| `TaskLink` | `task_links` | [L4949](../../api/prisma/schema.prisma#L4949) | 06 §13 — polymorphic link from a task to the record it originated from or serves: CRM records (02 §14), tickets (13 §4), project change requests (05), custom… |
+| `TaskWatcher` | `task_watchers` | [L4967](../../api/prisma/schema.prisma#L4967) | Members following a task for notifications (14). |
+| **Releases** | | | |
+| `Release` | `releases` | [L4983](../../api/prisma/schema.prisma#L4983) | 06 §9 — a shippable set of tasks. A Release may map to a Project Milestone (05). |
+| `ReleaseDeployment` | `release_deployments` | [L5016](../../api/prisma/schema.prisma#L5016) | 06 §9 — deployment status per environment. |
+
+**Owned enums (7):** `TaskStatusCategory`, `TaskPriority`, `TaskDependencyType`, `CycleStatus`, `ReleaseStatus`, `DeploymentStatus`, `TaskCommentVisibility`
+
+### Reuses from other modules (foreign keys)
+
+| Module | Model (table) | Referenced by |
+| -- | -- | -- |
+| [01](./01-users-organizations-permissions.md) | `Membership` (`memberships`) | `Task.assignee`, `Task.reporter`, `TaskAssignee.membership`, `TaskComment.author` +1 more |
+| [01](./01-users-organizations-permissions.md) | `Organization` (`organizations`) | `Cycle.organization`, `Release.organization`, `Task.organization`, `TaskLabel.organization` +2 more |
+| [01](./01-users-organizations-permissions.md) | `Team` (`teams`) | `Cycle.team`, `Release.team`, `Task.team`, `TaskStatus.team` |
+| [05](./05-project-management.md) | `Project` (`projects`) | `Cycle.project`, `Release.project`, `Task.project` |
+| [05](./05-project-management.md) | `ProjectMilestone` (`project_milestones`) | `Task.milestone` |
+| [05](./05-project-management.md) | `ProjectWorkstream` (`project_workstreams`) | `Task.workstream` |
+
+**Reused enums:** `RecordEntityType` ([02](./02-crm-sales-management.md))
+
+### Referenced by other modules
+
+- [04](./04-contracts.md): `ContractObligation`
+- [05](./05-project-management.md): `ProjectChangeRequest`, `ProjectChecklistItem`, `ProjectIssue`
+
+### Plain-id references from other modules
+
+Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
+
+- `ContractObligation.project_id` ([04](./04-contracts.md), [L3487](../../api/prisma/schema.prisma#L3487)) — Related Project (05) and Task (06); ids only.
+- `ProjectChecklistItem.task_id` ([05](./05-project-management.md), [L4460](../../api/prisma/schema.prisma#L4460)) — Task created from this item (06).
+
+<!-- schema-refs:end -->
+
 ## 1. Overview
 
 Develop a **Linear-inspired task management system** that provides a fast and highly responsive experience for planning, tracking and delivering work. The module covers the lifecycle of a work item from backlog to release.

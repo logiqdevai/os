@@ -10,6 +10,12 @@
 
 @.cursor/rules/app-shadcn-code-structure-and-best-practices.mdc
 
+## Feature specs ↔ database (`docs/features/**`)
+
+Each feature spec has a generated **"Data model (Prisma)"** section near the top. It lists the tables the module owns (with schema line links), the tables it reuses from other modules, the platform tables (audit events, custom fields, tags, notes, numbering, signatures, webhooks) and the plain-id references between modules. Read it before you implement a feature in `api/` or `app/`. Reuse the existing models, services and endpoints of the owning module. Never redefine a table or build a parallel service for something another module owns.
+
+After any change to `api/prisma/schema.prisma`, run `node docs/scripts/sync-feature-schema-refs.mjs` to refresh those sections. Don't edit them by hand.
+
 ## Local development
 
 For local API work, use `.env.staging` (`npm run start:staging` in `api/`), not `.env.local` — `.env.local` has empty/placeholder integration keys (e.g. `RESEND_API_KEY`), so flows like email sending fail locally with it. `.env.staging` has working keys.

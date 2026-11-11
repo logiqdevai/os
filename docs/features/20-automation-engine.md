@@ -8,6 +8,28 @@
 >
 > **Consumed by:** 02 CRM (§31 sales automation), 03 Proposals (follow-ups), 04 Contracts (§87 lifecycle automation, §52 expiration monitoring), 05 Projects (§70, §91, §116), 06 Tasks (recurring tasks, status rules), 08 Finance (automation section), 09 Income & Expense (recurring expenses, automation section), 10 Employees (leave workflows), 11 Communication Center (automation section), 12 Messaging (§95 channel lifecycle, §92 system events), 13 Support (§7 workflows, §4 ticket-to-task rules), 17 Documents (retention), 18 Time Tracking (reminders).
 
+<!-- schema-refs:start -->
+
+## Data model (Prisma)
+
+> Generated from [`api/prisma/schema.prisma`](../../api/prisma/schema.prisma) by `node docs/scripts/sync-feature-schema-refs.mjs` — do not edit by hand.
+> Before implementing API or app code for this module, read these models in the schema and reuse the existing
+> tables, enums and services of the modules listed under "Reuses". Never redefine a table owned by another module.
+
+**Platform tables to reuse, not rebuild:** `audit_events` (activity & change history, [01](./01-users-organizations-permissions.md)) · `custom_field_definitions` (custom fields, [02](./02-crm-sales-management.md)) · `taggings` (tags, [02](./02-crm-sales-management.md)) · `saved_views` (saved views, [02](./02-crm-sales-management.md)) · `crm_notes` (notes, polymorphic by entity type, [02](./02-crm-sales-management.md)) · `number_sequences` (document numbering, [03](./03-proposal-quotation-generator.md)) · `signature_requests` (e-signatures, [04](./04-contracts.md)) · `provider_webhook_events` (idempotent provider webhooks, [08](./08-financial-management-stripe-integration.md))
+
+**Owned tables:** none yet — this module is not modelled in the schema. Add its tables in a new banner section
+`// NN Module name — docs/features/20-automation-engine.md` and re-run the script.
+
+### Plain-id references from other modules
+
+Plain-string ids (no Prisma relation) that other modules already store for records this module will own. Turn them into relations when this module is modelled.
+
+- `CrmActivity.automation_rule_id` ([02](./02-crm-sales-management.md), [L1971](../../api/prisma/schema.prisma#L1971)) — Automation rule id (20) when created by a rule.
+- `Task.automation_rule_id` ([06](./06-task-management.md), [L4755](../../api/prisma/schema.prisma#L4755)) — Recurring task instance: schedule rule lives in the Automation Engine (20); the template task is linked.
+
+<!-- schema-refs:end -->
+
 ## 1. Purpose
 
 The Automation Engine lets organizations define "when X happens, if Y, do Z" across the whole Agency Operating System without code, and gives modules a single reliable place to run scheduled and event-driven work.

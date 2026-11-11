@@ -8,6 +8,43 @@
 >
 > **Consumed by:** 02 CRM (attachments on records), 03 Proposals (generated PDFs, attachments), 04 Contracts (signed artifacts, §60), 05 Projects (§34–35 project documents and files), 06 Tasks (task attachments), 07 Customer Portal (Documents section), 09 Income & Expense (invoice and receipt uploads), 10 Employees (employee documents), 12 Messaging (§22 attachments), 13 Support (ticket attachments), 15 Business Docs (internal knowledge content).
 
+<!-- schema-refs:start -->
+
+## Data model (Prisma)
+
+> Generated from [`api/prisma/schema.prisma`](../../api/prisma/schema.prisma) by `node docs/scripts/sync-feature-schema-refs.mjs` — do not edit by hand.
+> Before implementing API or app code for this module, read these models in the schema and reuse the existing
+> tables, enums and services of the modules listed under "Reuses". Never redefine a table owned by another module.
+
+**Platform tables to reuse, not rebuild:** `audit_events` (activity & change history, [01](./01-users-organizations-permissions.md)) · `custom_field_definitions` (custom fields, [02](./02-crm-sales-management.md)) · `taggings` (tags, [02](./02-crm-sales-management.md)) · `saved_views` (saved views, [02](./02-crm-sales-management.md)) · `crm_notes` (notes, polymorphic by entity type, [02](./02-crm-sales-management.md)) · `number_sequences` (document numbering, [03](./03-proposal-quotation-generator.md)) · `signature_requests` (e-signatures, [04](./04-contracts.md)) · `provider_webhook_events` (idempotent provider webhooks, [08](./08-financial-management-stripe-integration.md))
+
+### Owned tables (1)
+
+| Model | Table | Schema line | Purpose |
+| -- | -- | -- | -- |
+| **legacy (pre-module 17)** | | | |
+| `Document` | `documents` | [L1201](../../api/prisma/schema.prisma#L1201) |  |
+
+**Reused enums:** `DocumentType` ([01](./01-users-organizations-permissions.md))
+
+### Plain-id references from other modules
+
+Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
+
+- `CrmImportJob.document_id` ([02](./02-crm-sales-management.md), [L2084](../../api/prisma/schema.prisma#L2084)) — Uploaded file (17 Documents); id only.
+- `ProposalVersion.pdf_document_id` ([03](./03-proposal-quotation-generator.md), [L2386](../../api/prisma/schema.prisma#L2386)) — Generated PDF stored in 17 Documents; id only.
+- `ContractVersion.document_id` ([04](./04-contracts.md), [L3198](../../api/prisma/schema.prisma#L3198)) — Rendered document in 17 Documents (draft artifact); id only.
+- `ContractVersion.signed_document_id` ([04](./04-contracts.md), [L3198](../../api/prisma/schema.prisma#L3198)) — Final signed artifact in 17 Documents (04 §41); id only.
+- `SignatureRequest.package_documents` ([04](./04-contracts.md), [L3380](../../api/prisma/schema.prisma#L3380)) — 04 §78 — package of document ids (17) in locked order: [{ document_id, title, sort_order }].
+- `SignatureRequest.signed_document_id` ([04](./04-contracts.md), [L3380](../../api/prisma/schema.prisma#L3380)) — Signed artifact (17) and provider audit certificate (17); ids only.
+- `ContractTermination.document_id` ([04](./04-contracts.md), [L3523](../../api/prisma/schema.prisma#L3523)) — Supporting document (17); id only.
+- `ProjectDeliverable.document_ids` ([05](./05-project-management.md), [L4116](../../api/prisma/schema.prisma#L4116)) — Document ids (17) delivered.
+- `ProjectHandover.details` ([05](./05-project-management.md), [L4506](../../api/prisma/schema.prisma#L4506)) — Checklist, documentation ids (17), open items, support references, contacts, notes.
+- `Invoice.pdf_document_id` ([08](./08-financial-management-stripe-integration.md), [L5385](../../api/prisma/schema.prisma#L5385)) — Generated PDF (17); id only.
+- `Payment.receipt_document_id` ([08](./08-financial-management-stripe-integration.md), [L5515](../../api/prisma/schema.prisma#L5515)) — Receipt document (17); id only.
+
+<!-- schema-refs:end -->
+
 ## 1. Purpose
 
 Documents & File Management is the single storage and document layer of the Agency Operating System. It owns the physical file, its metadata, versions, access rules and lifecycle. Business modules own the meaning of a document (a signed contract, a deliverable, an invoice) and reference the document record.

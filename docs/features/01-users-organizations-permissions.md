@@ -8,6 +8,85 @@
 >
 > **Consumed by:** every other module. Terminology for the whole platform is fixed in `docs/Product_Specification.md` §"Terminology".
 
+<!-- schema-refs:start -->
+
+## Data model (Prisma)
+
+> Generated from [`api/prisma/schema.prisma`](../../api/prisma/schema.prisma) by `node docs/scripts/sync-feature-schema-refs.mjs` — do not edit by hand.
+> Before implementing API or app code for this module, read these models in the schema and reuse the existing
+> tables, enums and services of the modules listed under "Reuses". Never redefine a table owned by another module.
+
+**Platform tables to reuse, not rebuild:** `custom_field_definitions` (custom fields, [02](./02-crm-sales-management.md)) · `taggings` (tags, [02](./02-crm-sales-management.md)) · `saved_views` (saved views, [02](./02-crm-sales-management.md)) · `crm_notes` (notes, polymorphic by entity type, [02](./02-crm-sales-management.md)) · `number_sequences` (document numbering, [03](./03-proposal-quotation-generator.md)) · `signature_requests` (e-signatures, [04](./04-contracts.md)) · `provider_webhook_events` (idempotent provider webhooks, [08](./08-financial-management-stripe-integration.md))
+
+### Owned tables (30)
+
+| Model | Table | Schema line | Purpose |
+| -- | -- | -- | -- |
+| `User` | `users` | [L256](../../api/prisma/schema.prisma#L256) | 01 §4 — a global human identity. Never tenant-scoped. |
+| `PasswordResetToken` | `password_reset_tokens` | [L296](../../api/prisma/schema.prisma#L296) |  |
+| `UserAuthMethod` | `user_auth_methods` | [L312](../../api/prisma/schema.prisma#L312) | 01 §6, §74 — configured authentication factors per user (passkeys, OAuth links, MFA). |
+| `UserSession` | `user_sessions` | [L337](../../api/prisma/schema.prisma#L337) | 01 §72 — active sessions, revocable by the user or by security policy. |
+| `UserPreference` | `user_preferences` | [L364](../../api/prisma/schema.prisma#L364) | 01 §127 — user-specific preferences. These are not permissions. |
+| `Organization` | `organizations` | [L385](../../api/prisma/schema.prisma#L385) | 01 §8 — the tenant. Every major resource belongs to exactly one Organization (01 §9). |
+| `OrganizationSecurityPolicy` | `organization_security_policies` | [L497](../../api/prisma/schema.prisma#L497) | 01 §73–74 — organization security policy. |
+| `OrganizationDomain` | `organization_domains` | [L520](../../api/prisma/schema.prisma#L520) | 01 §70 — verified corporate email domains. |
+| `OrganizationModule` | `organization_modules` | [L542](../../api/prisma/schema.prisma#L542) | 01 §56 — which products are enabled for the organization. |
+| `Branch` | `branches` | [L562](../../api/prisma/schema.prisma#L562) | 01 §18 — an organizational unit inside an Organization. Never a tenant. |
+| `BranchManager` | `branch_managers` | [L625](../../api/prisma/schema.prisma#L625) | 01 §20 — responsible Members for a branch. |
+| `BranchHoliday` | `branch_holidays` | [L640](../../api/prisma/schema.prisma#L640) | 01 §122 — local holiday calendars consumed by Calendar (19) and Employees (10). |
+| `Team` | `teams` | [L660](../../api/prisma/schema.prisma#L660) | 01 §40 — functional collaboration group. Not a Branch. |
+| `TeamMembership` | `team_memberships` | [L700](../../api/prisma/schema.prisma#L700) | 01 §42 |
+| `Membership` | `memberships` | [L725](../../api/prisma/schema.prisma#L725) | 01 §24 — the authorization relationship between a User and an Organization. Employee data (10) is NOT here; see 01 §80–81. |
+| `MembershipBranch` | `membership_branches` | [L803](../../api/prisma/schema.prisma#L803) | 01 §21, §90 — a Member can belong to one or many branches. |
+| `MembershipModuleAccess` | `membership_module_access` | [L822](../../api/prisma/schema.prisma#L822) | 01 §56–57 — per-member product access, evaluated before feature permissions. |
+| `Permission` | `permissions` | [L842](../../api/prisma/schema.prisma#L842) | 01 §46 — the global permission catalog. Keys follow `<module>.<resource>.<action>`. |
+| `Role` | `roles` | [L864](../../api/prisma/schema.prisma#L864) | 01 §44–45, §111 — reusable permission bundle. organization_id is null for system roles and platform-provided templates (01 §111) that organizations clone. |
+| `RolePermission` | `role_permissions` | [L896](../../api/prisma/schema.prisma#L896) | 01 §44, §53 — permissions bundled in a role, with optional explicit deny. |
+| `RoleAssignment` | `role_assignments` | [L913](../../api/prisma/schema.prisma#L913) | 01 §92–93 — a role given to a principal (Member or Service Account) within a scope. scope_id references the Branch, Team, Project (05), Customer (02) or reso… |
+| `PermissionGrant` | `permission_grants` | [L940](../../api/prisma/schema.prisma#L940) | 01 §49, §53 — explicit per-member allow or deny for one permission, outside any role. |
+| `Delegation` | `delegations` | [L964](../../api/prisma/schema.prisma#L964) | 01 §94 — temporary delegation of selected responsibilities. |
+| `Invitation` | `invitations` | [L995](../../api/prisma/schema.prisma#L995) |  |
+| `SsoConfiguration` | `sso_configurations` | [L1036](../../api/prisma/schema.prisma#L1036) | 01 §69 — identity provider configuration per organization. |
+| `SsoGroupMapping` | `sso_group_mappings` | [L1059](../../api/prisma/schema.prisma#L1059) | 01 §71 — external IdP group → role / team / branch / module access. |
+| `ServiceAccount` | `service_accounts` | [L1083](../../api/prisma/schema.prisma#L1083) | 01 §76 — non-human identity for automation. Permissions come from RoleAssignment. |
+| `ApiKey` | `api_keys` | [L1105](../../api/prisma/schema.prisma#L1105) | 01 §75 — API credential owned by a Member or a Service Account. Never inherits unlimited permissions. |
+| `CustomerPortalMembership` | `customer_portal_memberships` | [L1138](../../api/prisma/schema.prisma#L1138) | 01 §79 — a User's membership to a Customer (a CRM Company owned by docs/features/02, LOG-404) inside an agency Organization. customer_id has no relation unti… |
+| `AuditEvent` | `audit_events` | [L1170](../../api/prisma/schema.prisma#L1170) | Immutable audit event. Identity and access changes are written here by module 01; other modules append their own event types using the same table. |
+
+**Owned enums (23):** `AuthRole`, `UserStatus`, `AuthMethodType`, `OrganizationStatus`, `BranchStatus`, `BranchKind`, `MembershipType`, `MembershipStatus`, `TeamKind`, `RoleType`, `RoleStatus`, `ScopeType`, `PermissionEffect`, `ModuleKey`, `InvitationStatus`, `ProvisioningSource`, `SsoProtocol`, `DomainVerificationStatus`, `MfaPolicy`, `ServiceAccountStatus`, `DelegationStatus`, `AuditActorType`, `DocumentType`
+
+### Reuses from other modules (foreign keys)
+
+| Module | Model (table) | Referenced by |
+| -- | -- | -- |
+| [07](./07-customer-portal.md) | `CustomerPortalSettings` (`customer_portal_settings`) | `Organization.portal_settings` |
+
+### Referenced by other modules
+
+- [02](./02-crm-sales-management.md): `CrmActivity`, `CrmAssignmentRule`, `CrmCompany`, `CrmCompanyBranch`, `CrmContact`, `CrmDeal`, `CrmImportJob`, `CrmLead`, `CrmLeadSource`, `CrmLeadStatus`, `CrmLifecycleStage`, `CrmNote`, `CrmPipeline`, `CustomFieldDefinition`, `CustomFieldGroup`, `SavedView`, `Tag`
+- [03](./03-proposal-quotation-generator.md): `NumberSequence`, `Proposal`, `ProposalApproval`, `ProposalComment`, `ProposalTemplate`
+- [04](./04-contracts.md): `Contract`, `ContractApproval`, `ContractApprovalRule`, `ContractClause`, `ContractComment`, `ContractReview`, `ContractSignatory`, `ContractTemplate`, `ContractType`, `SignatureRequest`
+- [05](./05-project-management.md): `Project`, `ProjectAllocation`, `ProjectBranch`, `ProjectGate`, `ProjectMember`, `ProjectStatus`, `ProjectTemplate`, `ProjectType`
+- [06](./06-task-management.md): `Cycle`, `Release`, `Task`, `TaskAssignee`, `TaskComment`, `TaskLabel`, `TaskStatus`, `TaskType`, `TaskWatcher`
+- [07](./07-customer-portal.md): `CustomerPortalSettings`
+- [08](./08-financial-management-stripe-integration.md): `BillingProfile`, `Coupon`, `CreditNote`, `DunningPolicy`, `Invoice`, `Payment`, `Product`, `ProviderWebhookEvent`, `Subscription`, `TaxRate`
+
+### Plain-id references from other modules
+
+Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
+
+- `ProposalTemplate.branding` ([03](./03-proposal-quotation-generator.md), [L2260](../../api/prisma/schema.prisma#L2260)) — Branding overrides; organization branding (01 §15) is the fallback.
+- `ProposalAcceptance.customer_user_id` ([03](./03-proposal-quotation-generator.md), [L2626](../../api/prisma/schema.prisma#L2626)) — Customer Portal User (01 §79) when accepted through the portal; id only.
+- `Project.branch_id` ([05](./05-project-management.md), [L3850](../../api/prisma/schema.prisma#L3850)) — Primary branch (01 §32). Participating branches in ProjectBranch.
+- `ProjectStakeholder.portal_visible` ([05](./05-project-management.md), [L4001](../../api/prisma/schema.prisma#L4001)) — Whether the stakeholder sees the project in the Customer Portal (via 01 §79 identity).
+- `ProjectGate.customer_approver_user_id` ([05](./05-project-management.md), [L4358](../../api/prisma/schema.prisma#L4358)) — Customer approval gates are decided by a Customer Portal User (01 §79); id only.
+- `TaskComment.author_user_id` ([06](./06-task-management.md), [L4904](../../api/prisma/schema.prisma#L4904)) — Customer Portal User (01 §79) when written from the portal; id only.
+- `CustomerPortalSettings.branding` ([07](./07-customer-portal.md), [L5043](../../api/prisma/schema.prisma#L5043)) — Branding overrides on top of organization branding (01 §15).
+- `CustomerPortalSettings.default_role_slug` ([07](./07-customer-portal.md), [L5043](../../api/prisma/schema.prisma#L5043)) — Default customer role slug assigned to invited portal users (01 §79).
+- `Invoice.template_id` ([08](./08-financial-management-stripe-integration.md), [L5385](../../api/prisma/schema.prisma#L5385)) — Template / branding override; organization branding (01 §15) is the fallback.
+
+<!-- schema-refs:end -->
+
 ## 1. Purpose
 
 This module defines the identity, organization, membership, branch, team, role, permission, access-control, and workspace structure for the Agency Operating System.

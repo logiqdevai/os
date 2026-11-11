@@ -16,6 +16,65 @@ The finance module should support one-time payments, recurring subscriptions, qu
 
 ---
 
+<!-- schema-refs:start -->
+
+## Data model (Prisma)
+
+> Generated from [`api/prisma/schema.prisma`](../../api/prisma/schema.prisma) by `node docs/scripts/sync-feature-schema-refs.mjs` — do not edit by hand.
+> Before implementing API or app code for this module, read these models in the schema and reuse the existing
+> tables, enums and services of the modules listed under "Reuses". Never redefine a table owned by another module.
+
+**Platform tables to reuse, not rebuild:** `audit_events` (activity & change history, [01](./01-users-organizations-permissions.md)) · `custom_field_definitions` (custom fields, [02](./02-crm-sales-management.md)) · `taggings` (tags, [02](./02-crm-sales-management.md)) · `saved_views` (saved views, [02](./02-crm-sales-management.md)) · `crm_notes` (notes, polymorphic by entity type, [02](./02-crm-sales-management.md)) · `number_sequences` (document numbering, [03](./03-proposal-quotation-generator.md)) · `signature_requests` (e-signatures, [04](./04-contracts.md))
+
+### Owned tables (18)
+
+| Model | Table | Schema line | Purpose |
+| -- | -- | -- | -- |
+| **Customer billing** | | | |
+| `BillingProfile` | `billing_profiles` | [L5212](../../api/prisma/schema.prisma#L5212) | 08 "Customer Billing" — billing profile of a Customer (CRM Company, 02). Stripe customer lives here. |
+| `PaymentMethod` | `payment_methods` | [L5250](../../api/prisma/schema.prisma#L5250) | 08 "Customer Billing" — stored payment methods; card data never stored, only provider tokens. |
+| **Catalog** | | | |
+| `Product` | `products` | [L5278](../../api/prisma/schema.prisma#L5278) | 08 "Products & Services" — the platform catalog used by 02 deal line items, 03 proposals and 18 rates. |
+| `Price` | `prices` | [L5308](../../api/prisma/schema.prisma#L5308) | 08 — a price of a product: one-time or recurring, per currency. |
+| `TaxRate` | `tax_rates` | [L5334](../../api/prisma/schema.prisma#L5334) | 08 "Taxes & Discounts" — tax rates incl. VAT and regional rules. |
+| `Coupon` | `coupons` | [L5356](../../api/prisma/schema.prisma#L5356) | 08 "Taxes & Discounts" — percentage or fixed discounts, reusable as coupons. |
+| **Invoicing** | | | |
+| `Invoice` | `invoices` | [L5385](../../api/prisma/schema.prisma#L5385) | 08 "Invoicing" — the invoice. Numbering via NumberSequence (INV-2026-0001). |
+| `InvoiceLineItem` | `invoice_line_items` | [L5464](../../api/prisma/schema.prisma#L5464) | 08 "Invoicing" — line items; milestone and time entries link project billing (05 §20, 18 §7). |
+| `InvoiceReminder` | `invoice_reminders` | [L5497](../../api/prisma/schema.prisma#L5497) | 08 "Automation" — reminder / dunning actions sent for an invoice. Delivery is 11/14. |
+| **Payments** | | | |
+| `Payment` | `payments` | [L5515](../../api/prisma/schema.prisma#L5515) | 08 "Payments" — a payment received (online or manually recorded). Allocations split it across invoices. |
+| `PaymentAllocation` | `payment_allocations` | [L5556](../../api/prisma/schema.prisma#L5556) | Partial and multi-invoice payments (08 "Partial payments"). |
+| `Refund` | `refunds` | [L5572](../../api/prisma/schema.prisma#L5572) | 08 "Payments" — refunds against a payment. |
+| `CreditNote` | `credit_notes` | [L5591](../../api/prisma/schema.prisma#L5591) | 08 "Invoicing" — credit notes issued against an invoice. Numbered via NumberSequence. |
+| **Subscriptions** | | | |
+| `Subscription` | `subscriptions` | [L5625](../../api/prisma/schema.prisma#L5625) | 08 "Subscription Management" — multiple active subscriptions per customer. |
+| `SubscriptionItem` | `subscription_items` | [L5676](../../api/prisma/schema.prisma#L5676) | 08 — plan lines of a subscription (upgrades/downgrades change items, history in audit_events). |
+| `DunningPolicy` | `dunning_policies` | [L5697](../../api/prisma/schema.prisma#L5697) | 08 "Recurring Billing" — dunning policy; steps are scheduled by the Automation Engine (20). |
+| `ProjectBillingSettings` | `project_billing_settings` | [L5715](../../api/prisma/schema.prisma#L5715) | 08 "Project Billing" — how a project is billed (05 §63 consumes the result). |
+| `ProviderWebhookEvent` | `provider_webhook_events` | [L5742](../../api/prisma/schema.prisma#L5742) | Idempotent processing of provider webhooks (Stripe today; signature providers also use SignatureEvent). |
+
+**Owned enums (16):** `ProductType`, `PriceType`, `BillingInterval`, `TaxBehavior`, `DiscountType`, `CouponDuration`, `InvoiceStatus`, `BillingModel`, `PaymentProvider`, `PaymentMethodType`, `PaymentStatus`, `RefundStatus`, `CreditNoteStatus`, `SubscriptionStatus`, `CollectionMethod`, `DunningAction`
+
+### Reuses from other modules (foreign keys)
+
+| Module | Model (table) | Referenced by |
+| -- | -- | -- |
+| [01](./01-users-organizations-permissions.md) | `Branch` (`branches`) | `Invoice.branch` |
+| [01](./01-users-organizations-permissions.md) | `Organization` (`organizations`) | `BillingProfile.organization`, `Coupon.organization`, `CreditNote.organization`, `DunningPolicy.organization` +6 more |
+| [02](./02-crm-sales-management.md) | `CrmCompany` (`crm_companies`) | `BillingProfile.company`, `Invoice.company`, `Subscription.company` |
+| [04](./04-contracts.md) | `Contract` (`contracts`) | `Invoice.contract`, `Subscription.contract` |
+| [05](./05-project-management.md) | `Project` (`projects`) | `Invoice.project`, `ProjectBillingSettings.project`, `Subscription.project` |
+| [05](./05-project-management.md) | `ProjectMilestone` (`project_milestones`) | `InvoiceLineItem.milestone` |
+
+### Referenced by other modules
+
+- [02](./02-crm-sales-management.md): `CrmDealLineItem`
+- [03](./03-proposal-quotation-generator.md): `Proposal`, `ProposalLineItem`
+- [05](./05-project-management.md): `Project`
+
+<!-- schema-refs:end -->
+
 ## Customer Billing
 
 Manage financial information for every customer, including:

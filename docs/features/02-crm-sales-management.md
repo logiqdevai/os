@@ -1183,3 +1183,78 @@ Defaults created per organization:
 No default custom fields, tags, assignment rules or saved views are created; the organization adds those. The defaults are a starting point: administrators can rename, reorder, archive or replace any of them (§36) without affecting other organizations.
 
 The CRM should provide a flexible foundation that can support different types of software agencies, sales processes, customer structures, and future integrations while maintaining a consistent and unified customer record across the entire Agency Operating System.
+
+<!-- schema-refs:start -->
+
+## Data model (Prisma)
+
+> Generated from [`api/prisma/schema.prisma`](../../api/prisma/schema.prisma) by `node docs/scripts/sync-feature-schema-refs.mjs` — do not edit by hand.
+> Before implementing API or app code for this module, read these models in the schema and reuse the existing
+> tables, enums and services of the modules listed under "Reuses". Never redefine a table owned by another module.
+
+**Platform tables to reuse, not rebuild:** `audit_events` (activity & change history, [01](./01-users-organizations-permissions.md)) · `number_sequences` (document numbering, [03](./03-proposal-quotation-generator.md)) · `signature_requests` (e-signatures, [04](./04-contracts.md)) · `provider_webhook_events` (idempotent provider webhooks, [08](./08-financial-management-stripe-integration.md))
+
+### Owned tables (25)
+
+| Model | Table | Schema line | Purpose |
+| -- | -- | -- | -- |
+| **platform shared** | | | |
+| `CustomFieldGroup` | `custom_field_groups` | [L1271](../../api/prisma/schema.prisma#L1271) | 02 §25 — logical sections for shared fields. |
+| `CustomFieldDefinition` | `custom_field_definitions` | [L1288](../../api/prisma/schema.prisma#L1288) | 02 §24–26 — one definition; shared fields list several entity types (02 §25). `key` is the stable API identifier (02 §26); `label` may change. |
+| `CustomFieldValue` | `custom_field_values` | [L1325](../../api/prisma/schema.prisma#L1325) | Value of a custom field on a record. entity_id points at the table named by entity_type. |
+| `Tag` | `tags` | [L1345](../../api/prisma/schema.prisma#L1345) | Organization-scoped tags, applied to any record through Tagging. |
+| `Tagging` | `taggings` | [L1362](../../api/prisma/schema.prisma#L1362) |  |
+| `SavedView` | `saved_views` | [L1376](../../api/prisma/schema.prisma#L1376) | 02 §29 — saved views with filters, sorting, grouping, columns; personal, team or organization-wide. |
+| **Configuration** | | | |
+| `CrmLeadSource` | `crm_lead_sources` | [L1497](../../api/prisma/schema.prisma#L1497) | 02 §5 — configurable lead sources. |
+| `CrmLeadStatus` | `crm_lead_statuses` | [L1518](../../api/prisma/schema.prisma#L1518) | 02 §4 — configurable lead statuses. |
+| `CrmLifecycleStage` | `crm_lifecycle_stages` | [L1539](../../api/prisma/schema.prisma#L1539) | 02 §17 — configurable lifecycle stages (Lead → MQL → SQL → Opportunity → Customer → …). |
+| `CrmLifecycleHistory` | `crm_lifecycle_history` | [L1561](../../api/prisma/schema.prisma#L1561) | 02 §17 — historical lifecycle changes. |
+| `CrmPipeline` | `crm_pipelines` | [L1579](../../api/prisma/schema.prisma#L1579) | 02 §8 — multiple pipelines per organization. |
+| `CrmPipelineStage` | `crm_pipeline_stages` | [L1603](../../api/prisma/schema.prisma#L1603) | 02 §8 — pipeline-specific stages with default probability. |
+| **Core records** | | | |
+| `CrmCompany` | `crm_companies` | [L1634](../../api/prisma/schema.prisma#L1634) | 02 §2 — any external legal entity: prospect, customer, partner or vendor. One record model. Never a platform Organization (01 §8) and never a Branch (01 §16). |
+| `CrmCompanyBranch` | `crm_company_branches` | [L1706](../../api/prisma/schema.prisma#L1706) | 01 §31, §37 — branch relationships on one company record instead of duplicate companies. |
+| `CrmContact` | `crm_contacts` | [L1723](../../api/prisma/schema.prisma#L1723) | 02 §3 — a person at a Company. Not a platform User (01 §4). |
+| `CrmLead` | `crm_leads` | [L1782](../../api/prisma/schema.prisma#L1782) | 02 §4–7 — prospect before qualification. Conversion links to the created records (02 §7). |
+| `CrmDeal` | `crm_deals` | [L1839](../../api/prisma/schema.prisma#L1839) | 02 §9 — deal / opportunity. Totals derive from line items when any exist (02 §10). |
+| `CrmDealContact` | `crm_deal_contacts` | [L1905](../../api/prisma/schema.prisma#L1905) | 02 §9 — additional contacts on a deal. |
+| `CrmDealLineItem` | `crm_deal_line_items` | [L1920](../../api/prisma/schema.prisma#L1920) | 02 §10 — deal line items. product_id references the Finance catalog (08); no FK until 08 exists. |
+| `CrmDealStageHistory` | `crm_deal_stage_history` | [L1949](../../api/prisma/schema.prisma#L1949) | 02 §8, §34 — stage transitions for duration, velocity and history. |
+| **Activities & notes** | | | |
+| `CrmActivity` | `crm_activities` | [L1971](../../api/prisma/schema.prisma#L1971) | 02 §12–15 — unified CRM activity. Tasks are NOT activities: they live in 06 and link back to CRM records from Task Management. MEETING rows reference a Calen… |
+| `CrmActivityParticipant` | `crm_activity_participants` | [L2018](../../api/prisma/schema.prisma#L2018) | Participants of an activity: internal Members (by membership id) and CRM Contacts. |
+| `CrmNote` | `crm_notes` | [L2034](../../api/prisma/schema.prisma#L2034) | 02 §16 — notes attachable to companies, contacts, leads, deals and other modules' records. |
+| **Operations** | | | |
+| `CrmAssignmentRule` | `crm_assignment_rules` | [L2063](../../api/prisma/schema.prisma#L2063) | 02 §20 — automatic assignment rules (evaluated by the Automation Engine, 20). |
+| `CrmImportJob` | `crm_import_jobs` | [L2084](../../api/prisma/schema.prisma#L2084) | 02 §22 — CSV import jobs with mapping, preview, validation, history and rollback. |
+
+**Owned enums (12):** `RecordEntityType`, `CustomFieldType`, `SavedViewVisibility`, `CrmCompanyType`, `CrmContactRole`, `CrmActivityType`, `CrmActivityStatus`, `CrmPriority`, `CrmForecastCategory`, `CrmDealStatus`, `CrmImportStatus`, `CrmBranchRelationType`
+
+### Reuses from other modules (foreign keys)
+
+| Module | Model (table) | Referenced by |
+| -- | -- | -- |
+| [01](./01-users-organizations-permissions.md) | `Branch` (`branches`) | `CrmCompanyBranch.branch`, `CrmDeal.branch`, `CrmLead.branch` |
+| [01](./01-users-organizations-permissions.md) | `Membership` (`memberships`) | `CrmActivity.owner`, `CrmCompany.account_manager`, `CrmCompany.owner`, `CrmCompany.success_owner` +6 more |
+| [01](./01-users-organizations-permissions.md) | `Organization` (`organizations`) | `CrmActivity.organization`, `CrmAssignmentRule.organization`, `CrmCompany.organization`, `CrmContact.organization` +12 more |
+| [01](./01-users-organizations-permissions.md) | `Team` (`teams`) | `CrmCompany.team`, `CrmDeal.team`, `CrmPipeline.team`, `SavedView.team` |
+| [05](./05-project-management.md) | `Project` (`projects`) | `CrmDeal.project` |
+| [08](./08-financial-management-stripe-integration.md) | `Product` (`products`) | `CrmDealLineItem.product` |
+
+### Referenced by other modules
+
+- [03](./03-proposal-quotation-generator.md): `Proposal`, `ProposalAcceptance`, `ProposalDelivery`
+- [04](./04-contracts.md): `Contract`, `ContractParty`, `ContractSignatory`
+- [05](./05-project-management.md): `Project`, `ProjectStakeholder`
+- [08](./08-financial-management-stripe-integration.md): `BillingProfile`, `Invoice`, `Subscription`
+
+### Plain-id references from other modules
+
+Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
+
+- `CustomerPortalMembership.customer_id` ([01](./01-users-organizations-permissions.md), [L1138](../../api/prisma/schema.prisma#L1138)) — CRM Company id (02). No FK until LOG-404 is implemented.
+- `Proposal.company_id` ([03](./03-proposal-quotation-generator.md), [L2299](../../api/prisma/schema.prisma#L2299)) — CRM references (02). company_id is the Customer the proposal is addressed to.
+- `BillingProfile.billing_contact_ids` ([08](./08-financial-management-stripe-integration.md), [L5212](../../api/prisma/schema.prisma#L5212)) — CRM contact ids with the BILLING role (02 §3).
+
+<!-- schema-refs:end -->

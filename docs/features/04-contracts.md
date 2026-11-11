@@ -10,6 +10,78 @@
 >
 > **Consumed by:** 05 Projects (contract context, contractual deadlines), 07 Customer Portal (review and signing surface), 08 Finance (billing context), 09 Income & Expense (vendor agreements), 10 Employees (employment and contractor agreements as documents), 12 Messaging (record sharing), 18 Time Tracking (billability defaults).
 
+<!-- schema-refs:start -->
+
+## Data model (Prisma)
+
+> Generated from [`api/prisma/schema.prisma`](../../api/prisma/schema.prisma) by `node docs/scripts/sync-feature-schema-refs.mjs` — do not edit by hand.
+> Before implementing API or app code for this module, read these models in the schema and reuse the existing
+> tables, enums and services of the modules listed under "Reuses". Never redefine a table owned by another module.
+
+**Platform tables to reuse, not rebuild:** `audit_events` (activity & change history, [01](./01-users-organizations-permissions.md)) · `custom_field_definitions` (custom fields, [02](./02-crm-sales-management.md)) · `taggings` (tags, [02](./02-crm-sales-management.md)) · `saved_views` (saved views, [02](./02-crm-sales-management.md)) · `crm_notes` (notes, polymorphic by entity type, [02](./02-crm-sales-management.md)) · `number_sequences` (document numbering, [03](./03-proposal-quotation-generator.md)) · `provider_webhook_events` (idempotent provider webhooks, [08](./08-financial-management-stripe-integration.md))
+
+### Owned tables (21)
+
+| Model | Table | Schema line | Purpose |
+| -- | -- | -- | -- |
+| **Configuration: types, templates, clauses, approval rules** | | | |
+| `ContractType` | `contract_types` | [L2871](../../api/prisma/schema.prisma#L2871) | 04 §2 — configurable contract types with defaults. |
+| `ContractTemplate` | `contract_templates` | [L2906](../../api/prisma/schema.prisma#L2906) | 04 §8, §77 — reusable contractual structure. Content is versioned in ContractTemplateVersion; changing a template never modifies existing contracts. |
+| `ContractTemplateVersion` | `contract_template_versions` | [L2936](../../api/prisma/schema.prisma#L2936) | 04 §8–10, §14 — one immutable template version: sections, variables, conditional clause rules, signature blocks, required fields, appendices. |
+| `ContractClause` | `contract_clauses` | [L2963](../../api/prisma/schema.prisma#L2963) | 04 §11 — clause library entry. Text lives in ContractClauseVersion (04 §12). |
+| `ContractClauseVersion` | `contract_clause_versions` | [L2991](../../api/prisma/schema.prisma#L2991) | 04 §12 — a generated contract keeps the exact clause version used. |
+| `ContractApprovalRule` | `contract_approval_rules` | [L3012](../../api/prisma/schema.prisma#L3012) | 04 §28 — approval requirements by value, type, liability, discount, payment terms, duration, customer category, risk, custom fields. |
+| **Contract record** | | | |
+| `Contract` | `contracts` | [L3034](../../api/prisma/schema.prisma#L3034) | 04 §3 — the structured business record. Document content lives in versions. |
+| `ContractParty` | `contract_parties` | [L3135](../../api/prisma/schema.prisma#L3135) | 04 §4 — a party to the contract. References a CRM Company (02) without duplicating it; the agency itself is a party of type AGENCY. |
+| `ContractSignatory` | `contract_signatories` | [L3158](../../api/prisma/schema.prisma#L3158) | 04 §4, §31 — a signatory for a party; a party may have several. Internal signatories are Members, external ones are CRM Contacts or free-text. |
+| `ContractProject` | `contract_projects` | [L3180](../../api/prisma/schema.prisma#L3180) | 04 §56 — a contract can reference many projects (05). |
+| **Versions** | | | |
+| `ContractVersion` | `contract_versions` | [L3198](../../api/prisma/schema.prisma#L3198) | 04 §19–20 — every material draft change creates a version. Signed versions are immutable (04 §39). |
+| `ContractSection` | `contract_sections` | [L3248](../../api/prisma/schema.prisma#L3248) | 04 §14 — addressable section of a version; may embed an exact clause version (04 §12). |
+| **Review, comments, change requests, approval** | | | |
+| `ContractReview` | `contract_reviews` | [L3277](../../api/prisma/schema.prisma#L3277) | 04 §23–24 — a review request references one exact version. Internal reviewers are Members; customer reviewers are Customer Portal Users (id only) or contacts. |
+| `ContractComment` | `contract_comments` | [L3299](../../api/prisma/schema.prisma#L3299) | 04 §13, §23–24 — comments on a version or section; internal comments never reach the portal. |
+| `ContractChangeRequest` | `contract_change_requests` | [L3325](../../api/prisma/schema.prisma#L3325) | 04 §26 — Contract Change Request: a request to change contract language. Never mutates the current version; an accepted request produces a new version or an … |
+| `ContractApproval` | `contract_approvals` | [L3355](../../api/prisma/schema.prisma#L3355) | 04 §27–29 — business approval bound to an exact version. Approval of v1.0 does not approve v1.1. |
+| **E-signature provider abstraction (04 §30–42, §71, §78–79)** | | | |
+| `SignatureRequest` | `signature_requests` | [L3380](../../api/prisma/schema.prisma#L3380) | 04 §34 — a signature request bound immutably to one subject version (contract or proposal). Provider-specific data stays in provider_* fields and metadata, n… |
+| `Signer` | `signers` | [L3428](../../api/prisma/schema.prisma#L3428) | 04 §31–32, §36 — a signer on a request with mapped fields and signing position. |
+| `SignatureEvent` | `signature_events` | [L3463](../../api/prisma/schema.prisma#L3463) | 04 §38, §71 — provider and internal events; (provider, provider_event_id) is unique so duplicate callbacks are ignored. |
+| **Obligations & termination** | | | |
+| `ContractObligation` | `contract_obligations` | [L3487](../../api/prisma/schema.prisma#L3487) | 04 §49–50, §75 — operational obligations linked to a contract section; execution may create a Task (06) rather than duplicating task functionality. |
+| `ContractTermination` | `contract_terminations` | [L3523](../../api/prisma/schema.prisma#L3523) | 04 §53 — termination record. Never alters the signed document. |
+
+**Owned enums (21):** `ContractStatus`, `ContractVersionStatus`, `ContractRelationKind`, `ContractRenewalType`, `ContractPartyType`, `ContractTemplateStatus`, `ContractClauseStatus`, `ContractReviewDecision`, `ContractApprovalDecision`, `ContractChangeRequestStatus`, `ContractObligationType`, `ContractObligationStatus`, `ExtractionReviewState`, `ContractTerminationType`, `ContractRiskLevel`, `SignatureProvider`, `SignatureSubjectType`, `SigningOrder`, `SignatureRequestStatus`, `SignerStatus`, `SignatureEventType`
+
+### Reuses from other modules (foreign keys)
+
+| Module | Model (table) | Referenced by |
+| -- | -- | -- |
+| [01](./01-users-organizations-permissions.md) | `Branch` (`branches`) | `Contract.branch` |
+| [01](./01-users-organizations-permissions.md) | `Membership` (`memberships`) | `Contract.owner`, `ContractApproval.approver`, `ContractComment.author`, `ContractReview.reviewer` +1 more |
+| [01](./01-users-organizations-permissions.md) | `Organization` (`organizations`) | `Contract.organization`, `ContractApprovalRule.organization`, `ContractClause.organization`, `ContractTemplate.organization` +2 more |
+| [02](./02-crm-sales-management.md) | `CrmCompany` (`crm_companies`) | `Contract.primary_company`, `ContractParty.company` |
+| [02](./02-crm-sales-management.md) | `CrmContact` (`crm_contacts`) | `ContractSignatory.contact` |
+| [03](./03-proposal-quotation-generator.md) | `Proposal` (`proposals`) | `Contract.proposal` |
+| [03](./03-proposal-quotation-generator.md) | `ProposalVersion` (`proposal_versions`) | `Contract.proposal_version`, `SignatureRequest.proposal_version` |
+| [05](./05-project-management.md) | `Project` (`projects`) | `ContractProject.project` |
+| [06](./06-task-management.md) | `Task` (`tasks`) | `ContractObligation.task` |
+
+### Referenced by other modules
+
+- [08](./08-financial-management-stripe-integration.md): `Invoice`, `Subscription`
+
+### Plain-id references from other modules
+
+Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
+
+- `ProposalVersion.contracts` ([03](./03-proposal-quotation-generator.md), [L2386](../../api/prisma/schema.prisma#L2386)) — Contracts generated from this exact proposal version (04 §7, §55).
+- `ProposalAcceptance.signature_request_id` ([03](./03-proposal-quotation-generator.md), [L2626](../../api/prisma/schema.prisma#L2626)) — Signature request id from the e-signature provider abstraction (04 §33–38); id only.
+- `ProjectChangeRequest.proposal_id` ([05](./05-project-management.md), [L4317](../../api/prisma/schema.prisma#L4317)) — Commercial links (03, 04) and the contract change request this originated (04 §26, §43).
+
+<!-- schema-refs:end -->
+
 ## 1. Purpose
 
 The Contracts module is the contractual source of truth for the Agency

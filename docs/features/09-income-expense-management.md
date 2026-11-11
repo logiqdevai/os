@@ -10,6 +10,21 @@
 >
 > **Consumed by:** 05 Projects (§63 financial context and profitability), 02 CRM (customer profitability), 01 branch reporting (01 §123).
 
+<!-- schema-refs:start -->
+
+## Data model (Prisma)
+
+> Generated from [`api/prisma/schema.prisma`](../../api/prisma/schema.prisma) by `node docs/scripts/sync-feature-schema-refs.mjs` — do not edit by hand.
+> Before implementing API or app code for this module, read these models in the schema and reuse the existing
+> tables, enums and services of the modules listed under "Reuses". Never redefine a table owned by another module.
+
+**Platform tables to reuse, not rebuild:** `audit_events` (activity & change history, [01](./01-users-organizations-permissions.md)) · `custom_field_definitions` (custom fields, [02](./02-crm-sales-management.md)) · `taggings` (tags, [02](./02-crm-sales-management.md)) · `saved_views` (saved views, [02](./02-crm-sales-management.md)) · `crm_notes` (notes, polymorphic by entity type, [02](./02-crm-sales-management.md)) · `number_sequences` (document numbering, [03](./03-proposal-quotation-generator.md)) · `signature_requests` (e-signatures, [04](./04-contracts.md)) · `provider_webhook_events` (idempotent provider webhooks, [08](./08-financial-management-stripe-integration.md))
+
+**Owned tables:** none yet — this module is not modelled in the schema. Add its tables in a new banner section
+`// NN Module name — docs/features/09-income-expense-management.md` and re-run the script.
+
+<!-- schema-refs:end -->
+
 ## Income & Expense Management
 
 Develop a comprehensive **Income & Expense Management** module for maintaining a detailed and scalable financial record of the agency's business activity. The system should support both automatically generated financial records from uploaded invoices and fully manual financial entries, while providing a unified view of all income, expenses, VAT, payroll, recurring costs, and other financial obligations.
