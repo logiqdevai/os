@@ -35,11 +35,12 @@ export class PeopleAccessService {
     /**
      * Employees reachable through a permission. Organization scope = all; branch/team scope = employees whose primary
      * branch / department / team membership is inside it. Without the key → nothing (callers add the "own" branch).
+     * Organization scope returns a real condition, never `{}`: Prisma treats an empty filter inside `OR` as "no match".
      */
     scopeWhere(ctx: OrgContext, key: string): Prisma.EmployeeWhereInput | null {
         const scope = ctx.scopeOf(key);
         if (!scope) return null;
-        if (scope.organization) return {};
+        if (scope.organization) return { organization_id: ctx.organization_id };
         const or: Prisma.EmployeeWhereInput[] = [];
         if (scope.branch_ids.length) {
             or.push({ primary_branch_id: { in: scope.branch_ids } });
@@ -57,7 +58,7 @@ export class PeopleAccessService {
     readWhere(ctx: OrgContext, allKey: string, ownKey?: string): Prisma.EmployeeWhereInput {
         const all = this.scopeWhere(ctx, allKey);
         const own = ownKey && ctx.can(ownKey) && ctx.membership_id ? { membership_id: ctx.membership_id } : null;
-        if (all && own) return Object.keys(all).length ? { OR: [all, own] } : {};
+        if (all && own) return ctx.scopeOf(allKey)?.organization ? all : { OR: [all, own] };
         if (all) return all;
         if (own) return own;
         return { id: '__none__' };
