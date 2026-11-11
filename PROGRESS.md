@@ -110,11 +110,62 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 08/09 | Billing, Income & expenses | ✅ | ✅ | API `modules/billing` (`/finance/*`, `/webhooks/payments/:id`), `modules/ledger` (`/ledger/*`), shared `modules/finance-shared`, Stripe adapter `integrations/payments`. App `/billing/*`, `/expenses/*`, print `/print/invoices/:id`. Not yet curl-tested (servers stopped). |
 | 10/18 | People, Time | ✅ | ✅ | agent 10/18 — typecheck clean, not run against a live API (servers stopped). REST under `/people/*` and `/time/*`. Left: org-chart screen, change-requests screen, onboarding/offboarding checklists (15), employee import, PIPs/feedback requests/calibration UI, HR settings + leave types/policies/holidays UI (API done), time suggestions, imports, report schedules, project time settings UI |
 | 11/12 | Campaigns, Messages | ✅ | ✅ | agent 11/12 — not yet run against a live API (servers were stopped); typecheck clean. Left: A/B variants, topics/preference center UI, recurring campaigns (RRULE), recipient-timezone send, AI assistant, threads view (CommThread), message attachments upload, calls, moderation/retention/admin screens of 12 |
-| 07/13 | Client portal, Support | ⬜ | ⬜ | |
-| 15/17/20 | Docs, Files, Automation | ⬜ | ⬜ | |
+| 07/13 | Client portal, Support | ✅ | ✅ | agent 07/13 — typechecked only (servers stopped) — needs live curl + Chrome pass. API `modules/support` (`/support/*`, public `/help/:orgSlug`, `/help/csat/:token`, SLA cron) and `modules/portal` (agency `/portal/admin/*`, customer `/portal/*` behind `PortalGuard` + `X-Portal-Membership-Id`). App `/support/*` (3-pane inbox), `/client-portal/*`, customer shell `/portal/*`. Left: email in/out for EMAIL channels (11), widget JS + live chat realtime, automation rules tab (20), AI agent sessions/suggestion queue UI, incidents UI (API done), KB categories reorder UI, portal document upload (17), proposal accept / contract sign inside the portal (links to `/p/:token`, `/sign/:token` need the token), portal notification preferences (14). **Needs coordinator (shared files):** after accepting a CUSTOMER_PORTAL invitation, `pages/auth/pages/invite` and sign-up go to `/home`, and `components/layout/no-organization.tsx` shows "create organization" — route users with `session.customer_memberships.length` (or invite audience CUSTOMER_PORTAL) to `/portal`. |
+| 15/17/20 | Docs, Files, Automation | ✅ | ✅ | API: `modules/{docs,files,automation}` · App: `pages/{docs,files,automation}`, public `/f/:formId`, `/share/:token`. Not curl-verified (servers were stopped) — typechecked only |
 | T | Chrome testing pass (functionality, responsiveness, both themes) | — | ⬜ | |
 
 ## Log
+
+- 2026-11-11 — 13 Support + 07 Client portal (API + app). Support: settings (lazy defaults: 6 statuses, default inbox, "Standard"
+  SLA), inboxes/channels/agent profiles, unified-inbox conversations (views + counts, reply vs INTERNAL_NOTE, @mentions, assign,
+  snooze, pending, resolve/reopen, merge, participants), shared message engine that updates linked tickets (first/next response,
+  customer reply reopens), tickets (numbering via NumberingService `ticket` → `<prefix>-<n>`, workflow transitions with history,
+  assign/escalate/merge/follow/relations/link conversation, convert to task reusing `tasks/utils` numbering + TaskLink/TicketTaskLink),
+  SLA policies + timers (business hours from Organization.business_hours, pause on `pauses_sla`, minute cron: at-risk, breached,
+  unsnooze, auto-close), CSAT (request on resolve, public token page, portal rating), canned responses with placeholder render,
+  knowledge base (versions, review/publish, public help center per org slug), incidents + updates, analytics overview, optional AI
+  (org OpenAI connection; degrades to KB matches). MCP: `support_*` (19 tools). Portal: `PortalGuard` evaluates only `portal.*`
+  keys of the membership's customer role on every request; agency admin (overview, settings/branding/features, clients enable/
+  disable, users, invitations with audience CUSTOMER_PORTAL, profile-change review → CRM write, activity, approvals); customer API
+  (me/memberships, dashboard, projects, deliverable review, requests = PORTAL tickets, conversations, documents, proposals,
+  contracts, invoices with pay link, help, company + profile changes, team invites). Internal notes/SYSTEM messages never leave
+  the agency API. MCP: `portal_*` (6 tools). App: Support (inbox, tickets, ticket, new ticket, KB list/editor, SLA, saved replies,
+  inboxes & channels, analytics + CSAT, settings incl. statuses/categories), Client portal admin (overview, clients, client, users +
+  invite, requests, approvals, profile changes, activity, settings), customer portal shell `/portal/*` (company picker, no-access
+  state, branded top nav, 13 screens).
+
+- 2026-11-11 — **15 Docs, 17 Files, 20 Automation** (API + app).
+  - **Docs** (`api/src/modules/docs`): spaces + members, page tree (move/order), Markdown pages with a version per save + restore, publish/unpublish,
+    page permissions, comments, favorites, acknowledgements, templates, links/backlinks (`[[Page]]`), search (title + content), trash/archive,
+    view analytics, checklists + runs, custom forms (builder schema, versions on publish, assignments, submissions, review, summary) and a
+    `@Public()` form endpoint (`/public/forms/:id`, published + anonymous forms only). App: home/search, spaces, space tree layout (sheet on
+    mobile), page view (comments/history/backlinks sheets), Markdown editor + preview (`components/ui/markdown.tsx`, safe renderer, no deps),
+    templates, checklists + runs, forms builder/responses/assign/share, fill page, public form `/f/:formId`, trash.
+  - **Files** (`api/src/modules/files`): `StorageService` (local disk under `api/storage/`, GCS driver when configured), folders tree, documents +
+    versions, multipart upload (size/MIME/executable checks, quota), signed download tokens, favorites/recent, shares (member/team/link with
+    token + expiry + bcrypt password, public resolve/access), version-bound approvals, retention + legal hold, deletion requests (2-person),
+    storage usage, vault (AES-GCM via `shared/utils/crypto/secret-box.utils.ts`, reveal/copy logged in VaultAccessLog + audit, grants). App:
+    browser (folder tree, grid/list, drag & drop upload with per-file progress), document detail (preview, versions, shares, approvals, hold),
+    recent & favorites, shared, approvals, trash (+ delete-forever request/approve), vault (confirm → reveal with auto-hide), public `/share/:token`.
+  - **Other modules attach files** by injecting `DocumentsService` (exported by `FilesModule`): `documents.attachToEntity(ctx, { buffer, filename,
+    mimetype, entity_type, entity_id, title?, folder_id?, project_id?, company_id?, role? })`, or over HTTP: `POST /files/upload` multipart with
+    field `file` + optional `folder_id`, `document_id` (new version), `title`, `category_id`, `entity_type` + `entity_id`, `change_note`
+    (needs `documents.documents.create` or `.update`) → the document row. Download: `GET /files/documents/:id/download-url` → `{ path }` (signed, public).
+  - **Automation** (`api/src/modules/automation`): trigger catalog (+ keys discovered on the bus), action catalog — module actions run through the
+    module's **MCP tool** under `AuthorizationService.contextFor(run-as service account | owner)`, so permissions are never bypassed; built-ins:
+    condition gate, wait, approval, notify (NotificationsService), call webhook, run any tool. Rules: CRUD, drafts of live rules, publish →
+    immutable versions, restore version, enable/disable, duplicate, import/export, templates, dry run / test run, run now. Engine consumes
+    `EventsService.bus` ('event'), sets `PlatformEvent.rules_processed_at`, loop protection via AsyncLocalStorage → `causation_run_id` +
+    `trigger_depth`, idempotency keys, per-rule/org rate limits, per-record locks, retries with backoff → dead letter + alert, approvals.
+    Scheduled jobs on `SchedulerRegistry` (cron/interval/once, DB lease, retries); outbound webhooks (HMAC `t=…,v1=…` signing, retries,
+    auto-disable, test send, secret rotation with 24 h grace); inbound webhooks `POST /automation/hooks/in/:slug` (`@Public()`, HMAC / bearer / basic,
+    IP allow-list, rate limit) → event `inbound_webhook.<slug>`; event log + reprocess; usage; settings. App: overview, workflows, form-based
+    builder (trigger → conditions → ordered steps → settings), workflow detail (versions, runs, test, publish), runs + run detail (steps,
+    approve inline), approvals, event log, webhooks (outbound/inbound/deliveries), scheduled jobs + detail, settings + usage.
+  - **For other modules**: publish events with `EventsService.publish` and add the key to `automation/catalog/trigger-catalog.ts`; expose
+    actions as MCP tools and list them in `catalog/action-catalog.ts`; host recurring work with `JobHandlerRegistry.register({ key, module, name,
+    description, run })` + `SchedulerService.ensureJob({ organization_id, module, key, name, handler, kind, cron_expression|interval_seconds })`
+    (both exported by `AutomationModule`).
 
 - 2026-11-11 — 08 Billing + 09 Income & expenses (API + app). Billing: catalog (products/prices/tax rates/coupons), billing profiles,
   invoices (draft → approve with FinanceApprovalRule + separation of duties → send/finalize with gap-free NumberingService numbers →

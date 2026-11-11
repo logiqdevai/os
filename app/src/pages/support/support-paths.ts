@@ -1,0 +1,16 @@
+/** Frontend paths of the Support app (13). */
+export const SUPPORT_PATHS = {
+    inbox: "/support",
+    conversation: (id: string) => `/support/c/${id}`,
+    tickets: "/support/tickets",
+    newTicket: "/support/tickets/new",
+    ticket: (reference: string) => `/support/tickets/${reference}`,
+    knowledge: "/support/knowledge",
+    newArticle: "/support/knowledge/new",
+    article: (id: string) => `/support/knowledge/${id}`,
+    sla: "/support/sla",
+    macros: "/support/macros",
+    channels: "/support/channels",
+    analytics: "/support/analytics",
+    settings: "/support/settings",
+} as const;

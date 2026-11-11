@@ -1,13 +1,14 @@
-import { BookOpen, ChartColumn, Inbox, LifeBuoy, Send, Settings, Ticket, Timer } from "lucide-react";
+import { BookOpen, ChartColumn, Inbox, LifeBuoy, MessageSquareText, Plug, Settings, Ticket, Timer } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
+/** 13 Support — every key below exists in api/prisma/seed/permission-catalog.ts. */
 export const supportApp: AppDefinition = {
     id: "support",
     label: "Support",
     icon: LifeBuoy,
     basePath: "/support",
     module: "SUPPORT",
-    viewPermissions: ["support.conversations.read", "support.tickets.read"],
+    viewPermissions: ["support.conversations.read", "support.tickets.read", "support.knowledge.read", "support.analytics.read", "support.settings.manage"],
     newAction: { label: "New ticket", to: "/support/tickets/new", permission: "support.tickets.create" },
     fill: true,
     nav: [
@@ -19,12 +20,12 @@ export const supportApp: AppDefinition = {
             { label: "Articles", to: "/support/knowledge", icon: BookOpen, permissions: ["support.knowledge.read"] },
         ] },
         { label: "Operations", items: [
-            { label: "SLA policies", to: "/support/sla", icon: Timer, permissions: ["support.settings.manage"] },
-            { label: "Canned responses", to: "/support/macros", icon: Send },
+            { label: "SLA policies", to: "/support/sla", icon: Timer, permissions: ["support.tickets.read", "support.sla_policies.manage"] },
+            { label: "Saved replies", to: "/support/macros", icon: MessageSquareText, permissions: ["support.conversations.reply", "support.canned_responses.manage"] },
             { label: "Analytics", to: "/support/analytics", icon: ChartColumn, permissions: ["support.analytics.read"] },
         ] },
         { label: "Setup", items: [
-            { label: "Inboxes & channels", to: "/support/channels", icon: Inbox, permissions: ["support.inboxes.read"] },
+            { label: "Inboxes & channels", to: "/support/channels", icon: Plug, permissions: ["support.inboxes.read", "support.inboxes.manage"] },
             { label: "Settings", to: "/support/settings", icon: Settings, permissions: ["support.settings.manage"] },
         ] },
     ],
