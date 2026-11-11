@@ -123,10 +123,24 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 11/12 | Campaigns, Messages | ✅ | ✅ | agent 11/12 — not yet run against a live API (servers were stopped); typecheck clean. Left: A/B variants, topics/preference center UI, recurring campaigns (RRULE), recipient-timezone send, AI assistant, threads view (CommThread), message attachments upload, calls, moderation/retention/admin screens of 12 |
 | 07/13 | Client portal, Support | ✅ | ✅ | agent 07/13 — typechecked only (servers stopped) — needs live curl + Chrome pass. API `modules/support` (`/support/*`, public `/help/:orgSlug`, `/help/csat/:token`, SLA cron) and `modules/portal` (agency `/portal/admin/*`, customer `/portal/*` behind `PortalGuard` + `X-Portal-Membership-Id`). App `/support/*` (3-pane inbox), `/client-portal/*`, customer shell `/portal/*`. Left: email in/out for EMAIL channels (11), widget JS + live chat realtime, automation rules tab (20), AI agent sessions/suggestion queue UI, incidents UI (API done), KB categories reorder UI, portal document upload (17), proposal accept / contract sign inside the portal (links to `/p/:token`, `/sign/:token` need the token), portal notification preferences (14). **Needs coordinator (shared files):** after accepting a CUSTOMER_PORTAL invitation, `pages/auth/pages/invite` and sign-up go to `/home`, and `components/layout/no-organization.tsx` shows "create organization" — route users with `session.customer_memberships.length` (or invite audience CUSTOMER_PORTAL) to `/portal`. |
 | 15/17/20 | Docs, Files, Automation | ✅ | ✅ | API: `modules/{docs,files,automation}` · App: `pages/{docs,files,automation}`, public `/f/:formId`, `/share/:token`. Not curl-verified (servers were stopped) — typechecked only |
-| T | Chrome testing pass (functionality, responsiveness, both themes) | — | ⬜ | |
+| T | Chrome testing pass (functionality, responsiveness, both themes) | ✅ | 🟡 | 2026-11-11: automated sweep of all 175 nav routes + ~31 detail pages at 1280px and 390px (crashes, load errors, overflow); manual flows verified (see Log). Left: drag-and-drop (not automatable here), remaining manual flows listed in Log. |
 
 ## Log
 
+- 2026-11-11 — Integration + Chrome QA pass (coordinator). Demo data via `scripts/demo-data.mjs`. Verified in Chrome: sign-up → new org,
+  task create/checklist/comment, CRM company → deal → stage change, board "Move to", invoice create → approve (number + ledger
+  income) → record payment, proposal send → public link accept, contract approve → send → OTP verify → sign → certificate,
+  messages send, support internal note, calendar event, timer start/stop, customer portal (Helios), automation (deal won runs
+  the published workflow), file upload/download (API). Owner list totals == DB counts for 30 endpoints.
+  Fixed (one commit each): Automation module not registered; profile form inputs; Campaigns/CRM/portal grid overflow (+ global
+  `.grid > * { min-width: 0 }`); CRM owner placeholder; task sidebar width; board menu click-through; task descriptions as
+  Markdown; Markdown renderer infinite loop (froze tabs); Tailwind v4 `w-[var(--…)]` classes (picker widths); leave activity
+  'Unknown' name; contract `{{placeholders}}` reaching signers (fill on approval + guard) and header Send for signature;
+  Messages conversation width + duplicate sidebar (`ownSidebar` app flag); CORS for X-Portal-Membership-Id/X-Proposal-Access;
+  app-wide TooltipProvider + error boundary on public routes; automation catalog deal fields.
+  Still open: scoped-role (branch/team) list audit for the Prisma `{}`-in-OR pitfall; default portal role cannot list
+  requests (catalog has no portal.requests.read); manual flows not yet clicked: admin invite UI, campaign wizard send, leave
+  request UI, docs editing, vault reveal, booking page; email/SMS delivery needs org Resend/Twilio keys (BYOK).
 - 2026-11-11 — 13 Support + 07 Client portal (API + app). Support: settings (lazy defaults: 6 statuses, default inbox, "Standard"
   SLA), inboxes/channels/agent profiles, unified-inbox conversations (views + counts, reply vs INTERNAL_NOTE, @mentions, assign,
   snooze, pending, resolve/reopen, merge, participants), shared message engine that updates linked tickets (first/next response,
