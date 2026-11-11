@@ -57,7 +57,13 @@
     /* ---- sales ---- */
     /* @impl CRM — ModuleKey CRM · docs/features/02 · VIEW crm.deals.read (companies/contacts/leads have their own read keys) · CREATE crm.deals.create
        @data CrmDeal, CrmLead, CrmCompany, CrmContact, CrmPipeline, CrmActivity. Sub-pages show only if the matching *.read key is held. */
-    { id: "crm", label: "CRM", icon: "crm", newLabel: "New deal", sep: 1, panel: simple("CRM", ["Deals", "Leads", "Companies", "Contacts", "Pipelines", "Forecast", "Activities"]) },
+    { id: "crm", label: "CRM", icon: "crm", newLabel: "New deal", sep: 1,
+      alias: { deal: "deals", company: "companies", lead: "leads" },
+      panel: P("CRM", [
+        items([{ l: "Dashboard", i: "chart", k: "dashboard" }, { l: "Deals", i: "crm", k: "deals", c: 9 }, { l: "Leads", i: "inbox", k: "leads", c: 7 }, { l: "Companies", i: "building", k: "companies" }, { l: "Contacts", i: "users", k: "contacts" }, { l: "Activities", i: "phone", k: "activities", c: 3 }, { l: "Forecast", i: "zap", k: "forecast" }]),
+        sec("Saved views", [{ l: "My open deals", i: "star" }, { l: "Closing this month", i: "calendar" }, { l: "Stale deals", i: "clock" }, { l: "Hot leads", i: "filter" }, { l: "Customers", i: "building" }], "plus"),
+        sec("Setup", [{ l: "Pipelines & stages", i: "layers", k: "pipelines" }, { l: "Import & export", i: "box", k: "imports" }]),
+      ], "plus") },
     /* @impl Proposals — ModuleKey PROPOSALS · docs/features/03 · VIEW proposals.proposals.read · CREATE proposals.proposals.create */
     { id: "proposals", label: "Proposals", icon: "file", newLabel: "New proposal", panel: simple("Proposals", ["All proposals", "Drafts", "Sent", "Accepted", "Templates", "Pricing library"]) },
     /* @impl Contracts — ModuleKey CONTRACTS · docs/features/04 · VIEW contracts.contracts.read · CREATE contracts.contracts.create

@@ -1,0 +1,60 @@
+/* CRM app (module 02) — theme tokens only.
+
+   @impl Mapping to production:
+     .kb/.kcol/.kcard = pipeline board (Kanban). Use a drag-and-drop library that supports keyboard and touch (dnd-kit), virtualize columns with > ~50 cards,
+       and do cursor pagination per column (never load every deal). A drop = optimistic move + POST /deals/:id/stage; roll back and toast on error.
+     .stagebar = stage progress (a Stepper made from CrmPipelineStage rows of the deal's pipeline, ordered by sort_order).
+     .bars/.bar-row = simple horizontal bar charts (use a chart library such as Recharts with the same semantic colors; keep values readable without color alone).
+     .fc-* = forecast category colors: PIPELINE neutral, BEST_CASE blue, COMMIT purple, CLOSED_WON green, CLOSED_LOST red (CrmForecastCategory). */
+
+/* ---------- pipeline board ---------- */
+.crm-bar { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--hairline); flex-wrap: wrap; }
+.crm-bar .grow { flex: 1; }
+.kb { display: flex; gap: 12px; padding: 16px 20px 28px; overflow-x: auto; align-items: flex-start; min-height: calc(100vh - 160px); }
+.kcol { flex: 0 0 280px; width: 280px; min-width: 0; max-width: 280px; background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-lg); display: flex; flex-direction: column; max-height: calc(100vh - 190px); }
+.kcol-h { padding: 11px 12px 9px; border-bottom: 1px solid var(--hairline); }
+.kcol-h .t { display: flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 500; }
+.kcol-h .t .count { margin-left: 0; }
+.kcol-h .m { display: flex; justify-content: space-between; color: var(--ash); font-size: 12px; margin-top: 3px; }
+.kcol-h .m b { color: var(--mute); font-weight: 500; }
+.kcol-b { padding: 8px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; overflow-x: hidden; }
+.kcard { background: var(--elevated); border: 1px solid var(--hairline); border-radius: var(--r-md); padding: 10px 11px; cursor: pointer; }
+.kcard:hover { border-color: var(--hairline-strong); background: var(--card); }
+.kcard .n { color: var(--ink); font-weight: 500; line-height: 1.3; }
+.kcard .co { color: var(--ash); font-size: 12px; margin: 1px 0 8px; display: flex; align-items: center; gap: 6px; }
+.kcard .v { display: flex; align-items: baseline; justify-content: space-between; }
+.kcard .v b { color: var(--ink); font-size: 15px; font-weight: 600; letter-spacing: -.1px; }
+.kcard .v span { color: var(--ash); font-size: 12px; }
+.kcard .f { display: flex; align-items: center; gap: 8px; margin-top: 9px; color: var(--ash); font-size: 12px; }
+.kcard .f .avatar { width: 20px; height: 20px; font-size: 9px; }
+.kcard .f > span { white-space: nowrap; } .kcard .co, .kcard .n { overflow-wrap: anywhere; }
+.kcard .f .sp { flex: 1; }
+.kcard.stale { box-shadow: inset 3px 0 0 var(--yellow); }
+.kcard.won { box-shadow: inset 3px 0 0 var(--green); }
+.kcard.lost { opacity: .7; box-shadow: inset 3px 0 0 var(--red); }
+.kdrop { border: 1px dashed var(--hairline-strong); border-radius: var(--r-md); height: 40px; display: grid; place-items: center; color: var(--ash); font-size: 12px; }
+
+/* ---------- stage progress ---------- */
+.stagebar { display: flex; gap: 4px; }
+.stagebar .sg { flex: 1; min-width: 0; text-align: center; font-size: 11.5px; color: var(--ash); }
+.stagebar .sg i { display: block; height: 6px; border-radius: 3px; background: var(--hairline); margin-bottom: 6px; }
+.stagebar .sg.done i { background: var(--green); } .stagebar .sg.now i { background: var(--primary); } .stagebar .sg.now { color: var(--ink); font-weight: 500; }
+.stagebar .sg span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- charts + forecast ---------- */
+.bar-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 13px; }
+.bar-row .l { width: 120px; color: var(--body); flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-row .tr { flex: 1; height: 8px; border-radius: 4px; background: var(--hairline); overflow: hidden; display: flex; }
+.bar-row .tr i { display: block; height: 100%; }
+.bar-row .v { width: 86px; text-align: right; color: var(--ink); flex: none; font-variant-numeric: tabular-nums; }
+.fc-pipeline { background: var(--stone); } .fc-best { background: var(--blue); } .fc-commit { background: var(--purple); } .fc-won { background: var(--green); } .fc-lost { background: var(--red); }
+.leg { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--mute); } .leg span { display: inline-flex; align-items: center; gap: 6px; } .leg i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.score { display: inline-flex; align-items: center; gap: 6px; } .score .meter { width: 44px; }
+.money { font-variant-numeric: tabular-nums; }
+.crm-split { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; align-items: start; }
+@media (max-width: 1180px) { .crm-split { grid-template-columns: 1fr; } }
+.dupe { border: 1px solid var(--yellow); background: var(--yellow-soft); border-radius: var(--r-md); padding: 10px 12px; color: var(--ink); }
+.opt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--hairline); border-radius: var(--r-md); margin-bottom: 8px; }
+.opt.on { border-color: var(--primary); background: var(--elevated); } .opt b { color: var(--ink); font-weight: 500; display: block; } .opt small { color: var(--ash); }
+.steps { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; } .steps .st { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 9999px; border: 1px solid var(--hairline); color: var(--ash); font-size: 13px; }
+.steps .st.on { border-color: var(--primary); color: var(--ink); } .steps .st.done { color: var(--green); border-color: transparent; background: var(--green-soft); }

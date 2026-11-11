@@ -30,7 +30,7 @@
   const en = (v) => { const t = String(v).toLowerCase().replace(/_/g, " "); return t.charAt(0).toUpperCase() + t.slice(1); };
   const E = (v, c) => '<span class="badge ' + (c || "") + '" title="' + v + '">' + en(v) + "</span>";
   const ES = (v, c) => '<span class="badge ' + (c || "") + '" title="' + v + '"><span class="dot"></span>' + en(v) + "</span>";
-  const MC = { ACTIVE: "green", PUBLISHED: "green", VERIFIED: "green", ACCEPTED: "green", COMPLETED: "green", CERTIFIED: "green", PENDING: "blue", INVITED: "blue", SCHEDULED: "blue", IN_PROGRESS: "blue", MODIFIED: "yellow", DRAFT: "yellow", PLANNED: "blue", PENDING_VERIFICATION: "yellow", SUSPENDED: "red", ERROR: "red", LOCKED: "red", REVOKED: "red", FAILED: "red", CANCELLED: "", EXPIRED: "", DEPRECATED: "", DEACTIVATED: "", REJECTED: "red", ARCHIVED: "", TEMPORARILY_CLOSED: "yellow" };
+  const MC = { ACTIVE: "green", PUBLISHED: "green", VERIFIED: "green", ACCEPTED: "green", COMPLETED: "green", CERTIFIED: "green", PENDING: "blue", INVITED: "blue", SCHEDULED: "blue", IN_PROGRESS: "blue", MODIFIED: "yellow", DRAFT: "yellow", PLANNED: "blue", PENDING_VERIFICATION: "yellow", SUSPENDED: "red", ERROR: "red", LOCKED: "red", OPEN: "blue", WON: "green", LOST: "red", ABANDONED: "", NO_SHOW: "red", REVOKED: "red", FAILED: "red", CANCELLED: "", EXPIRED: "", DEPRECATED: "", DEACTIVATED: "", REJECTED: "red", ARCHIVED: "", TEMPORARILY_CLOSED: "yellow" };
   const S = (v) => ES(v, MC[v] || "");
   /* @impl head(): page header = shadcn-style PageHeader (h1, description, primary actions right). Actions are gated individually by permission. */
   const head = (t, p, a) => '<div class="a-head"><div><h1>' + t + "</h1>" + (p ? "<p>" + p + "</p>" : "") + '</div><div class="acts">' + (a || "") + "</div></div>";
@@ -77,6 +77,8 @@
   window.AD = { tab: function (b, pane) { const root = b.closest(".tabset"); root.querySelectorAll(".tabs-line button").forEach((x) => x.classList.toggle("on", x === b)); root.querySelectorAll(":scope > .pane").forEach((p) => p.classList.toggle("on", p.dataset.pane === pane)); } };
   const tabs = (arr, on) => '<div class="tabs-line">' + arr.map((t) => '<button class="' + (t[0] === on ? "on" : "") + '" onclick="AD.tab(this,\'' + t[0] + "')\">" + t[1] + (t[2] ? '<span class="count" style="margin-left:2px">' + t[2] + "</span>" : "") + "</button>").join("") + "</div>";
   const pane = (id, on, h) => '<div class="pane ' + (on ? "on" : "") + '" data-pane="' + id + '">' + h + "</div>";
+  /* MOCK-ONLY: share the small UI helpers with the other app mock files (views-crm.js ...). Production uses the shadcn components listed in README.md instead. */
+  window.UI = { en, E, ES, S, head, btn, cd, sw, cb, sel, fld, stat, search, who, tok, kv, muted, more, callout, keyc, dm, tabs, pane, modLabel };
 
   /* =====================================================================================================================
      OVERVIEW (spec §141)

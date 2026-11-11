@@ -81,5 +81,6 @@ noted next to it in `shared.js`.
 | `shared.js` | Icons, theme toggle, avatar helper |
 | `apps.js` | App registry: rail entries, per-app panels, routes |
 | `views.js` | Tasks, Messages, Support, Campaigns, Projects screens (**not yet schema-aligned**, see banner in the file) |
-| `views-admin.js` | Admin screens (module 01), schema-aligned |
+| `views-admin.js` | Admin screens (module 01), schema-aligned. Also exposes the shared mock helpers as `window.UI` |
+| `views-crm.js` + `crm.css` | CRM screens (module 02), schema-aligned: dashboard, pipeline board, deal, leads and conversion, companies, Customer 360, contacts, activities, forecast, setup, import |
 | `app-shell.html` | The shell: rail, panel, app bar, org/branch switcher, hash router |
