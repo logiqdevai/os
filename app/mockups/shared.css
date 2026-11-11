@@ -1,5 +1,20 @@
 /* Logiqdev OS — mockup tokens. Semantic tokens only; every section supports light + dark (AGENTS.md).
-   Dark values come from DESIGN.MD (canvas ladder, hairline 1px borders, Inter ss03). Theme: <html data-theme="light|dark"> */
+   Dark values come from DESIGN.MD (canvas ladder, hairline 1px borders, Inter ss03). Theme: <html data-theme="light|dark">
+
+   @impl Token -> shadcn/Tailwind variable mapping for the production app (define in the app's global CSS, light under :root, dark under .dark):
+     --canvas          -> --background            (page background)
+     --surface         -> --card / --popover      (cards, sidebar, popovers: one step above canvas)
+     --elevated        -> --secondary / --muted   (inputs, hover fills, badges)
+     --card            -> --accent                (selected/active rows, pressed buttons)
+     --hairline        -> --border / --input      (1px borders). --hairline-soft = row separators, --hairline-strong = focus/hover borders
+     --ink / --body / --mute / --ash / --stone -> text ramps: --foreground, --muted-foreground (body/mute), placeholder (ash), disabled (stone)
+     --primary / --on-primary -> --primary / --primary-foreground (white button in dark, near-black in light; also the active-nav indicator)
+     --blue/--green/--yellow/--red/--purple (+ -soft) -> semantic status colors; use the -soft token as badge background, the solid token as text
+     --on-accent       -> text on solid accent fills (avatars, alert counters): dark text in dark theme, white in light
+     --shadow-pop      -> popover/dialog shadow; --scrim -> dialog overlay
+   @impl Radii: --r-sm 6, --r-md 8 (buttons, inputs), --r-lg 10 (cards), --r-xl 16 (dialogs/command palette) -> --radius = 0.5rem base.
+   @impl Font: Inter with font-feature-settings "calt","kern","liga","ss03" on body (DESIGN.MD). Base size 14px.
+   @note Never hard-code a color in a component; if a status needs a color that is not here, add a token to BOTH themes first. */
 :root, :root[data-theme="light"] {
   color-scheme: light;
   --canvas: #ffffff;
@@ -71,7 +86,12 @@ b, strong { font-weight: 500; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: var(--hairline-strong); border-radius: 8px; }
 
-/* ---------- primitives ---------- */
+/* ---------- primitives ----------
+   @impl Each primitive below is a mock of a shadcn component (full map in README.md):
+     .btn(.primary/.ghost/.icon/.sm) = Button · .kbd = Kbd/keycap · .badge = Badge · .count = small counter Badge
+     .avatar = Avatar · .logo = org logo tile · .org = org switcher trigger · .search-trigger = Command dialog trigger
+     .nav-item/.nav-label/.nav-sub = SidebarMenuButton / SidebarGroupLabel / SidebarMenuSub · .pill = Tabs/ToggleGroup item
+   @note Row heights: nav-item 30px, button 32px (sm 28px), input 34-36px. Keep these for density parity. */
 .btn {
   display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: var(--r-md);
   font-size: 13px; font-weight: 500; letter-spacing: .2px; color: var(--ink); border: 1px solid var(--hairline);
@@ -144,7 +164,10 @@ b, strong { font-weight: 500; }
 .pill.active { background: var(--elevated); color: var(--ink); box-shadow: inset 0 0 0 1px var(--hairline); }
 .sep-v { width: 1px; height: 16px; background: var(--hairline); }
 
-/* ---------- generic page pieces ---------- */
+/* ---------- generic page pieces ----------
+   @impl .page/.page-head = standard page container + header (title, subtitle, primary actions on the right; max-width 1280px).
+     .stats/.stat = KPI cards (Card). .panel + table = shadcn Table in a Card; wrap in an overflow-x container on small screens.
+     .bar = Progress. .avs = avatar group (overlap -6px). Tables: use server-side pagination, sorting and filtering for large sets. */
 .page { padding: 28px 32px 48px; max-width: 1280px; margin: 0 auto; }
 .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .page-head h1 { font-size: 24px; font-weight: 600; color: var(--ink); letter-spacing: .1px; line-height: 1.25; }

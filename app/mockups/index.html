@@ -29,9 +29,9 @@
 <div class="wrap">
   <span class="badge blue">Mockups</span>
   <h1>Logiqdev OS</h1>
-  <p class="lead">Static HTML mockups. Light + dark themes via semantic tokens (toggle in the rail, or add <code>?theme=light</code>). Each rail entry is its own app with its own panel and layout. Files: <code>shared.css</code> tokens, <code>shell.css</code> shell and views, <code>apps.js</code> app registry, <code>views.js</code> app screens.</p>
+  <p class="lead">Static HTML mockups. Light + dark themes via semantic tokens (toggle in the rail, or add <code>?theme=light</code>). Each rail entry is its own app with its own panel and layout. <b>Implementing from these? Read <code>README.md</code> first</b>: every screen and element carries implementation comments (<code>@route @perm @api @mcp @data @ui @states @audit @note @gap</code>) in the source. Files: <code>shared.css</code> tokens, <code>shell.css</code> shell and views, <code>apps.js</code> app registry, <code>views.js</code> app screens.</p>
 
-  <h2>Apps (each has its own panel + layout)</h2>
+  <h2>Other apps (each has its own panel + layout)</h2>
   <div class="grid">
     <a class="card" href="app-shell.html#tasks">
       <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#tasks" loading="lazy" tabindex="-1"></iframe></div>
@@ -52,6 +52,54 @@
     <a class="card" href="app-shell.html#projects">
       <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#projects" loading="lazy" tabindex="-1"></iframe></div>
       <div class="info"><div><b>Projects</b><small>Portfolio overview</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+  </div>
+
+  <h2>Module 01 · Users, organizations &amp; permissions (Admin app)</h2>
+  <div class="grid">
+    <a class="card" href="app-shell.html#admin">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Admin overview</b><small>01 §141 · health, security, adoption</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+    <a class="card" href="app-shell.html#admin/members">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/members" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Members</b><small>01 §106 · list, status, MFA</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+    <a class="card" href="app-shell.html#admin/member">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/member" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Member detail</b><small>01 §107–108 · roles, effective permissions</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+    <a class="card" href="app-shell.html#admin/roles">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/roles" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Roles</b><small>01 §44, §111 · types, templates</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+    <a class="card" href="app-shell.html#admin/role">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/role" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Role editor</b><small>01 §109 · permissions by module, version history</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+    <a class="card" href="app-shell.html#admin/matrix">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/matrix" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Permission matrix</b><small>01 §143–144 · by module and by branch</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+    <a class="card" href="app-shell.html#admin/simulate">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/simulate" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Access simulation</b><small>01 §145 · allowed/denied + trace</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+    <a class="card" href="app-shell.html#admin/branches">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/branches" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Branches</b><small>01 §16–22, §142</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+    <a class="card" href="app-shell.html#admin/audit">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/audit" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Audit log</b><small>01 §99–100 · with change diff</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+    <a class="card" href="app-shell.html#admin/reviews">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/reviews" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>Access reviews</b><small>01 §98 · certify / revoke / modify, apply</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
+    </a>
+    <a class="card" href="app-shell.html#admin/apikeys">
+      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/apikeys" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info"><div><b>API keys & service accounts</b><small>01 §75–76</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
     </a>
   </div>
 

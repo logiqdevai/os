@@ -8,17 +8,34 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="shared.css">
 <link rel="stylesheet" href="shell.css">
+<link rel="stylesheet" href="admin.css">
 <script src="shared.js"></script>
 </head>
 <body>
+<!--
+  @impl APP SHELL (production: one layout component wrapping every authenticated route; see shell.css header for the grid/responsive rules).
+  @route  / (redirects to the user's default app) and /<app>[/<sub>] for everything else. Mock hash "#tasks" = "/tasks", "#admin/members" = "/admin/members".
+  @data   Session context: UserSession.active_organization_id, active_branch_id, active_branch_ids. User.display_name/profile_photo_url for the avatar.
+          Membership.type/status + RoleAssignment for the role label in the org switcher. UserPreference.theme / dashboard_layout for UI state.
+  @note   Everything outside this shell is rendered per route; the shell never fetches module data except counts for badges.
+-->
 <div class="app" id="app">
+  <!-- @impl RAIL — shadcn Sidebar (icon-only). Built from APPS in apps.js (filtered by module access + view permission). Tooltips = shadcn Tooltip. -->
   <nav class="rail" id="rail"></nav>
 
+  <!-- @impl CONTEXT PANEL — second Sidebar, content depends on the active app (panel config in apps.js). Header action (plus/edit/settings) is the app's quick create/compose/settings entry. -->
   <aside class="ctx">
     <div class="ctx-head"><b id="ctxTitle"></b><span id="ctxAction"></span><button class="btn ghost icon sm" id="toggleCtx" title="Hide panel"><i data-i="panel" data-s="15"></i></button></div>
     <div class="ctx-body" id="ctxBody"></div>
     <div class="ctx-foot">
-      <button class="org"><span class="logo" style="width:24px;height:24px;font-size:11px">L</span><div style="flex:1"><b>Logiqdev</b><small>Main branch</small></div><i data-i="down" data-s="14"></i></button>
+      <!-- @impl ORGANIZATION SWITCHER (01 §26) — shadcn DropdownMenu (trigger = this button, content = list of the user's organizations).
+           @data  Organization.display_name/logo_url + the caller's role label (highest RoleAssignment) + active branch label.
+           @api   GET /me/organizations (all Memberships of the user, status ACTIVE) · POST /session/organization { organization_id } switches
+                  UserSession.active_organization_id. After a switch RESET all client caches (react-query cache, open tabs' state): switching must never
+                  merge navigation or data context between organizations.
+           @audit organization.switched
+           @note  Org B is a "Guest org" in the mock because the user's Membership there is type GUEST/EXTERNAL_COLLABORATOR. -->
+      <button class="org" id="orgBtn"><span class="logo" style="width:28px;height:28px;font-size:12px">L</span><div style="flex:1;min-width:0"><b>Logiqdev</b><small>Owner · All branches</small></div><i data-i="down" data-s="14"></i></button>
     </div>
   </aside>
 
@@ -27,28 +44,45 @@
       <button class="btn ghost icon" id="reopen" style="display:none" title="Show panel"><i data-i="panel" data-s="16"></i></button>
       <div class="crumbs" id="crumbs"></div>
       <div class="spacer"></div>
+      <!-- @impl ACTIVE BRANCH CONTEXT (01 §27) — shadcn Popover/DropdownMenu. Hide the chip entirely when the organization has no branches (small orgs, 01 §148).
+           @data  UserSession.active_branch_id (single) + active_branch_ids (several). Empty = entire organization.
+           @api   PATCH /session/context { branch_ids: [] } (server validates the caller belongs to each branch via MembershipBranch; BRANCH_HIERARCHY covers children).
+           @note  The selected scope FILTERS list views, dashboards and reports of every module (server-side, from the session, not a client-side filter param). -->
+      <button class="btn sm" id="branchChip" title="Active branch context (§27)"><i data-i="building" data-s="14"></i><span>All branches</span><i data-i="down" data-s="12"></i></button>
+      <!-- @impl COMMAND PALETTE — shadcn Command in a Dialog, opened with Cmd/Ctrl+K. Sources: navigation (apps the caller can see), recent records,
+           global search (docs/features/01 §140 search respects organization scope), quick actions (only those the caller is permitted to run). -->
       <button class="search-trigger"><i data-i="search" data-s="14"></i>Search or run a command…<span class="kbd">⌘K</span></button>
+      <!-- @impl PRIMARY ACTION — label and target come from the active app (apps.js newLabel). Disable/hide when the CREATE permission is missing. -->
       <button class="btn primary" id="newBtn"></button>
+      <!-- @impl AI ASSISTANT — opens the assistant panel (docs/Product_Specification AI). AI acts with the caller's permissions only (or a service account); sensitive actions need human confirmation. -->
       <button class="btn icon ghost" title="AI assistant"><i data-i="sparkles"></i></button>
+      <!-- @impl USER MENU — shadcn DropdownMenu: profile, preferences (UserPreference), my sessions (if members_can_view_sessions), sign out. -->
       <span class="avatar lg">PR</span>
     </header>
     <main class="content" id="page"></main>
   </div>
 </div>
 <div id="tip"></div>
+<div id="pop" class="pop"></div>
 
 <script src="apps.js"></script>
 <script src="views.js"></script>
+<script src="views-admin.js"></script>
 <script>
   const $ = (id) => document.getElementById(id);
-  const app = $('app'), rail = $('rail'), body = $('ctxBody'), tip = $('tip');
-  let current = (location.hash || '#tasks').slice(1);
-  if (!appById(current)) current = 'tasks';
+  const app = $('app'), rail = $('rail'), body = $('ctxBody'), tip = $('tip'), pop = $('pop');
+  /* @impl MOCK ROUTER. Hash "#app/sub" -> state. Production: real nested routes (React Router / Next App Router), e.g. /admin/members/:memberId.
+     Keep the app and sub-page in the URL so every screen is deep-linkable and survives reload; keep filters/sort/page in the query string too. */
+  let current = 'tasks', sub = '';
+  function parseHash() { const [a, s] = location.hash.slice(1).split('/'); return [appById(a) ? a : 'tasks', s || '']; }
 
-  /* ---- rail: apps (flat, no groups), scrollable middle, fixed bottom actions ---- */
+  /* ---- rail: apps (flat, no groups), scrollable middle, fixed bottom actions ----
+     @impl Badges: red dot = unread (Messages: ChannelReadState), numeric red counter = items needing action (Support: unassigned/open conversations).
+       Both come from the owning module's API and update live. Bottom buttons: Notifications (module 14 inbox popover), AI assistant,
+       theme toggle (UserPreference.theme), Admin (visible only with any users.* / organizations.* view permission). */
   function drawRail() {
     let h = '<span class="logo">L</span><div class="rail-mid">';
-    APPS.forEach(a => {
+    APPS.filter(a => !a.hidden).forEach(a => {
       if (a.sep) h += '<div class="rail-sep"></div>';
       const badge = a.id === 'support' ? '<span class="nbadge">3</span>' : a.id === 'messages' ? '<span class="dotbadge"></span>' : '';
       h += `<button class="rail-btn ${a.id === current ? 'active' : ''}" data-app="${a.id}" data-tip="${a.label}">${LQ.icon(a.icon, 19)}${badge}</button>`;
@@ -57,57 +91,106 @@
       `<button class="rail-btn" data-tip="Notifications">${LQ.icon('bell', 19)}<span class="dotbadge"></span></button>` +
       `<button class="rail-btn" data-tip="AI assistant">${LQ.icon('sparkles', 19)}</button>` +
       `<button class="rail-btn" data-theme-btn></button>` +
-      `<button class="rail-btn" data-tip="Admin & settings">${LQ.icon('settings', 19)}</button></div>`;
+      `<button class="rail-btn ${current === 'admin' ? 'active' : ''}" data-app="admin" data-tip="Admin &amp; settings">${LQ.icon('settings', 19)}</button></div>`;
     rail.innerHTML = h;
-    rail.querySelectorAll('[data-app]').forEach(b => b.onclick = () => go(b.dataset.app));
+    rail.querySelectorAll('[data-app]').forEach(b => b.onclick = () => { location.hash = '#' + b.dataset.app; });
     rail.querySelectorAll('[data-theme-btn]').forEach(b => { LQ.paintThemeBtn(b); b.onclick = () => LQ.toggleTheme(); });
     rail.querySelectorAll('[data-tip]').forEach(b => {
-      b.onmouseenter = () => { tip.textContent = b.dataset.tip; tip.style.display = 'block'; const r = b.getBoundingClientRect(); tip.style.left = (r.right + 8) + 'px'; tip.style.top = (r.top + r.height / 2 - tip.offsetHeight / 2) + 'px'; };
+      b.onmouseenter = () => { tip.innerHTML = b.dataset.tip; tip.style.display = 'block'; const r = b.getBoundingClientRect(); tip.style.left = (r.right + 8) + 'px'; tip.style.top = (r.top + r.height / 2 - tip.offsetHeight / 2) + 'px'; };
       b.onmouseleave = () => { tip.style.display = 'none'; };
     });
   }
 
-  /* ---- context panel ---- */
-  function itemHtml(it) {
+  /* ---- context panel (items with `k` are routable: #app/k) ----
+     @impl Item anatomy: leading visual (icon | colored square for teams/projects | avatar with presence dot | "#" for channels), label, trailing
+       (tag, count, chevron for expandable). `bold` = unread. Counts: red pill (`alert`) only for things that need action, grey otherwise.
+       Expandable items (children) = SidebarMenuSub, remember open state per user. Use real <a>/<Link>, not buttons, for routable items. */
+  function itemHtml(it, activeK) {
     const lead = it.i ? LQ.icon(it.i, 16) : it.dot ? `<span class="sq" style="background:var(--${it.dot})"></span>` : it.av ? LQ.av(it.av[0], it.av[1], '', it.av[2]) : it.pre ? `<span class="pre">${it.pre}</span>` : '';
     const trail = (it.tag ? `<span class="tagx">${it.tag}</span>` : '') + (it.c ? `<span class="count ${it.alert ? 'alert' : ''}">${it.c}</span>` : '') + (it.children ? `<span class="chev">${LQ.icon('right', 12)}</span>` : '');
-    const cls = 'nav-item' + (it.active ? ' active' : '') + (it.bold ? ' unread' : '') + (it.tag && it.c ? ' hasc' : '');
-    let h = `<div class="${it.children ? 'mod' + (it.open ? ' open' : '') : ''}"><button class="${cls}">${lead}<span>${it.l}</span>${trail}</button>`;
+    const on = it.k ? it.k === activeK : it.active;
+    const cls = 'nav-item' + (on ? ' active' : '') + (it.bold ? ' unread' : '') + (it.tag && it.c ? ' hasc' : '');
+    let h = `<div class="${it.children ? 'mod' + (it.open ? ' open' : '') : ''}"><button class="${cls}" ${it.k ? `data-k="${it.k}"` : ''}>${lead}<span>${it.l}</span>${trail}</button>`;
     if (it.children) h += '<div class="nav-sub">' + it.children.map(c => `<button class="nav-item">${c}</button>`).join('') + '</div>';
     return h + '</div>';
   }
-  function drawPanel(a) {
+  function activeKey(a, s) {
+    const keys = a.panel.blocks.flatMap(b => b.items).filter(i => i.k).map(i => i.k);
+    if (!keys.length) return null;
+    const k = (a.alias && a.alias[s]) || s;
+    return keys.includes(k) ? k : keys[0];
+  }
+  function drawPanel(a, s) {
+    const ak = activeKey(a, s);
     $('ctxTitle').textContent = a.panel.title;
     $('ctxAction').innerHTML = a.panel.action ? `<button class="btn ghost icon sm" title="${a.panel.action === 'plus' ? 'Create' : a.panel.action === 'edit' ? 'Compose' : 'Settings'}">${LQ.icon(a.panel.action === 'settings' ? 'settings' : a.panel.action, 15)}</button>` : '';
     body.innerHTML = a.panel.blocks.map(b =>
-      (b.label ? `<div class="nav-label"><span>${b.label}</span>${b.action ? `<span class="ctx-label-btn">${LQ.icon('plus', 13)}</span>` : ''}</div>` : '') + b.items.map(itemHtml).join('')
+      (b.label ? `<div class="nav-label"><span>${b.label}</span>${b.action ? `<span class="ctx-label-btn">${LQ.icon('plus', 13)}</span>` : ''}</div>` : '') + b.items.map(i => itemHtml(i, ak)).join('')
     ).join('');
     body.querySelectorAll('.mod > .nav-item').forEach(b => b.onclick = () => b.parentElement.classList.toggle('open'));
-    body.querySelectorAll('.nav-item:not(.mod > .nav-item)').forEach(b => b.onclick = () => { body.querySelectorAll('.nav-item.active').forEach(x => x.classList.remove('active')); b.classList.add('active'); });
+    body.querySelectorAll('.nav-item:not(.mod > .nav-item)').forEach(b => b.onclick = () => {
+      if (b.dataset.k) { location.hash = `#${a.id}/${b.dataset.k}`; return; }
+      body.querySelectorAll('.nav-item.active').forEach(x => x.classList.remove('active')); b.classList.add('active');
+    });
+    return ak;
   }
 
-  /* ---- main view ---- */
-  function drawMain(a) {
+  /* ---- main view ----
+     @impl Each app/sub-page renders its own screen (views.js / views-admin.js); the breadcrumb is derived from the route
+       (App > section > record name). `fill` screens (Messages, Support) manage their own scroll regions.
+     @states Every screen must implement loading (skeleton, not spinner), empty, error (retry) and no-access (403/404) states; the mocks show only the happy path. */
+  function drawMain(a, s, ak) {
     const v = VIEWS[a.id], page = $('page');
     page.classList.toggle('fill', !!(v && v.fill));
-    page.innerHTML = v ? v.html() : VIEWS.placeholder(a);
+    page.innerHTML = v ? v.html(s) : VIEWS.placeholder(a);
     page.scrollTop = 0;
-    $('crumbs').innerHTML = `${LQ.icon(a.icon, 14)}<span>${a.label}</span>${LQ.icon('right', 12)}<b>${(a.panel.blocks.flatMap(b => b.items).find(i => i.active) || a.panel.blocks[0].items[0]).l}</b>`;
+    const flat = a.panel.blocks.flatMap(b => b.items);
+    const act = (ak ? flat.find(i => i.k === ak) : flat.find(i => i.active)) || flat[0];
+    const extra = v && v.crumb ? v.crumb(s) : '';
+    $('crumbs').innerHTML = `${LQ.icon(a.icon, 14)}<span>${a.label}</span>${LQ.icon('right', 12)}${extra ? `<span>${act.l}</span>${LQ.icon('right', 12)}<b>${extra}</b>` : `<b>${act.l}</b>`}`;
     $('newBtn').innerHTML = `${LQ.icon('plus', 14)}${a.newLabel}`;
     LQ.hydrate(page);
   }
 
-  function go(id) {
-    current = id; history.replaceState(null, '', '#' + id);
+  function go(id, s) {
+    current = id; sub = s;
     const a = appById(id);
     app.classList.remove('no-ctx'); $('reopen').style.display = 'none';
-    drawRail(); drawPanel(a); drawMain(a); LQ.hydrate();
+    drawRail(); const ak = drawPanel(a, s); drawMain(a, s, ak); LQ.hydrate();
     document.title = a.label + ' — Logiqdev OS';
+    closePop();
   }
   $('toggleCtx').onclick = () => { app.classList.add('no-ctx'); $('reopen').style.display = ''; };
   $('reopen').onclick = () => { app.classList.remove('no-ctx'); $('reopen').style.display = 'none'; };
-  addEventListener('hashchange', () => { const id = location.hash.slice(1); if (appById(id) && id !== current) go(id); });
-  go(current);
+  addEventListener('hashchange', () => { const [a, s] = parseHash(); go(a, s); });
+
+  /* ---- §26 organization switcher + §27 active branch context ----
+     @impl Content = org list (Memberships) + branch tree (Branch rows the caller belongs to via MembershipBranch; parent_branch_id drives the indent).
+       "Entire organization" is a radio; branches are checkboxes (several may be active at once -> UserSession.active_branch_ids).
+       A regional unit selects its whole subtree (BRANCH_HIERARCHY semantics). Show Branch.kind and Branch.status labels (PLANNED/ARCHIVED branches
+       are listed but disabled). Build with shadcn DropdownMenu + CheckboxItem/RadioItem, or Popover + Command for large trees (search). */
+  function popHtml() {
+    const org = (logo, name, role, on) => `<button class="pi">${`<span class="logo" style="width:26px;height:26px;font-size:11px;${logo}">${name[0]}</span>`}<span class="pt"><b>${name}</b><small>${role}</small></span>${on ? LQ.icon('check', 15) : ''}</button>`;
+    const br = (name, meta, on, ind, multi) => `<button class="pi" style="padding-left:${10 + (ind || 0) * 16}px">${multi ? `<span class="cb ${on ? 'on' : ''}">${on ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</span>` : `<span class="radio ${on ? 'on' : ''}"></span>`}<span class="pt"><b>${name}</b>${meta ? `<small>${meta}</small>` : ''}</span></button>`;
+    return `<div class="pop-h">Organizations</div>${org('', 'Logiqdev', 'Owner · Agency', 1)}${org('background:linear-gradient(135deg,#59d499,#0b7b4f)', 'Northwind Studio', 'Admin · Guest org', 0)}
+      <button class="pi muted">${LQ.icon('plus', 15)}<span class="pt"><b>Create organization</b></span></button>
+      <div class="pop-sep"></div><div class="pop-h">Active branch context</div>
+      ${br('Entire organization', 'no branch filter · 24 members', 1)}${br('Greece', 'Regional unit · includes children', 0, 0, 1)}${br('Athens', 'Office · 14 members', 0, 1, 1)}${br('Thessaloniki', 'Office · 6 members', 0, 1, 1)}${br('Patras', 'Office · Planned', 0, 1, 1)}${br('Cyprus', 'Regional unit', 0, 0, 1)}${br('Limassol', 'Office · 4 members', 0, 1, 1)}
+      <div class="pop-foot">Stored on the session: active_organization_id, active_branch_id (single) and active_branch_ids (several). Switching never merges data context.</div>`;
+  }
+  function openPop(anchor, side) {
+    pop.innerHTML = popHtml(); pop.style.display = 'block';
+    const r = anchor.getBoundingClientRect();
+    if (side === 'up') { pop.style.left = r.left + 'px'; pop.style.bottom = (innerHeight - r.top + 8) + 'px'; pop.style.top = 'auto'; }
+    else { pop.style.top = (r.bottom + 8) + 'px'; pop.style.left = 'auto'; pop.style.right = (innerWidth - r.right) + 'px'; pop.style.bottom = 'auto'; }
+    LQ.hydrate(pop);
+  }
+  function closePop() { pop.style.display = 'none'; }
+  $('orgBtn').onclick = (e) => { e.stopPropagation(); pop.style.display === 'block' ? closePop() : openPop($('orgBtn'), 'up'); };
+  $('branchChip').onclick = (e) => { e.stopPropagation(); pop.style.display === 'block' ? closePop() : openPop($('branchChip'), 'down'); };
+  addEventListener('click', (e) => { if (!pop.contains(e.target)) closePop(); });
+
+  const [a0, s0] = parseHash(); go(a0, s0);
 </script>
 </body>
 </html>

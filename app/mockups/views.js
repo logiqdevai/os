@@ -1,9 +1,23 @@
-/* Main-area views. Each app owns its layout: Tasks ≈ Linear, Messages ≈ Slack, Support ≈ Intercom, Campaigns ≈ Mailchimp/Customer.io. */
+/* Main-area views. Each app owns its layout: Tasks ≈ Linear, Messages ≈ Slack, Support ≈ Intercom, Campaigns ≈ Mailchimp/Customer.io.
+
+   !! NOT YET SCHEMA-ALIGNED !!  These screens (Tasks, Messages, Support, Campaigns, Projects) were designed from the product description before the
+   "schema first" rule. Status labels, field names, columns and sample data here are ILLUSTRATIVE. Before implementing any of them:
+     1. read the owned models + enums of the module in api/prisma/schema.prisma (module numbers are given per screen),
+     2. read the module's permission keys in api/prisma/seed/permission-catalog.ts,
+     3. align labels/columns to exact enum values and drop anything with no column (flag it as @gap),
+     4. add the "Data model" footer like views-admin.js does.
+   The LAYOUT and INTERACTION patterns are the approved design; the data details are not.
+
+   @impl General rules for all screens in this file: see README.md. Mock-only: sample arrays, inline styles, the `st()`/`prio()` helper SVGs.
+   Production: lists with > ~50 rows use cursor pagination + virtualization; every list is filtered server-side by the caller's branch/team/project scope. */
 (function () {
   const I = (n, s) => LQ.icon(n, s);
   const AV = LQ.av;
 
-  /* ---------- Linear-style status / priority glyphs ---------- */
+  /* ---------- Linear-style status / priority glyphs ----------
+     @impl st(kind): status icon by TaskStatus category (backlog = dashed circle, todo = empty circle, in progress = half-filled, done = check).
+       Render from TaskStatus.category (06), NOT from a hard-coded kind; org-defined statuses must map to one of these categories.
+     @impl prio(level): priority glyph (urgent = red square "!", high/medium/low = 3/2/1 bars, none = dim bars). Map from the Task priority enum of 06. */
   function st(k) {
     const c = { backlog: "var(--ash)", todo: "var(--mute)", prog: "var(--yellow)", done: "var(--blue)" }[k];
     const w = (x) => '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex:none">' + x + "</svg>";
@@ -19,7 +33,20 @@
       h.map((v, i) => '<rect x="' + (1 + i * 4.5) + '" y="' + (12 - v) + '" width="3" height="' + v + '" rx="1" fill="currentColor" opacity="' + (l === 0 ? 0.2 : i < l ? 1 : 0.25) + '"/>').join("") + "</svg>";
   }
 
-  /* ================= TASKS (Linear-like) ================= */
+  /* ================= TASKS (Linear-like) =================
+     @screen Tasks · My tasks (list grouped by status)
+     @route  /tasks (default = "My tasks"), /tasks/team/:teamSlug/:view, /tasks/:taskKey (detail as a side peek or full page; Linear style)
+     @perm   VIEW tasks.tasks.read · ACTION create tasks.tasks.create, edit inline tasks.tasks.update, assign tasks.tasks.assign, bulk tasks.bulk.execute,
+             delete tasks.tasks.delete (sensitive). "Internal" comments need tasks.comments.internal.read (clients never see them).
+     @api    GET /tasks?assignee=me&team=&status_category=&label=&cycle=&sort=&cursor= · PATCH /tasks/:id · POST /tasks
+     @mcp    tasks_tasks_read, tasks_tasks_create, tasks_tasks_update, tasks_tasks_assign
+     @data   module 06: Task (key e.g. WEB-142, title, status, priority, labels, assignees, due date, project_id), TaskStatus, TaskLabel, TaskAssignee, Cycle.
+             Project name comes from module 05, assignee from Membership/User (01).
+     @ui     shadcn Table-like list (use a div grid + roving tabindex, not <table>), Badge (labels), Avatar, DropdownMenu (row/inline editors), Popover+Command (status/assignee pickers), ToggleGroup (All/Active/Backlog).
+     @states loading skeleton rows · empty ("No tasks assigned to you") · error · no-access
+     @note   Rows are inline-editable (click status icon -> status picker, priority glyph -> priority picker). Keyboard-first (j/k move, c create, s status, a assign).
+             Grouping, ordering and visible columns ("Display" button) are per-user saved views (SavedView, module 02 platform table).
+             Row highlight (.sel) = keyboard focus / open peek. Labels column hides under 1250px width (CSS), keep it priority-ordered. */
   const TASKS = [
     ["In progress", "prog", [
       ["WEB-142", "Rebuild pricing page hero with new brand system", 3, [["Frontend", "blue"]], "Acme Rebrand", ["MS", "g"], "Nov 14"],
@@ -52,7 +79,23 @@
       }).join("") + "</div></div>";
   }
 
-  /* ================= MESSAGES (Slack-like) ================= */
+  /* ================= MESSAGES (Slack-like) =================
+     @screen Messages · channel view with thread side pane
+     @route  /messages/c/:channelId, /messages/c/:channelId/t/:messageId (thread open), /messages/dm/:channelId, /messages/threads, /messages/mentions
+     @perm   VIEW messaging.channels.read + membership of the channel (private channels are invisible otherwise) · POST messaging.messages.post ·
+             pin messaging.messages.pin · delete others' messages messaging.messages.delete_any (sensitive) · external participants need
+             messaging.external_users.manage to be added.
+     @api    GET /channels/:id/messages?before=&limit= (cursor, newest last) · POST /channels/:id/messages · GET /messages/:id/replies ·
+             PUT /messages/:id/reactions/:emoji · realtime: WebSocket/SSE channel per Channel for new messages, reactions, typing, presence.
+     @mcp    messaging_messages_read, messaging_messages_post, messaging_channels_read
+     @data   module 12: Channel (kind, topic, is_shared/external), ChannelMember, Message (parent_id for threads), MessageReaction, MessageMention,
+             MessageThreadFollower, ChannelPin, ChannelReadState, MessageDraft, MessagingPresence. Authors: Membership (internal) or external
+             participants (customer portal users, 01 §79 -> `external_user_id`, plain id).
+     @ui     ScrollArea (message list, anchored to bottom, load older on scroll up), Avatar, Badge ("Client", "App"), Popover (emoji picker), a rich-text editor (Tiptap) for the composer, Sheet/aside for the thread pane.
+     @states loading · empty channel · error/offline banner (queue unsent messages) · no-access
+     @note   "Shared with Acme Corp" badge = channel has external participants: show it so staff never post internal info by mistake, and block internal-only
+             mentions/files there. Bot/automation messages (the "App" author) come from module 20 via a service account; their cards link to the source record
+             (here a task) and must re-check the viewer's permission to that record before rendering details. */
   function msg(o) {
     return '<div class="m">' + AV(o.a, o.c, "lg sq") + '<div class="mb"><div class="mh"><b>' + o.n + "</b>" + (o.tag ? '<span class="badge ' + (o.tagc || "") + '">' + o.tag + "</span>" : "") + '<span class="tm">' + o.t + "</span></div>" +
       '<div class="mt">' + o.x + "</div>" + (o.card || "") +
@@ -84,7 +127,22 @@
       '</div><div class="composer" style="margin:0 12px 12px"><div class="c-in">Reply…</div><div class="c-bar"><span style="flex:1"></span><button class="btn primary sm icon">' + I("send", 14) + "</button></div></div></aside></div>";
   }
 
-  /* ================= SUPPORT (Intercom-like) ================= */
+  /* ================= SUPPORT (Intercom-like) =================
+     @screen Support · Your inbox (conversation list | conversation | customer panel)
+     @route  /support/inbox/:view (view = mine|mentions|unassigned|all|saved-view-id), /support/c/:conversationId, /support/tickets, /support/help-center
+     @perm   VIEW support.conversations.read · reply support.conversations.reply · assign support.conversations.assign · close support.conversations.close ·
+             convert to task support.tickets.convert_to_task · AI suggestions support.ai.use · internal notes are visible to staff only.
+     @api    GET /support/conversations?inbox=&assignee=&status=&cursor= · GET /support/conversations/:id (+messages) · POST /support/conversations/:id/messages {type: reply|note}
+             POST /support/conversations/:id/assign|snooze|close · realtime channel for new messages and typing.
+     @mcp    support_conversations_read, support_conversations_reply (sensitive when sent by an AI agent: needs human confirmation), support_conversations_assign
+     @data   module 13: SupportConversation, SupportMessage (author Membership or portal User; type note vs reply), Ticket, TicketStatus, SlaPolicy (first-response/resolution timers),
+             SupportInbox, SupportChannel (live chat/email/portal), SupportCannedResponse (macros), SupportAiSuggestion, SupportCsatRating. Customer panel reads CRM (02) Company/Contact,
+             Billing (08) open invoices, Projects (05) / Tasks (06) / Contracts (04) for "Linked records" — each link re-checks the viewer's permission for that module.
+     @ui     3-pane layout (resizable panels), list = virtualized rows, composer = Tiptap with Reply/Note tabs (Tabs), Command for macros, DropdownMenu for assignee/snooze, Badge for SLA/VIP.
+     @states loading · empty inbox ("Inbox zero") · error · conversation closed/readonly · no-access
+     @note   SLA badge counts down live (SlaPolicy + business hours of the Branch, 01 §121). Internal notes (yellow) must never be sent to the customer: enforce on the server by message type.
+             AI suggestion = SupportAiSuggestion, human reviews and edits before sending; record accept/dismiss for quality metrics.
+             "Customer" panel is hidden fields-by-permission (e.g. contract value needs crm.financials.read). */
   const CONVOS = [
     ["Lena Kovac", "LK", "p", "Acme Corp", "Can you send the final pricing table for approval…", "2m", "chat", 1, ["SLA 8m", "yellow"]],
     ["Daniel Ortiz", "DO", "g", "Globex", "Invoice INV-2041 shows the wrong VAT number", "14m", "mail", 1, ["VIP", "purple"]],
@@ -121,7 +179,19 @@
       '<button class="btn sm" style="width:100%;margin-top:8px">' + I("plus", 13) + " Create task from conversation</button></div></aside></div>";
   }
 
-  /* ================= CAMPAIGNS ================= */
+  /* ================= CAMPAIGNS =================
+     @screen Campaigns · All campaigns (email + SMS)
+     @route  /campaigns (+ ?channel=email|sms&status=), /campaigns/new/email, /campaigns/new/sms, /campaigns/:id (analytics), /campaigns/:id/edit
+     @perm   VIEW communications.campaigns.read · create communications.campaigns.create · SEND communications.campaigns.send (sensitive) ·
+             approve communications.campaigns.approve (sensitive; separation of duties 01 §96 when approval is required) · analytics communications.analytics.read
+     @api    GET /campaigns?channel=&status=&cursor= · POST /campaigns · POST /campaigns/:id/schedule|send|cancel · GET /campaigns/:id/stats
+     @mcp    communications_campaigns_read, communications_campaigns_create, communications_campaigns_send (needs human confirmation for AI callers)
+     @data   module 11: Campaign (channel, status, audience Segment/CommRecipientList, scheduled_at), CommMessage, CampaignRecipient, CommDailyStat (open/click/delivery),
+             CommSuppression + CommConsent (enforced on every send), CommSenderIdentity/CommSenderDomain (EMAIL) and provider account numbers (SMS).
+     @ui     Table (sortable), Badge for status, ToggleGroup/Tabs for channel filter, Dialog or full page "campaign builder" (stepper: audience > content > review > schedule).
+     @states loading · empty ("Create your first campaign") · error · no-access · provider-not-connected (no sender domain / phone number yet)
+     @note   Open/click rates are provider events aggregated into CommDailyStat; show "-" for SMS open. A campaign can only be sent when sender identity is verified
+             and the audience is non-empty after suppression. Automated rows ("Automated" status) are Automation (20) journeys, link to them. */
   function campaigns() {
     const rows = [
       ["November product update", "mail", "Sent", "green", "Clients · all", "12,480", "46.2%", "7.1%"],
@@ -139,7 +209,19 @@
       "</tbody></table></div></div></div>";
   }
 
-  /* ================= PROJECTS ================= */
+  /* ================= PROJECTS =================
+     @screen Projects · Overview (portfolio list + KPIs)
+     @route  /projects (+ ?status=&client=&branch=), /projects/:projectKey (detail), /projects/portfolio, /projects/timeline
+     @perm   VIEW projects.projects.read · create projects.projects.create · budgets/finance columns need projects.finance.read (hide the Budget column otherwise) ·
+             portfolio KPIs need projects.portfolio.read
+     @api    GET /projects?status=&customer_id=&branch_id=&cursor= · GET /projects/summary (KPIs) · POST /projects
+     @mcp    projects_projects_read, projects_projects_create
+     @data   module 05: Project (status, customer, branch_id, due date, budget), ProjectStatus, ProjectMember, ProjectBranch (cross-branch projects), milestones/gates.
+             Progress % is derived from tasks (06) or milestones, not stored by hand.
+     @ui     Card (KPIs), Table, Badge (status), Progress, avatar group, Tabs (Overview/Portfolio/Timeline/Workload).
+     @states loading · empty · error · no-access
+     @note   KPI "At-risk budget" is a computed insight; define the rule (status AT_RISK or forecast > budget) in the API, do not compute in the client.
+             The branch context chip in the app bar filters this list server-side (UserSession.active_branch_ids). */
   function projects() {
     const R = [
       ["Acme Rebrand Website", "Acme Corp", "On track", "green", 72, "AM,MS,SJ", "Nov 28", "€48,000"],
@@ -158,7 +240,9 @@
       "</tbody></table></div></div></div>";
   }
 
-  /* ================= placeholder for apps not yet mocked ================= */
+  /* ================= placeholder for apps not yet mocked =================
+     @note Apps without a design yet (CRM, Proposals, Contracts, Client portal, Billing, Expenses, People, Docs, Files, Automation, Time, Calendar).
+           Do NOT implement from this placeholder: wait for the mockup (which will follow the schema-first rule). */
   function placeholder(app) {
     return '<div class="page"><div class="page-head"><div><h1>' + app.panel.title + '</h1><p>Mockup not built yet</p></div><button class="btn primary">' + I("plus", 14) + " " + app.newLabel + '</button></div>' +
       '<div class="panel" style="padding:48px;text-align:center;border-style:dashed;background:transparent"><div style="color:var(--mute);margin-bottom:6px">' + I(app.icon, 28) + '</div><b style="color:var(--ink)">' + app.label + '</b><p style="color:var(--ash);margin-top:4px">This app gets its own layout, like Tasks, Messages and Support. Sections: ' +

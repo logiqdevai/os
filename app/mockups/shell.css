@@ -1,4 +1,16 @@
-/* App shell + per-app view styles (all colors are theme tokens from shared.css) */
+/* App shell + per-app view styles (all colors are theme tokens from shared.css)
+
+   @impl SHELL LAYOUT (app/ production layout component, e.g. `AppShell`):
+     grid columns: 60px rail | 236px context panel | 1fr main. The context panel collapses to 0 (toggle in panel header and app bar);
+     persist the collapsed state per user (UserPreference.dashboard_layout JSON) not in localStorage only.
+     Rail  = shadcn Sidebar with `collapsible="icon"` variant used as a fixed icon rail. One entry per APP (apps.js), flat, no groups.
+             The middle section scrolls (hidden scrollbar); notifications / AI / theme / admin stay pinned at the bottom.
+             Show an app only when the user has module access (MembershipModuleAccess + OrganizationModule) AND the view permission.
+     Panel = second shadcn Sidebar (SidebarContent): contextual navigation of the ACTIVE app only; sections = SidebarGroup.
+     Main  = app bar (breadcrumb, branch context, command search, primary "New" action) + routed content (`Outlet`).
+   @impl RESPONSIVE: below ~1100px collapse the context panel into a Sheet; below ~768px the rail becomes a bottom bar or Sheet.
+   @note Everything inside `.content` scrolls independently of the shell. Apps with `fill` (Messages, Support) own their internal
+         scrolling (message list, conversation list) and must set `overflow: hidden` on the content container. */
 .app { display: grid; grid-template-columns: 60px 236px 1fr; height: 100vh; transition: grid-template-columns .18s; }
 .app.no-ctx { grid-template-columns: 60px 0 1fr; }
 

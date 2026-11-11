@@ -137,6 +137,7 @@ exports.Prisma.UserScalarFieldEnum = {
   email_verified_at: 'email_verified_at',
   phone_verified_at: 'phone_verified_at',
   mfa_enabled: 'mfa_enabled',
+  password_changed_at: 'password_changed_at',
   last_login_at: 'last_login_at',
   default_organization_id: 'default_organization_id',
   deactivated_at: 'deactivated_at',
@@ -173,6 +174,7 @@ exports.Prisma.UserSessionScalarFieldEnum = {
   user_id: 'user_id',
   active_organization_id: 'active_organization_id',
   active_branch_id: 'active_branch_id',
+  active_branch_ids: 'active_branch_ids',
   token_hash: 'token_hash',
   device: 'device',
   browser: 'browser',
@@ -240,6 +242,9 @@ exports.Prisma.OrganizationSecurityPolicyScalarFieldEnum = {
   allowed_email_domains: 'allowed_email_domains',
   restrict_invitations_to_domains: 'restrict_invitations_to_domains',
   allowed_ip_ranges: 'allowed_ip_ranges',
+  allowed_countries: 'allowed_countries',
+  invitation_policy: 'invitation_policy',
+  members_can_view_sessions: 'members_can_view_sessions',
   portal_mfa_policy: 'portal_mfa_policy',
   updated_at: 'updated_at'
 };
@@ -274,6 +279,7 @@ exports.Prisma.BranchScalarFieldEnum = {
   name: 'name',
   code: 'code',
   kind: 'kind',
+  is_headquarters: 'is_headquarters',
   status: 'status',
   country: 'country',
   region: 'region',
@@ -335,6 +341,7 @@ exports.Prisma.TeamMembershipScalarFieldEnum = {
   team_id: 'team_id',
   membership_id: 'membership_id',
   team_role: 'team_role',
+  is_lead: 'is_lead',
   is_primary: 'is_primary',
   started_at: 'started_at',
   ended_at: 'ended_at',
@@ -406,6 +413,9 @@ exports.Prisma.RoleScalarFieldEnum = {
   template_role_id: 'template_role_id',
   default_scope: 'default_scope',
   modules: 'modules',
+  version: 'version',
+  published_at: 'published_at',
+  restrictions: 'restrictions',
   created_at: 'created_at',
   updated_at: 'updated_at'
 };
@@ -465,11 +475,58 @@ exports.Prisma.DelegationScalarFieldEnum = {
   updated_at: 'updated_at'
 };
 
+exports.Prisma.AccessReviewScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  name: 'name',
+  description: 'description',
+  status: 'status',
+  scope_type: 'scope_type',
+  scope_id: 'scope_id',
+  modules: 'modules',
+  starts_at: 'starts_at',
+  due_at: 'due_at',
+  completed_at: 'completed_at',
+  created_by_membership_id: 'created_by_membership_id',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.AccessReviewItemScalarFieldEnum = {
+  id: 'id',
+  review_id: 'review_id',
+  membership_id: 'membership_id',
+  reviewer_membership_id: 'reviewer_membership_id',
+  decision: 'decision',
+  decided_at: 'decided_at',
+  comment: 'comment',
+  access_snapshot: 'access_snapshot',
+  applied_at: 'applied_at',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.RoleVersionScalarFieldEnum = {
+  id: 'id',
+  role_id: 'role_id',
+  version: 'version',
+  name: 'name',
+  description: 'description',
+  default_scope: 'default_scope',
+  modules: 'modules',
+  permissions: 'permissions',
+  restrictions: 'restrictions',
+  note: 'note',
+  published_by_membership_id: 'published_by_membership_id',
+  published_at: 'published_at'
+};
+
 exports.Prisma.InvitationScalarFieldEnum = {
   id: 'id',
   organization_id: 'organization_id',
   email: 'email',
   type: 'type',
+  audience: 'audience',
   branch_id: 'branch_id',
   team_id: 'team_id',
   role_id: 'role_id',
@@ -500,6 +557,7 @@ exports.Prisma.SsoConfigurationScalarFieldEnum = {
   auto_provision: 'auto_provision',
   scim_enabled: 'scim_enabled',
   scim_token_hash: 'scim_token_hash',
+  scim_last_synced_at: 'scim_last_synced_at',
   created_at: 'created_at',
   updated_at: 'updated_at'
 };
@@ -536,6 +594,9 @@ exports.Prisma.ApiKeyScalarFieldEnum = {
   key_prefix: 'key_prefix',
   key_hash: 'key_hash',
   scopes: 'scopes',
+  scope_type: 'scope_type',
+  scope_id: 'scope_id',
+  rotation_due_at: 'rotation_due_at',
   expires_at: 'expires_at',
   last_used_at: 'last_used_at',
   rotated_from_id: 'rotated_from_id',
@@ -567,6 +628,7 @@ exports.Prisma.AuditEventScalarFieldEnum = {
   event_type: 'event_type',
   resource_type: 'resource_type',
   resource_id: 'resource_id',
+  branch_id: 'branch_id',
   metadata: 'metadata',
   ip_address: 'ip_address',
   user_agent: 'user_agent',
@@ -8026,6 +8088,11 @@ exports.MfaPolicy = exports.$Enums.MfaPolicy = {
   REQUIRED_FOR_SENSITIVE_MODULES: 'REQUIRED_FOR_SENSITIVE_MODULES'
 };
 
+exports.InvitationPolicy = exports.$Enums.InvitationPolicy = {
+  PERMISSION_HOLDERS: 'PERMISSION_HOLDERS',
+  ADMINS_ONLY: 'ADMINS_ONLY'
+};
+
 exports.DomainVerificationStatus = exports.$Enums.DomainVerificationStatus = {
   PENDING: 'PENDING',
   VERIFIED: 'VERIFIED',
@@ -8136,6 +8203,25 @@ exports.DelegationStatus = exports.$Enums.DelegationStatus = {
   ACTIVE: 'ACTIVE',
   EXPIRED: 'EXPIRED',
   REVOKED: 'REVOKED'
+};
+
+exports.AccessReviewStatus = exports.$Enums.AccessReviewStatus = {
+  DRAFT: 'DRAFT',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED'
+};
+
+exports.AccessReviewDecision = exports.$Enums.AccessReviewDecision = {
+  PENDING: 'PENDING',
+  CERTIFIED: 'CERTIFIED',
+  REVOKED: 'REVOKED',
+  MODIFIED: 'MODIFIED'
+};
+
+exports.InvitationAudience = exports.$Enums.InvitationAudience = {
+  MEMBER: 'MEMBER',
+  CUSTOMER_PORTAL: 'CUSTOMER_PORTAL'
 };
 
 exports.InvitationStatus = exports.$Enums.InvitationStatus = {
@@ -11065,6 +11151,9 @@ exports.Prisma.ModelName = {
   RoleAssignment: 'RoleAssignment',
   PermissionGrant: 'PermissionGrant',
   Delegation: 'Delegation',
+  AccessReview: 'AccessReview',
+  AccessReviewItem: 'AccessReviewItem',
+  RoleVersion: 'RoleVersion',
   Invitation: 'Invitation',
   SsoConfiguration: 'SsoConfiguration',
   SsoGroupMapping: 'SsoGroupMapping',

@@ -40,7 +40,10 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'organizations.api_keys.manage', module: ModuleKey.ADMINISTRATION, resource: 'api_keys', action: 'manage', is_sensitive: true },
   { key: 'organizations.service_accounts.manage', module: ModuleKey.ADMINISTRATION, resource: 'service_accounts', action: 'manage', is_sensitive: true },
   { key: 'organizations.audit.read', module: ModuleKey.ADMINISTRATION, resource: 'audit', action: 'read', is_sensitive: true },
+  { key: 'organizations.access_reviews.read', module: ModuleKey.ADMINISTRATION, resource: 'access_reviews', action: 'read', is_sensitive: true },
   { key: 'organizations.access_reviews.manage', module: ModuleKey.ADMINISTRATION, resource: 'access_reviews', action: 'manage', is_sensitive: true },
+  // Reviewers decide only the items assigned to them (AccessReviewItem.reviewer_membership_id); they do not need manage.
+  { key: 'organizations.access_reviews.decide', module: ModuleKey.ADMINISTRATION, resource: 'access_reviews', action: 'decide', is_sensitive: true },
 
   // --- Users & members (01 §106–108, §131–133) ----------------------------------
   { key: 'users.members.read', module: ModuleKey.ADMINISTRATION, resource: 'members', action: 'read' },

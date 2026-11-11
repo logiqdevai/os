@@ -239,6 +239,34 @@ enum DelegationStatus {
   REVOKED
 }
 
+/// 01 §73 — who may invite members.
+enum InvitationPolicy {
+  PERMISSION_HOLDERS
+  ADMINS_ONLY
+}
+
+/// 01 §65, §79 — what an invitation grants.
+enum InvitationAudience {
+  MEMBER
+  CUSTOMER_PORTAL
+}
+
+/// 01 §98 — access review campaign lifecycle.
+enum AccessReviewStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+/// 01 §98 — a reviewer's decision about one member's access.
+enum AccessReviewDecision {
+  PENDING
+  CERTIFIED
+  REVOKED
+  MODIFIED
+}
+
 /// 01 §99–100, §139 — who performed an audited action.
 enum AuditActorType {
   USER
@@ -289,6 +317,8 @@ model User {
   email_verified_at       DateTime?
   phone_verified_at       DateTime?
   mfa_enabled             Boolean    @default(false)
+  /// Last time the password was set or changed; with password_max_age_days (OrganizationSecurityPolicy) it drives forced rotation.
+  password_changed_at     DateTime?
   last_login_at           DateTime?
   /// 01 §127 — not permissions.
   default_organization_id String?
@@ -376,6 +406,8 @@ model UserSession {
   active_organization_id String?
   /// 01 §27 — selected branch context; null means entire organization.
   active_branch_id       String?
+  /// 01 §27 — several selected branches (multiple selected branches). Empty and active_branch_id null = entire organization.
+  active_branch_ids      String[]  @default([])
   token_hash             String    @unique
   device                 String?
   browser                String?
@@ -464,6 +496,7 @@ model Organization {
   sso_configurations   SsoConfiguration[]
   service_accounts     ServiceAccount[]
   api_keys             ApiKey[]
+  access_reviews       AccessReview[]
   delegations          Delegation[]
   customer_memberships CustomerPortalMembership[]
   audit_events         AuditEvent[]
@@ -685,21 +718,27 @@ model Organization {
 
 /// 01 §73–74 — organization security policy.
 model OrganizationSecurityPolicy {
-  organization_id                 String    @id
-  password_min_length             Int       @default(10)
-  password_require_symbols        Boolean   @default(false)
+  organization_id                 String           @id
+  password_min_length             Int              @default(10)
+  password_require_symbols        Boolean          @default(false)
   password_max_age_days           Int?
-  mfa_policy                      MfaPolicy @default(OPTIONAL)
-  sso_required                    Boolean   @default(false)
-  session_duration_minutes        Int       @default(43200)
+  mfa_policy                      MfaPolicy        @default(OPTIONAL)
+  sso_required                    Boolean          @default(false)
+  session_duration_minutes        Int              @default(43200)
   idle_timeout_minutes            Int?
-  allowed_email_domains           String[]  @default([])
+  allowed_email_domains           String[]         @default([])
   /// Invitations limited to allowed domains.
-  restrict_invitations_to_domains Boolean   @default(false)
-  allowed_ip_ranges               String[]  @default([])
+  restrict_invitations_to_domains Boolean          @default(false)
+  allowed_ip_ranges               String[]         @default([])
+  /// ISO 3166-1 alpha-2 codes sign-in is allowed from; empty = no country restriction (01 §73 login restrictions).
+  allowed_countries               String[]         @default([])
+  /// 01 §73 — who may send invitations.
+  invitation_policy               InvitationPolicy @default(PERMISSION_HOLDERS)
+  /// 01 §72 — members may list and revoke their own sessions.
+  members_can_view_sessions       Boolean          @default(true)
   /// Portal users may use the same policy or a lighter one (01 §79).
-  portal_mfa_policy               MfaPolicy @default(OPTIONAL)
-  updated_at                      DateTime  @updatedAt
+  portal_mfa_policy               MfaPolicy        @default(OPTIONAL)
+  updated_at                      DateTime         @updatedAt
 
   organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
 
@@ -756,6 +795,8 @@ model Branch {
   name             String
   code             String?
   kind             BranchKind   @default(OPERATIONAL)
+  /// Marks the organization's headquarters (at most one per organization, enforced in the service).
+  is_headquarters  Boolean      @default(false)
   status           BranchStatus @default(ACTIVE)
   country          String?
   region           String?
@@ -943,6 +984,8 @@ model TeamMembership {
   membership_id String
   /// Free-form team role label (lead, member, …). Permissions come from Role assignments scoped to the team.
   team_role     String?
+  /// Team lead (01 §42). team_role stays a free label.
+  is_lead       Boolean   @default(false)
   is_primary    Boolean   @default(false)
   started_at    DateTime  @default(now())
   ended_at      DateTime?
@@ -989,16 +1032,20 @@ model Membership {
   user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
 
-  branches               MembershipBranch[]
-  teams                  TeamMembership[]
-  managed_branches       BranchManager[]
-  module_access          MembershipModuleAccess[]
-  role_assignments       RoleAssignment[]
-  permission_grants      PermissionGrant[]
-  api_keys               ApiKey[]
-  delegations_given      Delegation[]             @relation("DelegationDelegator")
-  delegations_received   Delegation[]             @relation("DelegationDelegate")
-  owned_service_accounts ServiceAccount[]
+  branches                  MembershipBranch[]
+  teams                     TeamMembership[]
+  managed_branches          BranchManager[]
+  module_access             MembershipModuleAccess[]
+  role_assignments          RoleAssignment[]
+  permission_grants         PermissionGrant[]
+  api_keys                  ApiKey[]
+  created_access_reviews    AccessReview[]           @relation("AccessReviewCreator")
+  access_review_subjects    AccessReviewItem[]       @relation("AccessReviewSubject")
+  access_review_assignments AccessReviewItem[]       @relation("AccessReviewReviewer")
+  published_role_versions   RoleVersion[]            @relation("RoleVersionPublisher")
+  delegations_given         Delegation[]             @relation("DelegationDelegator")
+  delegations_received      Delegation[]             @relation("DelegationDelegate")
+  owned_service_accounts    ServiceAccount[]
 
   // 02 CRM ownership (02 §20)
   owned_companies                     CrmCompany[]                     @relation("CrmCompanyOwner")
@@ -1260,11 +1307,17 @@ model Role {
   default_scope    ScopeType   @default(ORGANIZATION)
   /// Modules this role grants product access to when assigned (01 §109).
   modules          ModuleKey[] @default([])
+  /// Incremented each time the role is published (01 §109). History in RoleVersion.
+  version          Int         @default(1)
+  published_at     DateTime?
+  /// Role-level restrictions beyond per-permission conditions, e.g. { require_mfa: true, hide_rates: true } (01 §109).
+  restrictions     Json?
   created_at       DateTime    @default(now())
   updated_at       DateTime    @updatedAt
 
   organization         Organization?              @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   permissions          RolePermission[]
+  versions             RoleVersion[]
   assignments          RoleAssignment[]
   invitations          Invitation[]
   group_mappings       SsoGroupMapping[]
@@ -1374,6 +1427,83 @@ model Delegation {
   @@map("delegations")
 }
 
+/// 01 §98 — periodic access review (certification campaign) over an organization, branch, team or module.
+model AccessReview {
+  id                       String             @id @default(uuid())
+  organization_id          String
+  name                     String
+  description              String?
+  status                   AccessReviewStatus @default(DRAFT)
+  /// What is reviewed: ORGANIZATION, BRANCH, BRANCH_HIERARCHY or TEAM (scope_id).
+  scope_type               ScopeType          @default(ORGANIZATION)
+  scope_id                 String?
+  /// Optional: only review members who hold access to these modules. Empty = all modules.
+  modules                  ModuleKey[]        @default([])
+  starts_at                DateTime?
+  due_at                   DateTime
+  completed_at             DateTime?
+  created_by_membership_id String?
+  created_at               DateTime           @default(now())
+  updated_at               DateTime           @updatedAt
+
+  organization Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  created_by   Membership?        @relation("AccessReviewCreator", fields: [created_by_membership_id], references: [id], onDelete: SetNull)
+  items        AccessReviewItem[]
+
+  @@index([organization_id, status])
+  @@index([organization_id, due_at])
+  @@map("access_reviews")
+}
+
+/// 01 §98 — one member's access inside an access review, with the reviewer's decision.
+model AccessReviewItem {
+  id                     String               @id @default(uuid())
+  review_id              String
+  /// Member whose access is reviewed.
+  membership_id          String
+  reviewer_membership_id String?
+  decision               AccessReviewDecision @default(PENDING)
+  decided_at             DateTime?
+  comment                String?
+  /// Roles, grants, module access and branch scopes at review time, so the decision stays meaningful later.
+  access_snapshot        Json
+  /// Set when a REVOKED / MODIFIED decision has been applied to RoleAssignment / PermissionGrant / MembershipModuleAccess.
+  applied_at             DateTime?
+  created_at             DateTime             @default(now())
+  updated_at             DateTime             @updatedAt
+
+  review     AccessReview @relation(fields: [review_id], references: [id], onDelete: Cascade)
+  membership Membership   @relation("AccessReviewSubject", fields: [membership_id], references: [id], onDelete: Cascade)
+  reviewer   Membership?  @relation("AccessReviewReviewer", fields: [reviewer_membership_id], references: [id], onDelete: SetNull)
+
+  @@unique([review_id, membership_id])
+  @@index([reviewer_membership_id, decision])
+  @@map("access_review_items")
+}
+
+/// 01 §109 — immutable snapshot of a role each time it is published.
+model RoleVersion {
+  id                         String      @id @default(uuid())
+  role_id                    String
+  version                    Int
+  name                       String
+  description                String?
+  default_scope              ScopeType
+  modules                    ModuleKey[] @default([])
+  /// [{ permission_key, effect, conditions }] as published.
+  permissions                Json
+  restrictions               Json?
+  note                       String?
+  published_by_membership_id String?
+  published_at               DateTime    @default(now())
+
+  role         Role        @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  published_by Membership? @relation("RoleVersionPublisher", fields: [published_by_membership_id], references: [id], onDelete: SetNull)
+
+  @@unique([role_id, version])
+  @@map("role_versions")
+}
+
 // =====================================================================
 // Invitations — 01 §65–66
 // =====================================================================
@@ -1383,6 +1513,8 @@ model Invitation {
   organization_id      String
   email                String
   type                 MembershipType     @default(INTERNAL)
+  /// MEMBER joins the organization (branch/team/role); CUSTOMER_PORTAL joins a customer company (customer_id) via the portal.
+  audience             InvitationAudience @default(MEMBER)
   branch_id            String?
   team_id              String?
   role_id              String?
@@ -1426,19 +1558,20 @@ model Invitation {
 
 /// 01 §69 — identity provider configuration per organization.
 model SsoConfiguration {
-  id              String      @id @default(uuid())
-  organization_id String
-  name            String
-  protocol        SsoProtocol
-  enabled         Boolean     @default(false)
+  id                  String      @id @default(uuid())
+  organization_id     String
+  name                String
+  protocol            SsoProtocol
+  enabled             Boolean     @default(false)
   /// Issuer, entity id, metadata URL, client id, certificates, attribute mapping. Secrets are stored encrypted.
-  config          Json
-  auto_provision  Boolean     @default(false)
+  config              Json
+  auto_provision      Boolean     @default(false)
   /// 01 §67–68 — SCIM provisioning token hash and settings, when enabled.
-  scim_enabled    Boolean     @default(false)
-  scim_token_hash String?
-  created_at      DateTime    @default(now())
-  updated_at      DateTime    @updatedAt
+  scim_enabled        Boolean     @default(false)
+  scim_token_hash     String?
+  scim_last_synced_at DateTime?
+  created_at          DateTime    @default(now())
+  updated_at          DateTime    @updatedAt
 
   organization   Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   group_mappings SsoGroupMapping[]
@@ -1510,6 +1643,11 @@ model ApiKey {
   key_hash           String    @unique
   /// Optional narrowing of the owner's permissions (permission keys).
   scopes             String[]  @default([])
+  /// Where the key may act: ORGANIZATION, BRANCH, BRANCH_HIERARCHY, TEAM or PROJECT (01 §75). scopes[] narrows by permission key.
+  scope_type         ScopeType @default(ORGANIZATION)
+  scope_id           String?
+  /// When the owner should rotate the key (01 §75 rotation).
+  rotation_due_at    DateTime?
   expires_at         DateTime?
   last_used_at       DateTime?
   rotated_from_id    String?
@@ -1579,6 +1717,8 @@ model AuditEvent {
   event_type               String
   resource_type            String?
   resource_id              String?
+  /// Branch the event applies to (plain id, no relation: audit rows must survive branch deletion). Null = organization-wide.
+  branch_id                String?
   /// Before/after values or event-specific payload.
   metadata                 Json?
   ip_address               String?
@@ -1589,6 +1729,7 @@ model AuditEvent {
   actor_user   User?         @relation("AuditActorUser", fields: [actor_user_id], references: [id], onDelete: SetNull)
 
   @@index([organization_id, created_at])
+  @@index([organization_id, branch_id, created_at])
   @@index([actor_user_id, created_at])
   @@index([event_type])
   @@index([resource_type, resource_id])

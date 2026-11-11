@@ -1,4 +1,20 @@
-/* Shared mockup helpers: icons, theme, avatars. Load in <head> so the theme applies before first paint. */
+/* Shared mockup helpers: icons, theme, avatars. Load in <head> so the theme applies before first paint.
+ *
+ * @impl MOCK-ONLY FILE. Nothing here ships. Production equivalents:
+ *   - Icons: use `lucide-react`. Mapping of the mock icon names below (stroke 1.7px, 16px default -> lucide default 2px is fine):
+ *       home=Home  folder=Folder  tasks=SquareCheckBig  users=Users  crm=Briefcase  file=FileText  dollar=DollarSign
+ *       mail=Mail  chat=MessageSquare  support=LifeBuoy  clock/time=Clock  calendar=Calendar  bell=Bell  zap=Zap
+ *       search=Search  settings=SlidersHorizontal  shield=Shield  sparkles=Sparkles  down/right/left/up=Chevron*
+ *       plus=Plus  panel/panelr=PanelLeft/PanelRight  menu=Menu  star=Star  x=X  check=Check  layers=Layers
+ *       receipt=Receipt  people=UserPlus  pen=PenLine  globe=Globe  book=BookOpen  grid=LayoutGrid  more=MoreHorizontal
+ *       pin=Pin  inbox=Inbox  filter=Filter  send=Send  hash=Hash  box=Archive/Box  help=CircleHelp  at=AtSign
+ *       smile=Smile  clip=Paperclip  phone=Phone  tag=Tag  link=Link  lock=Lock  sun=Sun  moon=Moon  reply=Reply
+ *       archive=Archive  flag=Flag  bot=Bot  chart=LineChart  sms=MessageSquareText  video=Video  edit=SquarePen
+ *       sort=ArrowUpDown  snooze=AlarmClock  bold=Bold  list=List  key=KeyRound  minus=Minus  building=Building2
+ *   - Theme: production uses the app's theme provider (next-themes / shadcn). The mock default is DARK (DESIGN.MD is
+ *     dark-first); persist the user's choice in `UserPreference.theme` (string) so it follows them across devices.
+ *   - Avatar: shadcn `Avatar` with `AvatarImage` (User.profile_photo_url) and an initials `AvatarFallback`.
+ */
 (function () {
   const P = {
     home: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
@@ -62,6 +78,8 @@
     snooze: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9 9h6l-6 6h6",
     bold: "M6 4h8a4 4 0 0 1 0 8H6zM6 12h9a4 4 0 0 1 0 8H6z",
     list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+    key: "M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4",
+    minus: "M5 12h14",
     building: "M4 21V3h10v18M14 9h6v12M8 7h2M8 11h2M8 15h2",
     time: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2",
   };
@@ -89,8 +107,10 @@
   function toggleTheme() { setTheme(getTheme() === "dark" ? "light" : "dark"); }
   (function init() {
     var t = null;
-    try { t = localStorage.getItem("lq-theme"); } catch (e) {}
-    if (!t) { var q = new URLSearchParams(location.search).get("theme"); t = q === "light" || q === "dark" ? q : "dark"; }
+    var q = new URLSearchParams(location.search).get("theme");
+    if (q === "light" || q === "dark") t = q;
+    else { try { t = localStorage.getItem("lq-theme"); } catch (e) {} }
+    if (!t) t = "dark";
     document.documentElement.dataset.theme = t;
   })();
 
