@@ -1,228 +1,33 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Logiqdev OS — Mockups</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="shared.css">
-<style>
-  body { overflow-y: auto; }
-  .wrap { max-width: 1100px; margin: 0 auto; padding: 56px 32px 80px; }
-  h1 { font-size: 36px; font-weight: 600; color: var(--ink); letter-spacing: -.3px; line-height: 1.1; margin-top: 14px; }
-  .lead { color: var(--mute); margin: 10px 0 32px; max-width: 640px; }
-  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--ash); font-weight: 500; margin: 28px 0 10px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
-  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden; display: block; transition: border-color .15s; }
-  .card:hover { border-color: var(--hairline-strong); }
-  .thumb { position: relative; height: 190px; overflow: hidden; border-bottom: 1px solid var(--hairline); background: var(--canvas); }
-  .thumb iframe { position: absolute; top: 0; left: 0; width: 1400px; height: 833px; border: 0; transform: scale(.34); transform-origin: 0 0; pointer-events: none; }
-  .info { padding: 14px 16px 16px; display: flex; align-items: center; gap: 10px; }
-  .info b { color: var(--ink); font-weight: 500; }
-  .info small { display: block; color: var(--ash); font-size: 12.5px; }
-  .card.todo { border-style: dashed; background: transparent; padding: 16px; color: var(--ash); }
-  .card.todo b { color: var(--mute); font-weight: 500; display: block; }
-</style>
-</head>
-<body>
-<div class="wrap">
-  <span class="badge blue">Mockups</span>
-  <h1>Logiqdev OS</h1>
-  <p class="lead">Static HTML mockups. Light + dark themes via semantic tokens (toggle in the rail, or add <code>?theme=light</code>). Each rail entry is its own app with its own panel and layout. <b>Implementing from these? Read <code>README.md</code> first</b>: every screen and element carries implementation comments (<code>@route @perm @api @mcp @data @ui @states @audit @note @gap</code>) in the source. Files: <code>shared.css</code> tokens, <code>shell.css</code> shell and views, <code>apps.js</code> app registry, <code>views.js</code> app screens.</p>
-
-  <h2>Other apps (each has its own panel + layout)</h2>
-  <div class="grid">
-    <a class="card" href="app-shell.html#tasks">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#tasks" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Tasks</b><small>Linear-style grouped issue list</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#messages">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#messages" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Messages</b><small>Slack-style channels, DMs, client channels and threads</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#support">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#support" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Support</b><small>Intercom-style shared inbox with customer context</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#campaigns">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#campaigns" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Campaigns</b><small>Email + SMS campaign manager</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#projects">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#projects" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Projects</b><small>Portfolio overview</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-  </div>
-
-  <h2>Module 01 · Users, organizations &amp; permissions (Admin app)</h2>
-  <div class="grid">
-    <a class="card" href="app-shell.html#admin">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Admin overview</b><small>01 §141 · health, security, adoption</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#admin/members">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/members" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Members</b><small>01 §106 · list, status, MFA</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#admin/member">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/member" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Member detail</b><small>01 §107–108 · roles, effective permissions</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#admin/roles">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/roles" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Roles</b><small>01 §44, §111 · types, templates</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#admin/role">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/role" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Role editor</b><small>01 §109 · permissions by module, version history</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#admin/matrix">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/matrix" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Permission matrix</b><small>01 §143–144 · by module and by branch</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#admin/simulate">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/simulate" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Access simulation</b><small>01 §145 · allowed/denied + trace</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#admin/branches">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/branches" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Branches</b><small>01 §16–22, §142</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#admin/audit">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/audit" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Audit log</b><small>01 §99–100 · with change diff</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#admin/reviews">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/reviews" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Access reviews</b><small>01 §98 · certify / revoke / modify, apply</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#admin/integrations">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/integrations" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Integrations (bring your own keys)</b><small>01 &sect;156&ndash;161 &middot; OpenAI, Resend, Stripe, Twilio&hellip;</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#admin/integration">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/integration" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Integration detail</b><small>credentials (write-only), webhook, usage, activity</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#admin/apikeys">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#admin/apikeys" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>API keys & service accounts</b><small>01 §75–76</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-  </div>
-
-  <h2>Module 02 &middot; CRM &amp; sales</h2>
-  <div class="grid">
-    <a class="card" href="app-shell.html#crm/dashboard">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#crm/dashboard" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Sales dashboard</b><small>02 &sect;32-33 &middot; pipeline, win rate, stale deals</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#crm/deals">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#crm/deals" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Deals pipeline board</b><small>02 &sect;8-9 &middot; kanban, weighted totals, stale</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#crm/deal">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#crm/deal" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Deal detail</b><small>02 &sect;9-10 &middot; line items, stage history</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#crm/leads">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#crm/leads" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Leads + conversion</b><small>02 &sect;4-7 &middot; duplicate detection, convert</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#crm/companies">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#crm/companies" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Companies</b><small>02 &sect;2 &middot; one record model</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#crm/company">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#crm/company" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Customer 360</b><small>02 &sect;18-19 &middot; revenue and cross-module view</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#crm/contacts">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#crm/contacts" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Contacts</b><small>02 &sect;3</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#crm/activities">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#crm/activities" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Activities</b><small>02 &sect;12-16</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#crm/forecast">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#crm/forecast" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Forecast</b><small>02 &sect;11</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#crm/pipelines">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#crm/pipelines" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Pipelines &amp; setup</b><small>02 &sect;8, 17, 37</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#crm/imports">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#crm/imports" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Import &amp; export</b><small>02 &sect;22</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-  </div>
-
-  <h2>Module 03 &middot; Proposals</h2>
-  <div class="grid">
-    <a class="card" href="app-shell.html#proposals/list">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#proposals/list" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Proposals list</b><small>03 &middot; status, tracking, validity</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#proposals/editor">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#proposals/editor" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Proposal editor</b><small>03 &middot; sections, pricing builder, AI, versions, review</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#proposals/customer">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#proposals/customer" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Customer proposal view</b><small>03 &middot; public link / portal, accept, optional items</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#proposals/templates">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#proposals/templates" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Proposal templates</b><small>03 &middot; sections and variables</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#proposals/analytics">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#proposals/analytics" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Proposal analytics</b><small>03 &middot; conversion, value</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-  </div>
-
-  <h2>Module 04 &middot; Contracts</h2>
-  <div class="grid">
-    <a class="card" href="app-shell.html#contracts/dashboard">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#contracts/dashboard" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Contracts dashboard</b><small>04 &sect;65</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#contracts/list">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#contracts/list" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>All contracts</b><small>04 &sect;3, 5, 64</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#contracts/detail">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#contracts/detail" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Contract detail</b><small>04 &middot; four states, versions, approvals, signature, lineage</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#contracts/editor">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#contracts/editor" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Contract editor</b><small>04 &sect;13-17 &middot; clauses, validation, AI review</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#contracts/obligations">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#contracts/obligations" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Obligations</b><small>04 &sect;49-50, 75</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#contracts/renewals">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#contracts/renewals" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Renewals</b><small>04 &sect;46, 52</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-    <a class="card" href="app-shell.html#contracts/templates">
-      <div class="thumb"><iframe src="app-shell.html?embed&theme=dark#contracts/templates" loading="lazy" tabindex="-1"></iframe></div>
-      <div class="info"><div><b>Templates &amp; clauses</b><small>04 &sect;8-12, 28, 77</small></div><span class="badge green" style="margin-left:auto">Built</span></div>
-    </a>
-  </div>
-
-  <h2>Not mocked yet</h2>
-  <div class="grid">
-    <div class="card todo"><b>Client portal</b>Sales apps</div>
-    <div class="card todo"><b>Billing, Expenses, Time, Calendar</b>Money &amp; time apps</div>
-    <div class="card todo"><b>People, Docs, Files, Automation</b>Company apps</div>
-    <div class="card todo"><b>Command palette, notifications, AI panel</b>Shell overlays</div>
-  </div>
-</div>
-<script src="shared.js"></script>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Logiqdev OS mockups</title>
+<link rel="stylesheet" href="core/shared.css"><style>
+body{background:var(--bg);color:var(--body);font:14px/1.5 Inter,system-ui,sans-serif;margin:0}main{max-width:1100px;margin:0 auto;padding:32px 20px}
+h1{color:var(--ink);font-size:24px;margin:0 0 4px}p.sub{color:var(--mute);margin:0 0 24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.m{background:var(--surface);border:1px solid var(--hairline);border-radius:12px;padding:14px 16px}
+.m h2{font-size:15px;color:var(--ink);margin:0 0 2px}.m small{color:var(--ash)}
+.r{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}.r a{font-size:12px;color:var(--body);text-decoration:none;border:1px solid var(--hairline);border-radius:6px;padding:1px 7px;background:var(--elevated)}
+.r a:hover{border-color:var(--hairline-strong);color:var(--ink)}
+</style></head><body><main>
+<h1>Logiqdev OS mockups</h1>
+<p class="sub">One folder per module under <code>modules/</code>, shared shell and styles under <code>core/</code>. Start with <code>README.md</code>. Append <code>?theme=dark</code> to any link to check dark mode.</p><div class="grid">
+<div class="m"><h2><a href="app-shell.html#home" style="color:inherit">Home</a></h2><small>modules/00-home/ · 3 screens</small><div class="r"><a href="app-shell.html#home/overview">overview</a><a href="app-shell.html#home/my-work">my-work</a><a href="app-shell.html#home/favorites">favorites</a></div></div>
+<div class="m"><h2><a href="app-shell.html#admin" style="color:inherit">Admin</a></h2><small>modules/01-admin/ · 51 screens · spec 01</small><div class="r"><a href="app-shell.html#admin/overview">overview</a><a href="app-shell.html#admin/members">members</a><a href="app-shell.html#admin/member">member</a><a href="app-shell.html#admin/member-access">member-access</a><a href="app-shell.html#admin/roles">roles</a><a href="app-shell.html#admin/role">role</a><a href="app-shell.html#admin/rolenew">rolenew</a><a href="app-shell.html#admin/catalog">catalog</a><a href="app-shell.html#admin/matrix">matrix</a><a href="app-shell.html#admin/simulate">simulate</a><a href="app-shell.html#admin/branches">branches</a><a href="app-shell.html#admin/branchnew">branchnew</a><a href="app-shell.html#admin/teams">teams</a><a href="app-shell.html#admin/team">team</a><a href="app-shell.html#admin/teamnew">teamnew</a><a href="app-shell.html#admin/invitations">invitations</a><a href="app-shell.html#admin/invitenew">invitenew</a><a href="app-shell.html#admin/security">security</a><a href="app-shell.html#admin/sso">sso</a><a href="app-shell.html#admin/sessions">sessions</a><a href="app-shell.html#admin/apikeys">apikeys</a><a href="app-shell.html#admin/apikey">apikey</a><a href="app-shell.html#admin/apikeynew">apikeynew</a><a href="app-shell.html#admin/servicenew">servicenew</a><a href="app-shell.html#admin/service">service</a><a href="app-shell.html#admin/webhooks">webhooks</a><a href="app-shell.html#admin/webhooknew">webhooknew</a><a href="app-shell.html#admin/webhook">webhook</a><a href="app-shell.html#admin/audit">audit</a><a href="app-shell.html#admin/audit-classic">audit-classic</a><a href="app-shell.html#admin/auditevent">auditevent</a><a href="app-shell.html#admin/modules">modules</a><a href="app-shell.html#admin/delegations">delegations</a><a href="app-shell.html#admin/delegationnew">delegationnew</a><a href="app-shell.html#admin/profile">profile</a><a href="app-shell.html#admin/branding">branding</a><a href="app-shell.html#admin/domains">domains</a><a href="app-shell.html#admin/domainnew">domainnew</a><a href="app-shell.html#admin/retention">retention</a><a href="app-shell.html#admin/billing">billing</a><a href="app-shell.html#admin/lifecycle">lifecycle</a><a href="app-shell.html#admin/reviews">reviews</a><a href="app-shell.html#admin/reviewnew">reviewnew</a><a href="app-shell.html#admin/review">review</a><a href="app-shell.html#admin/integrations">integrations</a><a href="app-shell.html#admin/integrationnew">integrationnew</a><a href="app-shell.html#admin/integration">integration</a><a href="app-shell.html#admin/notifprefs">notifprefs</a><a href="app-shell.html#admin/portalusers">portalusers</a><a href="app-shell.html#admin/portalinvite">portalinvite</a><a href="app-shell.html#admin/portaluser">portaluser</a></div></div>
+<div class="m"><h2><a href="app-shell.html#crm" style="color:inherit">CRM</a></h2><small>modules/02-crm/ · 45 screens · spec 02</small><div class="r"><a href="app-shell.html#crm/dashboard">dashboard</a><a href="app-shell.html#crm/deals">deals</a><a href="app-shell.html#crm/deals-list">deals-list</a><a href="app-shell.html#crm/deal">deal</a><a href="app-shell.html#crm/deal-new">deal-new</a><a href="app-shell.html#crm/deal-edit">deal-edit</a><a href="app-shell.html#crm/deal-products">deal-products</a><a href="app-shell.html#crm/deal-close">deal-close</a><a href="app-shell.html#crm/leads">leads</a><a href="app-shell.html#crm/lead">lead</a><a href="app-shell.html#crm/lead-new">lead-new</a><a href="app-shell.html#crm/lead-edit">lead-edit</a><a href="app-shell.html#crm/lead-convert">lead-convert</a><a href="app-shell.html#crm/bulk-assign">bulk-assign</a><a href="app-shell.html#crm/companies">companies</a><a href="app-shell.html#crm/company">company</a><a href="app-shell.html#crm/company-new">company-new</a><a href="app-shell.html#crm/company-edit">company-edit</a><a href="app-shell.html#crm/company-merge">company-merge</a><a href="app-shell.html#crm/duplicates">duplicates</a><a href="app-shell.html#crm/vendors">vendors</a><a href="app-shell.html#crm/vendor-new">vendor-new</a><a href="app-shell.html#crm/partners">partners</a><a href="app-shell.html#crm/partner-new">partner-new</a><a href="app-shell.html#crm/contacts">contacts</a><a href="app-shell.html#crm/contact">contact</a><a href="app-shell.html#crm/contact-new">contact-new</a><a href="app-shell.html#crm/contact-edit">contact-edit</a><a href="app-shell.html#crm/contact-merge">contact-merge</a><a href="app-shell.html#crm/activities">activities</a><a href="app-shell.html#crm/activity-new">activity-new</a><a href="app-shell.html#crm/activity-meeting">activity-meeting</a><a href="app-shell.html#crm/activity-email">activity-email</a><a href="app-shell.html#crm/activity-followup">activity-followup</a><a href="app-shell.html#crm/forecast">forecast</a><a href="app-shell.html#crm/reports">reports</a><a href="app-shell.html#crm/pipelines">pipelines</a><a href="app-shell.html#crm/custom-fields">custom-fields</a><a href="app-shell.html#crm/tags">tags</a><a href="app-shell.html#crm/saved-views">saved-views</a><a href="app-shell.html#crm/imports">imports</a><a href="app-shell.html#crm/import-map">import-map</a><a href="app-shell.html#crm/import-dupes">import-dupes</a><a href="app-shell.html#crm/import-preview">import-preview</a><a href="app-shell.html#crm/import-run">import-run</a></div></div>
+<div class="m"><h2><a href="app-shell.html#proposals" style="color:inherit">Proposals</a></h2><small>modules/03-proposals/ · 21 screens · spec 03</small><div class="r"><a href="app-shell.html#proposals/list">list</a><a href="app-shell.html#proposals/create">create</a><a href="app-shell.html#proposals/editor">editor</a><a href="app-shell.html#proposals/send">send</a><a href="app-shell.html#proposals/customer">customer</a><a href="app-shell.html#proposals/accept">accept</a><a href="app-shell.html#proposals/signed">signed</a><a href="app-shell.html#proposals/compare">compare</a><a href="app-shell.html#proposals/review-request">review-request</a><a href="app-shell.html#proposals/approval">approval</a><a href="app-shell.html#proposals/comments">comments</a><a href="app-shell.html#proposals/convert">convert</a><a href="app-shell.html#proposals/ai">ai</a><a href="app-shell.html#proposals/tracking">tracking</a><a href="app-shell.html#proposals/templates">templates</a><a href="app-shell.html#proposals/template">template</a><a href="app-shell.html#proposals/template-new">template-new</a><a href="app-shell.html#proposals/rule">rule</a><a href="app-shell.html#proposals/rule-new">rule-new</a><a href="app-shell.html#proposals/analytics">analytics</a><a href="app-shell.html#proposals/analytics-pipeline">analytics-pipeline</a></div></div>
+<div class="m"><h2><a href="app-shell.html#contracts" style="color:inherit">Contracts</a></h2><small>modules/04-contracts/ · 35 screens · spec 04</small><div class="r"><a href="app-shell.html#contracts/dashboard">dashboard</a><a href="app-shell.html#contracts/list">list</a><a href="app-shell.html#contracts/create">create</a><a href="app-shell.html#contracts/detail">detail</a><a href="app-shell.html#contracts/editor">editor</a><a href="app-shell.html#contracts/compare">compare</a><a href="app-shell.html#contracts/review-request">review-request</a><a href="app-shell.html#contracts/negotiation">negotiation</a><a href="app-shell.html#contracts/approval">approval</a><a href="app-shell.html#contracts/rule">rule</a><a href="app-shell.html#contracts/rule-new">rule-new</a><a href="app-shell.html#contracts/send-signature">send-signature</a><a href="app-shell.html#contracts/signatures">signatures</a><a href="app-shell.html#contracts/sign-verify">sign-verify</a><a href="app-shell.html#contracts/sign-document">sign-document</a><a href="app-shell.html#contracts/sign-done">sign-done</a><a href="app-shell.html#contracts/certificate">certificate</a><a href="app-shell.html#contracts/sign-invalid">sign-invalid</a><a href="app-shell.html#contracts/obligations">obligations</a><a href="app-shell.html#contracts/obligation">obligation</a><a href="app-shell.html#contracts/obligation-new">obligation-new</a><a href="app-shell.html#contracts/extraction">extraction</a><a href="app-shell.html#contracts/renewals">renewals</a><a href="app-shell.html#contracts/renew">renew</a><a href="app-shell.html#contracts/amend">amend</a><a href="app-shell.html#contracts/terminate">terminate</a><a href="app-shell.html#contracts/templates">templates</a><a href="app-shell.html#contracts/template">template</a><a href="app-shell.html#contracts/template-new">template-new</a><a href="app-shell.html#contracts/clause">clause</a><a href="app-shell.html#contracts/clause-new">clause-new</a><a href="app-shell.html#contracts/type">type</a><a href="app-shell.html#contracts/type-new">type-new</a><a href="app-shell.html#contracts/ai-review">ai-review</a><a href="app-shell.html#contracts/analytics">analytics</a></div></div>
+<div class="m"><h2><a href="app-shell.html#projects" style="color:inherit">Projects</a></h2><small>modules/05-projects/ · 10 screens · spec 05</small><div class="r"><a href="app-shell.html#projects/overview">overview</a><a href="app-shell.html#projects/list">list</a><a href="app-shell.html#projects/create">create</a><a href="app-shell.html#projects/detail">detail</a><a href="app-shell.html#projects/updateNew">updateNew</a><a href="app-shell.html#projects/milestones">milestones</a><a href="app-shell.html#projects/timeline">timeline</a><a href="app-shell.html#projects/raid">raid</a><a href="app-shell.html#projects/workload">workload</a><a href="app-shell.html#projects/settings">settings</a></div></div>
+<div class="m"><h2><a href="app-shell.html#tasks" style="color:inherit">Tasks</a></h2><small>modules/06-tasks/ · 12 screens · spec 06</small><div class="r"><a href="app-shell.html#tasks/mine">mine</a><a href="app-shell.html#tasks/all">all</a><a href="app-shell.html#tasks/create">create</a><a href="app-shell.html#tasks/board">board</a><a href="app-shell.html#tasks/backlog">backlog</a><a href="app-shell.html#tasks/timeline">timeline</a><a href="app-shell.html#tasks/detail">detail</a><a href="app-shell.html#tasks/cycles">cycles</a><a href="app-shell.html#tasks/releases">releases</a><a href="app-shell.html#tasks/workload">workload</a><a href="app-shell.html#tasks/reports">reports</a><a href="app-shell.html#tasks/settings">settings</a></div></div>
+<div class="m"><h2><a href="app-shell.html#portal" style="color:inherit">Client portal</a></h2><small>modules/07-portal/ · 27 screens · spec 07</small><div class="r"><a href="app-shell.html#portal/dashboard">dashboard</a><a href="app-shell.html#portal/clients">clients</a><a href="app-shell.html#portal/enable">enable</a><a href="app-shell.html#portal/client">client</a><a href="app-shell.html#portal/users">users</a><a href="app-shell.html#portal/user">user</a><a href="app-shell.html#portal/invitations">invitations</a><a href="app-shell.html#portal/invite">invite</a><a href="app-shell.html#portal/requests">requests</a><a href="app-shell.html#portal/approvals">approvals</a><a href="app-shell.html#portal/approval">approval</a><a href="app-shell.html#portal/profile">profile</a><a href="app-shell.html#portal/access">access</a><a href="app-shell.html#portal/branding">branding</a><a href="app-shell.html#portal/settings">settings</a><a href="app-shell.html#portal/activity">activity</a><a href="app-shell.html#portal/cp-dashboard">cp-dashboard</a><a href="app-shell.html#portal/cp-projects">cp-projects</a><a href="app-shell.html#portal/cp-project">cp-project</a><a href="app-shell.html#portal/cp-approvals">cp-approvals</a><a href="app-shell.html#portal/cp-requests">cp-requests</a><a href="app-shell.html#portal/cp-request-new">cp-request-new</a><a href="app-shell.html#portal/cp-agreements">cp-agreements</a><a href="app-shell.html#portal/cp-billing">cp-billing</a><a href="app-shell.html#portal/cp-documents">cp-documents</a><a href="app-shell.html#portal/cp-messages">cp-messages</a><a href="app-shell.html#portal/cp-team">cp-team</a></div></div>
+<div class="m"><h2><a href="app-shell.html#billing" style="color:inherit">Billing</a></h2><small>modules/08-billing/ · 21 screens · spec 08</small><div class="r"><a href="app-shell.html#billing/dashboard">dashboard</a><a href="app-shell.html#billing/invoices">invoices</a><a href="app-shell.html#billing/create">create</a><a href="app-shell.html#billing/invoice">invoice</a><a href="app-shell.html#billing/approvals">approvals</a><a href="app-shell.html#billing/subscriptions">subscriptions</a><a href="app-shell.html#billing/subscription">subscription</a><a href="app-shell.html#billing/payments">payments</a><a href="app-shell.html#billing/payment">payment</a><a href="app-shell.html#billing/links">links</a><a href="app-shell.html#billing/credits">credits</a><a href="app-shell.html#billing/customers">customers</a><a href="app-shell.html#billing/customer">customer</a><a href="app-shell.html#billing/catalog">catalog</a><a href="app-shell.html#billing/tax">tax</a><a href="app-shell.html#billing/numbering">numbering</a><a href="app-shell.html#billing/dunning">dunning</a><a href="app-shell.html#billing/reports">reports</a><a href="app-shell.html#billing/providers">providers</a><a href="app-shell.html#billing/provider">provider</a><a href="app-shell.html#billing/projectbilling">projectbilling</a></div></div>
+<div class="m"><h2><a href="app-shell.html#expenses" style="color:inherit">Income & expenses</a></h2><small>modules/09-expenses/ · 22 screens · spec 09</small><div class="r"><a href="app-shell.html#expenses/overview">overview</a><a href="app-shell.html#expenses/ledger">ledger</a><a href="app-shell.html#expenses/create">create</a><a href="app-shell.html#expenses/detail">detail</a><a href="app-shell.html#expenses/imports">imports</a><a href="app-shell.html#expenses/import-review">import-review</a><a href="app-shell.html#expenses/recurring">recurring</a><a href="app-shell.html#expenses/recurring-new">recurring-new</a><a href="app-shell.html#expenses/vendors">vendors</a><a href="app-shell.html#expenses/vendor">vendor</a><a href="app-shell.html#expenses/approvals">approvals</a><a href="app-shell.html#expenses/budgets">budgets</a><a href="app-shell.html#expenses/profitability">profitability</a><a href="app-shell.html#expenses/periods">periods</a><a href="app-shell.html#expenses/pnl">pnl</a><a href="app-shell.html#expenses/vat">vat</a><a href="app-shell.html#expenses/reports">reports</a><a href="app-shell.html#expenses/payroll">payroll</a><a href="app-shell.html#expenses/payroll-new">payroll-new</a><a href="app-shell.html#expenses/categories">categories</a><a href="app-shell.html#expenses/settings">settings</a><a href="app-shell.html#expenses/insights">insights</a></div></div>
+<div class="m"><h2><a href="app-shell.html#people" style="color:inherit">People</a></h2><small>modules/10-people/ · 22 screens · spec 10</small><div class="r"><a href="app-shell.html#people/dashboard">dashboard</a><a href="app-shell.html#people/directory">directory</a><a href="app-shell.html#people/cards">cards</a><a href="app-shell.html#people/create">create</a><a href="app-shell.html#people/profile">profile</a><a href="app-shell.html#people/restricted">restricted</a><a href="app-shell.html#people/changes">changes</a><a href="app-shell.html#people/onboarding">onboarding</a><a href="app-shell.html#people/offboarding">offboarding</a><a href="app-shell.html#people/leave">leave</a><a href="app-shell.html#people/leavenew">leavenew</a><a href="app-shell.html#people/leavecal">leavecal</a><a href="app-shell.html#people/balances">balances</a><a href="app-shell.html#people/attendance">attendance</a><a href="app-shell.html#people/payroll">payroll</a><a href="app-shell.html#people/capacity">capacity</a><a href="app-shell.html#people/skills">skills</a><a href="app-shell.html#people/performance">performance</a><a href="app-shell.html#people/review">review</a><a href="app-shell.html#people/goals">goals</a><a href="app-shell.html#people/orgchart">orgchart</a><a href="app-shell.html#people/settings">settings</a></div></div>
+<div class="m"><h2><a href="app-shell.html#campaigns" style="color:inherit">Campaigns</a></h2><small>modules/11-campaigns/ · 19 screens · spec 11</small><div class="r"><a href="app-shell.html#campaigns/overview">overview</a><a href="app-shell.html#campaigns/list">list</a><a href="app-shell.html#campaigns/create">create</a><a href="app-shell.html#campaigns/detail">detail</a><a href="app-shell.html#campaigns/segments">segments</a><a href="app-shell.html#campaigns/segment">segment</a><a href="app-shell.html#campaigns/segment-new">segment-new</a><a href="app-shell.html#campaigns/lists">lists</a><a href="app-shell.html#campaigns/templates">templates</a><a href="app-shell.html#campaigns/template">template</a><a href="app-shell.html#campaigns/automations">automations</a><a href="app-shell.html#campaigns/messages">messages</a><a href="app-shell.html#campaigns/message">message</a><a href="app-shell.html#campaigns/threads">threads</a><a href="app-shell.html#campaigns/consent">consent</a><a href="app-shell.html#campaigns/suppressions">suppressions</a><a href="app-shell.html#campaigns/analytics">analytics</a><a href="app-shell.html#campaigns/senders">senders</a><a href="app-shell.html#campaigns/settings">settings</a></div></div>
+<div class="m"><h2><a href="app-shell.html#messages" style="color:inherit">Messages</a></h2><small>modules/12-messages/ · 26 screens · spec 12</small><div class="r"><a href="app-shell.html#messages/home">home</a><a href="app-shell.html#messages/threads">threads</a><a href="app-shell.html#messages/mentions">mentions</a><a href="app-shell.html#messages/drafts">drafts</a><a href="app-shell.html#messages/saved">saved</a><a href="app-shell.html#messages/search">search</a><a href="app-shell.html#messages/calls">calls</a><a href="app-shell.html#messages/c-acme">c-acme</a><a href="app-shell.html#messages/c-dev">c-dev</a><a href="app-shell.html#messages/c-announce">c-announce</a><a href="app-shell.html#messages/c-client">c-client</a><a href="app-shell.html#messages/dm">dm</a><a href="app-shell.html#messages/gdm">gdm</a><a href="app-shell.html#messages/thread">thread</a><a href="app-shell.html#messages/actions">actions</a><a href="app-shell.html#messages/directory">directory</a><a href="app-shell.html#messages/create">create</a><a href="app-shell.html#messages/chset">chset</a><a href="app-shell.html#messages/prefs">prefs</a><a href="app-shell.html#messages/templates">templates</a><a href="app-shell.html#messages/admin">admin</a><a href="app-shell.html#messages/moderation">moderation</a><a href="app-shell.html#messages/guests">guests</a><a href="app-shell.html#messages/retention">retention</a><a href="app-shell.html#messages/settings">settings</a><a href="app-shell.html#messages/integrations">integrations</a></div></div>
+<div class="m"><h2><a href="app-shell.html#support" style="color:inherit">Support</a></h2><small>modules/13-support/ · 21 screens · spec 13</small><div class="r"><a href="app-shell.html#support/inbox">inbox</a><a href="app-shell.html#support/conversation">conversation</a><a href="app-shell.html#support/tickets">tickets</a><a href="app-shell.html#support/ticket">ticket</a><a href="app-shell.html#support/ticket-create">ticket-create</a><a href="app-shell.html#support/knowledge">knowledge</a><a href="app-shell.html#support/article">article</a><a href="app-shell.html#support/kb-categories">kb-categories</a><a href="app-shell.html#support/sla">sla</a><a href="app-shell.html#support/sla-edit">sla-edit</a><a href="app-shell.html#support/setup">setup</a><a href="app-shell.html#support/macros">macros</a><a href="app-shell.html#support/channels">channels</a><a href="app-shell.html#support/channel-create">channel-create</a><a href="app-shell.html#support/widget">widget</a><a href="app-shell.html#support/incidents">incidents</a><a href="app-shell.html#support/csat">csat</a><a href="app-shell.html#support/analytics">analytics</a><a href="app-shell.html#support/automation">automation</a><a href="app-shell.html#support/ai">ai</a><a href="app-shell.html#support/settings">settings</a></div></div>
+<div class="m"><h2><a href="app-shell.html#notifications" style="color:inherit">Notifications</a></h2><small>modules/14-notifications/ · 21 screens · spec 14</small><div class="r"><a href="app-shell.html#notifications/inbox">inbox</a><a href="app-shell.html#notifications/approvals">approvals</a><a href="app-shell.html#notifications/detail">detail</a><a href="app-shell.html#notifications/bell">bell</a><a href="app-shell.html#notifications/activity">activity</a><a href="app-shell.html#notifications/activity-project">activity-project</a><a href="app-shell.html#notifications/activity-customer">activity-customer</a><a href="app-shell.html#notifications/prefs">prefs</a><a href="app-shell.html#notifications/schedule">schedule</a><a href="app-shell.html#notifications/keywords">keywords</a><a href="app-shell.html#notifications/follows">follows</a><a href="app-shell.html#notifications/devices">devices</a><a href="app-shell.html#notifications/announcements">announcements</a><a href="app-shell.html#notifications/catalog">catalog</a><a href="app-shell.html#notifications/event">event</a><a href="app-shell.html#notifications/templates">templates</a><a href="app-shell.html#notifications/defaults">defaults</a><a href="app-shell.html#notifications/rules">rules</a><a href="app-shell.html#notifications/log">log</a><a href="app-shell.html#notifications/delivery">delivery</a><a href="app-shell.html#notifications/settings">settings</a></div></div>
+<div class="m"><h2><a href="app-shell.html#docs" style="color:inherit">Docs</a></h2><small>modules/15-docs/ · 26 screens · spec 15</small><div class="r"><a href="app-shell.html#docs/home">home</a><a href="app-shell.html#docs/spaces">spaces</a><a href="app-shell.html#docs/spaceNew">spaceNew</a><a href="app-shell.html#docs/space">space</a><a href="app-shell.html#docs/spaceSettings">spaceSettings</a><a href="app-shell.html#docs/page">page</a><a href="app-shell.html#docs/pageNew">pageNew</a><a href="app-shell.html#docs/history">history</a><a href="app-shell.html#docs/share">share</a><a href="app-shell.html#docs/search">search</a><a href="app-shell.html#docs/templates">templates</a><a href="app-shell.html#docs/templateEdit">templateEdit</a><a href="app-shell.html#docs/runbooks">runbooks</a><a href="app-shell.html#docs/onboarding">onboarding</a><a href="app-shell.html#docs/checklists">checklists</a><a href="app-shell.html#docs/checklistEdit">checklistEdit</a><a href="app-shell.html#docs/runs">runs</a><a href="app-shell.html#docs/runDetail">runDetail</a><a href="app-shell.html#docs/reviews">reviews</a><a href="app-shell.html#docs/forms">forms</a><a href="app-shell.html#docs/formBuilder">formBuilder</a><a href="app-shell.html#docs/formResponses">formResponses</a><a href="app-shell.html#docs/ai">ai</a><a href="app-shell.html#docs/analytics">analytics</a><a href="app-shell.html#docs/importExport">importExport</a><a href="app-shell.html#docs/trash">trash</a></div></div>
+<div class="m"><h2><a href="app-shell.html#files" style="color:inherit">Files</a></h2><small>modules/17-files/ · 19 screens · spec 17</small><div class="r"><a href="app-shell.html#files/browse">browse</a><a href="app-shell.html#files/recent">recent</a><a href="app-shell.html#files/upload">upload</a><a href="app-shell.html#files/doc">doc</a><a href="app-shell.html#files/shares">shares</a><a href="app-shell.html#files/sharenew">sharenew</a><a href="app-shell.html#files/foldernew">foldernew</a><a href="app-shell.html#files/tpl">tpl</a><a href="app-shell.html#files/vault">vault</a><a href="app-shell.html#files/vaultnew">vaultnew</a><a href="app-shell.html#files/vaultentry">vaultentry</a><a href="app-shell.html#files/signatures">signatures</a><a href="app-shell.html#files/approvals">approvals</a><a href="app-shell.html#files/retention">retention</a><a href="app-shell.html#files/trash">trash</a><a href="app-shell.html#files/storage">storage</a><a href="app-shell.html#files/search">search</a><a href="app-shell.html#files/templates">templates</a><a href="app-shell.html#files/settings">settings</a></div></div>
+<div class="m"><h2><a href="app-shell.html#time" style="color:inherit">Time</a></h2><small>modules/18-time/ · 18 screens · spec 18</small><div class="r"><a href="app-shell.html#time/timer">timer</a><a href="app-shell.html#time/week">week</a><a href="app-shell.html#time/day">day</a><a href="app-shell.html#time/entries">entries</a><a href="app-shell.html#time/create">create</a><a href="app-shell.html#time/entry">entry</a><a href="app-shell.html#time/team">team</a><a href="app-shell.html#time/approvals">approvals</a><a href="app-shell.html#time/sheet">sheet</a><a href="app-shell.html#time/suggestions">suggestions</a><a href="app-shell.html#time/rates">rates</a><a href="app-shell.html#time/rateNew">rateNew</a><a href="app-shell.html#time/projects">projects</a><a href="app-shell.html#time/projectEdit">projectEdit</a><a href="app-shell.html#time/reports">reports</a><a href="app-shell.html#time/unbilled">unbilled</a><a href="app-shell.html#time/io">io</a><a href="app-shell.html#time/settings">settings</a></div></div>
+<div class="m"><h2><a href="app-shell.html#calendar" style="color:inherit">Calendar</a></h2><small>modules/19-calendar/ · 21 screens · spec 19</small><div class="r"><a href="app-shell.html#calendar/week">week</a><a href="app-shell.html#calendar/day">day</a><a href="app-shell.html#calendar/month">month</a><a href="app-shell.html#calendar/agenda">agenda</a><a href="app-shell.html#calendar/quick">quick</a><a href="app-shell.html#calendar/create">create</a><a href="app-shell.html#calendar/detail">detail</a><a href="app-shell.html#calendar/team">team</a><a href="app-shell.html#calendar/resources">resources</a><a href="app-shell.html#calendar/timeoff">timeoff</a><a href="app-shell.html#calendar/availability">availability</a><a href="app-shell.html#calendar/bookings">bookings</a><a href="app-shell.html#calendar/bookingList">bookingList</a><a href="app-shell.html#calendar/bookingDetail">bookingDetail</a><a href="app-shell.html#calendar/bookingNew">bookingNew</a><a href="app-shell.html#calendar/bookingPublic">bookingPublic</a><a href="app-shell.html#calendar/calendars">calendars</a><a href="app-shell.html#calendar/calendarNew">calendarNew</a><a href="app-shell.html#calendar/calendarDetail">calendarDetail</a><a href="app-shell.html#calendar/sync">sync</a><a href="app-shell.html#calendar/settings">settings</a></div></div>
+<div class="m"><h2><a href="app-shell.html#automation" style="color:inherit">Automation</a></h2><small>modules/20-automation/ · 21 screens · spec 20</small><div class="r"><a href="app-shell.html#automation/overview">overview</a><a href="app-shell.html#automation/workflows">workflows</a><a href="app-shell.html#automation/create">create</a><a href="app-shell.html#automation/builder">builder</a><a href="app-shell.html#automation/workflow">workflow</a><a href="app-shell.html#automation/runs">runs</a><a href="app-shell.html#automation/run">run</a><a href="app-shell.html#automation/deadletter">deadletter</a><a href="app-shell.html#automation/approvals">approvals</a><a href="app-shell.html#automation/jobs">jobs</a><a href="app-shell.html#automation/jobNew">jobNew</a><a href="app-shell.html#automation/job">job</a><a href="app-shell.html#automation/events">events</a><a href="app-shell.html#automation/triggers">triggers</a><a href="app-shell.html#automation/actions">actions</a><a href="app-shell.html#automation/templates">templates</a><a href="app-shell.html#automation/webhooks">webhooks</a><a href="app-shell.html#automation/webhookNew">webhookNew</a><a href="app-shell.html#automation/agents">agents</a><a href="app-shell.html#automation/usage">usage</a><a href="app-shell.html#automation/settings">settings</a></div></div>
+</div></main><script src="core/shared.js"></script></body></html>

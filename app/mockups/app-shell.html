@@ -6,41 +6,42 @@
 <title>App shell — Logiqdev OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="shared.css">
-<link rel="stylesheet" href="shell.css">
-<link rel="stylesheet" href="admin.css">
-<link rel="stylesheet" href="crm.css">
-<link rel="stylesheet" href="docs-contracts.css">
-<link rel="stylesheet" href="projects.css">
-<link rel="stylesheet" href="tasks.css">
-<link rel="stylesheet" href="portal.css">
-<link rel="stylesheet" href="billing.css">
-<link rel="stylesheet" href="expenses.css">
-<link rel="stylesheet" href="people.css">
-<link rel="stylesheet" href="campaigns.css">
-<link rel="stylesheet" href="messages.css">
-<link rel="stylesheet" href="support.css">
-<link rel="stylesheet" href="notifications.css">
-<link rel="stylesheet" href="docs.css">
-<link rel="stylesheet" href="files.css">
-<link rel="stylesheet" href="time.css">
-<link rel="stylesheet" href="calendar.css">
-<link rel="stylesheet" href="automation.css">
-<script src="shared.js"></script>
+<link rel="stylesheet" href="core/shared.css">
+<link rel="stylesheet" href="core/shell.css">
+<link rel="stylesheet" href="core/components.css">
+<link rel="stylesheet" href="core/patterns.css">
+<link rel="stylesheet" href="modules/02-crm/styles.css">
+<link rel="stylesheet" href="modules/04-contracts/styles.css">
+<link rel="stylesheet" href="modules/05-projects/styles.css">
+
+<link rel="stylesheet" href="modules/07-portal/styles.css">
+<link rel="stylesheet" href="modules/08-billing/styles.css">
+<link rel="stylesheet" href="modules/09-expenses/styles.css">
+<link rel="stylesheet" href="modules/10-people/styles.css">
+<link rel="stylesheet" href="modules/11-campaigns/styles.css">
+<link rel="stylesheet" href="modules/12-messages/styles.css">
+<link rel="stylesheet" href="modules/13-support/styles.css">
+<link rel="stylesheet" href="modules/14-notifications/styles.css">
+<link rel="stylesheet" href="modules/15-docs/styles.css">
+<link rel="stylesheet" href="modules/17-files/styles.css">
+<link rel="stylesheet" href="modules/18-time/styles.css">
+<link rel="stylesheet" href="modules/19-calendar/styles.css">
+<link rel="stylesheet" href="modules/20-automation/styles.css">
+<script src="core/shared.js"></script>
 </head>
 <body>
 <!--
-  @impl APP SHELL (production: one layout component wrapping every authenticated route; see shell.css header for the grid/responsive rules).
+  @impl APP SHELL (production: one layout component wrapping every authenticated route; see core/shell.css header for the grid/responsive rules).
   @route  / (redirects to the user's default app) and /<app>[/<sub>] for everything else. Mock hash "#tasks" = "/tasks", "#admin/members" = "/admin/members".
   @data   Session context: UserSession.active_organization_id, active_branch_id, active_branch_ids. User.display_name/profile_photo_url for the avatar.
           Membership.type/status + RoleAssignment for the role label in the org switcher. UserPreference.theme / dashboard_layout for UI state.
   @note   Everything outside this shell is rendered per route; the shell never fetches module data except counts for badges.
 -->
 <div class="app" id="app">
-  <!-- @impl RAIL — shadcn Sidebar (icon-only). Built from APPS in apps.js (filtered by module access + view permission). Tooltips = shadcn Tooltip. -->
+  <!-- @impl RAIL — shadcn Sidebar (icon-only). Built from APPS in core/apps.js (filtered by module access + view permission). Tooltips = shadcn Tooltip. -->
   <nav class="rail" id="rail"></nav>
 
-  <!-- @impl CONTEXT PANEL — second Sidebar, content depends on the active app (panel config in apps.js). Header action (plus/edit/settings) is the app's quick create/compose/settings entry. -->
+  <!-- @impl CONTEXT PANEL — second Sidebar, content depends on the active app (panel config in core/apps.js). Header action (plus/edit/settings) is the app's quick create/compose/settings entry. -->
   <aside class="ctx">
     <div class="ctx-head"><b id="ctxTitle"></b><span id="ctxAction"></span><button class="btn ghost icon sm" id="toggleCtx" title="Hide panel"><i data-i="panel" data-s="15"></i></button></div>
     <div class="ctx-body" id="ctxBody"></div>
@@ -69,7 +70,7 @@
       <!-- @impl COMMAND PALETTE — shadcn Command in a Dialog, opened with Cmd/Ctrl+K. Sources: navigation (apps the caller can see), recent records,
            global search (docs/features/01 §140 search respects organization scope), quick actions (only those the caller is permitted to run). -->
       <button class="search-trigger"><i data-i="search" data-s="14"></i>Search or run a command…<span class="kbd">⌘K</span></button>
-      <!-- @impl PRIMARY ACTION — label and target come from the active app (apps.js newLabel). Disable/hide when the CREATE permission is missing. -->
+      <!-- @impl PRIMARY ACTION — label and target come from the active app (core/apps.js newLabel). Disable/hide when the CREATE permission is missing. -->
       <button class="btn primary" id="newBtn"></button>
       <!-- @impl AI ASSISTANT — opens the assistant panel (docs/Product_Specification AI). AI acts with the caller's permissions only (or a service account); sensitive actions need human confirmation. -->
       <button class="btn icon ghost" title="AI assistant"><i data-i="sparkles"></i></button>
@@ -82,28 +83,28 @@
 <div id="tip"></div>
 <div id="pop" class="pop"></div>
 
-<script src="apps.js"></script>
-<script src="views.js"></script>
-<script src="views-admin.js"></script>
-<script src="views-crm.js"></script>
-<script src="views-proposals.js"></script>
-<script src="views-contracts.js"></script>
-<script src="views-projects.js"></script>
-<script src="views-tasks.js"></script>
-<script src="views-home.js"></script>
-<script src="views-portal.js"></script>
-<script src="views-billing.js"></script>
-<script src="views-expenses.js"></script>
-<script src="views-people.js"></script>
-<script src="views-campaigns.js"></script>
-<script src="views-messages.js"></script>
-<script src="views-support.js"></script>
-<script src="views-notifications.js"></script>
-<script src="views-docs.js"></script>
-<script src="views-files.js"></script>
-<script src="views-time.js"></script>
-<script src="views-calendar.js"></script>
-<script src="views-automation.js"></script>
+<script src="core/apps.js"></script>
+<script src="core/views.js"></script>
+<script src="modules/01-admin/views.js"></script>
+<script src="modules/02-crm/views.js"></script>
+<script src="modules/03-proposals/views.js"></script>
+<script src="modules/04-contracts/views.js"></script>
+<script src="modules/05-projects/views.js"></script>
+<script src="modules/06-tasks/views.js"></script>
+<script src="modules/00-home/views.js"></script>
+<script src="modules/07-portal/views.js"></script>
+<script src="modules/08-billing/views.js"></script>
+<script src="modules/09-expenses/views.js"></script>
+<script src="modules/10-people/views.js"></script>
+<script src="modules/11-campaigns/views.js"></script>
+<script src="modules/12-messages/views.js"></script>
+<script src="modules/13-support/views.js"></script>
+<script src="modules/14-notifications/views.js"></script>
+<script src="modules/15-docs/views.js"></script>
+<script src="modules/17-files/views.js"></script>
+<script src="modules/18-time/views.js"></script>
+<script src="modules/19-calendar/views.js"></script>
+<script src="modules/20-automation/views.js"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   const app = $('app'), rail = $('rail'), body = $('ctxBody'), tip = $('tip'), pop = $('pop');
@@ -172,7 +173,7 @@
   }
 
   /* ---- main view ----
-     @impl Each app/sub-page renders its own screen (views.js / views-admin.js); the breadcrumb is derived from the route
+     @impl Each app/sub-page renders its own screen (core/views.js / modules/01-admin/views.js); the breadcrumb is derived from the route
        (App > section > record name). `fill` screens (Messages, Support) manage their own scroll regions.
      @states Every screen must implement loading (skeleton, not spinner), empty, error (retry) and no-access (403/404) states; the mocks show only the happy path. */
   function drawMain(a, s, ak) {
@@ -185,7 +186,7 @@
     const extra = v && v.crumb ? v.crumb(s) : '';
     $('crumbs').innerHTML = `${LQ.icon(a.icon, 14)}<span>${a.label}</span>${LQ.icon('right', 12)}${extra ? `<span>${act.l}</span>${LQ.icon('right', 12)}<b>${extra}</b>` : `<b>${act.l}</b>`}`;
     $('newBtn').innerHTML = `${LQ.icon('plus', 14)}${a.newLabel}`;
-    $('newBtn').onclick = () => { if (a.newRoute) location.hash = '#' + a.id + '/' + a.newRoute; }; /* @impl PRIMARY ACTION target: apps.js newRoute = create screen of the app */
+    $('newBtn').onclick = () => { if (a.newRoute) location.hash = '#' + a.id + '/' + a.newRoute; }; /* @impl PRIMARY ACTION target: core/apps.js newRoute = create screen of the app */
     LQ.hydrate(page);
   }
 

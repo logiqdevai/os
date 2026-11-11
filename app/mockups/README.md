@@ -30,7 +30,7 @@ for reviewers only; do not ship it.
 
 1. **Roles, permissions, scope and tenant isolation from the first commit**, for every channel at once: UI, REST, MCP,
    API keys / service accounts, webhooks and automation (`.cursor/rules/roles-and-permissions-in-every-feature.mdc`).
-2. **Light and dark theme** through semantic tokens only (`shared.css` token names map 1:1 to the app's CSS variables).
+2. **Light and dark theme** through semantic tokens only (`core/shared.css` token names map 1:1 to the app's CSS variables).
    Never hard-code colors.
 3. **Enum values are exact.** The mock shows `Membership.status` etc. title-cased with the raw value in a tooltip; render
    labels from a shared enum→label map, keep the raw value for filters and the API.
@@ -68,37 +68,35 @@ for reviewers only; do not ship it.
 | `.tl` (timeline) | custom list; no shadcn equivalent |
 | `.tooltip` (`#tip`) | shadcn `Tooltip` |
 
-Icons: `shared.js` has a hand-drawn set. In production use **lucide-react**; each icon name has its lucide equivalent
-noted next to it in `shared.js`.
+Icons: `core/shared.js` has a hand-drawn set. In production use **lucide-react**; each icon name has its lucide equivalent
+noted next to it in `core/shared.js`.
 
-## Files
+## Folder structure (start here)
 
-| File | Purpose |
-| -- | -- |
-| `shared.css` | Theme tokens (light + dark) and primitives |
-| `shell.css` | App shell + the styles of the non-admin apps |
-| `admin.css` | Admin (module 01) styles |
-| `shared.js` | Icons, theme toggle, avatar helper |
-| `apps.js` | App registry: rail entries, per-app panels, routes |
-| `views.js` | Tasks, Messages, Support, Campaigns, Projects screens (**not yet schema-aligned**, see banner in the file) |
-| `views-admin.js` | Admin screens (module 01), schema-aligned. Also exposes the shared mock helpers as `window.UI` |
-| `views-crm.js` + `crm.css` | CRM screens (module 02), schema-aligned: dashboard, pipeline board, deal, leads and conversion, companies, Customer 360, contacts, activities, forecast, setup, import |
-| `views-proposals.js` | Proposals screens (module 03), schema-aligned: list, editor with pricing builder / AI / versions / review, customer-facing view, templates, analytics |
-| `views-contracts.js` | Contracts screens (module 04), schema-aligned: dashboard, list, detail (four independent states), editor, obligations, renewals, templates and clauses |
-| `views-projects.js` | Projects screens (module 05), schema-aligned: portfolio overview, all projects, project workspace (overview, plan, delivery, changes and gates, team, updates, closeout), timeline, RAID log, workload, setup. Styles in `projects.css` |
-| `views-tasks.js` | Tasks screens (module 06), schema-aligned: my tasks, team board, backlog and triage, task page, cycles, releases, workload, reports, setup |
-| `views-home.js` | Home: personal overview, my work, favorites (aggregates, no tables) |
-| `views-portal.js` | Client portal admin and customer preview (module 07) |
-| `views-billing.js` | Billing (module 08) |
-| `views-expenses.js` | Income and expenses (module 09) |
-| `views-people.js` | People (module 10) |
-| `views-campaigns.js` | Campaigns (module 11) |
-| `views-messages.js` | Messages (module 12) |
-| `views-support.js` | Support (module 13) |
-| `views-notifications.js` | Notifications and activity (module 14) |
-| `views-docs.js` | Docs and wiki (module 15) |
-| `views-files.js` | Files and vault (module 17) |
-| `views-time.js` | Time tracking (module 18) |
-| `views-calendar.js` | Calendar and bookings (module 19) |
-| `views-automation.js` | Automation (module 20) |
-| `app-shell.html` | The shell: rail, panel, app bar, org/branch switcher, hash router |
+```
+app/mockups/
+  index.html            catalog: every module and every screen as a link
+  app-shell.html        the shell (rail, panel, app bar, hash router); loads core/ then every module
+  README.md             this file
+  core/
+    shared.css          theme tokens (light + dark) and primitives
+    shell.css           app shell layout + styles of the first apps (Linear/Slack-like lists, messages)
+    components.css      shared UI kit classes (.a-page, .cd, .kvr, .rowx, tables, tabs, badges...) + admin styles
+    patterns.css        shared patterns: filter bar (.fchip), bulk bar, create-form helpers, editor, pager
+    shared.js           icons (LQ.icon), theme toggle, avatars
+    apps.js             app registry: rail entries and the nav panel + routes of every app
+    views.js            window.VIEWS registry + the placeholder for apps without a mockup
+  modules/
+    NN-name/            one folder per feature module, NN = number of docs/features/NN-*.md
+      README.md         spec link, owned Prisma models, files, list of screens (routes)
+      views.js          screens; registers window.VIEWS.<appId> = { html(sub), crumb(sub), fill }
+      styles.css        only if the module needs its own styles (semantic tokens only)
+```
+
+How to work with it:
+1. Open `index.html` and pick a module; or go straight to `app-shell.html#<app>/<route>` (add `?theme=dark`).
+2. Read `modules/NN-name/README.md`, then the spec `docs/features/NN-*.md` (Data model + Access channels), then the screen function you implement: its comment block lists route, permission keys, API, MCP tool, data, states and audit events.
+3. `window.UI` (defined at the top of `modules/01-admin/views.js`) holds the shared mock helpers (`head`, `cd`, `tabs`, `dm`...); `window.UI.filters` (in `modules/06-tasks/views.js`) is the shared filter bar. They are mock shortcuts: build the real components with shadcn.
+4. Cross-module screens are read-only summaries that name their owner (Home, Portal preview, customer panels). The owner module's folder is the source of truth.
+5. Scripts load in this order (see `app-shell.html`): `core/` then `modules/` by number. A module file may only use `window.UI`, `LQ` and its own code.
+

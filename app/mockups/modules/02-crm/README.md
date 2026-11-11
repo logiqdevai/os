@@ -1,0 +1,9 @@
+# CRM mockup
+
+- App id: `crm` · open `app-shell.html#crm` (any route below: `app-shell.html#crm/<route>`, add `?theme=dark`)
+- Feature spec: [`docs/features/02-crm-sales-management.md`](../../../../docs/features/02-crm-sales-management.md) (read its "Data model (Prisma)" and "Access channels & permissions" first)
+- Owned Prisma models (36): `CustomFieldGroup`, `CustomFieldDefinition`, `CustomFieldValue`, `Tag`, `Tagging`, `SavedView`, `CrmLeadSource`, `CrmLeadStatus`, `CrmLifecycleStage`, `CrmLifecycleHistory`, `CrmPipeline`, `CrmPipelineStage`, `CrmCompany`, `CrmCompanyBranch`, `CrmContact`, `CrmLead`, `CrmDeal`, `CrmDealContact`, `CrmDealLineItem`, `CrmDealStageHistory`, `CrmActivity`, `CrmActivityParticipant`, `CrmNote`, `CrmAssignmentRule`, `CrmSalesTarget`, `CrmForecastSnapshot`, `CrmDashboardLayout`, `CrmLeadScoringRule`, `CrmImportJob`, `CrmMergeLog`, `CrmDuplicateRule`, `CrmDuplicateDismissal`, `CrmLossReason`, `CrmImportMapping`, `CrmDiscountPolicy`, `CrmReportSchedule`
+- Files: `views.js`, `styles.css`. `views.js` registers `window.VIEWS.crm`; the nav panel of the app is the `crm` entry in `../../core/apps.js`.
+- Screens (45): `dashboard`, `deals`, `deals-list`, `deal`, `deal-new`, `deal-edit`, `deal-products`, `deal-close`, `leads`, `lead`, `lead-new`, `lead-edit`, `lead-convert`, `bulk-assign`, `companies`, `company`, `company-new`, `company-edit`, `company-merge`, `duplicates`, `vendors`, `vendor-new`, `partners`, `partner-new`, `contacts`, `contact`, `contact-new`, `contact-edit`, `contact-merge`, `activities`, `activity-new`, `activity-meeting`, `activity-email`, `activity-followup`, `forecast`, `reports`, `pipelines`, `custom-fields`, `tags`, `saved-views`, `imports`, `import-map`, `import-dupes`, `import-preview`, `import-run`
+
+Every screen function carries `@screen @route @perm @api @mcp @data @ui @states @audit @note @gap` comments (legend: `../../README.md`) and ends with a Data model footer (review-only, do not ship).

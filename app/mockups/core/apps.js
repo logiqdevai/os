@@ -1,4 +1,4 @@
-/* App registry. Every rail entry is a standalone product area with its own panel (and its own main layout in views.js).
+/* App registry. Every rail entry is a standalone product area with its own panel (and its own main layout in core/views.js).
    Panel item keys: l label · i icon · c count · alert · dot (color) · pre ('#' etc.) · av [initials,cls,pres] · bold (unread) · tag · active · children[]
    Extra keys: k = routable sub-page (hash #app/k) · open = expanded by default.
 
@@ -78,7 +78,7 @@
     /* @impl CRM — ModuleKey CRM · docs/features/02 · VIEW crm.deals.read (companies/contacts/leads have their own read keys) · CREATE crm.deals.create
        @data CrmDeal, CrmLead, CrmCompany, CrmContact, CrmPipeline, CrmActivity. Sub-pages show only if the matching *.read key is held. */
     { id: "crm", label: "CRM", icon: "crm", newLabel: "New deal", newRoute: "deal-new", sep: 1,
-      /* alias: create/detail/wizard routes keep their list highlighted in the panel. Every route is a screen of views-crm.js. */
+      /* alias: create/detail/wizard routes keep their list highlighted in the panel. Every route is a screen of modules/02-crm/views.js. */
       alias: { deal: "deals", "deals-list": "deals", "deal-new": "deals", "deal-edit": "deals", "deal-products": "deals", "deal-close": "deals",
         lead: "leads", "lead-new": "leads", "lead-edit": "leads", "lead-convert": "leads", "bulk-assign": "leads",
         company: "companies", "company-new": "companies", "company-edit": "companies", "company-merge": "duplicates",
@@ -253,7 +253,7 @@
 
     /* ---- Admin (module 01: users, organizations, branches, permissions) — opened from the gear at the bottom of the rail ----
        @impl Admin — ModuleKey ADMINISTRATION · docs/features/01 · routes /admin/<k>. Every sub-page has its own VIEW permission (listed per screen in
-         views-admin.js); show a sidebar item only if the caller holds it, so a Branch Admin sees Members/Teams/Branches but not SSO or API keys.
+         modules/01-admin/views.js); show a sidebar item only if the caller holds it, so a Branch Admin sees Members/Teams/Branches but not SSO or API keys.
        @note `alias` keeps the parent item highlighted on detail routes (/admin/members/:id -> Members). In production use nested routes instead. */
     { id: "admin", label: "Admin", icon: "shield", newLabel: "Invite member", newRoute: "invitenew", hidden: 1,
       alias: { member: "members", "member-access": "members", portaluser: "portalusers", portalinvite: "portalusers", role: "roles", rolenew: "roles", team: "teams", teamnew: "teams", branchnew: "branches", invitenew: "invitations", service: "apikeys", servicenew: "apikeys", apikey: "apikeys", apikeynew: "apikeys", webhook: "webhooks", webhooknew: "webhooks", auditevent: "audit", "audit-classic": "audit", domainnew: "domains", reviewnew: "reviews", review: "reviews", delegationnew: "delegations", integration: "integrations", integrationnew: "integrations" },

@@ -1,0 +1,9 @@
+# People mockup
+
+- App id: `people` · open `app-shell.html#people` (any route below: `app-shell.html#people/<route>`, add `?theme=dark`)
+- Feature spec: [`docs/features/10-employee-management-system.md`](../../../../docs/features/10-employee-management-system.md) (read its "Data model (Prisma)" and "Access channels & permissions" first)
+- Owned Prisma models (43): `EmployeeHrSettings`, `Employee`, `EmployeeEmergencyContact`, `EmployeePosition`, `EmployeeCompensation`, `EmployeeCompensationComponent`, `Skill`, `EmployeeSkill`, `EmployeeCertification`, `EmployeeTraining`, `EmployeeLanguage`, `EmployeeWorkSchedule`, `EmployeeWorkScheduleDay`, `EmployeeAvailabilityEntry`, `LeaveType`, `LeavePolicy`, `EmployeeLeavePolicy`, `LeaveBalance`, `LeaveBalanceTransaction`, `LeaveRequest`, `LeaveRequestDay`, `LeaveRequestApproval`, `CompanyHoliday`, `AttendanceRecord`, `AttendanceSession`, `AttendanceBreak`, `AttendanceSummary`, `EmployeeCapacityPeriod`, `PerformanceReviewCycle`, `PerformanceReview`, `PerformanceGoal`, `PerformanceGoalUpdate`, `PerformanceFeedback`, `PerformanceImprovementPlan`, `PerformanceImprovementPlanItem`, `EmployeeDocument`, `EmployeeHrNote`, `EmployeeProfileChangeRequest`, `EmployeeEquipment`, `PerformanceFeedbackRequest`, `PerformanceCalibration`, `ProjectAllocationSkill`, `EmployeeImportJob`
+- Files: `views.js`, `styles.css`. `views.js` registers `window.VIEWS.people`; the nav panel of the app is the `people` entry in `../../core/apps.js`.
+- Screens (22): `dashboard`, `directory`, `cards`, `create`, `profile`, `restricted`, `changes`, `onboarding`, `offboarding`, `leave`, `leavenew`, `leavecal`, `balances`, `attendance`, `payroll`, `capacity`, `skills`, `performance`, `review`, `goals`, `orgchart`, `settings`
+
+Every screen function carries `@screen @route @perm @api @mcp @data @ui @states @audit @note @gap` comments (legend: `../../README.md`) and ends with a Data model footer (review-only, do not ship).

@@ -1,4 +1,4 @@
-/* messages app styles (module 12). Semantic tokens only. Reuses .ms/.m/.mh/.mt/.re/.thr/.attach/.bcard/.composer/.day from shell.css. */
+/* messages app styles (module 12). Semantic tokens only. Reuses .ms/.m/.mh/.mt/.re/.thr/.attach/.bcard/.composer/.day from core/shell.css. */
 .mg-page { height: 100%; overflow-y: auto; }
 .ms .grow, .mg-page .grow { flex: 1; min-width: 0; }
 .ms.one { grid-template-columns: 1fr; }

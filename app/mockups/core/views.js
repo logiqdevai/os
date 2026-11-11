@@ -4,7 +4,7 @@
   const I = (n, s) => LQ.icon(n, s);
 
   /* ================= placeholder for apps not yet mocked =================
-     @note Apps without a design yet (none left except Home when views-home.js is not loaded).
+     @note Apps without a design yet (none left except Home when modules/00-home/views.js is not loaded).
            Do NOT implement from this placeholder: wait for the mockup (which will follow the schema-first rule). */
   function placeholder(app) {
     return '<div class="page"><div class="page-head"><div><h1>' + app.panel.title + '</h1><p>Mockup not built yet</p></div><button class="btn primary">' + I("plus", 14) + " " + app.newLabel + '</button></div>' +

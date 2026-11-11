@@ -1,4 +1,4 @@
-/* people app styles (module 10). Semantic tokens only; light + dark via the shared tokens. Reuses fbar/fchip/bulk/seg/input-fake/editor/drop from tasks.css. */
+/* people app styles (module 10). Semantic tokens only; light + dark via the shared tokens. Reuses fbar/fchip/bulk/seg/input-fake/editor/drop from core/patterns.css. */
 .rst { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 6px; background: var(--elevated); border: 1px dashed var(--hairline-strong); color: var(--ash); font-size: 12px; font-style: italic; white-space: nowrap; }
 .rst svg { color: var(--mute); }
 .pp-tags { display: inline-flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
