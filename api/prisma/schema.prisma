@@ -1134,6 +1134,7 @@ model Membership {
   // 05 Projects
   owned_projects                      Project[]                        @relation("ProjectOwner")
   project_memberships                 ProjectMember[]
+  project_favorites                   ProjectFavorite[]
   project_allocations                 ProjectAllocation[]
   project_gate_approvals              ProjectGate[]                    @relation("ProjectGateApprover")
   // 06 Tasks
@@ -4890,6 +4891,7 @@ model Project {
 
   branches                       ProjectBranch[]
   members                        ProjectMember[]
+  favorites                      ProjectFavorite[]
   stakeholders                   ProjectStakeholder[]
   objectives                     ProjectObjective[]
   workstreams                    ProjectWorkstream[]
@@ -5016,6 +5018,21 @@ model ProjectStakeholder {
 }
 
 // --- Planning ----------------------------------------------------------------------
+
+/// 05 §76 — a member's favorite (starred) projects, shown in the Projects sidebar.
+model ProjectFavorite {
+  id            String   @id @default(uuid())
+  project_id    String
+  membership_id String
+  created_at    DateTime @default(now())
+
+  project    Project    @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+
+  @@unique([project_id, membership_id])
+  @@index([membership_id])
+  @@map("project_favorites")
+}
 
 /// 05 §17
 model ProjectObjective {

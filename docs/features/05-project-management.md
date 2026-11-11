@@ -20,47 +20,48 @@
 
 **Platform tables to reuse, not rebuild:** `audit_events` (activity & change history, [01](./01-users-organizations-permissions.md)) · `custom_field_definitions` (custom fields, [02](./02-crm-sales-management.md)) · `taggings` (tags, [02](./02-crm-sales-management.md)) · `saved_views` (saved views, [02](./02-crm-sales-management.md)) · `crm_notes` (notes, polymorphic by entity type, [02](./02-crm-sales-management.md)) · `number_sequences` (document numbering, [03](./03-proposal-quotation-generator.md)) · `signature_requests` (e-signatures, [04](./04-contracts.md)) · `provider_webhook_events` (idempotent provider webhooks, [08](./08-financial-management-stripe-integration.md))
 
-### Owned tables (31)
+### Owned tables (32)
 
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Configuration** | | | |
-| `ProjectType` | `project_types` | [L4716](../../api/prisma/schema.prisma#L4716) | 05 §2 — organization-defined project types with defaults. |
-| `ProjectStatus` | `project_statuses` | [L4753](../../api/prisma/schema.prisma#L4753) | 05 §4 — configurable lifecycle statuses with allowed transitions. |
-| `ProjectTemplate` | `project_templates` | [L4775](../../api/prisma/schema.prisma#L4775) | 05 §36–37 — templates with versions; updating a template never modifies existing projects. |
-| `ProjectTemplateVersion` | `project_template_versions` | [L4802](../../api/prisma/schema.prisma#L4802) | 05 §37 — immutable template content: statuses, milestones, workstreams, task structures, dependencies, roles, required fields, standard documents, checklists… |
+| `ProjectType` | `project_types` | [L4717](../../api/prisma/schema.prisma#L4717) | 05 §2 — organization-defined project types with defaults. |
+| `ProjectStatus` | `project_statuses` | [L4754](../../api/prisma/schema.prisma#L4754) | 05 §4 — configurable lifecycle statuses with allowed transitions. |
+| `ProjectTemplate` | `project_templates` | [L4776](../../api/prisma/schema.prisma#L4776) | 05 §36–37 — templates with versions; updating a template never modifies existing projects. |
+| `ProjectTemplateVersion` | `project_template_versions` | [L4803](../../api/prisma/schema.prisma#L4803) | 05 §37 — immutable template content: statuses, milestones, workstreams, task structures, dependencies, roles, required fields, standard documents, checklists… |
 | **Project** | | | |
-| `Project` | `projects` | [L4822](../../api/prisma/schema.prisma#L4822) | 05 §3, §5–7, §12–15, §80, §106–107, §117 — the project record. |
-| `ProjectBranch` | `project_branches` | [L4960](../../api/prisma/schema.prisma#L4960) | 01 §32–33 — participating branches of a multi-branch project (primary is projects.branch_id). |
-| `ProjectMember` | `project_members` | [L4974](../../api/prisma/schema.prisma#L4974) | 05 §8–9 — internal participants. role_id is a Role of type PROJECT (01 §45). |
-| `ProjectStakeholder` | `project_stakeholders` | [L4997](../../api/prisma/schema.prisma#L4997) | 05 §53 — external stakeholders: customer contacts (02), vendors, partners, consultants. |
+| `Project` | `projects` | [L4823](../../api/prisma/schema.prisma#L4823) | 05 §3, §5–7, §12–15, §80, §106–107, §117 — the project record. |
+| `ProjectBranch` | `project_branches` | [L4962](../../api/prisma/schema.prisma#L4962) | 01 §32–33 — participating branches of a multi-branch project (primary is projects.branch_id). |
+| `ProjectMember` | `project_members` | [L4976](../../api/prisma/schema.prisma#L4976) | 05 §8–9 — internal participants. role_id is a Role of type PROJECT (01 §45). |
+| `ProjectStakeholder` | `project_stakeholders` | [L4999](../../api/prisma/schema.prisma#L4999) | 05 §53 — external stakeholders: customer contacts (02), vendors, partners, consultants. |
 | **Planning** | | | |
-| `ProjectObjective` | `project_objectives` | [L5021](../../api/prisma/schema.prisma#L5021) | 05 §17 |
-| `ProjectWorkstream` | `project_workstreams` | [L5043](../../api/prisma/schema.prisma#L5043) | 05 §19 |
-| `ProjectMilestone` | `project_milestones` | [L5074](../../api/prisma/schema.prisma#L5074) | 05 §20 — major checkpoints. Task links come from Task Management (06). |
-| `ProjectDeliverable` | `project_deliverables` | [L5117](../../api/prisma/schema.prisma#L5117) | 05 §18 — tangible outputs. Files are Documents (17); commercial scope stays in 03/04. |
-| `ProjectAcceptanceCriterion` | `project_acceptance_criteria` | [L5152](../../api/prisma/schema.prisma#L5152) | 05 §47 — acceptance criteria on a deliverable or milestone. Contractual acceptance terms are 04. |
-| `ProjectDependency` | `project_dependencies` | [L5174](../../api/prisma/schema.prisma#L5174) | 05 §21, §27–28 — dependencies between tasks, milestones, workstreams, deliverables and projects. Endpoints are typed ids so Task (06) endpoints work without … |
+| `ProjectFavorite` | `project_favorites` | [L5023](../../api/prisma/schema.prisma#L5023) | 05 §76 — a member's favorite (starred) projects, shown in the Projects sidebar. |
+| `ProjectObjective` | `project_objectives` | [L5038](../../api/prisma/schema.prisma#L5038) | 05 §17 |
+| `ProjectWorkstream` | `project_workstreams` | [L5060](../../api/prisma/schema.prisma#L5060) | 05 §19 |
+| `ProjectMilestone` | `project_milestones` | [L5091](../../api/prisma/schema.prisma#L5091) | 05 §20 — major checkpoints. Task links come from Task Management (06). |
+| `ProjectDeliverable` | `project_deliverables` | [L5134](../../api/prisma/schema.prisma#L5134) | 05 §18 — tangible outputs. Files are Documents (17); commercial scope stays in 03/04. |
+| `ProjectAcceptanceCriterion` | `project_acceptance_criteria` | [L5169](../../api/prisma/schema.prisma#L5169) | 05 §47 — acceptance criteria on a deliverable or milestone. Contractual acceptance terms are 04. |
+| `ProjectDependency` | `project_dependencies` | [L5191](../../api/prisma/schema.prisma#L5191) | 05 §21, §27–28 — dependencies between tasks, milestones, workstreams, deliverables and projects. Endpoints are typed ids so Task (06) endpoints work without … |
 | **Delivery visibility** | | | |
-| `ProjectRisk` | `project_risks` | [L5201](../../api/prisma/schema.prisma#L5201) | 05 §29 |
-| `ProjectIssue` | `project_issues` | [L5229](../../api/prisma/schema.prisma#L5229) | 05 §30–31 — Project Issues and Blockers (kind). Distinct from Support tickets (13) and Tasks (06). |
-| `ProjectDecision` | `project_decisions` | [L5263](../../api/prisma/schema.prisma#L5263) | 05 §32 — decision records. |
-| `ProjectStatusUpdate` | `project_status_updates` | [L5292](../../api/prisma/schema.prisma#L5292) | 05 §39 — structured status updates; customer-visible ones appear in the portal (07 §4). |
-| `ProjectChangeRequest` | `project_change_requests` | [L5323](../../api/prisma/schema.prisma#L5323) | 05 §45 — Project Change Request: changes affecting delivery. Commercial approval stays with 03/04 (proposal_id, contract_id); a Contract Change Request (04 §… |
-| `ProjectGate` | `project_gates` | [L5365](../../api/prisma/schema.prisma#L5365) | 05 §46, §93 — approval gates (requirements, design, development, QA, security, customer acceptance, launch, handover) and quality gates (code review, QA, sec… |
-| `ProjectReview` | `project_reviews` | [L5392](../../api/prisma/schema.prisma#L5392) | 05 §48–49 — structured reviews and retrospectives. Actions may create Tasks (06). |
+| `ProjectRisk` | `project_risks` | [L5218](../../api/prisma/schema.prisma#L5218) | 05 §29 |
+| `ProjectIssue` | `project_issues` | [L5246](../../api/prisma/schema.prisma#L5246) | 05 §30–31 — Project Issues and Blockers (kind). Distinct from Support tickets (13) and Tasks (06). |
+| `ProjectDecision` | `project_decisions` | [L5280](../../api/prisma/schema.prisma#L5280) | 05 §32 — decision records. |
+| `ProjectStatusUpdate` | `project_status_updates` | [L5309](../../api/prisma/schema.prisma#L5309) | 05 §39 — structured status updates; customer-visible ones appear in the portal (07 §4). |
+| `ProjectChangeRequest` | `project_change_requests` | [L5340](../../api/prisma/schema.prisma#L5340) | 05 §45 — Project Change Request: changes affecting delivery. Commercial approval stays with 03/04 (proposal_id, contract_id); a Contract Change Request (04 §… |
+| `ProjectGate` | `project_gates` | [L5382](../../api/prisma/schema.prisma#L5382) | 05 §46, §93 — approval gates (requirements, design, development, QA, security, customer acceptance, launch, handover) and quality gates (code review, QA, sec… |
+| `ProjectReview` | `project_reviews` | [L5409](../../api/prisma/schema.prisma#L5409) | 05 §48–49 — structured reviews and retrospectives. Actions may create Tasks (06). |
 | **Resources** | | | |
-| `ProjectAllocation` | `project_allocations` | [L5423](../../api/prisma/schema.prisma#L5423) | 05 §51 — planned allocation (the plan). Availability is 10; actuals are 18. |
-| `ProjectChecklist` | `project_checklists` | [L5451](../../api/prisma/schema.prisma#L5451) | 05 §92 — reusable checklists (kickoff, discovery, development, QA, launch, handover, closeout). |
-| `ProjectChecklistItem` | `project_checklist_items` | [L5467](../../api/prisma/schema.prisma#L5467) |  |
+| `ProjectAllocation` | `project_allocations` | [L5440](../../api/prisma/schema.prisma#L5440) | 05 §51 — planned allocation (the plan). Availability is 10; actuals are 18. |
+| `ProjectChecklist` | `project_checklists` | [L5468](../../api/prisma/schema.prisma#L5468) | 05 §92 — reusable checklists (kickoff, discovery, development, QA, launch, handover, closeout). |
+| `ProjectChecklistItem` | `project_checklist_items` | [L5484](../../api/prisma/schema.prisma#L5484) |  |
 | **Governance & closeout** | | | |
-| `ProjectEscalation` | `project_escalations` | [L5489](../../api/prisma/schema.prisma#L5489) | 05 §101 |
-| `ProjectHandover` | `project_handovers` | [L5513](../../api/prisma/schema.prisma#L5513) | 05 §72, §102 — handovers between teams or to maintenance / support / customer success. |
-| `ProjectCloseout` | `project_closeouts` | [L5538](../../api/prisma/schema.prisma#L5538) | 05 §71, §103 — completion checklist state and closeout record. |
-| `ProjectRelation` | `project_relations` | [L5560](../../api/prisma/schema.prisma#L5560) | 05 §105 — non-hierarchical relationships between projects (parent/child uses parent_project_id). |
-| `ProjectExternalReference` | `project_external_references` | [L5577](../../api/prisma/schema.prisma#L5577) | 05 §86 — references to external systems (GitHub, GitLab, Jira, Linear, deployment, cloud, docs). |
-| `ProjectDeliverableReview` | `project_deliverable_reviews` | [L5597](../../api/prisma/schema.prisma#L5597) | 05 §18, §47, 07 §7 — one customer (or internal) decision on a submitted deliverable: the queryable approval history behind "approve / request revisions / rej… |
-| `ProjectStatusUpdateComment` | `project_status_update_comments` | [L5621](../../api/prisma/schema.prisma#L5621) | 05 §39, 07 §4 — comments on a published status update by customers (Customer Portal Users, 01 §79) or members. |
+| `ProjectEscalation` | `project_escalations` | [L5506](../../api/prisma/schema.prisma#L5506) | 05 §101 |
+| `ProjectHandover` | `project_handovers` | [L5530](../../api/prisma/schema.prisma#L5530) | 05 §72, §102 — handovers between teams or to maintenance / support / customer success. |
+| `ProjectCloseout` | `project_closeouts` | [L5555](../../api/prisma/schema.prisma#L5555) | 05 §71, §103 — completion checklist state and closeout record. |
+| `ProjectRelation` | `project_relations` | [L5577](../../api/prisma/schema.prisma#L5577) | 05 §105 — non-hierarchical relationships between projects (parent/child uses parent_project_id). |
+| `ProjectExternalReference` | `project_external_references` | [L5594](../../api/prisma/schema.prisma#L5594) | 05 §86 — references to external systems (GitHub, GitLab, Jira, Linear, deployment, cloud, docs). |
+| `ProjectDeliverableReview` | `project_deliverable_reviews` | [L5614](../../api/prisma/schema.prisma#L5614) | 05 §18, §47, 07 §7 — one customer (or internal) decision on a submitted deliverable: the queryable approval history behind "approve / request revisions / rej… |
+| `ProjectStatusUpdateComment` | `project_status_update_comments` | [L5638](../../api/prisma/schema.prisma#L5638) | 05 §39, 07 §4 — comments on a published status update by customers (Customer Portal Users, 01 §79) or members. |
 
 **Owned enums (22):** `ProjectStatusCategory`, `ProjectHealth`, `CalculationMode`, `ProjectPriority`, `ProjectVisibility`, `ProjectItemStatus`, `DeliverableStatus`, `AcceptanceStatus`, `DependencyItemType`, `DependencyType`, `DependencyStatus`, `RiskStatus`, `ProjectIssueKind`, `ProjectIssueStatus`, `Severity`, `ProjectChangeRequestStatus`, `ProjectGateKind`, `ProjectGateStatus`, `ProjectReviewType`, `ProjectRelationType`, `EscalationStatus`, `HandoverStatus`
 
@@ -69,7 +70,7 @@
 | Module | Model (table) | Referenced by |
 | -- | -- | -- |
 | [01](./01-users-organizations-permissions.md) | `Branch` (`branches`) | `Project.branch`, `ProjectBranch.branch` |
-| [01](./01-users-organizations-permissions.md) | `Membership` (`memberships`) | `Project.owner`, `ProjectAllocation.membership`, `ProjectDeliverableReview.reviewer`, `ProjectGate.approver` +2 more |
+| [01](./01-users-organizations-permissions.md) | `Membership` (`memberships`) | `Project.owner`, `ProjectAllocation.membership`, `ProjectDeliverableReview.reviewer`, `ProjectFavorite.membership` +3 more |
 | [01](./01-users-organizations-permissions.md) | `Organization` (`organizations`) | `Project.organization`, `ProjectDeliverableReview.organization`, `ProjectStatus.organization`, `ProjectStatusUpdateComment.organization` +2 more |
 | [01](./01-users-organizations-permissions.md) | `Role` (`roles`) | `ProjectMember.role` |
 | [01](./01-users-organizations-permissions.md) | `Team` (`teams`) | `Project.team`, `ProjectAllocation.team` |
@@ -110,23 +111,23 @@
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `CrmActivity.project_id` ([02](./02-crm-sales-management.md), [L2740](../../api/prisma/schema.prisma#L2740)) — Project reference (05); id only.
-- `Proposal.project_id` ([03](./03-proposal-quotation-generator.md), [L3176](../../api/prisma/schema.prisma#L3176)) — Project context the proposal was generated from or for (05); id only.
-- `Contract.project_change_request_id` ([04](./04-contracts.md), [L3954](../../api/prisma/schema.prisma#L3954)) — 04 §43 — originating project change request (05); id only.
-- `ContractChangeRequest.project_change_request_id` ([04](./04-contracts.md), [L4286](../../api/prisma/schema.prisma#L4286)) — Linked Project Change Request (05 §45); id only.
-- `ContractObligation.project_id` ([04](./04-contracts.md), [L4451](../../api/prisma/schema.prisma#L4451)) — Related Project (05) and Task (06); ids only.
-- `TaskStatus.project_type_id` ([06](./06-task-management.md), [L5713](../../api/prisma/schema.prisma#L5713)) — 06 §3 — scope the workflow to a Project Type (05 §11) instead of / in addition to a Team; null = not type-specific.
-- `Task.customer_visible` ([06](./06-task-management.md), [L5816](../../api/prisma/schema.prisma#L5816)) — Visible in the Customer Portal (05 §60, 07 §4).
-- `ProjectBillingSettings.auto_invoice_milestones` ([08](./08-financial-management-stripe-integration.md), [L6979](../../api/prisma/schema.prisma#L6979)) — Create an invoice automatically when a billing milestone completes (05 §20).
-- `EmployeeCapacityPeriod.planned_hours` ([10](./10-employee-management-system.md), [L9364](../../api/prisma/schema.prisma#L9364)) — Snapshot from 05 ProjectAllocation (+ task estimates, 06).
-- `Segment.definition` ([11](./11-communication-center.md), [L10664](../../api/prisma/schema.prisma#L10664)) — Filter tree: { and: [ { field, op, value }, { or: [...] } ] } over CRM fields, custom fields, tags, subscription plan / billing status / outstanding invoices…
-- `TicketCategory.default_project_id` ([13](./13-customer-support-communication-hub.md), [L12958](../../api/prisma/schema.prisma#L12958)) — 13 §4 — default project for tasks converted from tickets in this category (05 Project id).
-- `Ticket.change_request_id` ([13](./13-customer-support-communication-hub.md), [L13047](../../api/prisma/schema.prisma#L13047)) — Project Change Request (05 §45) created from this request.
-- `SupportIncident.project_id` ([13](./13-customer-support-communication-hub.md), [L13344](../../api/prisma/schema.prisma#L13344)) — 05 Project / 06 Task the incident is tracked in; ids only.
-- `WikiSpace.project_id` ([15](./15-notion-business-docs.md), [L14616](../../api/prisma/schema.prisma#L14616)) — 15 §4 — project help center space (05 §34).
-- `FolderTemplate.project_type_id` ([17](./17-documents-file-management.md), [L15765](../../api/prisma/schema.prisma#L15765)) — Project type this template applies to (05 §36); null for customer / employee / organization templates.
-- `TimeProjectSettings.members_only` ([18](./18-time-tracking.md), [L16773](../../api/prisma/schema.prisma#L16773)) — Only project members (05 §16) may log time.
-- `TimeProjectSettings.hours_alert_percent` ([18](./18-time-tracking.md), [L16773](../../api/prisma/schema.prisma#L16773)) — Alert when logged hours reach this percent of Project.budget_hours (05 §51).
+- `CrmActivity.project_id` ([02](./02-crm-sales-management.md), [L2741](../../api/prisma/schema.prisma#L2741)) — Project reference (05); id only.
+- `Proposal.project_id` ([03](./03-proposal-quotation-generator.md), [L3177](../../api/prisma/schema.prisma#L3177)) — Project context the proposal was generated from or for (05); id only.
+- `Contract.project_change_request_id` ([04](./04-contracts.md), [L3955](../../api/prisma/schema.prisma#L3955)) — 04 §43 — originating project change request (05); id only.
+- `ContractChangeRequest.project_change_request_id` ([04](./04-contracts.md), [L4287](../../api/prisma/schema.prisma#L4287)) — Linked Project Change Request (05 §45); id only.
+- `ContractObligation.project_id` ([04](./04-contracts.md), [L4452](../../api/prisma/schema.prisma#L4452)) — Related Project (05) and Task (06); ids only.
+- `TaskStatus.project_type_id` ([06](./06-task-management.md), [L5730](../../api/prisma/schema.prisma#L5730)) — 06 §3 — scope the workflow to a Project Type (05 §11) instead of / in addition to a Team; null = not type-specific.
+- `Task.customer_visible` ([06](./06-task-management.md), [L5833](../../api/prisma/schema.prisma#L5833)) — Visible in the Customer Portal (05 §60, 07 §4).
+- `ProjectBillingSettings.auto_invoice_milestones` ([08](./08-financial-management-stripe-integration.md), [L6996](../../api/prisma/schema.prisma#L6996)) — Create an invoice automatically when a billing milestone completes (05 §20).
+- `EmployeeCapacityPeriod.planned_hours` ([10](./10-employee-management-system.md), [L9381](../../api/prisma/schema.prisma#L9381)) — Snapshot from 05 ProjectAllocation (+ task estimates, 06).
+- `Segment.definition` ([11](./11-communication-center.md), [L10681](../../api/prisma/schema.prisma#L10681)) — Filter tree: { and: [ { field, op, value }, { or: [...] } ] } over CRM fields, custom fields, tags, subscription plan / billing status / outstanding invoices…
+- `TicketCategory.default_project_id` ([13](./13-customer-support-communication-hub.md), [L12975](../../api/prisma/schema.prisma#L12975)) — 13 §4 — default project for tasks converted from tickets in this category (05 Project id).
+- `Ticket.change_request_id` ([13](./13-customer-support-communication-hub.md), [L13064](../../api/prisma/schema.prisma#L13064)) — Project Change Request (05 §45) created from this request.
+- `SupportIncident.project_id` ([13](./13-customer-support-communication-hub.md), [L13361](../../api/prisma/schema.prisma#L13361)) — 05 Project / 06 Task the incident is tracked in; ids only.
+- `WikiSpace.project_id` ([15](./15-notion-business-docs.md), [L14633](../../api/prisma/schema.prisma#L14633)) — 15 §4 — project help center space (05 §34).
+- `FolderTemplate.project_type_id` ([17](./17-documents-file-management.md), [L15782](../../api/prisma/schema.prisma#L15782)) — Project type this template applies to (05 §36); null for customer / employee / organization templates.
+- `TimeProjectSettings.members_only` ([18](./18-time-tracking.md), [L16790](../../api/prisma/schema.prisma#L16790)) — Only project members (05 §16) may log time.
+- `TimeProjectSettings.hours_alert_percent` ([18](./18-time-tracking.md), [L16790](../../api/prisma/schema.prisma#L16790)) — Alert when logged hours reach this percent of Project.budget_hours (05 §51).
 
 <!-- schema-refs:end -->
 
@@ -194,7 +195,7 @@ Projects must support software development, websites, mobile applications, AI au
 ## 2. Project Types
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectType` ([project_types](../../api/prisma/schema.prisma#L4716))
+> **Schema:** `ProjectType` ([project_types](../../api/prisma/schema.prisma#L4717))
 <!-- schema-section:end -->
 
 Organizations can define project types such as:
@@ -224,7 +225,7 @@ Project types can define defaults such as statuses, required fields, templates, 
 ## 3. Customer Association
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822)): `company_id`
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823)): `company_id`
 <!-- schema-section:end -->
 
 A project may optionally reference one primary customer.
@@ -252,7 +253,7 @@ Examples of projects without a customer:
 ## 4. Project Lifecycle
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectStatus` ([project_statuses](../../api/prisma/schema.prisma#L4753)) · enum `ProjectStatusCategory` ([L4521](../../api/prisma/schema.prisma#L4521))
+> **Schema:** `ProjectStatus` ([project_statuses](../../api/prisma/schema.prisma#L4754)) · enum `ProjectStatusCategory` ([L4522](../../api/prisma/schema.prisma#L4522))
 <!-- schema-section:end -->
 
 Projects should support configurable lifecycle statuses.
@@ -275,7 +276,7 @@ Organizations can configure allowed transitions and automation associated with t
 ## 5. Project Creation
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822))
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823))
 <!-- schema-section:end -->
 
 Projects can be created:
@@ -312,7 +313,7 @@ Projects can be created:
 ## 6. Project Identification
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822)): `code`
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823)): `code`
 <!-- schema-section:end -->
 
 Each project has:
@@ -330,7 +331,7 @@ The internal project ID must remain stable even when the project name changes.
 ## 7. Project Owner
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822))
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823))
 <!-- schema-section:end -->
 
 Each project should have a primary owner responsible for coordinating delivery.
@@ -342,7 +343,7 @@ The project owner is distinct from task assignees and does not replace task-leve
 ## 8. Project Team
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectMember` ([project_members](../../api/prisma/schema.prisma#L4974))
+> **Schema:** `ProjectMember` ([project_members](../../api/prisma/schema.prisma#L4976))
 <!-- schema-section:end -->
 
 Projects can contain multiple internal participants.
@@ -366,7 +367,7 @@ Roles are configurable.
 ## 9. Project Membership
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectMember` ([project_members](../../api/prisma/schema.prisma#L4974))
+> **Schema:** `ProjectMember` ([project_members](../../api/prisma/schema.prisma#L4976))
 <!-- schema-section:end -->
 
 Each member may have:
@@ -408,7 +409,7 @@ Permissions are entries in the global permission catalog defined by [01](./01-us
 ## 11. Project Workspace
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectType` ([project_types](../../api/prisma/schema.prisma#L4716)): `enabled_sections` — other modules: `TaskStatus` ([task_statuses](../../api/prisma/schema.prisma#L5713)): `project_type_id` ([06](./06-task-management.md))
+> **Schema:** `ProjectType` ([project_types](../../api/prisma/schema.prisma#L4717)): `enabled_sections` — other modules: `TaskStatus` ([task_statuses](../../api/prisma/schema.prisma#L5730)): `project_type_id` ([06](./06-task-management.md))
 <!-- schema-section:end -->
 
 Every project should provide a dedicated workspace.
@@ -445,7 +446,7 @@ Sections can be enabled or hidden by project type.
 ## 12. Project Overview
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822))
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823))
 <!-- schema-section:end -->
 
 The overview should provide a high-level operational picture.
@@ -472,7 +473,7 @@ Display:
 ## 13. Project Health
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822)) · `ProjectType` ([project_types](../../api/prisma/schema.prisma#L4716)): `health_rules` · enum `CalculationMode` ([L4544](../../api/prisma/schema.prisma#L4544)) · enum `ProjectHealth` ([L4535](../../api/prisma/schema.prisma#L4535))
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823)) · `ProjectType` ([project_types](../../api/prisma/schema.prisma#L4717)): `health_rules` · enum `CalculationMode` ([L4545](../../api/prisma/schema.prisma#L4545)) · enum `ProjectHealth` ([L4536](../../api/prisma/schema.prisma#L4536))
 <!-- schema-section:end -->
 
 Project health should be represented separately from lifecycle status.
@@ -503,7 +504,7 @@ Potential signals:
 ## 14. Project Progress
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822)) · enum `CalculationMode` ([L4544](../../api/prisma/schema.prisma#L4544))
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823)) · enum `CalculationMode` ([L4545](../../api/prisma/schema.prisma#L4545))
 <!-- schema-section:end -->
 
 Progress can be calculated using:
@@ -520,7 +521,7 @@ The UI should distinguish between system-calculated and manually reported progre
 ## 15. Project Dates
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822))
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823))
 <!-- schema-section:end -->
 
 Projects can include:
@@ -538,7 +539,7 @@ Changes to important dates should be auditable.
 ## 16. Project Planning
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L16773)): `members_only` ([18](./18-time-tracking.md))
+> **Schema:** other modules: `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L16790)): `members_only` ([18](./18-time-tracking.md))
 <!-- schema-section:end -->
 
 Projects should support structured planning for:
@@ -561,7 +562,7 @@ Planning should remain operational rather than duplicating the commercial propos
 ## 17. Project Objectives
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectObjective` ([project_objectives](../../api/prisma/schema.prisma#L5021))
+> **Schema:** `ProjectObjective` ([project_objectives](../../api/prisma/schema.prisma#L5038))
 <!-- schema-section:end -->
 
 Each project can contain objectives with:
@@ -579,7 +580,7 @@ Each project can contain objectives with:
 ## 18. Deliverables
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectDeliverable` ([project_deliverables](../../api/prisma/schema.prisma#L5117)) · `ProjectDeliverableReview` ([project_deliverable_reviews](../../api/prisma/schema.prisma#L5597)) · enum `DeliverableStatus` ([L4574](../../api/prisma/schema.prisma#L4574))
+> **Schema:** `ProjectDeliverable` ([project_deliverables](../../api/prisma/schema.prisma#L5134)) · `ProjectDeliverableReview` ([project_deliverable_reviews](../../api/prisma/schema.prisma#L5614)) · enum `DeliverableStatus` ([L4575](../../api/prisma/schema.prisma#L4575))
 <!-- schema-section:end -->
 
 Deliverables represent tangible project outputs.
@@ -602,7 +603,7 @@ Commercial pricing and contractual authority remain in Proposals and Contracts.
 ## 19. Workstreams
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectWorkstream` ([project_workstreams](../../api/prisma/schema.prisma#L5043)) · enum `ProjectItemStatus` ([L4565](../../api/prisma/schema.prisma#L4565))
+> **Schema:** `ProjectWorkstream` ([project_workstreams](../../api/prisma/schema.prisma#L5060)) · enum `ProjectItemStatus` ([L4566](../../api/prisma/schema.prisma#L4566))
 <!-- schema-section:end -->
 
 A project can be divided into independent workstreams.
@@ -625,7 +626,7 @@ Each workstream may have an owner, members, status, progress, dates, tasks, mile
 ## 20. Milestones
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectMilestone` ([project_milestones](../../api/prisma/schema.prisma#L5074)) · enum `ProjectItemStatus` ([L4565](../../api/prisma/schema.prisma#L4565)) — other modules: `InvoiceLineItem` ([invoice_line_items](../../api/prisma/schema.prisma#L6689)) ([08](./08-financial-management-stripe-integration.md)) · `ProjectBillingSettings` ([project_billing_settings](../../api/prisma/schema.prisma#L6979)): `auto_invoice_milestones` ([08](./08-financial-management-stripe-integration.md))
+> **Schema:** `ProjectMilestone` ([project_milestones](../../api/prisma/schema.prisma#L5091)) · enum `ProjectItemStatus` ([L4566](../../api/prisma/schema.prisma#L4566)) — other modules: `InvoiceLineItem` ([invoice_line_items](../../api/prisma/schema.prisma#L6706)) ([08](./08-financial-management-stripe-integration.md)) · `ProjectBillingSettings` ([project_billing_settings](../../api/prisma/schema.prisma#L6996)): `auto_invoice_milestones` ([08](./08-financial-management-stripe-integration.md))
 <!-- schema-section:end -->
 
 Milestones represent major project checkpoints.
@@ -656,7 +657,7 @@ Example statuses:
 ## 21. Milestone Dependencies
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectDependency` ([project_dependencies](../../api/prisma/schema.prisma#L5174)) · enum `DependencyItemType` ([L4594](../../api/prisma/schema.prisma#L4594))
+> **Schema:** `ProjectDependency` ([project_dependencies](../../api/prisma/schema.prisma#L5191)) · enum `DependencyItemType` ([L4595](../../api/prisma/schema.prisma#L4595))
 <!-- schema-section:end -->
 
 Milestones can depend on other milestones, workstreams, deliverables, tasks, or external project dependencies.
@@ -748,7 +749,7 @@ The Calendar module ([19](./19-calendar.md), LOG-409) remains the source of trut
 ## 27. Dependencies
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectDependency` ([project_dependencies](../../api/prisma/schema.prisma#L5174)) · enum `DependencyItemType` ([L4594](../../api/prisma/schema.prisma#L4594)) · enum `DependencyType` ([L4604](../../api/prisma/schema.prisma#L4604))
+> **Schema:** `ProjectDependency` ([project_dependencies](../../api/prisma/schema.prisma#L5191)) · enum `DependencyItemType` ([L4595](../../api/prisma/schema.prisma#L4595)) · enum `DependencyType` ([L4605](../../api/prisma/schema.prisma#L4605))
 <!-- schema-section:end -->
 
 Projects should support dependencies between tasks, milestones, workstreams, deliverables, and projects.
@@ -766,7 +767,7 @@ Supported dependency types may include:
 ## 28. Cross-Project Dependencies
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectDependency` ([project_dependencies](../../api/prisma/schema.prisma#L5174)) · enum `DependencyItemType` ([L4594](../../api/prisma/schema.prisma#L4594))
+> **Schema:** `ProjectDependency` ([project_dependencies](../../api/prisma/schema.prisma#L5191)) · enum `DependencyItemType` ([L4595](../../api/prisma/schema.prisma#L4595))
 <!-- schema-section:end -->
 
 Projects can depend on other projects.
@@ -776,7 +777,7 @@ A dependency should record source project, target project, dependency type, owne
 ## 29. Project Risks
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectRisk` ([project_risks](../../api/prisma/schema.prisma#L5201)) · enum `RiskStatus` ([L4620](../../api/prisma/schema.prisma#L4620))
+> **Schema:** `ProjectRisk` ([project_risks](../../api/prisma/schema.prisma#L5218)) · enum `RiskStatus` ([L4621](../../api/prisma/schema.prisma#L4621))
 <!-- schema-section:end -->
 
 Risks are potential events that may negatively affect delivery.
@@ -809,7 +810,7 @@ Example statuses:
 ## 30. Project Issues
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectIssue` ([project_issues](../../api/prisma/schema.prisma#L5229)) · enum `ProjectIssueKind` ([L4630](../../api/prisma/schema.prisma#L4630))
+> **Schema:** `ProjectIssue` ([project_issues](../../api/prisma/schema.prisma#L5246)) · enum `ProjectIssueKind` ([L4631](../../api/prisma/schema.prisma#L4631))
 <!-- schema-section:end -->
 
 Project issues represent active delivery problems and are distinct from Support tickets.
@@ -832,7 +833,7 @@ Fields:
 ## 31. Project Blockers
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectIssue` ([project_issues](../../api/prisma/schema.prisma#L5229)) · enum `ProjectIssueKind` ([L4630](../../api/prisma/schema.prisma#L4630))
+> **Schema:** `ProjectIssue` ([project_issues](../../api/prisma/schema.prisma#L5246)) · enum `ProjectIssueKind` ([L4631](../../api/prisma/schema.prisma#L4631))
 <!-- schema-section:end -->
 
 Blockers are issues actively preventing progress.
@@ -844,7 +845,7 @@ Critical blockers should be visible on the project overview.
 ## 32. Project Decisions
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectDecision` ([project_decisions](../../api/prisma/schema.prisma#L5263))
+> **Schema:** `ProjectDecision` ([project_decisions](../../api/prisma/schema.prisma#L5280))
 <!-- schema-section:end -->
 
 Important project decisions should be recorded separately from general notes.
@@ -877,7 +878,7 @@ Notes may contain rich text and attachments.
 ## 34. Project Documentation
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `WikiSpace` ([wiki_spaces](../../api/prisma/schema.prisma#L14616)): `project_id` ([15](./15-notion-business-docs.md))
+> **Schema:** other modules: `WikiSpace` ([wiki_spaces](../../api/prisma/schema.prisma#L14633)): `project_id` ([15](./15-notion-business-docs.md))
 <!-- schema-section:end -->
 
 Projects should provide access to relevant documentation such as requirements, specifications, architecture, designs, reports, and acceptance documentation.
@@ -897,7 +898,7 @@ Files remain managed by [17 Documents & File Management](./17-documents-file-man
 ## 36. Project Templates
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectTemplate` ([project_templates](../../api/prisma/schema.prisma#L4775)) — other modules: `FolderTemplate` ([folder_templates](../../api/prisma/schema.prisma#L15765)): `project_type_id` ([17](./17-documents-file-management.md)) · enum `FolderTemplateTarget` ([L15538](../../api/prisma/schema.prisma#L15538)) ([17](./17-documents-file-management.md))
+> **Schema:** `ProjectTemplate` ([project_templates](../../api/prisma/schema.prisma#L4776)) — other modules: `FolderTemplate` ([folder_templates](../../api/prisma/schema.prisma#L15782)): `project_type_id` ([17](./17-documents-file-management.md)) · enum `FolderTemplateTarget` ([L15555](../../api/prisma/schema.prisma#L15555)) ([17](./17-documents-file-management.md))
 <!-- schema-section:end -->
 
 Templates should allow organizations to standardize recurring project structures.
@@ -907,7 +908,7 @@ A template may define project type, default statuses, milestones, workstreams, t
 ## 37. Template Versioning
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectTemplate` ([project_templates](../../api/prisma/schema.prisma#L4775)) · `ProjectTemplateVersion` ([project_template_versions](../../api/prisma/schema.prisma#L4802))
+> **Schema:** `ProjectTemplate` ([project_templates](../../api/prisma/schema.prisma#L4776)) · `ProjectTemplateVersion` ([project_template_versions](../../api/prisma/schema.prisma#L4803))
 <!-- schema-section:end -->
 
 Templates should support version, author, creation date, change history, and active/deprecated state.
@@ -929,7 +930,7 @@ Historical activity, comments, decisions, time records, and completed work must 
 ## 39. Project Status Updates
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectStatusUpdate` ([project_status_updates](../../api/prisma/schema.prisma#L5292)) · `ProjectStatusUpdateComment` ([project_status_update_comments](../../api/prisma/schema.prisma#L5621))
+> **Schema:** `ProjectStatusUpdate` ([project_status_updates](../../api/prisma/schema.prisma#L5309)) · `ProjectStatusUpdateComment` ([project_status_update_comments](../../api/prisma/schema.prisma#L5638))
 <!-- schema-section:end -->
 
 Structured project updates should include:
@@ -1013,7 +1014,7 @@ The authoritative commercial scope remains in Proposals and Contracts.
 ## 45. Change Requests
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectChangeRequest` ([project_change_requests](../../api/prisma/schema.prisma#L5323)) · enum `ProjectChangeRequestStatus` ([L4651](../../api/prisma/schema.prisma#L4651)) — other modules: `ContractChangeRequest` ([contract_change_requests](../../api/prisma/schema.prisma#L4286)): `project_change_request_id` ([04](./04-contracts.md)) · `Ticket` ([tickets](../../api/prisma/schema.prisma#L13047)): `change_request_id` ([13](./13-customer-support-communication-hub.md))
+> **Schema:** `ProjectChangeRequest` ([project_change_requests](../../api/prisma/schema.prisma#L5340)) · enum `ProjectChangeRequestStatus` ([L4652](../../api/prisma/schema.prisma#L4652)) — other modules: `ContractChangeRequest` ([contract_change_requests](../../api/prisma/schema.prisma#L4287)): `project_change_request_id` ([04](./04-contracts.md)) · `Ticket` ([tickets](../../api/prisma/schema.prisma#L13064)): `change_request_id` ([13](./13-customer-support-communication-hub.md))
 <!-- schema-section:end -->
 
 Change Requests manage changes that affect project delivery.
@@ -1053,7 +1054,7 @@ The Project module tracks execution impact; commercial approval remains with the
 ## 46. Approval Gates
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectGate` ([project_gates](../../api/prisma/schema.prisma#L5365)) · enum `ProjectGateKind` ([L4664](../../api/prisma/schema.prisma#L4664))
+> **Schema:** `ProjectGate` ([project_gates](../../api/prisma/schema.prisma#L5382)) · enum `ProjectGateKind` ([L4665](../../api/prisma/schema.prisma#L4665))
 <!-- schema-section:end -->
 
 Projects can define approval gates for requirements, design, development, QA, security, customer acceptance, launch, and handover.
@@ -1063,7 +1064,7 @@ Each gate can record approver, status, decision, date, comments, and related mil
 ## 47. Acceptance Criteria
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectAcceptanceCriterion` ([project_acceptance_criteria](../../api/prisma/schema.prisma#L5152)) · `ProjectDeliverableReview` ([project_deliverable_reviews](../../api/prisma/schema.prisma#L5597)) · enum `AcceptanceStatus` ([L4586](../../api/prisma/schema.prisma#L4586)) · enum `DeliverableStatus` ([L4574](../../api/prisma/schema.prisma#L4574)) — other modules: `DocumentApproval` ([document_approvals](../../api/prisma/schema.prisma#L16300)) ([17](./17-documents-file-management.md))
+> **Schema:** `ProjectAcceptanceCriterion` ([project_acceptance_criteria](../../api/prisma/schema.prisma#L5169)) · `ProjectDeliverableReview` ([project_deliverable_reviews](../../api/prisma/schema.prisma#L5614)) · enum `AcceptanceStatus` ([L4587](../../api/prisma/schema.prisma#L4587)) · enum `DeliverableStatus` ([L4575](../../api/prisma/schema.prisma#L4575)) — other modules: `DocumentApproval` ([document_approvals](../../api/prisma/schema.prisma#L16317)) ([17](./17-documents-file-management.md))
 <!-- schema-section:end -->
 
 Acceptance criteria can be defined for deliverables or milestones.
@@ -1082,7 +1083,7 @@ Contractual acceptance terms remain owned by Contracts.
 ## 48. Project Reviews
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectReview` ([project_reviews](../../api/prisma/schema.prisma#L5392)) · enum `ProjectReviewType` ([L4677](../../api/prisma/schema.prisma#L4677))
+> **Schema:** `ProjectReview` ([project_reviews](../../api/prisma/schema.prisma#L5409)) · enum `ProjectReviewType` ([L4678](../../api/prisma/schema.prisma#L4678))
 <!-- schema-section:end -->
 
 Projects may have structured reviews for kickoff, milestone review, delivery review, quality review, customer review, post-project review, and retrospective.
@@ -1092,7 +1093,7 @@ Each review can record findings, decisions, actions, owners, and due dates.
 ## 49. Retrospectives
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectReview` ([project_reviews](../../api/prisma/schema.prisma#L5392)): `went_well` · enum `ProjectReviewType` ([L4677](../../api/prisma/schema.prisma#L4677))
+> **Schema:** `ProjectReview` ([project_reviews](../../api/prisma/schema.prisma#L5409)): `went_well` · enum `ProjectReviewType` ([L4678](../../api/prisma/schema.prisma#L4678))
 <!-- schema-section:end -->
 
 Retrospectives should capture what went well, what went wrong, root causes, technical lessons, customer lessons, process improvements, and actions.
@@ -1112,7 +1113,7 @@ Employee and resource information remains owned by the relevant modules.
 ## 51. Resource Allocation
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822)): `budget_hours` · `ProjectAllocation` ([project_allocations](../../api/prisma/schema.prisma#L5423)) — other modules: `EmployeeCapacityPeriod` ([employee_capacity_periods](../../api/prisma/schema.prisma#L9364)) ([10](./10-employee-management-system.md)) · `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L16773)): `hours_alert_percent` ([18](./18-time-tracking.md))
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823)): `budget_hours` · `ProjectAllocation` ([project_allocations](../../api/prisma/schema.prisma#L5440)) — other modules: `EmployeeCapacityPeriod` ([employee_capacity_periods](../../api/prisma/schema.prisma#L9381)) ([10](./10-employee-management-system.md)) · `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L16790)): `hours_alert_percent` ([18](./18-time-tracking.md))
 <!-- schema-section:end -->
 
 Projects may record planned allocation by person/team, role, planned hours, date range, allocation percentage, workstream, and milestone.
@@ -1134,7 +1135,7 @@ Project views should surface overallocated people, resource conflicts, availabil
 ## 53. External Stakeholders
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectStakeholder` ([project_stakeholders](../../api/prisma/schema.prisma#L4997))
+> **Schema:** `ProjectStakeholder` ([project_stakeholders](../../api/prisma/schema.prisma#L4999))
 <!-- schema-section:end -->
 
 Projects may contain customer contacts, executives, vendors, partners, consultants, and reviewers.
@@ -1168,7 +1169,7 @@ Projects remain independently manageable.
 ## 56. Projects Without Customers
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822)): `company_id`
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823)): `company_id`
 <!-- schema-section:end -->
 
 The same project model must work without a customer.
@@ -1180,7 +1181,7 @@ A customer can be added later without requiring project recreation.
 ## 57. Proposal Integration
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822)): `proposal_id`
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823)): `proposal_id`
 <!-- schema-section:end -->
 
 An accepted Proposal may create or initialize a project.
@@ -1223,7 +1224,7 @@ Task Management owns the task record.
 ## 60. Customer Portal Integration
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectMilestone` ([project_milestones](../../api/prisma/schema.prisma#L5074)): `customer_visible` · enum `ProjectVisibility` ([L4559](../../api/prisma/schema.prisma#L4559)) — other modules: `Task` ([tasks](../../api/prisma/schema.prisma#L5816)): `customer_visible` ([06](./06-task-management.md))
+> **Schema:** `ProjectMilestone` ([project_milestones](../../api/prisma/schema.prisma#L5091)): `customer_visible` · enum `ProjectVisibility` ([L4560](../../api/prisma/schema.prisma#L4560)) — other modules: `Task` ([tasks](../../api/prisma/schema.prisma#L5833)): `customer_visible` ([06](./06-task-management.md))
 <!-- schema-section:end -->
 
 Projects may expose selected project information through the Customer Portal.
@@ -1273,7 +1274,7 @@ The project provides contextual navigation to relevant conversations.
 ## 63. Finance Integration
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `LedgerProfitabilitySnapshot` ([ledger_profitability_snapshots](../../api/prisma/schema.prisma#L8023)) ([09](./09-income-expense-management.md)) · `ProjectBillingSettings` ([project_billing_settings](../../api/prisma/schema.prisma#L6979)) ([08](./08-financial-management-stripe-integration.md)) · enum `LedgerProfitabilityScope` ([L7281](../../api/prisma/schema.prisma#L7281)) ([09](./09-income-expense-management.md))
+> **Schema:** other modules: `LedgerProfitabilitySnapshot` ([ledger_profitability_snapshots](../../api/prisma/schema.prisma#L8040)) ([09](./09-income-expense-management.md)) · `ProjectBillingSettings` ([project_billing_settings](../../api/prisma/schema.prisma#L6996)) ([08](./08-financial-management-stripe-integration.md)) · enum `LedgerProfitabilityScope` ([L7298](../../api/prisma/schema.prisma#L7298)) ([09](./09-income-expense-management.md))
 <!-- schema-section:end -->
 
 Projects can surface financial context such as revenue references, invoice references, payment status, project expenses, budget, cost, profitability, and financial variance.
@@ -1388,7 +1389,7 @@ Automation rules must be configurable.
 ## 71. Project Completion
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectCloseout` ([project_closeouts](../../api/prisma/schema.prisma#L5538)): `completion_checklist` · `ProjectType` ([project_types](../../api/prisma/schema.prisma#L4716)): `completion_requirements`
+> **Schema:** `ProjectCloseout` ([project_closeouts](../../api/prisma/schema.prisma#L5555)): `completion_checklist` · `ProjectType` ([project_types](../../api/prisma/schema.prisma#L4717)): `completion_requirements`
 <!-- schema-section:end -->
 
 Completion should support a configurable checklist.
@@ -1412,7 +1413,7 @@ Not every project type needs every requirement.
 ## 72. Handover
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectHandover` ([project_handovers](../../api/prisma/schema.prisma#L5513)) · enum `HandoverStatus` ([L4706](../../api/prisma/schema.prisma#L4706))
+> **Schema:** `ProjectHandover` ([project_handovers](../../api/prisma/schema.prisma#L5530)) · enum `HandoverStatus` ([L4707](../../api/prisma/schema.prisma#L4707))
 <!-- schema-section:end -->
 
 Projects may transition to maintenance, support, retainer, managed service, Customer Success, or internal ownership.
@@ -1450,7 +1451,7 @@ Search should support project name, project ID, project code, customer, type, ow
 ## 76. Project Views
 
 <!-- schema-section:start -->
-> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+> **Schema:** `ProjectFavorite` ([project_favorites](../../api/prisma/schema.prisma#L5023))
 <!-- schema-section:end -->
 
 Supported views may include:
@@ -1495,7 +1496,7 @@ Projects can be grouped by customer, type, owner, team, status, health, priority
 ## 80. Project Priority
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822)) · enum `ProjectPriority` ([L4551](../../api/prisma/schema.prisma#L4551))
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823)) · enum `ProjectPriority` ([L4552](../../api/prisma/schema.prisma#L4552))
 <!-- schema-section:end -->
 
 Projects should support configurable priority levels, for example:
@@ -1585,7 +1586,7 @@ Webhooks should support event IDs, signatures, retry handling, idempotency, and 
 ## 86. External Project References
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectExternalReference` ([project_external_references](../../api/prisma/schema.prisma#L5577))
+> **Schema:** `ProjectExternalReference` ([project_external_references](../../api/prisma/schema.prisma#L5594))
 <!-- schema-section:end -->
 
 Projects may reference external systems such as GitHub, GitLab, Jira, Linear, deployment systems, cloud infrastructure, and external documentation.
@@ -1647,7 +1648,7 @@ Actions may include update project field, create task, assign user, create miles
 ## 92. Project Checklists
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectChecklist` ([project_checklists](../../api/prisma/schema.prisma#L5451))
+> **Schema:** `ProjectChecklist` ([project_checklists](../../api/prisma/schema.prisma#L5468))
 <!-- schema-section:end -->
 
 Projects may have reusable checklists for kickoff, discovery, development, QA, launch, handover, and closeout.
@@ -1657,7 +1658,7 @@ Checklist items may optionally create tasks.
 ## 93. Quality Gates
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectGate` ([project_gates](../../api/prisma/schema.prisma#L5365)) · enum `ProjectGateKind` ([L4664](../../api/prisma/schema.prisma#L4664))
+> **Schema:** `ProjectGate` ([project_gates](../../api/prisma/schema.prisma#L5382)) · enum `ProjectGateKind` ([L4665](../../api/prisma/schema.prisma#L4665))
 <!-- schema-section:end -->
 
 Quality gates can represent required controls such as code review, QA, security review, documentation, customer approval, and deployment approval.
@@ -1729,7 +1730,7 @@ Complex projects may define project owner, sponsor, decision makers, stakeholder
 ## 101. Escalation
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectEscalation` ([project_escalations](../../api/prisma/schema.prisma#L5489)) · enum `EscalationStatus` ([L4698](../../api/prisma/schema.prisma#L4698))
+> **Schema:** `ProjectEscalation` ([project_escalations](../../api/prisma/schema.prisma#L5506)) · enum `EscalationStatus` ([L4699](../../api/prisma/schema.prisma#L4699))
 <!-- schema-section:end -->
 
 Projects should support escalation for critical blockers, major delays, budget issues, scope issues, customer issues, resource shortages, and contract-related problems.
@@ -1739,7 +1740,7 @@ Escalations should record issue, severity, owner, escalated to, date, action, an
 ## 102. Team Handoffs
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectHandover` ([project_handovers](../../api/prisma/schema.prisma#L5513)) · enum `HandoverStatus` ([L4706](../../api/prisma/schema.prisma#L4706))
+> **Schema:** `ProjectHandover` ([project_handovers](../../api/prisma/schema.prisma#L5530)) · enum `HandoverStatus` ([L4707](../../api/prisma/schema.prisma#L4707))
 <!-- schema-section:end -->
 
 Projects should support operational handoffs such as Sales → Delivery, Delivery → Support, Development → QA, QA → Customer, and Project → Maintenance.
@@ -1749,7 +1750,7 @@ A handoff may contain from team, to team, owner, date, checklist, documentation,
 ## 103. Project Closeout
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectCloseout` ([project_closeouts](../../api/prisma/schema.prisma#L5538))
+> **Schema:** `ProjectCloseout` ([project_closeouts](../../api/prisma/schema.prisma#L5555))
 <!-- schema-section:end -->
 
 Closeout should consolidate final status, final deliverables, customer acceptance, outstanding items, lessons learned, documentation, handover, financial review, customer outcome, and retrospective.
@@ -1765,7 +1766,7 @@ Organizations should be able to reuse project structures across customers withou
 ## 105. Project Relationships
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectRelation` ([project_relations](../../api/prisma/schema.prisma#L5560)) · enum `ProjectRelationType` ([L4688](../../api/prisma/schema.prisma#L4688))
+> **Schema:** `ProjectRelation` ([project_relations](../../api/prisma/schema.prisma#L5577)) · enum `ProjectRelationType` ([L4689](../../api/prisma/schema.prisma#L4689))
 <!-- schema-section:end -->
 
 Projects can have relationships such as parent project, child project, related project, dependency, replacement, follow-up, maintenance for, and continuation of.
@@ -1773,7 +1774,7 @@ Projects can have relationships such as parent project, child project, related p
 ## 106. Parent and Child Projects
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822))
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823))
 <!-- schema-section:end -->
 
 Large engagements can be divided into child projects.
@@ -1785,7 +1786,7 @@ The parent project provides portfolio-level coordination.
 ## 107. Project Hierarchy
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822))
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823))
 <!-- schema-section:end -->
 
 An optional hierarchy may be:
@@ -1827,7 +1828,7 @@ Projects consumes the central authorization service for authentication, authoriz
 ## 111. Customer Data Isolation
 
 <!-- schema-section:start -->
-> **Schema:** enum `ProjectVisibility` ([L4559](../../api/prisma/schema.prisma#L4559))
+> **Schema:** enum `ProjectVisibility` ([L4560](../../api/prisma/schema.prisma#L4560))
 <!-- schema-section:end -->
 
 Customer isolation is the rule in 01 §116 and `docs/Product_Specification.md` §4.3: users associated with one customer never automatically gain access to another customer's projects, and internal projects remain separate from customer-visible projects. Projects enforces this through the visibility field and the central authorization service.
@@ -1851,7 +1852,7 @@ Organizations should be able to configure project types, statuses, health states
 ## 114. Naming Conventions
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822)): `code`
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823)): `code`
 <!-- schema-section:end -->
 
 Organizations may define project naming conventions such as customer code + project code, year + customer + project, or department + initiative.
@@ -1869,7 +1870,7 @@ Projects should be designed as first-class platform resources so external system
 ## 116. Cross-Module Webhook Workflows
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L19216)) ([20](./20-automation-engine.md))
+> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L19233)) ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 Examples:
@@ -1885,7 +1886,7 @@ Examples:
 ## 117. Project Data Ownership
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4822))
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L4823))
 <!-- schema-section:end -->
 
 The Project module owns project-specific operational information:

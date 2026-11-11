@@ -209,37 +209,6 @@
       "</tbody></table></div></div></div>";
   }
 
-  /* ================= PROJECTS =================
-     @screen Projects · Overview (portfolio list + KPIs)
-     @route  /projects (+ ?status=&client=&branch=), /projects/:projectKey (detail), /projects/portfolio, /projects/timeline
-     @perm   VIEW projects.projects.read · create projects.projects.create · budgets/finance columns need projects.finance.read (hide the Budget column otherwise) ·
-             portfolio KPIs need projects.portfolio.read
-     @api    GET /projects?status=&customer_id=&branch_id=&cursor= · GET /projects/summary (KPIs) · POST /projects
-     @mcp    projects_projects_read, projects_projects_create
-     @data   module 05: Project (status, customer, branch_id, due date, budget), ProjectStatus, ProjectMember, ProjectBranch (cross-branch projects), milestones/gates.
-             Progress % is derived from tasks (06) or milestones, not stored by hand.
-     @ui     Card (KPIs), Table, Badge (status), Progress, avatar group, Tabs (Overview/Portfolio/Timeline/Workload).
-     @states loading · empty · error · no-access
-     @note   KPI "At-risk budget" is a computed insight; define the rule (status AT_RISK or forecast > budget) in the API, do not compute in the client.
-             The branch context chip in the app bar filters this list server-side (UserSession.active_branch_ids). */
-  function projects() {
-    const R = [
-      ["Acme Rebrand Website", "Acme Corp", "On track", "green", 72, "AM,MS,SJ", "Nov 28", "€48,000"],
-      ["Mobile App v2", "Northwind", "At risk", "yellow", 41, "JK,AM", "Dec 12", "€92,500"],
-      ["Stripe Billing Migration", "Initech", "On track", "green", 88, "SJ,KL", "Nov 21", "€21,000"],
-      ["Customer Portal Build", "Globex", "Delayed", "red", 23, "MS,JK,KL", "Jan 09", "€64,200"],
-      ["Brand Strategy Sprint", "Umbrella Ltd", "Planning", "blue", 8, "AM", "Feb 02", "€15,800"],
-      ["Data Warehouse Setup", "Hooli", "On track", "green", 55, "KL,SJ", "Dec 05", "€37,400"],
-    ];
-    const C = { AM: "", MS: "g", SJ: "y", JK: "r", KL: "p" };
-    return '<div class="page"><div class="page-head"><div><h1>Projects</h1><p>12 active projects across 7 clients</p></div><div style="display:flex;gap:8px"><button class="btn">' + I("filter", 14) + ' Filter</button><button class="btn primary">' + I("plus", 14) + " New project</button></div></div>" +
-      '<div class="pills"><button class="pill active">Overview</button><button class="pill">Portfolio</button><button class="pill">Timeline</button><button class="pill">Workload</button></div>' +
-      '<div class="stats"><div class="stat"><small>Active projects</small><strong>12</strong><span>+2 this month</span></div><div class="stat"><small>Milestones due (30d)</small><strong>9</strong><span>6 on track</span></div><div class="stat"><small>Budget used</small><strong>63%</strong><span>€212k of €336k</span></div><div class="stat"><small>At-risk budget</small><strong>€64.2k</strong><span class="neg">2 projects</span></div></div>' +
-      '<div class="panel"><div class="panel-head"><b>All projects</b><span class="badge">6 shown</span></div><div class="tbl-scroll"><table><thead><tr><th>Project</th><th>Client</th><th>Status</th><th>Progress</th><th>Team</th><th>Due</th><th>Budget</th></tr></thead><tbody>' +
-      R.map((r) => '<tr><td><div class="name">' + I("folder", 15) + r[0] + "</div></td><td>" + r[1] + '</td><td><span class="badge ' + r[3] + '"><span class="dot"></span>' + r[2] + '</span></td><td><span class="bar"><i style="width:' + r[4] + '%"></i></span>' + r[4] + '%</td><td><div class="avs">' + r[5].split(",").map((a) => AV(a, C[a])).join("") + "</div></td><td>" + r[6] + "</td><td>" + r[7] + "</td></tr>").join("") +
-      "</tbody></table></div></div></div>";
-  }
-
   /* ================= placeholder for apps not yet mocked =================
      @note Apps without a design yet (CRM, Proposals, Contracts, Client portal, Billing, Expenses, People, Docs, Files, Automation, Time, Calendar).
            Do NOT implement from this placeholder: wait for the mockup (which will follow the schema-first rule). */
@@ -254,7 +223,6 @@
     messages: { html: messages, fill: 1 },
     support: { html: support, fill: 1 },
     campaigns: { html: campaigns },
-    projects: { html: projects },
     placeholder: placeholder,
   };
 })();

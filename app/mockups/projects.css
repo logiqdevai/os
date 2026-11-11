@@ -1,0 +1,16 @@
+/* =====================================================================================================================
+   PROJECTS app styles (module 05). Gantt for the timeline screen. Semantic tokens only, so light and dark both work.
+   ===================================================================================================================== */
+.gantt { position: relative; background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden; }
+.g-head, .g-row { display: grid; grid-template-columns: 220px 1fr; align-items: center; }
+.g-head { padding: 8px 14px; border-bottom: 1px solid var(--hairline); color: var(--ash); font-size: 12px; display: grid; grid-template-columns: 220px repeat(5, 1fr); }
+.g-row { padding: 0 14px; height: 44px; border-bottom: 1px solid var(--hairline); }
+.g-row:last-of-type { border-bottom: 0; }
+.g-l { color: var(--ink); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px; }
+.g-track { position: relative; height: 100%; }
+.g-bar { position: absolute; top: 15px; height: 14px; border-radius: 7px; background: var(--blue-soft); border: 1px solid var(--blue); }
+.g-bar.green { background: var(--green-soft); border-color: var(--green); } .g-bar.yellow { background: var(--yellow-soft); border-color: var(--yellow); } .g-bar.red { background: var(--red-soft); border-color: var(--red); }
+.g-ms { position: absolute; top: 14px; width: 12px; height: 12px; background: var(--ink); transform: rotate(45deg) translateX(-50%); border-radius: 2px; margin-left: -2px; }
+.g-today { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--red); opacity: .7; pointer-events: none; }
+.sel { white-space: nowrap; }
+.sel span { white-space: nowrap; }

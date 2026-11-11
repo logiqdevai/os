@@ -25,15 +25,16 @@
     { id: "home", label: "Home", icon: "home", newLabel: "New", panel: simple("Home", ["Overview", "My work", "Inbox", "Recent", "Favorites"]) },
 
     /* ---- work ---- */
-    /* @impl Projects — ModuleKey PROJECTS · docs/features/05 · VIEW projects.projects.read · CREATE projects.projects.create
-       @data Project, ProjectStatus, ProjectMember, ProjectBranch (cross-branch), Milestone/Gate models of 05.
-       @note "By client" groups by Project.customer (CRM Company); "Favorites" = per-member pinned projects (SavedView or favorites table of 05, confirm). */
+    /* @impl Projects — ModuleKey PROJECTS · docs/features/05 · VIEW projects.projects.read · CREATE projects.projects.create · portfolio views need projects.portfolio.read
+       @data Project (+30 child tables of 05), ProjectFavorite (per-member starred projects).
+       @note "Favorites" = ProjectFavorite rows of the signed-in member. "By customer" groups by Project.company_id (CrmCompany, 02). The workspace of one project is /projects/:id (alias of "All projects" in this mockup). */
     { id: "projects", label: "Projects", icon: "folder", newLabel: "New project", sep: 1,
+      alias: { detail: "list" },
       panel: P("Projects", [
-        items([{ l: "Overview", i: "home", active: 1 }, { l: "Portfolio", i: "layers" }, { l: "Timeline", i: "calendar" }, { l: "Milestones", i: "flag" }, { l: "Workload", i: "users" }, { l: "Budgets", i: "dollar" }]),
-        sec("Favorites", [{ l: "Acme Rebrand Website", dot: "blue" }, { l: "Mobile App v2", dot: "yellow" }, { l: "Customer Portal Build", dot: "red" }]),
-        sec("By client", [{ l: "Acme Corp", i: "building" }, { l: "Northwind", i: "building" }, { l: "Globex", i: "building" }, { l: "Initech", i: "building" }]),
-        items([{ l: "Archive", i: "archive" }]),
+        items([{ l: "Overview", i: "home", k: "overview" }, { l: "All projects", i: "folder", k: "list" }, { l: "Timeline", i: "calendar", k: "timeline" }, { l: "RAID log", i: "flag", k: "raid", c: 9 }, { l: "Workload", i: "users", k: "workload" }]),
+        sec("Favorites", [{ l: "Mobile App v2", dot: "yellow", k: "detail" }, { l: "Acme Rebrand Website", dot: "green" }, { l: "Customer Portal Build", dot: "red" }]),
+        sec("By customer", [{ l: "Acme Corp", i: "building" }, { l: "Northwind", i: "building" }, { l: "Globex", i: "building" }, { l: "Initech", i: "building" }]),
+        items([{ l: "Setup", i: "settings", k: "settings" }, { l: "Archive", i: "archive" }]),
       ], "plus") },
     /* @impl Tasks — ModuleKey TASKS · docs/features/06 · VIEW tasks.tasks.read · CREATE tasks.tasks.create
        @data Task, TaskStatus, TaskLabel, Cycle (sprints), Release, TaskAssignee, TaskWatcher.

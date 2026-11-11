@@ -23,27 +23,27 @@
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Event catalog** | | | |
-| `NotificationEventType` | `notification_event_types` | [L13816](../../api/prisma/schema.prisma#L13816) | 14 §4, §10, §14 — the event catalog. Platform entries have organization_id = null; organizations may register additional event types (admin API, 14 §14). The… |
+| `NotificationEventType` | `notification_event_types` | [L13833](../../api/prisma/schema.prisma#L13833) | 14 §4, §10, §14 — the event catalog. Platform entries have organization_id = null; organizations may register additional event types (admin API, 14 §14). The… |
 | **Events (ingestion)** | | | |
-| `NotificationEvent` | `notification_events` | [L13871](../../api/prisma/schema.prisma#L13871) | 14 §2, §9, §14 — an event published by a module or the Automation Engine (20). Idempotent on (organization_id, idempotency_key): redelivered events never cre… |
+| `NotificationEvent` | `notification_events` | [L13888](../../api/prisma/schema.prisma#L13888) | 14 §2, §9, §14 — an event published by a module or the Automation Engine (20). Idempotent on (organization_id, idempotency_key): redelivered events never cre… |
 | **Notifications (inbox)** | | | |
-| `Notification` | `notifications` | [L13927](../../api/prisma/schema.prisma#L13927) | 14 §2, §7, §9, 12 §16, §18 — a message produced from an event for one recipient (a Membership or a Customer Portal User). The in-app record is always stored … |
-| `NotificationDelivery` | `notification_deliveries` | [L14004](../../api/prisma/schema.prisma#L14004) | 14 §5, §9 — one delivery attempt record per channel of a notification. Email/SMS are sent through 11 (comm_message_id); push through NotificationPushDevice; … |
+| `Notification` | `notifications` | [L13944](../../api/prisma/schema.prisma#L13944) | 14 §2, §7, §9, 12 §16, §18 — a message produced from an event for one recipient (a Membership or a Customer Portal User). The in-app record is always stored … |
+| `NotificationDelivery` | `notification_deliveries` | [L14021](../../api/prisma/schema.prisma#L14021) | 14 §5, §9 — one delivery attempt record per channel of a notification. Email/SMS are sent through 11 (comm_message_id); push through NotificationPushDevice; … |
 | **Templates & localization** | | | |
-| `NotificationTemplate` | `notification_templates` | [L14064](../../api/prisma/schema.prisma#L14064) | 14 §10 — notification template per event type, channel and locale. organization_id = null is the platform default; organization rows override it. Branding (0… |
+| `NotificationTemplate` | `notification_templates` | [L14081](../../api/prisma/schema.prisma#L14081) | 14 §10 — notification template per event type, channel and locale. organization_id = null is the platform default; organization rows override it. Branding (0… |
 | **Organization configuration** | | | |
-| `NotificationOrgSettings` | `notification_org_settings` | [L14102](../../api/prisma/schema.prisma#L14102) | 14 §5, §6, §8, §11 — organization-wide notification settings (one row per organization). |
-| `NotificationOrgDefault` | `notification_org_defaults` | [L14136](../../api/prisma/schema.prisma#L14136) | 14 §6 — organization defaults per module or per event type (preference layer 4) and the list of mandatory events administrators configure. Exactly one of mod… |
+| `NotificationOrgSettings` | `notification_org_settings` | [L14119](../../api/prisma/schema.prisma#L14119) | 14 §5, §6, §8, §11 — organization-wide notification settings (one row per organization). |
+| `NotificationOrgDefault` | `notification_org_defaults` | [L14153](../../api/prisma/schema.prisma#L14153) | 14 §6 — organization defaults per module or per event type (preference layer 4) and the list of mandatory events administrators configure. Exactly one of mod… |
 | **Recipient settings & preferences** | | | |
-| `NotificationRecipientSettings` | `notification_recipient_settings` | [L14167](../../api/prisma/schema.prisma#L14167) | 14 §6 — per-recipient global settings (preference layer 3): level, Do Not Disturb / quiet hours, digest mode, preview privacy (12 §87) and channel master swi… |
-| `NotificationPreference` | `notification_preferences` | [L14224](../../api/prisma/schema.prisma#L14224) | 14 §6 — per-recipient preference rows for layers 1–2, reusable by 12 §17 and §32 for channel / conversation mute. Scope is exactly one of: event_type_id (per… |
-| `NotificationKeyword` | `notification_keywords` | [L14266](../../api/prisma/schema.prisma#L14266) | 14 §6, §16 — keyword subscriptions (12 §32): the member is notified when the term appears in an authorized conversation. Phase 2. |
+| `NotificationRecipientSettings` | `notification_recipient_settings` | [L14184](../../api/prisma/schema.prisma#L14184) | 14 §6 — per-recipient global settings (preference layer 3): level, Do Not Disturb / quiet hours, digest mode, preview privacy (12 §87) and channel master swi… |
+| `NotificationPreference` | `notification_preferences` | [L14241](../../api/prisma/schema.prisma#L14241) | 14 §6 — per-recipient preference rows for layers 1–2, reusable by 12 §17 and §32 for channel / conversation mute. Scope is exactly one of: event_type_id (per… |
+| `NotificationKeyword` | `notification_keywords` | [L14283](../../api/prisma/schema.prisma#L14283) | 14 §6, §16 — keyword subscriptions (12 §32): the member is notified when the term appears in an authorized conversation. Phase 2. |
 | **Digests** | | | |
-| `NotificationDigest` | `notification_digests` | [L14294](../../api/prisma/schema.prisma#L14294) | 14 §8 — a batch of notifications for one recipient and period, per module or per record (12 Messaging channel digest). Deliveries held for the digest point a… |
+| `NotificationDigest` | `notification_digests` | [L14311](../../api/prisma/schema.prisma#L14311) | 14 §8 — a batch of notifications for one recipient and period, per module or per record (12 Messaging channel digest). Deliveries held for the digest point a… |
 | **Push devices** | | | |
-| `NotificationPushDevice` | `notification_push_devices` | [L14341](../../api/prisma/schema.prisma#L14341) | 14 §5 — registered push targets (mobile, browser, desktop) per platform User. User-level because a device is not tenant-specific; the active membership at re… |
+| `NotificationPushDevice` | `notification_push_devices` | [L14358](../../api/prisma/schema.prisma#L14358) | 14 §5 — registered push targets (mobile, browser, desktop) per platform User. User-level because a device is not tenant-specific; the active membership at re… |
 | **Delivery rules** | | | |
-| `NotificationDeliveryRule` | `notification_delivery_rules` | [L14376](../../api/prisma/schema.prisma#L14376) | 14 §9, §16 — organization-level dedup / coalesce / throttle / suppress rules evaluated before delivery. A rule applies to the matching event type (or module,… |
+| `NotificationDeliveryRule` | `notification_delivery_rules` | [L14393](../../api/prisma/schema.prisma#L14393) | 14 §9, §16 — organization-level dedup / coalesce / throttle / suppress rules evaluated before delivery. A rule applies to the matching event type (or module,… |
 
 **Owned enums (14):** `NotificationChannel`, `NotificationRecipientType`, `NotificationCategory`, `NotificationPriority`, `NotificationLevel`, `NotificationDeliveryMode`, `NotificationDigestFrequency`, `NotificationEventStatus`, `NotificationDeliveryStatus`, `NotificationSkipReason`, `NotificationDigestStatus`, `NotificationPushPlatform`, `NotificationDeliveryRuleKind`, `NotificationCoalesceKey`
 
@@ -66,14 +66,14 @@
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `RecurringExpense.reminder_days_before` ([09](./09-income-expense-management.md), [L7745](../../api/prisma/schema.prisma#L7745)) — Days before the occurrence to send an upcoming-expense reminder (14); null = organization default.
-- `CommTemplate.notification_event_type_id` ([11](./11-communication-center.md), [L10161](../../api/prisma/schema.prisma#L10161)) — 14 NotificationEventType key this template renders (kind NOTIFICATION); id only.
-- `CommMessage.notification_id` ([11](./11-communication-center.md), [L10311](../../api/prisma/schema.prisma#L10311)) — 14 Notification / NotificationDelivery this message delivers (kind NOTIFICATION); ids only.
-- `MessageReminder.notification_id` ([12](./12-messaging-team-communication.md), [L12029](../../api/prisma/schema.prisma#L12029)) — 14 Notification id emitted when triggered; id only.
-- `AutomationSettings.dead_letter_alerts_enabled` ([20](./20-automation-engine.md), [L18457](../../api/prisma/schema.prisma#L18457)) — 20 §6 — dead-letter alerting through 14 Notifications.
-- `AutomationTriggerDefinition.notifiable` ([20](./20-automation-engine.md), [L18499](../../api/prisma/schema.prisma#L18499)) — Also mirrored to 14 Notifications and outbound webhooks (20 §2).
-- `PlatformEvent.notifications_processed_at` ([20](./20-automation-engine.md), [L18766](../../api/prisma/schema.prisma#L18766)) — 14 Notifications fan-out done.
-- `AutomationApproval.notification_id` ([20](./20-automation-engine.md), [L18997](../../api/prisma/schema.prisma#L18997)) — 14 Notification id sent for this request; id only.
+- `RecurringExpense.reminder_days_before` ([09](./09-income-expense-management.md), [L7762](../../api/prisma/schema.prisma#L7762)) — Days before the occurrence to send an upcoming-expense reminder (14); null = organization default.
+- `CommTemplate.notification_event_type_id` ([11](./11-communication-center.md), [L10178](../../api/prisma/schema.prisma#L10178)) — 14 NotificationEventType key this template renders (kind NOTIFICATION); id only.
+- `CommMessage.notification_id` ([11](./11-communication-center.md), [L10328](../../api/prisma/schema.prisma#L10328)) — 14 Notification / NotificationDelivery this message delivers (kind NOTIFICATION); ids only.
+- `MessageReminder.notification_id` ([12](./12-messaging-team-communication.md), [L12046](../../api/prisma/schema.prisma#L12046)) — 14 Notification id emitted when triggered; id only.
+- `AutomationSettings.dead_letter_alerts_enabled` ([20](./20-automation-engine.md), [L18474](../../api/prisma/schema.prisma#L18474)) — 20 §6 — dead-letter alerting through 14 Notifications.
+- `AutomationTriggerDefinition.notifiable` ([20](./20-automation-engine.md), [L18516](../../api/prisma/schema.prisma#L18516)) — Also mirrored to 14 Notifications and outbound webhooks (20 §2).
+- `PlatformEvent.notifications_processed_at` ([20](./20-automation-engine.md), [L18783](../../api/prisma/schema.prisma#L18783)) — 14 Notifications fan-out done.
+- `AutomationApproval.notification_id` ([20](./20-automation-engine.md), [L19014](../../api/prisma/schema.prisma#L19014)) — 14 Notification id sent for this request; id only.
 
 <!-- schema-refs:end -->
 
@@ -122,7 +122,7 @@ Core rule:
 ## 2. Core Concepts
 
 <!-- schema-section:start -->
-> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13927)) · `NotificationEvent` ([notification_events](../../api/prisma/schema.prisma#L13871))
+> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13944)) · `NotificationEvent` ([notification_events](../../api/prisma/schema.prisma#L13888))
 <!-- schema-section:end -->
 
 ### Event
@@ -152,7 +152,7 @@ The recipient's list of notifications across all modules, with read state and ac
 ## 3. Recipients
 
 <!-- schema-section:start -->
-> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13927)): `audience_reason` · `NotificationEvent` ([notification_events](../../api/prisma/schema.prisma#L13871)): `targets` · enum `NotificationRecipientType` ([L13675](../../api/prisma/schema.prisma#L13675))
+> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13944)): `audience_reason` · `NotificationEvent` ([notification_events](../../api/prisma/schema.prisma#L13888)): `targets` · enum `NotificationRecipientType` ([L13692](../../api/prisma/schema.prisma#L13692))
 <!-- schema-section:end -->
 
 Recipients can be:
@@ -168,7 +168,7 @@ Recipient resolution always respects organization isolation and the permission l
 ## 4. Event Catalog
 
 <!-- schema-section:start -->
-> **Schema:** `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13816)): `key` · enum `NotificationCategory` ([L13682](../../api/prisma/schema.prisma#L13682))
+> **Schema:** `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13833)): `key` · enum `NotificationCategory` ([L13699](../../api/prisma/schema.prisma#L13699))
 <!-- schema-section:end -->
 
 Each module declares its events in its own spec. The catalog below is the aggregated list of events the engine must support at MVP. The owning module is the source of truth for the event's meaning.
@@ -196,7 +196,7 @@ Modules may add events. New events must be registered in the catalog with a stab
 ## 5. Channels
 
 <!-- schema-section:start -->
-> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13927)) · `NotificationDelivery` ([notification_deliveries](../../api/prisma/schema.prisma#L14004)) · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13816)): `customer_visible` · `NotificationOrgSettings` ([notification_org_settings](../../api/prisma/schema.prisma#L14102)) · `NotificationPushDevice` ([notification_push_devices](../../api/prisma/schema.prisma#L14341)) · enum `NotificationChannel` ([L13665](../../api/prisma/schema.prisma#L13665)) · enum `NotificationPushPlatform` ([L13789](../../api/prisma/schema.prisma#L13789))
+> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13944)) · `NotificationDelivery` ([notification_deliveries](../../api/prisma/schema.prisma#L14021)) · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13833)): `customer_visible` · `NotificationOrgSettings` ([notification_org_settings](../../api/prisma/schema.prisma#L14119)) · `NotificationPushDevice` ([notification_push_devices](../../api/prisma/schema.prisma#L14358)) · enum `NotificationChannel` ([L13682](../../api/prisma/schema.prisma#L13682)) · enum `NotificationPushPlatform` ([L13806](../../api/prisma/schema.prisma#L13806))
 <!-- schema-section:end -->
 
 Supported channels:
@@ -214,7 +214,7 @@ Email and SMS notifications are notifications, not communications. Campaigns, te
 ## 6. Preferences
 
 <!-- schema-section:start -->
-> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13927)): `is_mandatory` · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13816)): `mandatory_by_default` · `NotificationKeyword` ([notification_keywords](../../api/prisma/schema.prisma#L14266)) · `NotificationOrgDefault` ([notification_org_defaults](../../api/prisma/schema.prisma#L14136)): `is_mandatory` · `NotificationOrgSettings` ([notification_org_settings](../../api/prisma/schema.prisma#L14102)) · `NotificationPreference` ([notification_preferences](../../api/prisma/schema.prisma#L14224)): `enabled` · `NotificationRecipientSettings` ([notification_recipient_settings](../../api/prisma/schema.prisma#L14167)): `dnd_allow_critical`, `show_previews` · enum `NotificationDeliveryMode` ([L13720](../../api/prisma/schema.prisma#L13720)) · enum `NotificationLevel` ([L13712](../../api/prisma/schema.prisma#L13712)) · enum `NotificationPriority` ([L13703](../../api/prisma/schema.prisma#L13703)) · enum `NotificationSkipReason` ([L13760](../../api/prisma/schema.prisma#L13760)) — other modules: `ChannelNotificationSetting` ([channel_notification_settings](../../api/prisma/schema.prisma#L11611)) ([12](./12-messaging-team-communication.md)) · `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L12174)) ([12](./12-messaging-team-communication.md)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L11314)) ([12](./12-messaging-team-communication.md)) · enum `ChannelNotificationLevel` ([L11123](../../api/prisma/schema.prisma#L11123)) ([12](./12-messaging-team-communication.md))
+> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13944)): `is_mandatory` · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13833)): `mandatory_by_default` · `NotificationKeyword` ([notification_keywords](../../api/prisma/schema.prisma#L14283)) · `NotificationOrgDefault` ([notification_org_defaults](../../api/prisma/schema.prisma#L14153)): `is_mandatory` · `NotificationOrgSettings` ([notification_org_settings](../../api/prisma/schema.prisma#L14119)) · `NotificationPreference` ([notification_preferences](../../api/prisma/schema.prisma#L14241)): `enabled` · `NotificationRecipientSettings` ([notification_recipient_settings](../../api/prisma/schema.prisma#L14184)): `dnd_allow_critical`, `show_previews` · enum `NotificationDeliveryMode` ([L13737](../../api/prisma/schema.prisma#L13737)) · enum `NotificationLevel` ([L13729](../../api/prisma/schema.prisma#L13729)) · enum `NotificationPriority` ([L13720](../../api/prisma/schema.prisma#L13720)) · enum `NotificationSkipReason` ([L13777](../../api/prisma/schema.prisma#L13777)) — other modules: `ChannelNotificationSetting` ([channel_notification_settings](../../api/prisma/schema.prisma#L11628)) ([12](./12-messaging-team-communication.md)) · `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L12191)) ([12](./12-messaging-team-communication.md)) · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L11331)) ([12](./12-messaging-team-communication.md)) · enum `ChannelNotificationLevel` ([L11140](../../api/prisma/schema.prisma#L11140)) ([12](./12-messaging-team-communication.md))
 <!-- schema-section:end -->
 
 Preference layers, evaluated from most specific to least:
@@ -239,7 +239,7 @@ Some events are mandatory and cannot be muted, for example security alerts, SLA 
 ## 7. Inbox / Activity Center
 
 <!-- schema-section:start -->
-> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13927)): `actions`, `recipient_user_id`, `requires_action`, `seen_at` · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13816)): `available_actions` · enum `NotificationCategory` ([L13682](../../api/prisma/schema.prisma#L13682)) · enum `NotificationChannel` ([L13665](../../api/prisma/schema.prisma#L13665))
+> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13944)): `actions`, `recipient_user_id`, `requires_action`, `seen_at` · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13833)): `available_actions` · enum `NotificationCategory` ([L13699](../../api/prisma/schema.prisma#L13699)) · enum `NotificationChannel` ([L13682](../../api/prisma/schema.prisma#L13682))
 <!-- schema-section:end -->
 
 The Activity Center is the unified inbox for the user.
@@ -258,7 +258,7 @@ The Customer Portal exposes a customer-scoped inbox built on the same engine.
 ## 8. Digests
 
 <!-- schema-section:start -->
-> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13927)): `action_url` · `NotificationDelivery` ([notification_deliveries](../../api/prisma/schema.prisma#L14004)): `digest_id` · `NotificationDigest` ([notification_digests](../../api/prisma/schema.prisma#L14294)) · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13816)): `supports_digest` · `NotificationOrgSettings` ([notification_org_settings](../../api/prisma/schema.prisma#L14102)) · enum `NotificationDeliveryMode` ([L13720](../../api/prisma/schema.prisma#L13720)) · enum `NotificationDigestFrequency` ([L13727](../../api/prisma/schema.prisma#L13727)) · enum `NotificationDigestStatus` ([L13778](../../api/prisma/schema.prisma#L13778))
+> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13944)): `action_url` · `NotificationDelivery` ([notification_deliveries](../../api/prisma/schema.prisma#L14021)): `digest_id` · `NotificationDigest` ([notification_digests](../../api/prisma/schema.prisma#L14311)) · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13833)): `supports_digest` · `NotificationOrgSettings` ([notification_org_settings](../../api/prisma/schema.prisma#L14119)) · enum `NotificationDeliveryMode` ([L13737](../../api/prisma/schema.prisma#L13737)) · enum `NotificationDigestFrequency` ([L13744](../../api/prisma/schema.prisma#L13744)) · enum `NotificationDigestStatus` ([L13795](../../api/prisma/schema.prisma#L13795))
 <!-- schema-section:end -->
 
 Users can receive digests instead of immediate notifications for selected event types.
@@ -270,7 +270,7 @@ Users can receive digests instead of immediate notifications for selected event 
 ## 9. Delivery Rules
 
 <!-- schema-section:start -->
-> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13927)): `expires_at`, `group_key` · `NotificationDelivery` ([notification_deliveries](../../api/prisma/schema.prisma#L14004)): `attempt_count` · `NotificationDeliveryRule` ([notification_delivery_rules](../../api/prisma/schema.prisma#L14376)) · `NotificationEvent` ([notification_events](../../api/prisma/schema.prisma#L13871)): `expires_at`, `group_key`, `idempotency_key` · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13816)): `can_coalesce`, `default_expiry_minutes` · `NotificationOrgSettings` ([notification_org_settings](../../api/prisma/schema.prisma#L14102)): `max_delivery_attempts` · enum `NotificationCoalesceKey` ([L13805](../../api/prisma/schema.prisma#L13805)) · enum `NotificationDeliveryRuleKind` ([L13797](../../api/prisma/schema.prisma#L13797)) · enum `NotificationDeliveryStatus` ([L13745](../../api/prisma/schema.prisma#L13745)) · enum `NotificationEventStatus` ([L13735](../../api/prisma/schema.prisma#L13735)) · enum `NotificationSkipReason` ([L13760](../../api/prisma/schema.prisma#L13760))
+> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13944)): `expires_at`, `group_key` · `NotificationDelivery` ([notification_deliveries](../../api/prisma/schema.prisma#L14021)): `attempt_count` · `NotificationDeliveryRule` ([notification_delivery_rules](../../api/prisma/schema.prisma#L14393)) · `NotificationEvent` ([notification_events](../../api/prisma/schema.prisma#L13888)): `expires_at`, `group_key`, `idempotency_key` · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13833)): `can_coalesce`, `default_expiry_minutes` · `NotificationOrgSettings` ([notification_org_settings](../../api/prisma/schema.prisma#L14119)): `max_delivery_attempts` · enum `NotificationCoalesceKey` ([L13822](../../api/prisma/schema.prisma#L13822)) · enum `NotificationDeliveryRuleKind` ([L13814](../../api/prisma/schema.prisma#L13814)) · enum `NotificationDeliveryStatus` ([L13762](../../api/prisma/schema.prisma#L13762)) · enum `NotificationEventStatus` ([L13752](../../api/prisma/schema.prisma#L13752)) · enum `NotificationSkipReason` ([L13777](../../api/prisma/schema.prisma#L13777))
 <!-- schema-section:end -->
 
 * Deduplicate: the same event never produces two notifications for one recipient on one channel.
@@ -283,7 +283,7 @@ Users can receive digests instead of immediate notifications for selected event 
 ## 10. Templates & Localization
 
 <!-- schema-section:start -->
-> **Schema:** `NotificationDelivery` ([notification_deliveries](../../api/prisma/schema.prisma#L14004)): `template_id` · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13816)): `payload_schema` · `NotificationTemplate` ([notification_templates](../../api/prisma/schema.prisma#L14064))
+> **Schema:** `NotificationDelivery` ([notification_deliveries](../../api/prisma/schema.prisma#L14021)): `template_id` · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13833)): `payload_schema` · `NotificationTemplate` ([notification_templates](../../api/prisma/schema.prisma#L14081))
 <!-- schema-section:end -->
 
 Each event type has a notification template per channel with variables from the event payload.
@@ -293,7 +293,7 @@ Templates support the recipient's language and time zone (01 §127). Organizatio
 ## 11. Privacy & Security
 
 <!-- schema-section:start -->
-> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13927)): `body` · `NotificationDelivery` ([notification_deliveries](../../api/prisma/schema.prisma#L14004)): `destination` · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13816)): `customer_visible` · `NotificationOrgSettings` ([notification_org_settings](../../api/prisma/schema.prisma#L14102)): `hide_previews_by_default` · `NotificationRecipientSettings` ([notification_recipient_settings](../../api/prisma/schema.prisma#L14167)): `show_previews` · enum `NotificationSkipReason` ([L13760](../../api/prisma/schema.prisma#L13760))
+> **Schema:** `Notification` ([notifications](../../api/prisma/schema.prisma#L13944)): `body` · `NotificationDelivery` ([notification_deliveries](../../api/prisma/schema.prisma#L14021)): `destination` · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13833)): `customer_visible` · `NotificationOrgSettings` ([notification_org_settings](../../api/prisma/schema.prisma#L14119)): `hide_previews_by_default` · `NotificationRecipientSettings` ([notification_recipient_settings](../../api/prisma/schema.prisma#L14184)): `show_previews` · enum `NotificationSkipReason` ([L13777](../../api/prisma/schema.prisma#L13777))
 <!-- schema-section:end -->
 
 * Recipient resolution enforces organization isolation and record permissions.
@@ -304,7 +304,7 @@ Templates support the recipient's language and time zone (01 §127). Organizatio
 ## 12. Permissions
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1338)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1339)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 * `notifications.preferences.manage_own`
@@ -317,7 +317,7 @@ Permission keys follow the naming convention in 01 §46.
 ## 13. Audit
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L1859)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L1860)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 Audit the delivery of mandatory and security notifications, template changes and organization default changes.
@@ -325,7 +325,7 @@ Audit the delivery of mandatory and security notifications, template changes and
 ## 14. API & Webhooks
 
 <!-- schema-section:start -->
-> **Schema:** `NotificationEvent` ([notification_events](../../api/prisma/schema.prisma#L13871)) · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13816)) · `NotificationOrgSettings` ([notification_org_settings](../../api/prisma/schema.prisma#L14102)): `webhook_events_enabled` · enum `NotificationEventStatus` ([L13735](../../api/prisma/schema.prisma#L13735)) — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L19216)) ([20](./20-automation-engine.md))
+> **Schema:** `NotificationEvent` ([notification_events](../../api/prisma/schema.prisma#L13888)) · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L13833)) · `NotificationOrgSettings` ([notification_org_settings](../../api/prisma/schema.prisma#L14119)): `webhook_events_enabled` · enum `NotificationEventStatus` ([L13752](../../api/prisma/schema.prisma#L13752)) — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L19233)) ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 API:
@@ -362,7 +362,7 @@ Delivery principles follow the platform standard in `docs/Product_Specification.
 ## 16. Phase 2
 
 <!-- schema-section:start -->
-> **Schema:** `NotificationDelivery` ([notification_deliveries](../../api/prisma/schema.prisma#L14004)): `opened_at` · `NotificationDeliveryRule` ([notification_delivery_rules](../../api/prisma/schema.prisma#L14376)): `conditions` · `NotificationEvent` ([notification_events](../../api/prisma/schema.prisma#L13871)): `automation_rule_id` · `NotificationKeyword` ([notification_keywords](../../api/prisma/schema.prisma#L14266)) · enum `NotificationDeliveryRuleKind` ([L13797](../../api/prisma/schema.prisma#L13797))
+> **Schema:** `NotificationDelivery` ([notification_deliveries](../../api/prisma/schema.prisma#L14021)): `opened_at` · `NotificationDeliveryRule` ([notification_delivery_rules](../../api/prisma/schema.prisma#L14393)): `conditions` · `NotificationEvent` ([notification_events](../../api/prisma/schema.prisma#L13888)): `automation_rule_id` · `NotificationKeyword` ([notification_keywords](../../api/prisma/schema.prisma#L14283)) · enum `NotificationDeliveryRuleKind` ([L13814](../../api/prisma/schema.prisma#L13814))
 <!-- schema-section:end -->
 
 * SMS and push channels

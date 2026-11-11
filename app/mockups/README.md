@@ -85,4 +85,5 @@ noted next to it in `shared.js`.
 | `views-crm.js` + `crm.css` | CRM screens (module 02), schema-aligned: dashboard, pipeline board, deal, leads and conversion, companies, Customer 360, contacts, activities, forecast, setup, import |
 | `views-proposals.js` | Proposals screens (module 03), schema-aligned: list, editor with pricing builder / AI / versions / review, customer-facing view, templates, analytics |
 | `views-contracts.js` | Contracts screens (module 04), schema-aligned: dashboard, list, detail (four independent states), editor, obligations, renewals, templates and clauses |
+| `views-projects.js` | Projects screens (module 05), schema-aligned: portfolio overview, all projects, project workspace (overview, plan, delivery, changes and gates, team, updates, closeout), timeline, RAID log, workload, setup. Styles in `projects.css` |
 | `app-shell.html` | The shell: rail, panel, app bar, org/branch switcher, hash router |

@@ -22,8 +22,8 @@
 
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
-| `CustomerPortalSettings` | `customer_portal_settings` | [L6147](../../api/prisma/schema.prisma#L6147) | 07 §14, §18 — portal branding, white-label and feature toggles per organization. |
-| `CustomerPortalProfileChangeRequest` | `customer_portal_profile_change_requests` | [L6181](../../api/prisma/schema.prisma#L6181) | 07 §2 — a customer portal user edits company information or contact details; the write goes to the CRM Company/Contact (02) subject to the agency approval po… |
+| `CustomerPortalSettings` | `customer_portal_settings` | [L6164](../../api/prisma/schema.prisma#L6164) | 07 §14, §18 — portal branding, white-label and feature toggles per organization. |
+| `CustomerPortalProfileChangeRequest` | `customer_portal_profile_change_requests` | [L6198](../../api/prisma/schema.prisma#L6198) | 07 §2 — a customer portal user edits company information or contact details; the write goes to the CRM Company/Contact (02) subject to the agency approval po… |
 
 **Owned enums (1):** `PortalProfileChangeStatus`
 
@@ -44,17 +44,17 @@
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `Invitation.customer_id` ([01](./01-users-organizations-permissions.md), [L1660](../../api/prisma/schema.prisma#L1660)) — 01 §79, 07 §2 — CRM Company (02) the invitee joins as a Customer Portal user; set instead of branch_id/team_id.
-- `ProjectDeliverable.acceptance_record` ([05](./05-project-management.md), [L5117](../../api/prisma/schema.prisma#L5117)) — Customer acceptance evidence: portal user id, contact id, comment (07 §7).
-- `Task.customer_visible` ([06](./06-task-management.md), [L5816](../../api/prisma/schema.prisma#L5816)) — Visible in the Customer Portal (05 §60, 07 §4).
-- `Release.notes` ([06](./06-task-management.md), [L6086](../../api/prisma/schema.prisma#L6086)) — Release notes (markdown), publishable to the portal (07) and knowledge base (13 §6).
-- `Invoice.hosted_invoice_url` ([08](./08-financial-management-stripe-integration.md), [L6590](../../api/prisma/schema.prisma#L6590)) — Payment page for the customer: the provider's hosted page or the portal (07) pay link.
-- `WikiPage.customer_visible` ([15](./15-notion-business-docs.md), [L14720](../../api/prisma/schema.prisma#L14720)) — 15 §4 — exposed through the Customer Portal (07) / help center (13 §6). Audited (15 §9).
-- `DocumentSettings.portal_upload_enabled` ([17](./17-documents-file-management.md), [L15623](../../api/prisma/schema.prisma#L15623)) — 17 §5 — Customer Portal uploads into permitted folders, projects, tickets, conversations (07 §9).
-- `Folder.customer_visible` ([17](./17-documents-file-management.md), [L15791](../../api/prisma/schema.prisma#L15791)) — Visible in the Customer Portal (07 §9); customers may upload here when portal_upload_allowed.
-- `Document.uploaded_via_portal` ([17](./17-documents-file-management.md), [L15858](../../api/prisma/schema.prisma#L15858)) — 17 §5 — uploaded through the Customer Portal (07 §9).
-- `Document.customer_visible` ([17](./17-documents-file-management.md), [L15858](../../api/prisma/schema.prisma#L15858)) — Visible in the Customer Portal documents section (07 §9) in addition to explicit shares.
-- `DocumentApprover.portal_user_id` ([17](./17-documents-file-management.md), [L16337](../../api/prisma/schema.prisma#L16337)) — Customer Portal user (07 §7).
+- `Invitation.customer_id` ([01](./01-users-organizations-permissions.md), [L1661](../../api/prisma/schema.prisma#L1661)) — 01 §79, 07 §2 — CRM Company (02) the invitee joins as a Customer Portal user; set instead of branch_id/team_id.
+- `ProjectDeliverable.acceptance_record` ([05](./05-project-management.md), [L5134](../../api/prisma/schema.prisma#L5134)) — Customer acceptance evidence: portal user id, contact id, comment (07 §7).
+- `Task.customer_visible` ([06](./06-task-management.md), [L5833](../../api/prisma/schema.prisma#L5833)) — Visible in the Customer Portal (05 §60, 07 §4).
+- `Release.notes` ([06](./06-task-management.md), [L6103](../../api/prisma/schema.prisma#L6103)) — Release notes (markdown), publishable to the portal (07) and knowledge base (13 §6).
+- `Invoice.hosted_invoice_url` ([08](./08-financial-management-stripe-integration.md), [L6607](../../api/prisma/schema.prisma#L6607)) — Payment page for the customer: the provider's hosted page or the portal (07) pay link.
+- `WikiPage.customer_visible` ([15](./15-notion-business-docs.md), [L14737](../../api/prisma/schema.prisma#L14737)) — 15 §4 — exposed through the Customer Portal (07) / help center (13 §6). Audited (15 §9).
+- `DocumentSettings.portal_upload_enabled` ([17](./17-documents-file-management.md), [L15640](../../api/prisma/schema.prisma#L15640)) — 17 §5 — Customer Portal uploads into permitted folders, projects, tickets, conversations (07 §9).
+- `Folder.customer_visible` ([17](./17-documents-file-management.md), [L15808](../../api/prisma/schema.prisma#L15808)) — Visible in the Customer Portal (07 §9); customers may upload here when portal_upload_allowed.
+- `Document.uploaded_via_portal` ([17](./17-documents-file-management.md), [L15875](../../api/prisma/schema.prisma#L15875)) — 17 §5 — uploaded through the Customer Portal (07 §9).
+- `Document.customer_visible` ([17](./17-documents-file-management.md), [L15875](../../api/prisma/schema.prisma#L15875)) — Visible in the Customer Portal documents section (07 §9) in addition to explicit shares.
+- `DocumentApprover.portal_user_id` ([17](./17-documents-file-management.md), [L16354](../../api/prisma/schema.prisma#L16354)) — Customer Portal user (07 §7).
 
 <!-- schema-refs:end -->
 
@@ -109,7 +109,7 @@ A record appears in the portal only when its owning module marks it customer-vis
 ## 2. Identity, Access & Customer Roles
 
 <!-- schema-section:start -->
-> **Schema:** `CustomerPortalProfileChangeRequest` ([customer_portal_profile_change_requests](../../api/prisma/schema.prisma#L6181)) · `CustomerPortalSettings` ([customer_portal_settings](../../api/prisma/schema.prisma#L6147)): `profile_changes_require_approval` · enum `PortalProfileChangeStatus` ([L6172](../../api/prisma/schema.prisma#L6172)) — other modules: `Invitation` ([invitations](../../api/prisma/schema.prisma#L1660)): `customer_id` ([01](./01-users-organizations-permissions.md))
+> **Schema:** `CustomerPortalProfileChangeRequest` ([customer_portal_profile_change_requests](../../api/prisma/schema.prisma#L6198)) · `CustomerPortalSettings` ([customer_portal_settings](../../api/prisma/schema.prisma#L6164)): `profile_changes_require_approval` · enum `PortalProfileChangeStatus` ([L6189](../../api/prisma/schema.prisma#L6189)) — other modules: `Invitation` ([invitations](../../api/prisma/schema.prisma#L1661)): `customer_id` ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 > Defined by → [01](./01-users-organizations-permissions.md) §79 · Linear LOG-406.
@@ -142,7 +142,7 @@ Personalized dashboard showing:
 ## 4. Projects
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `DocumentApproval` ([document_approvals](../../api/prisma/schema.prisma#L16300)) ([17](./17-documents-file-management.md)) · `ProjectStatusUpdate` ([project_status_updates](../../api/prisma/schema.prisma#L5292)) ([05](./05-project-management.md)) · `ProjectStatusUpdateComment` ([project_status_update_comments](../../api/prisma/schema.prisma#L5621)) ([05](./05-project-management.md)) · `Task` ([tasks](../../api/prisma/schema.prisma#L5816)): `customer_visible` ([06](./06-task-management.md))
+> **Schema:** other modules: `DocumentApproval` ([document_approvals](../../api/prisma/schema.prisma#L16317)) ([17](./17-documents-file-management.md)) · `ProjectStatusUpdate` ([project_status_updates](../../api/prisma/schema.prisma#L5309)) ([05](./05-project-management.md)) · `ProjectStatusUpdateComment` ([project_status_update_comments](../../api/prisma/schema.prisma#L5638)) ([05](./05-project-management.md)) · `Task` ([tasks](../../api/prisma/schema.prisma#L5833)): `customer_visible` ([06](./06-task-management.md))
 <!-- schema-section:end -->
 
 > Defined by → [05 Project Management](./05-project-management.md) §60 · Linear LOG-405.
@@ -185,7 +185,7 @@ The portal exposes the customer channel of each project (12 §27) as the project
 ## 7. Deliverables & Approvals
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `DocumentApproval` ([document_approvals](../../api/prisma/schema.prisma#L16300)) ([17](./17-documents-file-management.md)) · `DocumentApprover` ([document_approvers](../../api/prisma/schema.prisma#L16337)): `portal_user_id` ([17](./17-documents-file-management.md)) · `ProjectDeliverable` ([project_deliverables](../../api/prisma/schema.prisma#L5117)): `acceptance_record` ([05](./05-project-management.md)) · `ProjectDeliverableReview` ([project_deliverable_reviews](../../api/prisma/schema.prisma#L5597)) ([05](./05-project-management.md)) · enum `DeliverableStatus` ([L4574](../../api/prisma/schema.prisma#L4574)) ([05](./05-project-management.md)) · enum `DocumentApproverKind` ([L15532](../../api/prisma/schema.prisma#L15532)) ([17](./17-documents-file-management.md))
+> **Schema:** other modules: `DocumentApproval` ([document_approvals](../../api/prisma/schema.prisma#L16317)) ([17](./17-documents-file-management.md)) · `DocumentApprover` ([document_approvers](../../api/prisma/schema.prisma#L16354)): `portal_user_id` ([17](./17-documents-file-management.md)) · `ProjectDeliverable` ([project_deliverables](../../api/prisma/schema.prisma#L5134)): `acceptance_record` ([05](./05-project-management.md)) · `ProjectDeliverableReview` ([project_deliverable_reviews](../../api/prisma/schema.prisma#L5614)) ([05](./05-project-management.md)) · enum `DeliverableStatus` ([L4575](../../api/prisma/schema.prisma#L4575)) ([05](./05-project-management.md)) · enum `DocumentApproverKind` ([L15549](../../api/prisma/schema.prisma#L15549)) ([17](./17-documents-file-management.md))
 <!-- schema-section:end -->
 
 > Defined by → [05 Projects](./05-project-management.md) §18, §46–47 and [17 Documents](./17-documents-file-management.md) §10.
@@ -205,7 +205,7 @@ Customers can view, download, comment on, accept, reject, request changes to and
 ## 9. Documents
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `Document` ([documents](../../api/prisma/schema.prisma#L15858)): `customer_visible`, `uploaded_via_portal` ([17](./17-documents-file-management.md)) · `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L15623)): `portal_upload_enabled` ([17](./17-documents-file-management.md)) · `Folder` ([folders](../../api/prisma/schema.prisma#L15791)): `customer_visible` ([17](./17-documents-file-management.md))
+> **Schema:** other modules: `Document` ([documents](../../api/prisma/schema.prisma#L15875)): `customer_visible`, `uploaded_via_portal` ([17](./17-documents-file-management.md)) · `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L15640)): `portal_upload_enabled` ([17](./17-documents-file-management.md)) · `Folder` ([folders](../../api/prisma/schema.prisma#L15808)): `customer_visible` ([17](./17-documents-file-management.md))
 <!-- schema-section:end -->
 
 > Defined by → [17 Documents & File Management](./17-documents-file-management.md) · Linear LOG-407.
@@ -225,7 +225,7 @@ The portal surfaces: invoices and status, online payment, payment history and re
 ## 11. Calendar
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `BookingLink` ([booking_links](../../api/prisma/schema.prisma#L17943)) ([19](./19-calendar.md)) · enum `CalendarEventVisibility` ([L17302](../../api/prisma/schema.prisma#L17302)) ([19](./19-calendar.md))
+> **Schema:** other modules: `BookingLink` ([booking_links](../../api/prisma/schema.prisma#L17960)) ([19](./19-calendar.md)) · enum `CalendarEventVisibility` ([L17319](../../api/prisma/schema.prisma#L17319)) ([19](./19-calendar.md))
 <!-- schema-section:end -->
 
 > Defined by → [19 Calendar](./19-calendar.md) §8.
@@ -253,7 +253,7 @@ Global portal search across projects, messages, documents, tasks, requests, deli
 ## 14. Branding & White-Label
 
 <!-- schema-section:start -->
-> **Schema:** `CustomerPortalSettings` ([customer_portal_settings](../../api/prisma/schema.prisma#L6147))
+> **Schema:** `CustomerPortalSettings` ([customer_portal_settings](../../api/prisma/schema.prisma#L6164))
 <!-- schema-section:end -->
 
 > Defined by → [01](./01-users-organizations-permissions.md) §15.
@@ -281,7 +281,7 @@ AI never reveals internal-only data; it queries through the same permission laye
 ## 16. Permissions
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1338)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1339)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 Customer permissions are catalog entries under the `portal.*` namespace (01 §46), for example `portal.projects.read`, `portal.deliverables.approve`, `portal.invoices.pay`, `portal.contracts.sign`, `portal.users.manage`. Customer roles bundle them (01 §79).
@@ -289,7 +289,7 @@ Customer permissions are catalog entries under the `portal.*` namespace (01 §46
 ## 17. Audit
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L1859)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L1860)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 Audit login, approvals, signatures, payments, document downloads of sensitive categories and user management actions by customer users.
@@ -297,7 +297,7 @@ Audit login, approvals, signatures, payments, document downloads of sensitive ca
 ## 18. API
 
 <!-- schema-section:start -->
-> **Schema:** `CustomerPortalSettings` ([customer_portal_settings](../../api/prisma/schema.prisma#L6147))
+> **Schema:** `CustomerPortalSettings` ([customer_portal_settings](../../api/prisma/schema.prisma#L6164))
 <!-- schema-section:end -->
 
 The portal uses the same APIs as the internal application with the Customer Portal identity. An embeddable widget (support chat and request form) is provided for customer websites and apps (13 §5).
