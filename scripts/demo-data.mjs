@@ -966,7 +966,7 @@ async function messaging(ctx) {
     for (const d of defs) {
         ch[d.name] = await step(`channel ${d.name}`, () =>
             ensure('channels', async () => mine.find((c) => c.slug === d.name || c.name === d.name) ?? rows(await get(`/messaging/channels/browse${qs({ search: d.name })}`)).find((c) => c.slug === d.name), () =>
-                post('/messaging/channels', { name: d.display, kind: d.kind ?? 'PUBLIC', description: d.description, topic: d.description, membership_ids: d.members }),
+                post('/messaging/channels', { name: d.display, kind: d.kind ?? 'PUBLIC', description: d.description, topic: d.description, membership_ids: d.members, ...(d.name === 'general' && { auto_join: true }) }),
             ),
         );
     }
