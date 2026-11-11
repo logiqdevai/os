@@ -390,7 +390,7 @@ export class LeaveService {
             if (!ctx.can(P.leaveRequestOwn)) throw new ForbiddenException({ message: 'You cannot request leave', code: 'forbidden' });
             return this.access.meOrThrow(ctx);
         }
-        const e = await this.prisma.employee.findFirst({ where: { id: employeeId, organization_id: ctx.organization_id } });
+        const e = await this.prisma.employee.findFirst({ where: { id: employeeId, organization_id: ctx.organization_id }, include: { membership: { select: { user: { select: { display_name: true, first_name: true, last_name: true, email: true } } } } } });
         if (!e) throw new NotFoundException({ message: 'Employee not found', code: 'employee_not_found' });
         if (this.access.isOwn(ctx, e)) {
             if (!ctx.can(P.leaveRequestOwn)) throw new ForbiddenException({ message: 'You cannot request leave', code: 'forbidden' });
@@ -548,7 +548,7 @@ export class LeaveService {
 
     /** Pending request the caller may decide: never their own; current approver, a manager in the chain, or HR scope. */
     private async decidable(ctx: OrgContext, id: string) {
-        const request = await this.prisma.leaveRequest.findFirst({ where: { id, organization_id: ctx.organization_id }, include: { employee: true, leave_type: true, approvals: true } });
+        const request = await this.prisma.leaveRequest.findFirst({ where: { id, organization_id: ctx.organization_id }, include: { employee: { include: { membership: { select: { user: { select: { display_name: true, first_name: true, last_name: true, email: true } } } } } }, leave_type: true, approvals: true } });
         if (!request) throw new NotFoundException({ message: 'Leave request not found', code: 'leave_request_not_found' });
         const employee = request.employee;
         if (this.access.isOwn(ctx, employee)) throw new ForbiddenException({ message: 'You cannot decide your own leave request', code: 'self_approval' });
