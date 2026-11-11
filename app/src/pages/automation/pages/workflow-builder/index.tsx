@@ -406,7 +406,7 @@ function EventPicker({ value, onChange, options }: { value: string; onChange: (k
                     <ChevronsUpDown className="opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] min-w-72 p-0" align="start">
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-72 p-0" align="start">
                 <Command>
                     <CommandInput placeholder="Search events…" />
                     <CommandList>
@@ -445,7 +445,7 @@ function ActionPicker({ actions, onPick }: { actions: ActionEntry[]; onPick: (a:
             <PopoverTrigger asChild>
                 <Button type="button" variant="outline" className="w-full border-dashed"><Plus /> Add step</Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] min-w-72 p-0" align="start">
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-72 p-0" align="start">
                 <Command>
                     <CommandInput placeholder="Search actions…" />
                     <CommandList>

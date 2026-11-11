@@ -105,7 +105,7 @@ export function MemberPicker({ value, onChange, multiple, placeholder = "Choose 
                     <ChevronsUpDown className="opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] min-w-64 p-0" align="start">
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-64 p-0" align="start">
                 <Command>
                     <CommandInput placeholder="Search members…" />
                     <CommandList>

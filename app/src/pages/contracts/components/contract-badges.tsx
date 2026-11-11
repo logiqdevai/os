@@ -81,7 +81,7 @@ export function ContractLookupPicker({ kind, value, valueLabel, onChange, placeh
                 </PopoverTrigger>
                 {clearable && value && !disabled && <Button type="button" variant="ghost" size="icon-sm" aria-label={`Clear ${ariaLabel}`} onClick={() => onChange(null)}><X /></Button>}
             </div>
-            <PopoverContent className="w-[--radix-popover-trigger-width] min-w-64 p-0" align="start">
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-64 p-0" align="start">
                 <Command shouldFilter={false}>
                     <CommandInput placeholder="Search…" value={search} onValueChange={setSearch} />
                     <CommandList>

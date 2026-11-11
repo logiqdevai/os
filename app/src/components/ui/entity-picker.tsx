@@ -51,7 +51,7 @@ export function EntityPicker({ items, value, onChange, placeholder = "Select…"
                     </Button>
                 )}
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] min-w-56 p-0" align={align}>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-56 p-0" align={align}>
                 <Command shouldFilter={!onSearch}>
                     <CommandInput placeholder={searchPlaceholder} onValueChange={onSearch} />
                     <CommandList>

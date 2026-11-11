@@ -40,7 +40,7 @@ export function MemberPicker({ value, onChange, exclude = [], placeholder = "Pic
                     <ChevronsUpDown className="opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] min-w-64 p-0" align="start">
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-64 p-0" align="start">
                 <Command shouldFilter={false}>
                     <CommandInput placeholder="Search by name or email…" value={search} onValueChange={setSearch} />
                     <CommandList>

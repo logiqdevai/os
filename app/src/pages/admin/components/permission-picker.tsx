@@ -39,7 +39,7 @@ export function PermissionPicker({ value, onChange, onlyHeld, className }: Permi
                     <ChevronsUpDown className="opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] min-w-72 p-0" align="start">
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-72 p-0" align="start">
                 <Command>
                     <CommandInput placeholder="Search keys, e.g. crm.deals…" />
                     <CommandList className="max-h-72">
