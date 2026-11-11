@@ -119,7 +119,11 @@ export default function BoardPage() {
                                                 dragging === t.id && "opacity-40",
                                                 over?.status === status.id && over.index === i && dragging && dragging !== t.id && "before:absolute before:-top-1.5 before:left-0 before:right-0 before:h-0.5 before:rounded before:bg-primary",
                                             )}
-                                            onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; setPeek(t.identifier); }}
+                                            onClick={(e) => {
+                                                // Ignore clicks from portalled menus (React bubbles them through the tree) and from buttons.
+                                                if (!e.currentTarget.contains(e.target as Node) || (e.target as HTMLElement).closest("button")) return;
+                                                setPeek(t.identifier);
+                                            }}
                                         >
                                             <div className="mb-1 flex items-center gap-2">
                                                 <span className="font-mono text-[11px] text-muted-foreground">{t.identifier}</span>

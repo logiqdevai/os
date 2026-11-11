@@ -44,6 +44,7 @@ import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatDateTime, formatRelative, personName } from "@/lib/format";
 import { useSessionData } from "@/features/session/hooks/use-session";
 import { cn } from "@/lib/utils";
+import { Markdown } from "@/components/ui/markdown";
 import { AssigneePicker, LabelsPicker, PriorityPicker, ProjectPicker, StatusPicker } from "./task-pickers";
 import { LabelChip, StatusIcon } from "./task-badges";
 
@@ -124,7 +125,7 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
                             </div>
                         </div>
                     ) : t.description ? (
-                        <div className={cn("whitespace-pre-wrap rounded-md text-[13px] leading-relaxed text-body", canEdit && "cursor-text hover:bg-accent/40")} onClick={() => canEdit && setDesc(t.description ?? "")}>{t.description}</div>
+                        <div className={cn("rounded-md text-[13px] leading-relaxed text-body", canEdit && "cursor-text hover:bg-accent/40")} onClick={(e) => canEdit && !(e.target as HTMLElement).closest("a") && setDesc(t.description ?? "")}><Markdown source={t.description} /></div>
                     ) : canEdit ? (
                         <button className="text-[13px] text-muted-foreground hover:text-foreground" onClick={() => setDesc("")}>Add a description…</button>
                     ) : null}
