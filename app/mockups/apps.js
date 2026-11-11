@@ -65,10 +65,22 @@
         sec("Setup", [{ l: "Pipelines & stages", i: "layers", k: "pipelines" }, { l: "Import & export", i: "box", k: "imports" }]),
       ], "plus") },
     /* @impl Proposals — ModuleKey PROPOSALS · docs/features/03 · VIEW proposals.proposals.read · CREATE proposals.proposals.create */
-    { id: "proposals", label: "Proposals", icon: "file", newLabel: "New proposal", panel: simple("Proposals", ["All proposals", "Drafts", "Sent", "Accepted", "Templates", "Pricing library"]) },
+    { id: "proposals", label: "Proposals", icon: "file", newLabel: "New proposal",
+      alias: { editor: "list", customer: "list" },
+      panel: P("Proposals", [
+        items([{ l: "All proposals", i: "file", k: "list", c: 14 }, { l: "Analytics", i: "chart", k: "analytics" }]),
+        sec("Views", [{ l: "Drafts", i: "edit" }, { l: "Awaiting approval", i: "check", c: 2 }, { l: "Sent, not viewed", i: "mail" }, { l: "Viewed", i: "globe" }, { l: "Expiring soon", i: "clock" }], "plus"),
+        sec("Setup", [{ l: "Templates", i: "layers", k: "templates" }, { l: "Pricing library", i: "dollar" }]),
+      ], "plus") },
     /* @impl Contracts — ModuleKey CONTRACTS · docs/features/04 · VIEW contracts.contracts.read · CREATE contracts.contracts.create
        @note contracts.confidential_terms.read is FIELD-LEVEL: hide those fields, do not just grey them out. */
-    { id: "contracts", label: "Contracts", icon: "pen", newLabel: "New contract", panel: simple("Contracts", ["All contracts", "Awaiting signature", "Active", "Renewals", "Amendments", "Templates"]) },
+    { id: "contracts", label: "Contracts", icon: "pen", newLabel: "New contract",
+      alias: { detail: "list", editor: "list", signing: "list" },
+      panel: P("Contracts", [
+        items([{ l: "Dashboard", i: "chart", k: "dashboard" }, { l: "All contracts", i: "pen", k: "list" }, { l: "Obligations", i: "check", k: "obligations", c: 5 }, { l: "Renewals", i: "calendar", k: "renewals", c: 3 }]),
+        sec("Views", [{ l: "Drafts", i: "edit" }, { l: "In review", i: "users" }, { l: "Awaiting signature", i: "pen", c: 2 }, { l: "Active", i: "check" }, { l: "Expiring", i: "clock", c: 3 }, { l: "Amendments", i: "layers" }, { l: "Terminated", i: "x" }], "plus"),
+        sec("Library", [{ l: "Templates & clauses", i: "book", k: "templates" }]),
+      ], "plus") },
     /* @impl Client portal admin — ModuleKey CUSTOMER_PORTAL · docs/features/07 · this is the AGENCY-side admin of the portal
        (VIEW/MANAGE portal.settings.manage, portal.users.manage). The client-facing portal itself is a separate shell with the customer-portal roles. */
     { id: "portal", label: "Client portal", icon: "globe", newLabel: "Invite client", panel: simple("Client portal", ["Clients", "Requests", "Approvals", "Branding", "Access"]) },

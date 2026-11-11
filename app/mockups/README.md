@@ -83,4 +83,6 @@ noted next to it in `shared.js`.
 | `views.js` | Tasks, Messages, Support, Campaigns, Projects screens (**not yet schema-aligned**, see banner in the file) |
 | `views-admin.js` | Admin screens (module 01), schema-aligned. Also exposes the shared mock helpers as `window.UI` |
 | `views-crm.js` + `crm.css` | CRM screens (module 02), schema-aligned: dashboard, pipeline board, deal, leads and conversion, companies, Customer 360, contacts, activities, forecast, setup, import |
+| `views-proposals.js` | Proposals screens (module 03), schema-aligned: list, editor with pricing builder / AI / versions / review, customer-facing view, templates, analytics |
+| `views-contracts.js` | Contracts screens (module 04), schema-aligned: dashboard, list, detail (four independent states), editor, obligations, renewals, templates and clauses |
 | `app-shell.html` | The shell: rail, panel, app bar, org/branch switcher, hash router |
