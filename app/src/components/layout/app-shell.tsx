@@ -74,7 +74,7 @@ export default function AppShell() {
         return <NoOrganization />;
     }
 
-    const showPanel = !!app && !collapsed && app.nav.length > 0;
+    const showPanel = !!app && !collapsed && !app.ownSidebar && app.nav.length > 0;
     const allowed = !app || !loaded || canOpen(app);
 
     return (

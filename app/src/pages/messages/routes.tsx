@@ -27,7 +27,7 @@ function MessagesLayout() {
         <MessagingProvider>
             <div className="flex h-full min-h-0 w-full">
                 <ChannelSidebar onNewDm={() => setDmOpen(true)} className={cn("w-full shrink-0 md:w-64", atIndex ? "flex" : "hidden md:flex")} />
-                <main className={cn("min-h-0 min-w-0 flex-1", atIndex ? "hidden md:flex" : "flex")}>
+                <main className={cn("min-h-0 min-w-0 flex-1 *:min-w-0 *:flex-1", atIndex ? "hidden md:flex" : "flex")}>
                     <Routes>
                         <Route index element={<ConversationNotSelected />} />
                         <Route path="c/:channelId" element={<RequirePermission permission="messaging.messages.read"><ConversationPage /></RequirePermission>} />

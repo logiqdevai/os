@@ -12,6 +12,7 @@ export const messagesApp: AppDefinition = {
     newAction: { label: "New channel", to: "/messages/channels/new", permission: "messaging.channels.create" },
     separatorBefore: true,
     fill: true,
+    ownSidebar: true,
     nav: [
         { items: [
             { label: "Home", to: "/messages", icon: House, end: true },

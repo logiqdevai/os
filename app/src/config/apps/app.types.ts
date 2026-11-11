@@ -59,5 +59,8 @@ export interface AppDefinition {
     hidden?: boolean;
     /** The app owns its own scrolling (Messages, Support inbox). */
     fill?: boolean;
+    /** The app renders its own sidebar (Messages channel list): the shell hides its context panel on desktop.
+     *  `nav` is still used by the command palette and the mobile navigation sheet. */
+    ownSidebar?: boolean;
     nav: AppNavSection[];
 }

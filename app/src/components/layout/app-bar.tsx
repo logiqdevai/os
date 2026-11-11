@@ -27,7 +27,7 @@ export function AppBar({ app, panelCollapsed, onExpandPanel, onOpenMobileNav, on
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={onOpenMobileNav} aria-label="Open navigation">
                 <Menu />
             </Button>
-            {panelCollapsed && app && (
+            {panelCollapsed && app && !app.ownSidebar && (
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button variant="ghost" size="icon" className="hidden lg:inline-flex" onClick={onExpandPanel} aria-label="Show panel">
