@@ -1,21 +1,40 @@
+import { lazy } from "react";
 import { Route, Routes } from "react-router-dom";
-import { Construction } from "lucide-react";
-import { Page, PageHeader } from "@/components/ui/page";
-import { EmptyState } from "@/components/ui/states";
+import { RequirePermission } from "@/components/access/can";
 
-function Placeholder() {
-    return (
-        <Page>
-            <PageHeader title="People" />
-            <EmptyState icon={Construction} title="This area is being built" description="Check back soon." />
-        </Page>
-    );
-}
+const EmployeesPage = lazy(() => import("./pages/employees"));
+const NewEmployeePage = lazy(() => import("./pages/employee-new"));
+const EmployeeDetailPage = lazy(() => import("./pages/employee-detail"));
+const DashboardPage = lazy(() => import("./pages/dashboard"));
+const LeavePage = lazy(() => import("./pages/leave"));
+const LeaveCalendarPage = lazy(() => import("./pages/leave-calendar"));
+const LeaveBalancesPage = lazy(() => import("./pages/leave-balances"));
+const AttendancePage = lazy(() => import("./pages/attendance"));
+const CapacityPage = lazy(() => import("./pages/capacity"));
+const SkillsPage = lazy(() => import("./pages/skills"));
+const PerformancePage = lazy(() => import("./pages/performance"));
+const ReviewDetailPage = lazy(() => import("./pages/review-detail"));
 
+const LEAVE_READ = ["employees.leave.read_own", "employees.leave.read_all", "employees.leave.approve"];
+
+/** /people/* — 10 Employee Management. Every route is gated by its VIEW permission (app/mockups/modules/10-people). */
 export default function PeopleRoutes() {
     return (
         <Routes>
-            <Route path="*" element={<Placeholder />} />
+            <Route index element={<RequirePermission anyOf={["employees.employees.read", "employees.directory.read"]}><EmployeesPage /></RequirePermission>} />
+            <Route path="dashboard" element={<RequirePermission anyOf={["employees.employees.read", "employees.leave.read_all", "employees.attendance.read_all", "employees.capacity.read", "employees.performance.read_all"]}><DashboardPage /></RequirePermission>} />
+            <Route path="new" element={<RequirePermission permission="employees.employees.create"><NewEmployeePage /></RequirePermission>} />
+            <Route path="me" element={<EmployeeDetailPage self />} />
+            <Route path="employees/:employeeId" element={<RequirePermission anyOf={["employees.employees.read", "employees.directory.read"]}><EmployeeDetailPage /></RequirePermission>} />
+            <Route path="leave" element={<RequirePermission anyOf={LEAVE_READ}><LeavePage /></RequirePermission>} />
+            <Route path="leave/calendar" element={<RequirePermission anyOf={["employees.leave.read_own", "employees.leave.read_all"]}><LeaveCalendarPage /></RequirePermission>} />
+            <Route path="leave/balances" element={<RequirePermission anyOf={["employees.leave.read_own", "employees.leave.read_all"]}><LeaveBalancesPage /></RequirePermission>} />
+            <Route path="attendance" element={<RequirePermission anyOf={["employees.attendance.read_own", "employees.attendance.read_all", "employees.attendance.record_own"]}><AttendancePage /></RequirePermission>} />
+            <Route path="capacity" element={<RequirePermission permission="employees.capacity.read"><CapacityPage /></RequirePermission>} />
+            <Route path="skills" element={<RequirePermission anyOf={["employees.skills.read", "employees.profile.update_own"]}><SkillsPage /></RequirePermission>} />
+            <Route path="performance" element={<RequirePermission anyOf={["employees.performance.read_own", "employees.performance.read_all", "employees.performance.manage"]}><PerformancePage /></RequirePermission>} />
+            <Route path="performance/reviews/:reviewId" element={<RequirePermission anyOf={["employees.performance.read_own", "employees.performance.read_all", "employees.performance.manage"]}><ReviewDetailPage /></RequirePermission>} />
+            <Route path="*" element={<RequirePermission anyOf={["employees.employees.read", "employees.directory.read"]}><EmployeesPage /></RequirePermission>} />
         </Routes>
     );
 }

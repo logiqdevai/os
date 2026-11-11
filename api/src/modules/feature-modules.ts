@@ -4,9 +4,11 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { ProposalsModule } from './proposals/proposals.module';
 import { ContractsModule } from './contracts/contracts.module';
+import { TimeModule } from './time/time.module';
 import { ProjectsModule } from './projects/projects.module';
 import { TasksModule } from './tasks/tasks.module';
 import { CrmModule } from './crm/crm.module';
+import { PeopleModule } from './people/people.module';
 import { CommunicationsModule } from './communications/communications.module';
 import { SupportModule } from './support/support.module';
 import { PortalModule } from './portal/portal.module';
@@ -25,9 +27,11 @@ export const FEATURE_MODULES: any[] = [
     MessagingModule,
     ProposalsModule,
     ContractsModule,
+    TimeModule,
     CrmModule,
     ProjectsModule,
     TasksModule,
+    PeopleModule,
     CommunicationsModule,
     SupportModule,
     PortalModule,
