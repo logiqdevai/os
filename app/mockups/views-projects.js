@@ -89,7 +89,10 @@
   function list() {
     return '<div class="a-page">' + head("All projects", "Every project you can see in the active branch.", btn("Export", "file") + btn("New project", "plus", "primary")) +
       '<div class="toolbar">' + search("Search name, code, customer") + sel("Status: Any", "filter") + sel("Health: Any") + sel("Type: Any") + sel("Owner: Anyone") + sel("Customer: Any") + sel("Table", "grid") + "</div>" +
+      window.UI.filters.filterBar([["Status category", "is any of", "In progress, Planned"], ["Health", "is not", "Healthy"], ["Owner", "is", "Anyone"]], btn("Clear", "", "sm ghost") + btn("Save view", "plus", "sm")) +
+      '<div class="bulk"><span class="cb on"></span><b>2 selected</b><span style="flex:1"></span>' + sel("Set status…") + sel("Set owner…", "users") + sel("Set priority…") + btn("Archive", "archive", "sm") + btn("Export", "file", "sm") + "</div>" +
       tbl(["Project", "Customer", "Status", "Health", "Progress", "Owner", "Priority", "Due"], P.map(row)) +
+      '<div class="pager"><span class="muted">1–6 of 12</span><span style="flex:1"></span>' + btn("Previous", "", "sm") + btn("Next", "", "sm") + "</div>" +
       dm(["Project · name, code, type_id, status_id, health, progress_percent, priority, owner_membership_id, company_id, target_completion, visibility, archived_at", "ProjectType · name · ProjectStatus · name, category, color", "SavedView · layout, filters, sorting", "ProjectFavorite · project_id, membership_id"], []) + "</div>";
   }
 
@@ -252,7 +255,87 @@
       dm(["ProjectType · enabled_sections, required_fields, health_rules, completion_requirements, default_time_billable, default_template_id", "ProjectStatus · category, allowed_transitions, is_default", "ProjectTemplate · current_version_id, is_active · ProjectTemplateVersion · version_number, structure (JSON)"], []) + "</div>";
   }
 
-  const MAP = { overview, list, detail, timeline, raid, workload, settings };
+  /* =====================================================================================================================
+     CREATE PROJECT — full page wizard (spec §5, §6, §7–10, §16, §36–38, §55–57)
+     @route  /projects/new?template=&customer=&proposal=&deal= · quick create from a won deal or an accepted proposal prefills customer, name, budget and milestones
+     @perm   projects.projects.create · budget fields need projects.projects.manage_budgets and are hidden without projects.finance.read* · members need projects.members.manage
+     @api    POST /projects {name, code?, type_id, template_id?, template_version_id?, company_id?, branch_id?, participating_branch_ids[], owner_membership_id, team_id?, priority, visibility, planned_start,
+             target_completion, customer_deadline?, internal_deadline?, budget_hours?, budget_amount?, currency?, description, proposal_id?, proposal_version_id?, parent_project_id?, members[{membership_id, role_id, allocation_percent}],
+             channel: {create: bool}, folders: {create: bool}, billing: {mode}, time: {billable_default, members_only}}
+     @mcp    projects_projects_create
+     @data   Project · ProjectBranch · ProjectMember · ProjectTemplateVersion (structure copied) · ProjectBillingSettings (08) · TimeProjectSettings (18) · Channel (12) · Folder (17)
+     @ui     Stepper (shadcn Tabs or custom) with Back/Next, Select, Popover+Command (customer, owner, people), DatePicker, Switch, Textarea
+     @states validation inline · creating (shows the steps being done: project, structure from template, members, channel, folders) · created (toast + open project) · permission error per field
+     @audit  project created (with template version and source proposal or deal)
+     @note   CREATE FROM TEMPLATE copies the template VERSION structure (statuses, milestones, workstreams, task structures, dependencies, roles, required fields, checklists, standard documents) with dates shifted from
+             planned_start; later template edits never touch the project (template_version_id is stored). Customer is optional (§56: internal projects). A proposal link brings the accepted scope as milestones and deliverables
+             (proposal_milestone_key). Code is generated from the type or organization pattern and is unique; slug is derived. Required fields come from ProjectType.required_fields.
+     ===================================================================================================================== */
+  function create() {
+    const f = (l, h, hint) => '<div class="fld"><label>' + l + "</label>" + h + (hint ? '<div class="sub-note">' + hint + "</div>" : "") + "</div>";
+    const box = (t) => '<div class="input-fake">' + t + "</div>";
+    const step = (n, t, on) => '<div class="rowx" style="padding:6px 0"><span class="pv ' + (on ? "blue" : "") + '" style="width:24px;height:24px;font-size:11px">' + n + "</span><b class='" + (on ? "ink" : "muted") + "'>" + t + "</b></div>";
+    return '<div class="a-page">' + head("New project", "Set up the project, its structure and its team.", btn("Cancel") + btn("Create project", "plus", "primary")) +
+      '<div class="g2" style="grid-template-columns:200px 1fr;align-items:start"><div>' + cd("", step(1, "Basics", 1) + step(2, "Customer & commercial") + step(3, "Schedule") + step(4, "Team") + step(5, "Structure") + step(6, "Connected tools")) + "</div><div>" +
+      cd("<b>1 · Basics</b>", f("Name", box("e.g. Northwind Mobile App v2")) + '<div class="g2">' + f("Type", sel("Website build"), "Decides sections, required fields and health rules.") + f("Code", box("PRJ-0048"), "Generated from the pattern; editable until saved.") + "</div>" + '<div class="g2">' + f("Priority", sel("Medium")) + f("Visibility", sel("Internal"), "Customer visible shows it in the portal.") + "</div>" + f("Description", '<div class="editor"><div class="ed-bar"><span>B</span><span>I</span><span>•</span><span>Link</span></div><div class="ed-body">Goals, scope summary and context.</div></div>')) +
+      '<div style="height:12px"></div>' +
+      cd("<b>2 · Customer & commercial</b>", '<div class="g2">' + f("Customer", sel("No customer (internal)", "building"), "Optional. Search CRM companies (02).") + f("Branch", sel("Athens HQ", "building"), "Primary branch. Add participating branches below.") + "</div>" + '<div class="g2">' + f("Proposal", sel("Link an accepted proposal…", "file"), "Brings the accepted scope as milestones and deliverables.") + f("Parent project", sel("None", "folder")) + "</div>" + '<div class="g2">' + f("Budget hours", box("Hours")) + f("Budget amount", box("Amount") + '<div class="sub-note">Requires projects.projects.manage_budgets. Hidden without projects.finance.read*.</div>') + "</div>") +
+      '<div style="height:12px"></div>' +
+      cd("<b>3 · Schedule</b>", '<div class="g3">' + f("Planned start", sel("Pick a date", "calendar")) + f("Target completion", sel("Pick a date", "calendar")) + f("Customer deadline", sel("Optional", "calendar")) + "</div>" + '<div class="g2">' + f("Internal deadline", sel("Optional", "calendar")) + f("Review date", sel("Optional", "calendar")) + "</div>") +
+      '<div style="height:12px"></div>' +
+      cd("<b>4 · Team</b>", '<div class="g2">' + f("Owner", sel("Choose owner", "users")) + f("Team", sel("Web", "users")) + "</div>" + f("Members", sel("Add members and project roles…", "users"), "Each member gets a project role (a Role of type PROJECT) and an optional allocation percent.")) +
+      '<div style="height:12px"></div>' +
+      cd("<b>5 · Structure</b>", f("Template", sel("Website · v4 (6 milestones · 4 workstreams · 38 tasks)", "layers")) + '<div class="rowx"><div class="grow"><b>Shift template dates from the planned start</b><small>Milestones and task dates follow the start date.</small></div>' + sw(1) + "</div>" + '<div class="rowx"><div class="grow"><b>Create the checklists</b><small>Kickoff, QA, launch, handover and closeout.</small></div>' + sw(1) + "</div>") +
+      '<div style="height:12px"></div>' +
+      cd("<b>6 · Connected tools</b>", '<div class="rowx"><div class="grow"><b>Create a messaging channel</b><small>#project-name (12)</small></div>' + sw(1) + '</div><div class="rowx"><div class="grow"><b>Create the project folders</b><small>From the folder template of the type (17)</small></div>' + sw(1) + '</div><div class="rowx"><div class="grow"><b>Billable time by default</b><small>Time settings (18)</small></div>' + sw(1) + '</div><div class="rowx"><div class="grow"><b>Only members may log time</b><small>TimeProjectSettings.members_only</small></div>' + sw(0) + "</div>") +
+      "</div></div>" +
+      dm(["Project · all columns written on create", "ProjectBranch · ProjectMember (role_id, allocation_percent) · ProjectTemplateVersion.structure (copied)", "Written to other modules through their services: ProjectBillingSettings (08), TimeProjectSettings (18), Channel (12), Folder (17)"], []) + "</div>";
+  }
+
+  /* =====================================================================================================================
+     MILESTONES — cross-project list and calendar (spec §20, §21, §25)
+     @route  /projects/milestones?project=&status=&billing=&customer_visible=&from=&to=
+     @perm   VIEW projects.projects.read · manage projects.milestones.manage
+     @api    GET /projects/milestones?filter= · POST /projects/:id/milestones · PATCH /projects/:id/milestones/:mid
+     @mcp    projects_milestones_manage
+     @data   ProjectMilestone (name, project_id, workstream_id, objective_id, status, planned_date, actual_date, progress_percent, customer_visible, is_billing_milestone, proposal_milestone_key, owner_membership_id) · ProjectDeliverable · ProjectGate · Release (06, milestone_id)
+     @states loading · empty · empty-filtered · error · no-access
+     @audit  milestone created, moved, completed
+     @note   Completing a billing milestone can raise an invoice (ProjectBillingSettings.auto_invoice_milestones, 08) and always asks for confirmation. Progress is derived from tasks (06) when progress_mode is AUTOMATIC.
+     ===================================================================================================================== */
+  function milestones() {
+    return '<div class="a-page">' + head("Milestones", "Checkpoints across all projects.", btn("New milestone", "plus", "primary")) +
+      '<div class="toolbar">' + search("Search milestones") + sel("Project: Any", "folder") + sel("Status: Any") + sel("Billing: Any", "dollar") + sel("Customer visible: Any") + sel("Next 30 days", "calendar") + "</div>" +
+      window.UI.filters.filterBar([["Status", "is not", "Completed"], ["Planned date", "before", "Dec 31"]], btn("Save view", "plus", "sm")) +
+      tbl(["Milestone", "Project", "Workstream", "Status", "Planned", ">Progress", "Billing", "Customer", "Owner"], [[ink("Content freeze"), "Acme Rebrand Website", "Content", E("IN_PROGRESS", "blue"), "Nov 14", bar(70), "—", "Yes", av("AM")], [ink("Go-live"), "Stripe Billing Migration", "Cutover", E("IN_PROGRESS", "blue"), "Nov 21", bar(88), eur(8400), "Yes", av("SJ")], [ink("Beta release"), "Mobile App v2", "iOS app", E("AT_RISK", "yellow"), "Nov 24", bar(52), eur(27750), "Yes", av("JK")], [ink("Design sign-off"), "Customer Portal Build", "Design", E("AT_RISK", "yellow"), "Nov 26", bar(35), "—", "Yes", av("MS")], [ink("Launch"), "Acme Rebrand Website", "—", E("PLANNED"), "Nov 28", bar(0), eur(19200), "Yes", av("AM")]]) +
+      dm(["ProjectMilestone · all columns", "ProjectDeliverable · ProjectGate · Release.milestone_id (06)"], []) + "</div>";
+  }
+
+  /* =====================================================================================================================
+     STATUS UPDATE COMPOSER (spec §39–40)
+     @route  /projects/:projectId/updates/new?ai=1
+     @perm   projects.status_updates.publish · customer_visible additionally requires the project to be CUSTOMER_VISIBLE
+     @api    POST /projects/:id/status-updates {period_start, period_end, summary, completed_work, current_work, upcoming_work, progress_percent, health, risks_summary, blockers_summary, decisions_summary, required_actions, customer_visible} · POST /projects/:id/status-updates/draft (AI)
+     @mcp    projects_status_updates_publish
+     @data   ProjectStatusUpdate · ProjectStatusUpdateComment · reads ProjectRisk, ProjectIssue, ProjectDecision, ProjectMilestone, Task (06) for the AI draft
+     @states drafting (AI) · saved draft · publishing · published · permission error
+     @audit  status update drafted (AI flag), published, edited after publish
+     @note   The AI draft is built from facts (completed tasks, milestone changes, open risks and blockers, decisions) and is ALWAYS a draft: is_ai_generated = true until a human edits and publishes. A published
+             customer-visible update is immutable except through a correction note; it shows in the portal (07) and customers may comment.
+     ===================================================================================================================== */
+  function updateNew() {
+    const f = (l, h) => '<div class="fld"><label>' + l + "</label>" + h + "</div>";
+    const ed = (t) => '<div class="editor"><div class="ed-body" style="min-height:70px;color:var(--body)">' + t + "</div></div>";
+    return '<div class="a-page">' + head("New status update · Mobile App v2", "Week 46 · Nov 10 – Nov 16", btn("Save draft") + btn("Preview as customer", "globe") + btn("Publish", "send", "primary")) +
+      callout("sparkles", "<b>AI draft ready.</b> Built from 14 completed tasks, 2 milestone changes, 3 open risks and 1 blocker. Review every line before publishing.") +
+      '<div style="height:12px"></div><div class="g2" style="grid-template-columns:1.6fr 1fr;align-items:start"><div>' +
+      cd("<b>Update</b>", f("Summary", ed("Beta slips by a week while we wait for Apple developer account access. Android is on track.")) + f("Completed work", ed("Offline sync merged. Push notification service deployed to staging.")) + f("Current work", ed("Beta build, store listing, analytics SDK replacement.")) + f("Upcoming work", ed("Store submission and launch checklist.")) + f("Required from the customer", ed("Apple developer account access by Nov 18."))) +
+      "</div><div>" + cd("<b>Status</b>", f("Health", sel("At risk")) + f("Progress", sel("41%")) + '<div class="rowx"><div class="grow"><b>Visible to the customer</b><small>Published to the portal (07)</small></div>' + sw(1) + "</div>") +
+      '<div style="height:12px"></div>' + cd("<b>Pulled from the project</b>", kv("Risks", "3 open · 2 high") + kv("Blockers", "1 open") + kv("Decisions", "1 this week") + kv("Milestones moved", "2")) + "</div></div>" +
+      dm(["ProjectStatusUpdate · period_start/end, summary, completed_work, current_work, upcoming_work, progress_percent, health, required_actions, customer_visible, is_ai_generated, published_at", "Reads: ProjectRisk · ProjectIssue · ProjectDecision · ProjectMilestone · Task (06)"], []) + "</div>";
+  }
+
+  const MAP = { overview, list, create, detail, updateNew, milestones, timeline, raid, workload, settings };
   const CRUMB = { detail: "PRJ-0043 Mobile App v2" };
   window.VIEWS.projects = { html: function (s) { return (MAP[s || "overview"] || MAP.overview)(s); }, crumb: function (s) { return CRUMB[s] || ""; }, fill: false };
 })();

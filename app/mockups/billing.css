@@ -1,0 +1,24 @@
+/* BILLING app styles (module 08). Semantic tokens only; light and dark follow the theme tokens. */
+.bv-views { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 6px 0 8px; }
+.bv-views .seg { display: inline-flex; align-items: center; gap: 6px; cursor: default; }
+.bv-views .seg.on .bv-n { background: var(--on-accent); color: var(--ink); }
+.bv-views .bv-add { border-style: dashed; color: var(--mute); }
+.bv-n { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--hairline); color: var(--body); font-size: 11px; flex: none; }
+.bv-prov { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--body); }
+.bv-prov svg { color: var(--ash); }
+.bv-chart { display: flex; align-items: flex-end; gap: 8px; height: 130px; padding-top: 6px; }
+.bv-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 100%; }
+.bv-col small { color: var(--mute); font-size: 11px; }
+.bv-bar { width: 100%; background: var(--blue); border-radius: 4px 4px 0 0; min-height: 4px; }
+.bv-lines { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.bv-lines th, .bv-lines td { padding: 8px 10px; border-bottom: 1px solid var(--hairline); text-align: left; white-space: nowrap; }
+.bv-lines th.num, .bv-lines td.num { text-align: right; }
+.bv-lines td:nth-child(2) { white-space: normal; min-width: 160px; }
+.bv-totals { max-width: 340px; margin-left: auto; padding: 10px 12px; }
+.bv-steps .rowx { gap: 10px; }
+.bv-paper { border: 1px solid var(--hairline-strong); border-radius: var(--r-md); background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.bv-paper-h { display: flex; justify-content: space-between; color: var(--ink); font-size: 12px; }
+.bv-paper-l { height: 8px; border-radius: 4px; background: var(--hairline); }
+.bv-paper-l.s { width: 60%; }
+.bv-paper-t { align-self: flex-end; color: var(--ink); font-weight: 600; font-size: 13px; margin-top: 6px; }
+.panel tfoot td { padding: 8px 10px; border-top: 1px solid var(--hairline-strong); }

@@ -1,0 +1,31 @@
+/* campaigns app styles (module 11). Semantic tokens only, light and dark. */
+.cp-ch { display: inline-flex; align-items: center; gap: 5px; color: var(--body); font-size: 12.5px; white-space: nowrap; }
+.cp-ch svg { color: var(--mute); }
+.cp-mock { display: inline-block; padding: 1px 7px; border: 1px dashed var(--hairline-strong); border-radius: 10px; font-size: 11px; color: var(--ash); }
+.cp-spark { display: flex; align-items: flex-end; gap: 6px; height: 96px; }
+.cp-spark.tall { height: 120px; }
+.cp-spark span { flex: 1; background: var(--blue); border-radius: 4px 4px 0 0; opacity: .85; min-width: 6px; }
+.cp-kpi { padding: 10px 12px; border: 1px solid var(--hairline); border-radius: var(--r-md); background: var(--surface); margin-bottom: 8px; }
+.cp-kpi small { display: block; color: var(--ash); font-size: 12px; }
+.cp-kpi b { display: block; font-size: 22px; color: var(--ink); font-weight: 600; margin: 2px 0; }
+.cp-kpi span { color: var(--mute); font-size: 12px; }
+.cp-tree { border: 1px solid var(--hairline); border-radius: var(--r-md); background: var(--surface); padding: 10px; }
+.cp-grp { border-left: 2px solid var(--blue); padding: 4px 0 4px 12px; margin: 6px 0; }
+.cp-grp .cp-grp { border-left-color: var(--purple); margin-left: 4px; background: transparent; }
+.cp-gh { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.cp-rule { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.cp-json { margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--hairline); border-radius: var(--r-md); background: var(--surface); color: var(--body); font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-x: auto; }
+.em-prev { border: 1px solid var(--hairline-strong); border-radius: var(--r-md); background: var(--surface); overflow: hidden; }
+.em-hd { padding: 10px 14px; border-bottom: 1px solid var(--hairline); }
+.em-hd b { display: block; color: var(--ink); font-weight: 600; }
+.em-hd small { color: var(--ash); }
+.em-body { padding: 18px 22px; color: var(--body); max-width: 560px; margin: 0 auto; }
+.em-body h3 { margin: 8px 0; color: var(--ink); font-size: 17px; }
+.em-logo { font-weight: 700; letter-spacing: .12em; color: var(--blue); }
+.em-btn { display: inline-block; margin: 8px 0 12px; padding: 8px 16px; border-radius: var(--r-md); background: var(--blue); color: var(--on-accent); font-weight: 500; }
+.em-ft { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--hairline); color: var(--ash); font-size: 11.5px; }
+.cp-blk { padding: 8px 10px; margin-bottom: 6px; border: 1px dashed var(--hairline-strong); border-radius: var(--r-md); color: var(--body); background: var(--card); }
+.cp-blk.cond { border-color: var(--purple); }
+.rowx.sel { background: var(--blue-soft); }
+.bar-row .tr i { background: var(--blue); }
+.cp-rule .sel { width: auto; flex: 0 1 auto; min-width: 140px; } .cp-rule .btn { flex: none; }

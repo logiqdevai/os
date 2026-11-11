@@ -1,0 +1,56 @@
+/* Income & expenses app styles (module 09). Semantic tokens only; works in light and dark. */
+.ex-scroll { overflow-x: auto; }
+.ex-scroll table { min-width: 1180px; }
+.ex-amt { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink); }
+.ex-amt.pos { color: var(--green); }
+.ex-amt.neg { color: var(--red); }
+.ex-amt.dim { color: var(--mute); }
+td.num .ex-amt, th.num { text-align: right; }
+.ex-seg { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.ex-trend { display: flex; align-items: flex-end; gap: 14px; height: 150px; padding-top: 6px; }
+.ex-trend .m { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+.ex-trend .pair { display: flex; align-items: flex-end; gap: 3px; width: 100%; justify-content: center; flex: 1; }
+.ex-trend .pair i { display: block; width: 36%; max-width: 22px; border-radius: 4px 4px 0 0; }
+.ex-trend .pair i.in { background: var(--blue); }
+.ex-trend .pair i.out { background: var(--ash); }
+.ex-trend small { color: var(--mute); font-size: 11.5px; }
+.ex-legend { display: flex; gap: 14px; font-size: 12px; color: var(--mute); margin-top: 8px; }
+.ex-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
+.ex-legend i.in { background: var(--blue); } .ex-legend i.out { background: var(--ash); }
+.ex-donut { width: 120px; height: 120px; border-radius: 50%; flex: none; position: relative; }
+.ex-donut::after { content: ""; position: absolute; inset: 24px; border-radius: 50%; background: var(--card); }
+.ex-split { display: flex; align-items: center; gap: 18px; }
+.ex-split .keys { flex: 1; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.ex-split .keys div { display: flex; align-items: center; gap: 8px; }
+.ex-split .keys i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.ex-split .keys span { margin-left: auto; color: var(--mute); }
+.ex-c1 { background: var(--blue); } .ex-c2 { background: var(--purple); } .ex-c3 { background: var(--yellow); } .ex-c4 { background: var(--green); } .ex-c5 { background: var(--ash); }
+.ex-meter { height: 8px; border-radius: 4px; background: var(--hairline); overflow: hidden; position: relative; }
+.ex-meter i { display: block; height: 100%; border-radius: 4px; background: var(--blue); }
+.ex-meter i.warn { background: var(--yellow); } .ex-meter i.over { background: var(--red); } .ex-meter i.ok { background: var(--green); }
+.ex-grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
+@media (max-width: 900px) { .ex-grid4 { grid-template-columns: repeat(2, 1fr); } }
+.ex-receipt { border: 1px solid var(--hairline-strong); border-radius: var(--r-md); background: var(--surface); padding: 14px; min-height: 260px; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; color: var(--body); }
+.ex-receipt .hd { display: flex; justify-content: space-between; color: var(--ink); font-weight: 500; }
+.ex-receipt .ln { display: flex; justify-content: space-between; border-bottom: 1px dashed var(--hairline); padding: 3px 0; }
+.ex-receipt .hl { background: var(--blue-soft); border: 1px solid var(--blue); border-radius: 4px; padding: 0 4px; }
+.ex-sum { display: flex; flex-direction: column; gap: 6px; }
+.ex-sum div { display: flex; justify-content: space-between; font-size: 13px; color: var(--body); }
+.ex-sum div.tot { border-top: 1px solid var(--hairline-strong); padding-top: 8px; font-weight: 600; color: var(--ink); }
+.ex-conf { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--mute); }
+.ex-conf.hi { color: var(--green); } .ex-conf.mid { color: var(--yellow); } .ex-conf.lo { color: var(--red); }
+.ex-tree { font-size: 13px; }
+.ex-tree .row { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--hairline); }
+.ex-tree .row.l1 { padding-left: 34px; } .ex-tree .row.l2 { padding-left: 56px; }
+.ex-tree .row .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.ex-tree .row .sp { flex: 1; }
+.ex-pl .row { display: flex; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid var(--hairline); font-size: 13px; }
+.ex-pl .row.sub { padding-left: 30px; color: var(--body); }
+.ex-pl .row.tot { font-weight: 600; background: var(--surface); }
+.ex-pl .row b { font-weight: inherit; }
+.ex-calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.ex-calendar .d { min-height: 62px; border: 1px solid var(--hairline); border-radius: var(--r-md); padding: 4px 6px; font-size: 11.5px; color: var(--mute); background: var(--card); }
+.ex-calendar .d.h { min-height: 0; border: 0; background: none; text-align: center; }
+.ex-calendar .d span { display: block; margin-top: 3px; padding: 1px 5px; border-radius: 4px; background: var(--blue-soft); color: var(--ink); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex-calendar .d span.w { background: var(--yellow-soft, var(--hairline)); }
+.ex-note { border-left: 3px solid var(--yellow); padding: 6px 10px; font-size: 12.5px; color: var(--body); background: var(--surface); border-radius: 0 var(--r-md) var(--r-md) 0; margin: 8px 0; }

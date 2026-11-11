@@ -87,4 +87,18 @@ noted next to it in `shared.js`.
 | `views-contracts.js` | Contracts screens (module 04), schema-aligned: dashboard, list, detail (four independent states), editor, obligations, renewals, templates and clauses |
 | `views-projects.js` | Projects screens (module 05), schema-aligned: portfolio overview, all projects, project workspace (overview, plan, delivery, changes and gates, team, updates, closeout), timeline, RAID log, workload, setup. Styles in `projects.css` |
 | `views-tasks.js` | Tasks screens (module 06), schema-aligned: my tasks, team board, backlog and triage, task page, cycles, releases, workload, reports, setup |
+| `views-home.js` | Home: personal overview, my work, favorites (aggregates, no tables) |
+| `views-portal.js` | Client portal admin and customer preview (module 07) |
+| `views-billing.js` | Billing (module 08) |
+| `views-expenses.js` | Income and expenses (module 09) |
+| `views-people.js` | People (module 10) |
+| `views-campaigns.js` | Campaigns (module 11) |
+| `views-messages.js` | Messages (module 12) |
+| `views-support.js` | Support (module 13) |
+| `views-notifications.js` | Notifications and activity (module 14) |
+| `views-docs.js` | Docs and wiki (module 15) |
+| `views-files.js` | Files and vault (module 17) |
+| `views-time.js` | Time tracking (module 18) |
+| `views-calendar.js` | Calendar and bookings (module 19) |
+| `views-automation.js` | Automation (module 20) |
 | `app-shell.html` | The shell: rail, panel, app bar, org/branch switcher, hash router |

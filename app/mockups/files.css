@@ -1,0 +1,67 @@
+/* FILES app styles (module 17 Documents & File Management). Semantic tokens only, light and dark. Reuses fchip/fbar/bulk/seg/input-fake/editor/drop from tasks.css. */
+.fl-wrap { display: grid; grid-template-columns: 240px 1fr; gap: 14px; align-items: start; }
+@media (max-width: 1100px) { .fl-wrap { grid-template-columns: 1fr; } }
+.fl-tree { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-lg); padding: 8px; font-size: 13px; }
+.fl-tree h6 { margin: 8px 8px 4px; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--ash); font-weight: 500; }
+.fl-node { display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 8px; border-radius: var(--r-md); color: var(--body); white-space: nowrap; }
+.fl-node:hover { background: var(--elevated); }
+.fl-node.on { background: var(--blue-soft); color: var(--ink); }
+.fl-node svg { color: var(--mute); flex: none; }
+.fl-node .n { margin-left: auto; color: var(--ash); font-size: 11.5px; }
+.fl-node.d1 { padding-left: 22px; } .fl-node.d2 { padding-left: 36px; } .fl-node.d3 { padding-left: 50px; }
+.fl-crumbs { display: flex; align-items: center; gap: 6px; color: var(--mute); font-size: 13px; margin-bottom: 10px; flex-wrap: wrap; }
+.fl-crumbs b { color: var(--ink); font-weight: 500; } .fl-crumbs svg { color: var(--ash); }
+.fl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 12px; }
+.fl-card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden; position: relative; }
+.fl-card:hover { border-color: var(--hairline-strong); }
+.fl-card.picked { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+.fl-card .cbx { position: absolute; top: 8px; left: 8px; }
+.fl-thumb { height: 104px; display: flex; align-items: center; justify-content: center; background: var(--elevated); color: var(--mute); position: relative; }
+.fl-thumb .ext { position: absolute; right: 8px; bottom: 6px; font-size: 10.5px; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; background: var(--card); border: 1px solid var(--hairline); color: var(--body); }
+.fl-meta { padding: 9px 11px 10px; }
+.fl-meta b { display: block; color: var(--ink); font-weight: 500; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fl-meta small { color: var(--ash); font-size: 11.5px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 2px; }
+.fl-folder { display: flex; align-items: center; gap: 10px; padding: 11px 12px; background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-lg); }
+.fl-folder svg { color: var(--blue); flex: none; }
+.fl-folder b { color: var(--ink); font-weight: 500; display: block; font-size: 13px; }
+.fl-folder small { color: var(--ash); font-size: 11.5px; }
+.fl-ico { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: var(--elevated); color: var(--mute); flex: none; }
+.fl-name { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.fl-name b { color: var(--ink); font-weight: 500; display: block; }
+.fl-name small { color: var(--ash); font-size: 11.5px; display: block; }
+.fl-flags { display: inline-flex; gap: 4px; align-items: center; color: var(--mute); }
+.fl-prev { background: var(--elevated); border: 1px solid var(--hairline); border-radius: var(--r-lg); min-height: 340px; display: flex; flex-direction: column; overflow: hidden; }
+.fl-prev .bar-t { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--hairline); background: var(--surface); color: var(--mute); font-size: 12.5px; }
+.fl-page { margin: 18px auto; width: 62%; min-height: 250px; background: var(--card); border: 1px solid var(--hairline-strong); border-radius: 4px; padding: 22px 24px; box-shadow: 0 1px 0 var(--hairline); }
+.fl-page i { display: block; height: 7px; border-radius: 4px; background: var(--hairline-strong); margin-bottom: 9px; }
+.fl-page i.h { height: 12px; width: 55%; background: var(--stone); margin-bottom: 14px; }
+.fl-wm { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; color: var(--ash); opacity: .35; transform: rotate(-18deg); pointer-events: none; letter-spacing: .1em; }
+.fl-quota { height: 10px; border-radius: 5px; background: var(--elevated); overflow: hidden; display: flex; border: 1px solid var(--hairline); }
+.fl-quota i { display: block; height: 100%; }
+.fl-q1 { background: var(--blue); } .fl-q2 { background: var(--purple); } .fl-q3 { background: var(--yellow); } .fl-q4 { background: var(--green); } .fl-q5 { background: var(--ash); }
+.fl-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.fl-secret { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--hairline-strong); border-radius: var(--r-md); background: var(--surface); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; color: var(--ink); }
+.fl-secret .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fl-secret.rev { letter-spacing: 0; background: var(--yellow-soft, var(--elevated)); border-color: var(--yellow); }
+.fl-wo { display: inline-flex; gap: 4px; align-items: center; font-size: 11.5px; color: var(--ash); }
+.fl-url { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--body); padding: 6px 10px; border: 1px solid var(--hairline); border-radius: var(--r-md); background: var(--elevated); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.fl-ftree { font-size: 13px; color: var(--body); }
+.fl-ftree .r { display: flex; align-items: center; gap: 7px; height: 28px; border-radius: var(--r-md); padding: 0 8px; }
+.fl-ftree .r:hover { background: var(--elevated); }
+.fl-ftree .r svg { color: var(--mute); }
+.fl-ftree .l1 { margin-left: 18px; } .fl-ftree .l2 { margin-left: 36px; } .fl-ftree .l3 { margin-left: 54px; }
+.fl-ftree .r em { font-style: normal; color: var(--ash); font-size: 11.5px; margin-left: auto; }
+.fl-upl { display: grid; grid-template-columns: 28px 1.4fr 1fr 120px 110px 28px; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--hairline-soft); }
+.fl-upl:last-child { border-bottom: 0; }
+.fl-upl small { color: var(--ash); display: block; font-size: 11.5px; }
+.fl-act { display: inline-flex; gap: 2px; }
+.fl-diff { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fl-diff > div { border: 1px solid var(--hairline); border-radius: var(--r-md); padding: 10px 12px; background: var(--surface); font-size: 12.5px; }
+.fl-diff .add { background: var(--green-soft, var(--elevated)); color: var(--ink); border-radius: 3px; padding: 0 2px; }
+.fl-diff .del { background: var(--red-soft, var(--elevated)); color: var(--ink); border-radius: 3px; padding: 0 2px; text-decoration: line-through; }
+.fl-hold { border-left: 3px solid var(--red); }
+
+.fl-wrap > div { min-width: 0; }
+.fl-wrap .bulk { flex-wrap: wrap; }
+.fl-wrap .panel { overflow-x: auto; }
+.fl-folder { align-items: center; } .fl-folder > div { min-width: 0; }

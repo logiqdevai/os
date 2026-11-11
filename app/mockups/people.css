@@ -1,0 +1,79 @@
+/* people app styles (module 10). Semantic tokens only; light + dark via the shared tokens. Reuses fbar/fchip/bulk/seg/input-fake/editor/drop from tasks.css. */
+.rst { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 6px; background: var(--elevated); border: 1px dashed var(--hairline-strong); color: var(--ash); font-size: 12px; font-style: italic; white-space: nowrap; }
+.rst svg { color: var(--mute); }
+.pp-tags { display: inline-flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.pp-views { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0 10px; }
+.pp-views .seg .count { margin-left: 4px; opacity: .7; }
+.pp-old { color: var(--ash); text-decoration: line-through; }
+
+/* profile */
+.pp-hero-in { display: flex; gap: 16px; align-items: center; padding: 16px 18px; flex-wrap: wrap; }
+.pp-hero-in h2 { margin: 0 0 2px; font-size: 20px; color: var(--ink); }
+.pp-hero-in .grow { flex: 1; min-width: 260px; }
+.pp-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.avatar.pp-big { width: 64px; height: 64px; font-size: 22px; }
+.pp-hero-kv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 20px; padding: 0 18px 8px; border-top: 1px solid var(--hairline); }
+@media (max-width: 1100px) { .pp-hero-kv { grid-template-columns: 1fr 1fr; } }
+.pp-tabs > .tabs-line { overflow-x: auto; white-space: nowrap; scrollbar-width: thin; }
+.pp-tabs > .tabs-line button { flex: none; }
+.pp-lock { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 36px 16px; text-align: center; color: var(--ash); }
+.pp-lock svg { color: var(--mute); } .pp-lock b { color: var(--ink); font-size: 15px; } .pp-lock span { max-width: 460px; }
+.pp-bal { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 1100px) { .pp-bal { grid-template-columns: 1fr 1fr; } }
+
+/* weekly schedule pattern */
+.pp-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.pp-wd { border: 1px solid var(--hairline); border-radius: var(--r-md); background: var(--surface); padding: 6px 8px; font-size: 12px; color: var(--body); display: flex; flex-direction: column; gap: 1px; }
+.pp-wd b { color: var(--ink); font-weight: 500; } .pp-wd small { color: var(--ash); }
+.pp-wd.off { background: var(--elevated); color: var(--ash); }
+
+/* company directory cards */
+.pp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.pp-card-top { display: flex; align-items: center; gap: 12px; padding: 14px 14px 6px; }
+.pp-card-top b { color: var(--ink); display: block; } .pp-card-top small { color: var(--ash); }
+.pp-card-b { padding: 0 14px; }
+.pp-card-f { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 14px 14px; }
+
+/* leave calendar (resource grid) */
+.pp-leg { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--mute); margin: 4px 0 10px; }
+.pp-leg span { display: inline-flex; align-items: center; gap: 6px; }
+.lg { width: 14px; height: 14px; border-radius: 4px; display: inline-block; border: 1px solid var(--hairline-strong); background: var(--elevated); }
+.lg.v { background: var(--blue); border-color: var(--blue); } .lg.s { background: var(--red); border-color: var(--red); } .lg.p { background: var(--purple); border-color: var(--purple); }
+.lg.t { background: var(--yellow); border-color: var(--yellow); } .lg.h { background: var(--hairline-strong); } .lg.h2 { background: var(--red); border-color: var(--red); }
+.lg.pend { background: repeating-linear-gradient(45deg, var(--blue-soft), var(--blue-soft) 3px, var(--surface) 3px, var(--surface) 6px); border-color: var(--blue); }
+.pp-cal { border: 1px solid var(--hairline); border-radius: var(--r-lg); background: var(--card); overflow-x: auto; }
+.pp-cal-h, .pp-cal-r { display: grid; grid-template-columns: 170px repeat(21, minmax(24px, 1fr)); align-items: stretch; min-width: 760px; }
+.pp-cal-h span { text-align: center; font-size: 11px; color: var(--ash); padding: 6px 0; border-bottom: 1px solid var(--hairline); }
+.pp-cal-l { display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+.pp-cal-r { border-bottom: 1px solid var(--hairline); }
+.pp-cal-r > span:not(.pp-cal-l) { border-left: 1px solid var(--hairline); min-height: 30px; }
+.pp-cal .we { background: var(--elevated); }
+.pp-cal .h { background: var(--hairline-strong); }
+.pp-cal .x.v { background: var(--blue); } .pp-cal .x.s { background: var(--red); } .pp-cal .x.p { background: var(--purple); } .pp-cal .x.t { background: var(--yellow); }
+.pp-cal .x.pend { background: repeating-linear-gradient(45deg, var(--blue-soft), var(--blue-soft) 4px, var(--surface) 4px, var(--surface) 8px); box-shadow: inset 0 0 0 1px var(--blue); }
+.pp-cal-sum span:not(.pp-cal-l) { text-align: center; font-size: 11px; color: var(--mute); padding-top: 7px; }
+.pp-cal-sum { border-bottom: 0; background: var(--elevated); }
+
+/* attendance clock */
+.pp-clock { text-align: center; padding: 8px 0 14px; }
+.pp-time { font-size: 34px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+
+/* capacity heat cells */
+.pp-heat { display: inline-block; min-width: 48px; text-align: center; padding: 3px 6px; border-radius: 6px; font-size: 12px; font-variant-numeric: tabular-nums; background: var(--elevated); color: var(--mute); }
+.pp-heat.green { background: var(--green-soft); color: var(--green); } .pp-heat.yellow { background: var(--yellow-soft); color: var(--yellow); } .pp-heat.red { background: var(--red-soft); color: var(--red); }
+
+/* review stepper */
+.pp-steps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.pp-step { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--hairline-strong); border-radius: 16px; font-size: 12.5px; color: var(--ash); background: var(--card); }
+.pp-step i { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--hairline-strong); font-style: normal; font-size: 10.5px; }
+.pp-step.done { color: var(--ink); } .pp-step.done i { background: var(--green); border-color: var(--green); color: var(--on-accent); }
+.pp-step.cur { color: var(--ink); border-color: var(--blue); background: var(--blue-soft); } .pp-step.cur i { border-color: var(--blue); color: var(--blue); }
+
+/* org chart */
+.pp-org { overflow-x: auto; padding: 4px 2px 12px; }
+.pp-org-l0 { display: flex; justify-content: center; margin-bottom: 18px; position: relative; }
+.pp-org-l1 { display: flex; gap: 14px; justify-content: center; align-items: flex-start; min-width: 1100px; border-top: 1px solid var(--hairline-strong); padding-top: 18px; }
+.pp-org-col { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.pp-org-l2 { display: flex; flex-direction: column; gap: 8px; margin-left: 18px; padding-left: 12px; border-left: 1px solid var(--hairline-strong); }
+.pp-node { display: flex; align-items: center; gap: 10px; min-width: 190px; padding: 10px 12px; border: 1px solid var(--hairline-strong); border-radius: var(--r-md); background: var(--card); }
+.pp-node b { color: var(--ink); display: block; font-weight: 500; } .pp-node small { display: block; color: var(--ash); font-size: 11.5px; margin-bottom: 3px; }
