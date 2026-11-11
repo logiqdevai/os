@@ -1,4 +1,5 @@
 import { AdminApiRoutes } from "./modules/admin.routes";
+import { CrmApiRoutes } from "./modules/crm.routes";
 
 /**
  * Central API route map. Each module keeps its routes in `config/api/modules/<module>.routes.ts`
@@ -24,4 +25,5 @@ export const ApiRoutes = {
     },
     mcp: { tools: "/mcp/tools" },
     admin: AdminApiRoutes,
+    crm: CrmApiRoutes,
 };

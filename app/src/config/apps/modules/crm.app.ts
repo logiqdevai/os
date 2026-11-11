@@ -7,7 +7,7 @@ export const crmApp: AppDefinition = {
     icon: Handshake,
     basePath: "/crm",
     module: "CRM",
-    viewPermissions: ["crm.deals.read", "crm.leads.read", "crm.companies.read", "crm.contacts.read"],
+    viewPermissions: ["crm.dashboards.read", "crm.deals.read", "crm.leads.read", "crm.companies.read", "crm.contacts.read", "crm.activities.read"],
     newAction: { label: "New deal", to: "/crm/deals/new", permission: "crm.deals.create" },
     separatorBefore: true,
     nav: [
@@ -22,7 +22,7 @@ export const crmApp: AppDefinition = {
         ] },
         { label: "Setup", items: [
             { label: "Pipelines & stages", to: "/crm/pipelines", icon: Layers, permissions: ["crm.pipelines.manage"] },
-            { label: "Settings", to: "/crm/settings", icon: Settings, permissions: ["crm.settings.manage"] },
+            { label: "Settings & tags", to: "/crm/settings", icon: Settings, permissions: ["crm.settings.manage"] },
         ] },
     ],
 };
