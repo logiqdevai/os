@@ -89,7 +89,7 @@ export function RecordLink({ to, children, className }: { to: string; children: 
 /** Thin card used for side panels on detail pages. */
 export function Panel({ title, actions, children, className, bodyClassName }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; bodyClassName?: string }) {
     return (
-        <section className={cn("rounded-lg border border-border bg-card", className)}>
+        <section className={cn("min-w-0 rounded-lg border border-border bg-card", className)}>
             {(title || actions) && (
                 <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
                     {title && <h2 className="text-[13px] font-medium text-foreground">{title}</h2>}
