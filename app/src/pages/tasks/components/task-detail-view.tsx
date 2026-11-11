@@ -61,7 +61,7 @@ export function TaskDetailView({ taskKey, compact, onDeleted }: { taskKey: strin
 
 function Prop({ label, children }: { label: string; children: ReactNode }) {
     return (
-        <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+        <div className="grid grid-cols-[5.5rem_1fr] items-center gap-2">
             <span className="text-xs text-muted-foreground">{label}</span>
             <div className="min-w-0">{children}</div>
         </div>
@@ -90,7 +90,7 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
     const overdue = t.due_date && t.due_date.slice(0, 10) < today && t.status?.category !== "DONE" && t.status?.category !== "CANCELLED";
 
     return (
-        <div className={cn("grid gap-6", !compact && "lg:grid-cols-[1fr_18rem]")}>
+        <div className={cn("grid gap-6", !compact && "lg:grid-cols-[1fr_20rem]")}>
             <div className="min-w-0 space-y-6">
                 <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
