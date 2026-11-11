@@ -16,7 +16,7 @@ export const projectsApp: AppDefinition = {
             { label: "All projects", to: "/projects", icon: Folder, end: true },
             { label: "Milestones", to: "/projects/milestones", icon: Flag },
             { label: "RAID log", to: "/projects/raid", icon: TriangleAlert },
-            { label: "Workload", to: "/projects/workload", icon: Users },
+            { label: "Workload", to: "/projects/workload", icon: Users, permissions: ["projects.portfolio.read", "projects.members.manage"] },
         ] },
         { items: [
             { label: "Setup", to: "/projects/settings", icon: Settings, permissions: ["projects.settings.manage"] },

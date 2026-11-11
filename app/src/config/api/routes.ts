@@ -1,5 +1,7 @@
 import { AdminApiRoutes } from "./modules/admin.routes";
 import { CrmApiRoutes } from "./modules/crm.routes";
+import { ProjectsApiRoutes } from "./modules/projects.routes";
+import { TasksApiRoutes } from "./modules/tasks.routes";
 import { MessagingApiRoutes } from "./modules/messaging.routes";
 import { CommunicationsApiRoutes } from "./modules/communications.routes";
 import { NotificationsApiRoutes } from "./modules/notifications.routes";
@@ -33,6 +35,8 @@ export const ApiRoutes = {
     },
     mcp: { tools: "/mcp/tools" },
     admin: AdminApiRoutes,
+    projects: ProjectsApiRoutes,
+    tasks: TasksApiRoutes,
     messaging: MessagingApiRoutes,
     communications: CommunicationsApiRoutes,
     crm: CrmApiRoutes,

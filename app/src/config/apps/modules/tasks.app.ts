@@ -19,7 +19,7 @@ export const tasksApp: AppDefinition = {
             { label: "Workload", to: "/tasks/workload", icon: Users, permissions: ["tasks.workload.read"] },
         ] },
         { items: [
-            { label: "Setup", to: "/tasks/settings", icon: Settings, permissions: ["tasks.settings.manage"] },
+            { label: "Setup", to: "/tasks/settings", icon: Settings, permissions: ["tasks.workflows.manage"] },
         ] },
     ],
 };
