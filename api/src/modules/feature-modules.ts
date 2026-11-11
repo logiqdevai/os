@@ -1,6 +1,8 @@
 import { TeamsModule } from './admin/teams/teams.module';
 import { AdminModule } from './admin/admin.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { CrmModule } from './crm/crm.module';
+import { CalendarModule } from './calendar/calendar.module';
 
 /**
  * Every product feature module (docs/features/NN-*). Add a module here once; app.module.ts spreads this list.
@@ -9,5 +11,7 @@ import { CrmModule } from './crm/crm.module';
 export const FEATURE_MODULES: any[] = [
     TeamsModule,
     AdminModule,
+    NotificationsModule,
     CrmModule,
+    CalendarModule,
 ];

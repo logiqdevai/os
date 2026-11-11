@@ -13,6 +13,7 @@ import { MobileNav } from "./mobile-nav";
 import { CommandPalette } from "./command-palette";
 import { useActiveApp, useVisibleApps } from "./use-visible-apps";
 import { NoOrganization } from "./no-organization";
+import { useNotificationCounts } from "@/features/notifications/hooks/use-notifications";
 
 const PANEL_KEY = "lq.panel-collapsed";
 
@@ -24,6 +25,7 @@ export default function AppShell() {
     const auth = useAuthStore();
     const location = useLocation();
     const session = useSession();
+    const unread = useNotificationCounts(!!session.data?.active_organization).data?.unseen;
     const app = useActiveApp();
     const { canOpen, loaded } = useVisibleApps();
     const [collapsed, setCollapsed] = useState(() => {
@@ -74,7 +76,7 @@ export default function AppShell() {
     return (
         <TooltipProvider delayDuration={300}>
             <div className="flex h-dvh overflow-hidden bg-background">
-                <Rail />
+                <Rail unread={unread} />
                 {showPanel && <ContextPanel app={app} onCollapse={() => setCollapsed(true)} />}
                 <div className="flex min-w-0 flex-1 flex-col">
                     <AppBar

@@ -5,4 +5,5 @@ import { lazy, type ComponentType, type LazyExoticComponent } from "react";
  * public proposal links, booking pages, forms. Each module adds one line here, e.g.
  */
 export const PUBLIC_ROUTES: { path: string; Component: LazyExoticComponent<ComponentType> }[] = [
+    { path: "/book/:orgSlug/:slug", Component: lazy(() => import("@/pages/calendar/public/booking-page")) },
 ];
