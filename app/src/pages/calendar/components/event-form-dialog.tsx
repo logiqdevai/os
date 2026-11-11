@@ -11,25 +11,30 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCalendarEvent, useCalendarPreferences, useCalendars, useCreateEvent, useEventTypes, useUpdateEvent } from "@/features/calendar/hooks/use-calendar";
+import { MultiPicker } from "@/components/ui/multi-picker";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { useCalendarEvent, useCalendarPreferences, useCalendars, useCreateEvent, useEditOccurrence, useEventTypes, useResources, useUpdateEvent } from "@/features/calendar/hooks/use-calendar";
 import { eventFormSchema, type EventFormValues } from "@/features/calendar/validation-schemas/calendar.schema";
 import type { EventDto } from "@/features/calendar/interfaces/calendar.interfaces";
-import { EventVisibilityFormOptions, ReminderFormOptions, RepeatFormOptions } from "@/config/constants/dropdowns/calendar/calendar.options";
+import { EventVisibilityFormOptions, ReminderFormOptions, RepeatFormOptions, ResourceKindFormOptions } from "@/config/constants/dropdowns/calendar/calendar.options";
+import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { PeoplePicker } from "./people-picker";
 
 interface EventFormDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    /** Edit an existing event (whole series). */
+    /** Edit an existing event (whole series unless occurrenceStart is set). */
     eventId?: string | null;
+    /** Edit only this occurrence of a recurring series (its start, ISO): saved as an exception event. */
+    occurrenceStart?: string | null;
     /** Prefilled start for a new event (clicked slot). */
     initialStart?: Date | null;
 }
 
 const NONE = "__none";
 
-/** Create / edit an event: calendar, type, time, repeat, attendees, guests, place, link, reminder, visibility. */
-export function EventFormDialog({ open, onOpenChange, eventId, initialStart }: EventFormDialogProps) {
+/** Create / edit an event (or one occurrence of a series): calendar, type, time, repeat, attendees, guests, rooms, place, link, reminder, visibility. */
+export function EventFormDialog({ open, onOpenChange, eventId, initialStart, occurrenceStart }: EventFormDialogProps) {
     const navigate = useNavigate();
     const detail = useCalendarEvent(open && eventId ? eventId : undefined);
     const calendars = useCalendars({}, open);
@@ -37,11 +42,14 @@ export function EventFormDialog({ open, onOpenChange, eventId, initialStart }: E
     const prefs = useCalendarPreferences(open);
     const create = useCreateEvent();
     const update = useUpdateEvent();
+    const editOccurrence = useEditOccurrence();
+    const resources = useResources({}, open);
+    const onlyOccurrence = !!(eventId && occurrenceStart);
     const writable = useMemo(() => (calendars.data ?? []).filter((c) => c.role === "WRITE" || c.role === "MANAGE"), [calendars.data]);
 
     const form = useForm<EventFormValues>({
         resolver: zodResolver(eventFormSchema),
-        defaultValues: { title: "", calendar_id: "", date: "", end_date: "", start_time: "09:00", end_time: "09:30", all_day: false, repeat: "none", visibility: "TEAM", attendee_ids: [], reminder: "10" },
+        defaultValues: { title: "", calendar_id: "", date: "", end_date: "", start_time: "09:00", end_time: "09:30", all_day: false, repeat: "none", visibility: "TEAM", attendee_ids: [], resource_ids: [], reminder: "10" },
     });
     const allDay = useWatch({ control: form.control, name: "all_day" });
     const repeat = useWatch({ control: form.control, name: "repeat" });
@@ -50,8 +58,9 @@ export function EventFormDialog({ open, onOpenChange, eventId, initialStart }: E
         if (!open) return;
         const e = detail.data;
         if (eventId && e && !e.masked) {
-            const s = parseISO(e.starts_at);
-            const en = parseISO(e.ends_at);
+            const duration = parseISO(e.ends_at).getTime() - parseISO(e.starts_at).getTime();
+            const s = occurrenceStart ? parseISO(occurrenceStart) : parseISO(e.starts_at);
+            const en = new Date(s.getTime() + duration);
             form.reset({
                 title: e.title,
                 calendar_id: e.calendar.id,
@@ -61,13 +70,14 @@ export function EventFormDialog({ open, onOpenChange, eventId, initialStart }: E
                 start_time: format(s, "HH:mm"),
                 end_time: format(en, "HH:mm"),
                 all_day: e.all_day,
-                repeat: e.recurrence?.freq ?? "none",
+                repeat: occurrenceStart ? "none" : e.recurrence?.freq ?? "none",
                 repeat_count: e.recurrence?.count ? String(e.recurrence.count) : "",
                 visibility: e.visibility,
                 location: e.location ?? "",
                 meeting_url: e.meeting_url ?? "",
                 description: e.description ?? "",
                 attendee_ids: (e.attendees ?? []).filter((a) => a.membership_id && !a.is_organizer).map((a) => a.membership_id as string),
+                resource_ids: (e.resources ?? []).filter((r) => r.status !== "CANCELLED" && r.status !== "DECLINED").map((r) => r.id),
                 guest_emails: (e.attendees ?? []).filter((a) => !a.membership_id).map((a) => a.email).join(", "),
                 reminder: e.reminders?.find((r) => !r.personal) ? String(e.reminders.find((r) => !r.personal)?.minutes_before) : "none",
             });
@@ -90,14 +100,15 @@ export function EventFormDialog({ open, onOpenChange, eventId, initialStart }: E
                 meeting_url: "",
                 description: "",
                 attendee_ids: [],
+                resource_ids: [],
                 guest_emails: "",
                 reminder: String(prefs.data?.default_reminders?.[0]?.minutes_before ?? 10),
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, eventId, detail.data, initialStart, prefs.data, writable.length]);
+    }, [open, eventId, occurrenceStart, detail.data, initialStart, prefs.data, writable.length]);
 
-    const pending = create.isPending || update.isPending;
+    const pending = create.isPending || update.isPending || editOccurrence.isPending;
     const loading = (eventId && detail.isLoading) || calendars.isLoading;
 
     const submit = form.handleSubmit((v) => {
@@ -119,17 +130,30 @@ export function EventFormDialog({ open, onOpenChange, eventId, initialStart }: E
             meeting_url: v.meeting_url ?? "",
             attendees: [...v.attendee_ids.map((membership_id) => ({ membership_id })), ...guests.map((email) => ({ email }))],
             reminders: v.reminder === "none" ? [] : [{ minutes_before: Number(v.reminder) }],
+            resource_ids: v.resource_ids,
         };
-        if (eventId) update.mutate({ id: eventId, ...dto }, { onSuccess: () => onOpenChange(false) });
-        else create.mutate(dto, { onSuccess: (e) => { onOpenChange(false); navigate(`/calendar/events/${e.id}`); } });
+        // A room that is already booked answers 409 resource_conflict: show it on the field as well as in the toast.
+        const onError = (err: unknown) => {
+            const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
+            if (code === "resource_conflict") form.setError("resource_ids", { message: getApiErrorMessage(err) });
+        };
+        if (onlyOccurrence && eventId && occurrenceStart) {
+            const { recurrence: _r, calendar_id: _c, ...rest } = dto;
+            editOccurrence.mutate({ id: eventId, occurrence_start: occurrenceStart, ...rest }, { onSuccess: (e) => { onOpenChange(false); navigate(`/calendar/events/${e.id}`, { replace: true }); }, onError });
+        } else if (eventId) update.mutate({ id: eventId, ...dto }, { onSuccess: () => onOpenChange(false), onError });
+        else create.mutate(dto, { onSuccess: (e) => { onOpenChange(false); navigate(`/calendar/events/${e.id}`); }, onError });
     });
 
     return (
         <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
             <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-xl">
                 <DialogHeader>
-                    <DialogTitle>{eventId ? "Edit event" : "New event"}</DialogTitle>
-                    <DialogDescription>{eventId ? "Changes apply to the whole series. Attendees are told when the time or place changes." : "Invited members get a notification and can answer from their inbox."}</DialogDescription>
+                    <DialogTitle>{onlyOccurrence ? "Edit this occurrence" : eventId ? "Edit event" : "New event"}</DialogTitle>
+                    <DialogDescription>
+                        {onlyOccurrence
+                            ? "Only this date changes; the rest of the series stays as it is. Attendees are told when the time or place changes."
+                            : eventId ? "Changes apply to the whole series. Attendees are told when the time or place changes." : "Invited members get a notification and can answer from their inbox."}
+                    </DialogDescription>
                 </DialogHeader>
                 {loading ? (
                     <div className="space-y-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}</div>
@@ -147,7 +171,7 @@ export function EventFormDialog({ open, onOpenChange, eventId, initialStart }: E
                             )} />
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <FormField control={form.control} name="calendar_id" render={({ field }) => (
-                                    <FormItem>
+                                    <FormItem className={onlyOccurrence ? "hidden" : undefined}>
                                         <FormLabel>Calendar</FormLabel>
                                         <Select value={field.value} onValueChange={field.onChange}>
                                             <FormControl><SelectTrigger aria-label="Calendar"><SelectValue placeholder="Choose a calendar" /></SelectTrigger></FormControl>
@@ -224,7 +248,7 @@ export function EventFormDialog({ open, onOpenChange, eventId, initialStart }: E
                                     )} />
                                 )}
                             </div>
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            {!onlyOccurrence && <div className="grid gap-4 sm:grid-cols-2">
                                 <FormField control={form.control} name="repeat" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Repeat</FormLabel>
@@ -242,7 +266,7 @@ export function EventFormDialog({ open, onOpenChange, eventId, initialStart }: E
                                         </FormItem>
                                     )} />
                                 )}
-                            </div>
+                            </div>}
                             <FormField control={form.control} name="attendee_ids" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>People</FormLabel>
@@ -258,6 +282,31 @@ export function EventFormDialog({ open, onOpenChange, eventId, initialStart }: E
                                 <FormItem>
                                     <FormLabel>Guests outside the organization</FormLabel>
                                     <FormControl><Input placeholder="lena@acme.com, tom@acme.com" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name="resource_ids" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Rooms & resources</FormLabel>
+                                    {resources.isError ? (
+                                        <p className="text-xs text-muted-foreground">Rooms could not be loaded.</p>
+                                    ) : (
+                                        <MultiPicker
+                                            items={(resources.data ?? []).map((r) => ({
+                                                id: r.id,
+                                                label: r.name,
+                                                keywords: `${r.location ?? ""} ${r.code ?? ""}`,
+                                                hint: [getDropdownOptionLabel(ResourceKindFormOptions, r.kind), r.capacity ? `${r.capacity} seats` : null, r.location, r.requires_approval ? "needs approval" : null].filter(Boolean).join(" · "),
+                                            }))}
+                                            known={Object.fromEntries((detail.data?.resources ?? []).map((r) => [r.id, r.name]))}
+                                            value={field.value}
+                                            onChange={(ids) => { form.clearErrors("resource_ids"); field.onChange(ids); }}
+                                            loading={resources.isLoading}
+                                            placeholder="Book a room"
+                                            searchPlaceholder="Search rooms and equipment…"
+                                            emptyText={resources.isLoading ? "Loading…" : "No rooms or resources yet"}
+                                        />
+                                    )}
                                     <FormMessage />
                                 </FormItem>
                             )} />
@@ -304,7 +353,7 @@ export function EventFormDialog({ open, onOpenChange, eventId, initialStart }: E
                             )} />
                             <DialogFooter>
                                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                                <Button type="submit" loading={pending}>{eventId ? "Save changes" : "Create event"}</Button>
+                                <Button type="submit" loading={pending}>{onlyOccurrence ? "Save this occurrence" : eventId ? "Save changes" : "Create event"}</Button>
                             </DialogFooter>
                         </form>
                     </Form>

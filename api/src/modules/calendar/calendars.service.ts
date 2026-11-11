@@ -40,9 +40,10 @@ export class CalendarsService {
         ]);
         return rows.map((a) => {
             const extra = owners.find((o) => o.id === a.calendar.id);
-            const { feed_token: _feed, ...calendar } = a.calendar;
+            const { feed_token: feed, ...calendar } = a.calendar;
             return {
                 ...calendar,
+                feed_enabled: !!feed,
                 role: a.role,
                 subscribed: a.subscribed,
                 owner: extra?.owner ? { id: extra.owner.id, name: displayName(extra.owner.user) } : null,
@@ -69,8 +70,9 @@ export class CalendarsService {
                     : false,
             },
         });
-        const { feed_token: _feed, ...rest } = row;
-        return { ...rest, role: a.role, can_manage: this.canManage(ctx, a.calendar, a.role) };
+        // The feed secret is stored hashed and never returned; only whether the feed is on.
+        const { feed_token: feed, ...rest } = row;
+        return { ...rest, feed_enabled: !!feed, role: a.role, can_manage: this.canManage(ctx, a.calendar, a.role) };
     }
 
     private canManage(ctx: OrgContext, c: { kind: CalendarKind; owner_membership_id: string | null }, role: string) {
@@ -238,6 +240,7 @@ export class CalendarsService {
             default_view: row?.default_view ?? 'week', week_start: row?.week_start ?? 1, show_weekends: row?.show_weekends ?? true, show_declined_events: row?.show_declined_events ?? false,
             default_event_duration: row?.default_event_duration ?? 30, default_reminders: row?.default_reminders ?? [{ minutes_before: 10, method: 'NOTIFICATION' }],
             overlay_calendar_ids: row?.overlay_calendar_ids ?? [], availability_schedule_id: row?.availability_schedule_id ?? null,
+            projected_modules: row?.projected_modules ?? [],
         };
     }
 

@@ -19,6 +19,7 @@ export const eventFormSchema = z
         meeting_url: z.union([z.literal(""), z.string().trim().url("Enter a full link (https://…)")]).optional(),
         description: z.string().max(20000).optional(),
         attendee_ids: z.array(z.string()),
+        resource_ids: z.array(z.string()),
         guest_emails: z.string().optional(),
         reminder: z.string(),
     })

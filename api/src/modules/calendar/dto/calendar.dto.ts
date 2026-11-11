@@ -5,6 +5,7 @@ import {
 } from 'class-validator';
 import { CalendarEventVisibility, CalendarKind, CalendarReminderMethod, CalendarShareRole } from 'generated/prisma';
 import { z } from 'zod';
+import { PROJECTED_MODULES } from './projected.dto';
 
 /** Kinds created from this screen; PERSONAL needs only calendar.events.create, the others calendar.calendars.manage. EXTERNAL / RESOURCE are created by sync / resources. */
 export const CREATABLE_KINDS = [CalendarKind.PERSONAL, CalendarKind.TEAM, CalendarKind.PROJECT, CalendarKind.CUSTOMER, CalendarKind.BRANCH, CalendarKind.ORGANIZATION] as const;
@@ -61,6 +62,7 @@ export class UpdateCalendarPreferenceDto {
     @ApiPropertyOptional() @IsOptional() @IsInt() @Min(5) @Max(480) default_event_duration?: number;
     @ApiPropertyOptional({ type: [ReminderDefaultDto] }) @IsOptional() @IsArray() @ArrayMaxSize(5) @ValidateNested({ each: true }) @Type(() => ReminderDefaultDto) default_reminders?: ReminderDefaultDto[];
     @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray() @ArrayMaxSize(50) @IsUUID('all', { each: true }) overlay_calendar_ids?: string[];
+    @ApiPropertyOptional({ type: [String], enum: PROJECTED_MODULES, description: 'Projected dates shown on the grid' }) @IsOptional() @IsArray() @IsIn([...PROJECTED_MODULES], { each: true }) projected_modules?: string[];
     @ApiPropertyOptional({ nullable: true }) @IsOptional() @ValidateIf((_, v) => v !== null) @IsUUID() availability_schedule_id?: string | null;
 }
 

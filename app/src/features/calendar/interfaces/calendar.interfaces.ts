@@ -42,6 +42,8 @@ export interface CalendarSummary {
 export interface CalendarEventItem {
     id: string;
     key: string;
+    /** Set on an edited occurrence of a series (exception row). */
+    recurring_event_id?: string | null;
     occurrence_start: string | null;
     starts_at: string;
     ends_at: string;
@@ -63,6 +65,30 @@ export interface CalendarEventItem {
     attendee_count: number;
     project_id: string | null;
     can_edit: boolean;
+    /** Read-only date projected from another module (milestone, task due date, leave); opens `link` there. */
+    projected?: { module: ProjectedModule; link: string };
+}
+
+export type ProjectedModule = "projects" | "tasks" | "leave";
+
+export interface ProjectedItem {
+    key: string;
+    module: ProjectedModule;
+    kind: "milestone" | "task_due" | "leave";
+    title: string;
+    start_date: string;
+    end_date: string;
+    color: string;
+    link: string;
+    done: boolean;
+    detail: string | null;
+}
+
+export interface ProjectedResponse {
+    data: ProjectedItem[];
+    modules: ProjectedModule[];
+    /** Modules the caller may overlay (holds the module's read key). */
+    available: ProjectedModule[];
 }
 
 export interface CalendarEventsResponse {
@@ -97,6 +123,9 @@ export interface CalendarEventDetail {
     visibility: EventVisibility;
     shows_as_busy: boolean;
     recurring: boolean;
+    /** Edited occurrence of a series: the series id and the start it replaces. */
+    recurring_event_id?: string | null;
+    original_start_at?: string | null;
     calendar: { id: string; name: string; color: string | null; kind: CalendarKind };
     description?: string | null;
     location?: string | null;
@@ -157,6 +186,16 @@ export interface CalendarRow {
     scope: { id: string; name: string } | null;
     share_count: number;
     upcoming_events: number;
+    /** iCal subscription link is on (the secret itself is never returned after creation). */
+    feed_enabled: boolean;
+    feed_token_rotated_at: string | null;
+}
+
+export interface CalendarFeedResult {
+    calendar_id: string;
+    url?: string;
+    feed_enabled: boolean;
+    feed_token_rotated_at?: string;
 }
 
 export interface CalendarShare {
@@ -205,6 +244,8 @@ export interface CalendarPreferences {
     show_weekends: boolean;
     default_event_duration: number;
     default_reminders: { minutes_before: number }[];
+    /** Modules whose dates are overlaid on the grid. */
+    projected_modules: ProjectedModule[];
 }
 
 export interface Person {

@@ -34,7 +34,7 @@ export default function EventDetailPage() {
     const respond = useRespondEvent();
     const cancel = useCancelEvent();
     const remove = useDeleteEvent();
-    const [editing, setEditing] = useState(false);
+    const [editing, setEditing] = useState<"series" | "occurrence" | null>(null);
     const [cancelOpen, setCancelOpen] = useState(false);
     const [reason, setReason] = useState("");
     const [deleting, setDeleting] = useState(false);
@@ -75,7 +75,8 @@ export default function EventDetailPage() {
                 </>}
                 actions={!cancelled && (
                     <>
-                        {e.can_edit && <Button variant="outline" size="sm" onClick={() => setEditing(true)}><Pencil /> Edit</Button>}
+                        {e.can_edit && e.recurring && occurrence && <Button variant="outline" size="sm" onClick={() => setEditing("occurrence")}><Pencil /> Edit this one</Button>}
+                        {e.can_edit && <Button variant="outline" size="sm" onClick={() => setEditing("series")}><Pencil /> {e.recurring && occurrence ? "Edit series" : "Edit"}</Button>}
                         {e.can_edit && <Button variant="outline" size="sm" onClick={() => setCancelOpen(true)}><Ban /> Cancel event</Button>}
                         {e.can_delete && <Button variant="destructive" size="sm" onClick={() => setDeleting(true)}><Trash2 /> Delete</Button>}
                     </>
@@ -90,6 +91,13 @@ export default function EventDetailPage() {
                 <div className="space-y-6">
                     <div className="space-y-3 rounded-lg border border-border bg-card p-4 sm:p-5">
                         <p className="flex items-start gap-2 text-[13px] text-foreground"><CalendarDays className="mt-0.5 size-4 shrink-0 text-muted-foreground" />{when}</p>
+                        {e.recurring_event_id && (
+                            <p className="flex flex-wrap items-center gap-2 text-[13px] text-body">
+                                <Repeat className="size-4 text-muted-foreground" />
+                                <span>Changed occurrence{e.original_start_at ? ` (was ${format(parseISO(e.original_start_at), e.all_day ? "d MMM yyyy" : "d MMM yyyy, HH:mm")})` : ""} of a</span>
+                                <Link className="text-primary hover:underline" to={`/calendar/events/${e.recurring_event_id}`}>repeating series</Link>
+                            </p>
+                        )}
                         {e.recurrence && <p className="flex items-center gap-2 text-[13px] text-body"><Repeat className="size-4 text-muted-foreground" />{getDropdownOptionLabel(RepeatFormOptions, e.recurrence.freq)}{e.recurrence.count ? ` · ${e.recurrence.count} times` : ""}</p>}
                         {e.location && <p className="flex items-center gap-2 text-[13px] text-body"><MapPin className="size-4 text-muted-foreground" />{e.location}</p>}
                         {e.meeting_url && (
@@ -146,7 +154,7 @@ export default function EventDetailPage() {
                     )}
                 </aside>
             </div>
-            <EventFormDialog open={editing} onOpenChange={setEditing} eventId={e.id} />
+            <EventFormDialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)} eventId={e.id} occurrenceStart={editing === "occurrence" ? occurrence : null} />
             <Dialog open={cancelOpen} onOpenChange={(o) => !cancel.isPending && setCancelOpen(o)}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>

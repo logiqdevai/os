@@ -12,14 +12,17 @@ import { Can } from "@/components/access/can";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePermission } from "@/hooks/use-permission";
 import { cn } from "@/lib/utils";
-import { useCalendarEvents, useCalendarPreferences } from "@/features/calendar/hooks/use-calendar";
-import type { CalendarEventItem, CalendarView } from "@/features/calendar/interfaces/calendar.interfaces";
+import { useCalendarEvents, useCalendarPreferences, useProjectedDates, useUpdateCalendarPreferences } from "@/features/calendar/hooks/use-calendar";
+import type { CalendarEventItem, CalendarView, ProjectedModule } from "@/features/calendar/interfaces/calendar.interfaces";
 import { CalendarViewOptions } from "@/config/constants/dropdowns/calendar/calendar.options";
 import { TimeGrid } from "../../components/time-grid";
 import { MonthGrid } from "../../components/month-grid";
 import { AgendaList } from "../../components/agenda-list";
 import { EventFormDialog } from "../../components/event-form-dialog";
 import { dotClass, parseDateParam, shiftDate, toDateParam, viewRange, viewTitle } from "../../utils/calendar.utils";
+import { projectedToEvents } from "../../utils/projected.utils";
+
+const PROJECTED_LABEL: Record<ProjectedModule, string> = { projects: "Project milestones", tasks: "My task due dates", leave: "Approved leave" };
 
 const VIEWS: CalendarView[] = ["day", "week", "month", "agenda"];
 
@@ -27,6 +30,7 @@ const VIEWS: CalendarView[] = ["day", "week", "month", "agenda"];
  * /calendar?view=day|week|month|agenda&date=YYYY-MM-DD&calendars=id,id — 19 §5. Phones default to agenda.
  * @perm calendar.events.read_own or calendar.events.read · create calendar.events.create
  * @api GET /calendar/events?from&to&calendar_ids (series expanded server-side) · GET /calendar/preferences/me
+ *      GET /calendar/projected?from&to&modules (read-only milestones / task due dates / leave, scope-filtered) · PUT /calendar/preferences/me {projected_modules}
  */
 export default function CalendarViewPage({ forcedView, startCreate }: { forcedView?: CalendarView; startCreate?: boolean }) {
     const navigate = useNavigate();
@@ -41,6 +45,13 @@ export default function CalendarViewPage({ forcedView, startCreate }: { forcedVi
     const selected = sp.get("calendars")?.split(",").filter(Boolean) ?? [];
     const events = useCalendarEvents({ from: from.toISOString(), to: to.toISOString(), ...(selected.length ? { calendar_ids: selected.join(",") } : {}) });
     const [create, setCreate] = useState<{ open: boolean; start: Date | null }>({ open: !!startCreate, start: null });
+    const savePrefs = useUpdateCalendarPreferences();
+    const shownModules = prefs.data?.projected_modules ?? [];
+    // `available` comes from the API (modules whose read key the caller holds); probe it once with an empty module list.
+    const projected = useProjectedDates({ from: from.toISOString(), to: to.toISOString(), modules: shownModules.join(",") || "none" }, !!prefs.data);
+    const available = projected.data?.available ?? [];
+    const toggleProjected = (m: ProjectedModule) =>
+        savePrefs.mutate({ projected_modules: shownModules.includes(m) ? shownModules.filter((x) => x !== m) : [...shownModules, m] });
 
     const set = (patch: Record<string, string | null>) =>
         setSp((prev) => {
@@ -58,9 +69,13 @@ export default function CalendarViewPage({ forcedView, startCreate }: { forcedVi
         return [];
     }, [view, date, from]);
 
-    const list = events.data?.data ?? [];
+    const list = useMemo(() => {
+        const own = events.data?.data ?? [];
+        const extra = shownModules.length && projected.data ? projectedToEvents(projected.data.data) : [];
+        return extra.length ? [...extra, ...own] : own;
+    }, [events.data, projected.data, shownModules.length]);
     const calendars = events.data?.calendars ?? [];
-    const openEvent = (e: CalendarEventItem) => navigate(`/calendar/events/${e.id}${e.occurrence_start ? `?occurrence=${encodeURIComponent(e.occurrence_start)}` : ""}`);
+    const openEvent = (e: CalendarEventItem) => e.projected ? navigate(e.projected.link) : navigate(`/calendar/events/${e.id}${e.occurrence_start ? `?occurrence=${encodeURIComponent(e.occurrence_start)}` : ""}`);
     const toggleCalendar = (id: string) => {
         const base = selected.length ? selected : calendars.filter((c) => c.subscribed).map((c) => c.id);
         const next = base.includes(id) ? base.filter((x) => x !== id) : [...base, id];
@@ -106,6 +121,17 @@ export default function CalendarViewPage({ forcedView, startCreate }: { forcedVi
                                     })}
                                 </div>
                                 {selected.length > 0 && <Button variant="ghost" size="sm" className="mt-1 w-full" onClick={() => set({ calendars: null })}>Reset to my calendars</Button>}
+                                {available.length > 0 && (
+                                    <div className="mt-2 border-t border-border pt-2">
+                                        <p className="px-2 pb-1 text-xs text-muted-foreground">Show dates from other apps (read only)</p>
+                                        {available.map((m) => (
+                                            <label key={m} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] hover:bg-accent">
+                                                <Checkbox checked={shownModules.includes(m)} disabled={savePrefs.isPending} onCheckedChange={() => toggleProjected(m)} aria-label={PROJECTED_LABEL[m]} />
+                                                <span className="truncate">{PROJECTED_LABEL[m]}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
                             </PopoverContent>
                         </Popover>
                         <Can permission="calendar.events.create">

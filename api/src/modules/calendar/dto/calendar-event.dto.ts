@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
     ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsEmail, IsEnum, IsIn, IsInt, IsOptional, IsString, IsUrl, IsUUID, Max, MaxLength, Min, ValidateIf, ValidateNested,
@@ -53,6 +53,11 @@ export class CreateCalendarEventDto {
 
 export class UpdateCalendarEventDto extends PartialType(CreateCalendarEventDto) { }
 
+/** Edit one occurrence of a series: stored as an exception row (recurring_event_id + original_start_at), the series gets an EXDATE. */
+export class UpdateOccurrenceDto extends OmitType(UpdateCalendarEventDto, ['recurrence', 'calendar_id'] as const) {
+    @ApiProperty({ description: 'Start of the occurrence to change (ISO, as listed by GET /calendar/events)' }) @IsDateString() occurrence_start: string;
+}
+
 export class CancelCalendarEventDto {
     @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000) reason?: string;
     @ApiPropertyOptional({ description: 'Cancel only this occurrence of a series (its start, ISO)' }) @IsOptional() @IsDateString() occurrence_start?: string;
@@ -99,4 +104,10 @@ export const CreateCalendarEventSchema = z.object({
     recurrence: z.object({ freq: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']), interval: z.number().int().min(1).max(99).optional(), count: z.number().int().min(1).max(730).nullable().optional(), until: z.string().nullable().optional(), byday: z.array(z.number().int().min(0).max(6)).optional() }).nullable().optional(),
     attendees: z.array(z.object({ membership_id: z.string().uuid().optional(), email: z.string().email().optional(), name: z.string().max(120).optional() })).max(200).optional(),
     reminders: z.array(z.object({ minutes_before: z.number().int().min(0).max(40320) })).max(10).optional(),
+    resource_ids: z.array(z.string().uuid()).max(10).optional(),
+});
+
+export const UpdateOccurrenceSchema = CreateCalendarEventSchema.omit({ recurrence: true, calendar_id: true }).partial().extend({
+    id: z.string().uuid(),
+    occurrence_start: z.string().datetime({ offset: true }),
 });

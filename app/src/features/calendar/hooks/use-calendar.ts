@@ -8,6 +8,8 @@ type Params = Record<string, unknown>;
 
 export const useCalendarEvents = (params: Params, enabled = true) =>
     useQuery({ queryKey: [...CALENDAR_KEY, "events", params], queryFn: () => service.getEvents(params), placeholderData: keepPreviousData, enabled });
+export const useProjectedDates = (params: Params, enabled = true) =>
+    useQuery({ queryKey: [...CALENDAR_KEY, "projected", params], queryFn: () => service.getProjected(params), placeholderData: keepPreviousData, enabled });
 export const useCalendarEvent = (id: string | undefined) => useQuery({ queryKey: [...CALENDAR_KEY, "event", id], queryFn: () => service.getEvent(id as string), enabled: !!id, retry: false });
 export const useCalendars = (params: Params = {}, enabled = true) => useQuery({ queryKey: [...CALENDAR_KEY, "calendars", params], queryFn: () => service.getCalendars(params), enabled });
 export const useCalendarDetail = (id: string | undefined) => useQuery({ queryKey: [...CALENDAR_KEY, "calendar", id], queryFn: () => service.getCalendar(id as string), enabled: !!id });
@@ -45,6 +47,7 @@ function useCalendarMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResul
 
 export const useCreateEvent = () => useCalendarMutation(service.createEvent, "Event created", "Could not create event");
 export const useUpdateEvent = () => useCalendarMutation(service.updateEvent, "Event updated", "Could not update event");
+export const useEditOccurrence = () => useCalendarMutation(service.editOccurrence, "Occurrence updated", "Could not update this occurrence");
 export const useCancelEvent = () => useCalendarMutation(service.cancelEvent, "Event cancelled", "Could not cancel event");
 export const useDeleteEvent = () => useCalendarMutation(service.deleteEvent, "Event deleted", "Could not delete event");
 export const useRespondEvent = () => useCalendarMutation(service.respondEvent, "Response sent", "Could not send your response");
@@ -54,6 +57,8 @@ export const useArchiveCalendar = () => useCalendarMutation(service.archiveCalen
 export const useRestoreCalendar = () => useCalendarMutation(service.restoreCalendar, "Calendar restored", "Could not restore calendar");
 export const useShareCalendar = () => useCalendarMutation(service.shareCalendar, "Calendar shared", "Could not share calendar");
 export const useUnshareCalendar = () => useCalendarMutation(service.unshareCalendar, "Share removed", "Could not remove share");
+export const useRotateCalendarFeed = () => useCalendarMutation(service.rotateCalendarFeed, "Subscription link created", "Could not create the link");
+export const useRevokeCalendarFeed = () => useCalendarMutation(service.revokeCalendarFeed, "Subscription link turned off", "Could not turn off the link");
 export const useUpdateCalendarPreferences = () => useCalendarMutation(service.updatePreferences, "Preferences saved", "Could not save preferences");
 export const useCreateSchedule = () => useCalendarMutation(service.createSchedule, "Availability saved", "Could not save availability");
 export const useUpdateSchedule = () => useCalendarMutation(service.updateSchedule, "Availability saved", "Could not save availability");

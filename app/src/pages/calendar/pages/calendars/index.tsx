@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Archive, Layers, MoreHorizontal, Pencil, Plus, Share2 } from "lucide-react";
+import { Archive, Layers, Link2, MoreHorizontal, Pencil, Plus, Share2 } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -17,11 +17,12 @@ import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { dotClass } from "../../utils/calendar.utils";
 import { CalendarFormDialog } from "./components/calendar-form-dialog";
 import { ShareSheet } from "./components/share-sheet";
+import { FeedDialog } from "./components/feed-dialog";
 
 /**
  * /calendar/calendars — calendars I can reach (19 §2, §10).
  * @perm view calendar.events.read(_own) · create PERSONAL calendar.events.create, others calendar.calendars.manage · share/edit: owner or MANAGE
- * @api GET/POST/PATCH /calendar/calendars · POST /:id/archive · POST/DELETE /:id/shares
+ * @api GET/POST/PATCH /calendar/calendars · POST /:id/archive · POST/DELETE /:id/shares · POST/DELETE /:id/feed (iCal link)
  */
 export default function CalendarsPage() {
     const { search, setSearch, filters, setFilter } = useListParams();
@@ -31,6 +32,7 @@ export default function CalendarsPage() {
     const [editing, setEditing] = useState<CalendarRow | null>(null);
     const [sharing, setSharing] = useState<string | null>(null);
     const [archiving, setArchiving] = useState<CalendarRow | null>(null);
+    const [feed, setFeed] = useState<CalendarRow | null>(null);
 
     const columns: DataTableColumn<CalendarRow>[] = [
         {
@@ -48,6 +50,7 @@ export default function CalendarsPage() {
         },
         { key: "kind", header: "Kind", cell: (c) => <Badge>{getDropdownOptionLabel(CalendarKindFormOptions, c.kind)}</Badge>, hideBelow: "sm" },
         { key: "role", header: "Your access", cell: (c) => getDropdownOptionLabel(CalendarRoleOptions, c.role), hideBelow: "md" },
+        { key: "feed", header: "iCal", cell: (c) => (c.feed_enabled ? <Badge variant="info">Link on</Badge> : null), hideBelow: "lg" },
         { key: "upcoming", header: "Upcoming", cell: (c) => <span className="tabular">{c.upcoming_events}</span>, hideBelow: "lg", className: "text-right", headerClassName: "text-right" },
         {
             key: "actions",
@@ -61,6 +64,7 @@ export default function CalendarsPage() {
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem onSelect={() => { setEditing(c); setFormOpen(true); }}><Pencil /> Edit</DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => setSharing(c.id)}><Share2 /> Share</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setFeed(c)}><Link2 /> Subscription link (iCal)</DropdownMenuItem>
                             {!c.is_default && <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setArchiving(c)}><Archive /> Archive</DropdownMenuItem>}
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -94,6 +98,7 @@ export default function CalendarsPage() {
             />
             <CalendarFormDialog open={formOpen} onOpenChange={setFormOpen} calendar={editing} />
             <ShareSheet calendarId={sharing} onClose={() => setSharing(null)} />
+            <FeedDialog calendar={feed} onClose={() => setFeed(null)} />
             <ConfirmationDialog
                 isOpen={!!archiving}
                 onClose={() => setArchiving(null)}

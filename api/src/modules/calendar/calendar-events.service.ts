@@ -8,7 +8,7 @@ import { EventsService } from '@/shared/events/events.service';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { displayName, memberUserSelect } from '@/modules/notifications/utils/system-context';
 import { AccessibleCalendar, CalendarAccessService, CalendarRole, atLeast } from './calendar-access.service';
-import { CalendarEventQuery, CancelCalendarEventDto, CreateCalendarEventDto, EventAttendeeInputDto, RespondCalendarEventDto, UpdateCalendarEventDto } from './dto/calendar-event.dto';
+import { CalendarEventQuery, CancelCalendarEventDto, CreateCalendarEventDto, EventAttendeeInputDto, RespondCalendarEventDto, UpdateCalendarEventDto, UpdateOccurrenceDto } from './dto/calendar-event.dto';
 import { buildRRule, describeRule, expandOccurrences, nextOccurrence, seriesEndsAt } from './utils/recurrence.utils';
 import { isValidZone, overlaps } from './utils/availability.utils';
 
@@ -17,7 +17,7 @@ const LIST_CAP = 2000;
 
 const listSelect = {
     id: true, title: true, status: true, starts_at: true, ends_at: true, all_day: true, timezone: true, recurrence_rule: true, recurrence_exdates: true,
-    visibility: true, shows_as_busy: true, location: true, meeting_url: true, color: true, calendar_id: true, organizer_membership_id: true, project_id: true, company_id: true,
+    visibility: true, shows_as_busy: true, location: true, meeting_url: true, color: true, calendar_id: true, recurring_event_id: true, organizer_membership_id: true, project_id: true, company_id: true,
     calendar: { select: { id: true, name: true, color: true, kind: true, free_busy_only: true, owner_membership_id: true } },
     event_type: { select: { id: true, name: true, slug: true, color: true } },
     organizer: { select: { id: true, user: { select: memberUserSelect } } },
@@ -72,8 +72,8 @@ export class CalendarEventsService {
         const mineOnly: Prisma.CalendarEventWhereInput[] = [{ organizer_membership_id: me }, { attendees: { some: { membership_id: me } } }];
         const rows = await this.prisma.calendarEvent.findMany({
             where: {
+                // Exception rows (one edited occurrence of a series) are listed like single events; the series skips them via EXDATE.
                 organization_id: ctx.organization_id,
-                recurring_event_id: null,
                 ...(query.include_cancelled ? {} : { status: { not: CalendarEventStatus.CANCELLED } }),
                 ...(query.event_type_id && { event_type_id: query.event_type_id }),
                 ...(query.project_id && { project_id: query.project_id }),
@@ -105,6 +105,7 @@ export class CalendarEventsService {
         return {
             id: e.id,
             key: `${e.id}:${start.toISOString()}`,
+            recurring_event_id: e.recurring_event_id,
             occurrence_start: e.recurrence_rule ? start.toISOString() : null,
             starts_at: start,
             ends_at: end,
@@ -163,6 +164,7 @@ export class CalendarEventsService {
         const base = {
             id: e.id, starts_at: e.starts_at, ends_at: e.ends_at, all_day: e.all_day, timezone: e.timezone, status: e.status, visibility: e.visibility,
             shows_as_busy: e.shows_as_busy, recurring: !!e.recurrence_rule, calendar: e.calendar, masked: !details,
+            recurring_event_id: e.recurring_event_id, original_start_at: e.original_start_at,
         };
         if (!details) return { ...base, title: 'Busy', can_edit: false, can_delete: false };
         const mine = e.attendees.find((x) => x.membership_id === ctx.membership_id) ?? null;
@@ -261,6 +263,7 @@ export class CalendarEventsService {
         const { e, role } = await this.load(ctx, id);
         if (!this.canEdit(ctx, e, role)) throw new ForbiddenException({ message: 'You cannot edit this event', code: 'calendar_event_not_editable' });
         if (e.status === CalendarEventStatus.CANCELLED) throw new ConflictException({ message: 'Cancelled events cannot be edited', code: 'calendar_event_cancelled' });
+        if (e.recurring_event_id && dto.recurrence) throw new BadRequestException({ message: 'One occurrence of a series cannot repeat; edit the series instead', code: 'occurrence_cannot_repeat' });
         const calendar = dto.calendar_id && dto.calendar_id !== e.calendar_id ? await this.targetCalendar(ctx, dto.calendar_id, ctx.membership_id) : null;
         const type = dto.event_type_id ? await this.prisma.calendarEventType.findFirst({ where: { id: dto.event_type_id, organization_id: ctx.organization_id } }) : null;
         if (dto.event_type_id && !type) throw new NotFoundException({ message: 'Event type not found', code: 'event_type_not_found' });
@@ -269,6 +272,8 @@ export class CalendarEventsService {
         const recurrence_rule = dto.recurrence === undefined ? e.recurrence_rule : dto.recurrence ? buildRRule(dto.recurrence) : null;
         await this.assertRefs(ctx, dto);
         const timeChanged = starts_at.getTime() !== e.starts_at.getTime() || ends_at.getTime() !== e.ends_at.getTime() || recurrence_rule !== e.recurrence_rule;
+        // Moving the series start or changing its rule shifts every occurrence: edited / cancelled occurrences no longer line up and are reset.
+        const resetExceptions = !!e.recurrence_rule && (recurrence_rule !== e.recurrence_rule || starts_at.getTime() !== e.starts_at.getTime());
         const placeChanged = (dto.location !== undefined && (dto.location || null) !== e.location) || (dto.meeting_url !== undefined && (dto.meeting_url || null) !== e.meeting_url);
         const organizer = e.organizer_membership_id ?? ctx.membership_id;
         const nextAttendees = dto.attendees ? await this.resolveAttendees(ctx, dto.attendees, organizer) : null;
@@ -285,7 +290,7 @@ export class CalendarEventsService {
                     status: dto.status,
                     starts_at, ends_at, timezone, recurrence_rule,
                     recurrence_ends_at: seriesEndsAt(starts_at, ends_at, recurrence_rule, timezone),
-                    ...(recurrence_rule !== e.recurrence_rule && { recurrence_exdates: [] }),
+                    ...((recurrence_rule !== e.recurrence_rule || resetExceptions) && { recurrence_exdates: [] }),
                     all_day: dto.all_day,
                     visibility: dto.visibility,
                     shows_as_busy: dto.shows_as_busy,
@@ -298,6 +303,7 @@ export class CalendarEventsService {
                     ...((timeChanged || placeChanged) && { sequence: { increment: 1 } }),
                 },
             });
+            if (resetExceptions) await tx.calendarEvent.deleteMany({ where: { recurring_event_id: id } });
             if (nextAttendees) {
                 const keep = new Set(nextAttendees.map((a) => a.email.toLowerCase()));
                 await tx.calendarEventAttendee.deleteMany({ where: { event_id: id, is_organizer: false, email: { notIn: [...keep] } } });
@@ -362,7 +368,9 @@ export class CalendarEventsService {
         if (e.status === CalendarEventStatus.CANCELLED) throw new ConflictException({ message: 'This event is already cancelled', code: 'calendar_event_cancelled' });
         await this.prisma.$transaction([
             this.prisma.calendarEvent.update({ where: { id }, data: { status: CalendarEventStatus.CANCELLED, cancelled_at: new Date(), cancelled_by_user_id: ctx.user_id, cancellation_reason: dto.reason ?? null, sequence: { increment: 1 } } }),
-            this.prisma.calendarEventResource.updateMany({ where: { event_id: id }, data: { status: CalendarResourceBookingStatus.CANCELLED } }),
+            this.prisma.calendarEventResource.updateMany({ where: { OR: [{ event_id: id }, { event: { recurring_event_id: id } }] }, data: { status: CalendarResourceBookingStatus.CANCELLED } }),
+            // Edited occurrences of a cancelled series are cancelled with it.
+            this.prisma.calendarEvent.updateMany({ where: { recurring_event_id: id, status: { not: CalendarEventStatus.CANCELLED } }, data: { status: CalendarEventStatus.CANCELLED, cancelled_at: new Date(), cancelled_by_user_id: ctx.user_id, cancellation_reason: dto.reason ?? null } }),
         ]);
         await this.audit.record(ctx, 'calendar_event.cancelled', { resource_type: 'calendar_event', resource_id: id, metadata: { title: e.title, reason: dto.reason ?? null } });
         this.events.publish(ctx, {
@@ -371,6 +379,77 @@ export class CalendarEventsService {
             ...(e.visibility !== CalendarEventVisibility.PRIVATE && { activity: { summary: `${who} cancelled ${e.title}`, entity_label: e.title, project_id: e.project_id, company_id: e.company_id } }),
         });
         return this.findOne(ctx, id);
+    }
+
+    /**
+     * Edit one occurrence of a series (19 §3): the occurrence becomes an exception row (recurring_event_id + original_start_at,
+     * schema comment on CalendarEvent) and the series gets an EXDATE so it is not expanded twice. Attendees keep their RSVP unless
+     * the attendee list is replaced; rooms are re-checked for conflicts (409).
+     */
+    async editOccurrence(ctx: OrgContext, id: string, dto: UpdateOccurrenceDto) {
+        const { e, role } = await this.load(ctx, id);
+        if (!e.recurrence_rule) throw new BadRequestException({ message: 'This event does not repeat; edit it directly', code: 'not_a_series' });
+        if (!this.canEdit(ctx, e, role)) throw new ForbiddenException({ message: 'You cannot edit this event', code: 'calendar_event_not_editable' });
+        if (e.status === CalendarEventStatus.CANCELLED) throw new ConflictException({ message: 'Cancelled events cannot be edited', code: 'calendar_event_cancelled' });
+        const at = new Date(dto.occurrence_start);
+        const occ = expandOccurrences(e.starts_at, e.ends_at, e.recurrence_rule, e.timezone, at, new Date(at.getTime() + 1), e.recurrence_exdates, 5).find((o) => o.start.getTime() === at.getTime());
+        if (!occ) throw new NotFoundException({ message: 'This occurrence does not exist (it may have been edited or cancelled already)', code: 'occurrence_not_found' });
+        const type = dto.event_type_id ? await this.prisma.calendarEventType.findFirst({ where: { id: dto.event_type_id, organization_id: ctx.organization_id } }) : null;
+        if (dto.event_type_id && !type) throw new NotFoundException({ message: 'Event type not found', code: 'event_type_not_found' });
+        const { starts_at, ends_at } = this.times(dto.starts_at ?? occ.start.toISOString(), dto.ends_at ?? occ.end.toISOString());
+        const timezone = dto.timezone && isValidZone(dto.timezone) ? dto.timezone : e.timezone;
+        await this.assertRefs(ctx, dto);
+        const organizer = e.organizer_membership_id ?? ctx.membership_id;
+        const attendees: AttendeeRow[] = dto.attendees
+            ? await this.resolveAttendees(ctx, dto.attendees, organizer)
+            : e.attendees.map((a) => ({ kind: a.kind, membership_id: a.membership_id, user_id: a.user_id, contact_id: a.contact_id, email: a.email, name: a.name, role: a.role, response: a.response, response_comment: a.response_comment, responded_at: a.responded_at, is_organizer: a.is_organizer }));
+        const resourceIds = dto.resource_ids ?? e.resources.filter((r) => r.status !== CalendarResourceBookingStatus.CANCELLED && r.status !== CalendarResourceBookingStatus.DECLINED).map((r) => r.resource.id);
+        // The series itself is excluded from the conflict check (its occurrence at `at` is replaced by this row).
+        const resources = await this.resolveResources(ctx, resourceIds, starts_at, ends_at, null, timezone, id);
+        const reminders = dto.reminders ?? e.reminders.filter((r) => !r.membership_id).map((r) => ({ minutes_before: r.minutes_before, method: r.method }));
+        const timeChanged = starts_at.getTime() !== occ.start.getTime() || ends_at.getTime() !== occ.end.getTime();
+
+        const created = await this.prisma.$transaction(async (tx) => {
+            const row = await tx.calendarEvent.create({
+                data: {
+                    organization_id: ctx.organization_id, calendar_id: e.calendar_id, event_type_id: dto.event_type_id ?? e.event_type_id,
+                    title: dto.title !== undefined ? dto.title.trim() || '(No title)' : e.title, description: dto.description ?? e.description,
+                    status: dto.status ?? e.status, starts_at, ends_at, all_day: dto.all_day ?? e.all_day, timezone,
+                    recurring_event_id: e.id, original_start_at: at, recurrence_ends_at: ends_at,
+                    organizer_membership_id: e.organizer_membership_id, visibility: dto.visibility ?? e.visibility, shows_as_busy: dto.shows_as_busy ?? e.shows_as_busy,
+                    location: dto.location !== undefined ? dto.location || null : e.location, meeting_url: dto.meeting_url !== undefined ? dto.meeting_url || null : e.meeting_url,
+                    color: dto.color ?? e.color, guests_can_see_guests: dto.guests_can_see_guests ?? e.guests_can_see_guests,
+                    project_id: dto.project_id ?? e.project_id, company_id: dto.company_id ?? e.company_id, branch_id: e.branch_id,
+                    source: e.source, sequence: e.sequence + 1, created_by_user_id: ctx.user_id,
+                },
+            });
+            await tx.calendarEvent.update({ where: { id: e.id }, data: { recurrence_exdates: { push: at } } });
+            if (attendees.length) await tx.calendarEventAttendee.createMany({ data: attendees.map((a) => ({ ...a, event_id: row.id, invited_at: new Date() })), skipDuplicates: true });
+            if (resources.length) await tx.calendarEventResource.createMany({ data: resources.map((r) => ({ event_id: row.id, resource_id: r.id, status: r.status })) });
+            if (reminders.length) {
+                await tx.calendarEventReminder.createMany({
+                    data: reminders.map((r) => ({ event_id: row.id, minutes_before: r.minutes_before, method: r.method ?? CalendarReminderMethod.NOTIFICATION, scheduled_at: this.reminderAt(row, r.minutes_before) })),
+                    skipDuplicates: true,
+                });
+            }
+            return row;
+        });
+
+        await this.audit.record(ctx, 'calendar_event.occurrence_updated', {
+            resource_type: 'calendar_event', resource_id: created.id, branch_id: created.branch_id,
+            metadata: { series_id: e.id, occurrence_start: at, before: { starts_at: occ.start, ends_at: occ.end, title: e.title, location: e.location }, after: { ...dto, attendees: dto.attendees?.length } },
+        });
+        const watchers = attendees.filter((a) => a.membership_id && a.membership_id !== ctx.membership_id).map((a) => a.membership_id as string);
+        const notify = timeChanged || dto.location !== undefined || dto.meeting_url !== undefined;
+        this.events.publish(ctx, {
+            event_key: 'calendar.event_updated', module: ModuleKey.CALENDAR, entity_type: 'CALENDAR_EVENT', entity_id: created.id,
+            payload: {
+                title: created.title, entity_label: created.title, series_id: e.id, occurrence_start: at, link: `/calendar/events/${created.id}`,
+                ...(notify ? { watcher_membership_ids: watchers, notification_title: `${created.title} on ${this.whenText(at, e.timezone, e.all_day)} was changed`, notification_body: this.whenText(created.starts_at, created.timezone, created.all_day) } : {}),
+            },
+            changes: dto as unknown as Record<string, unknown>,
+        });
+        return this.findOne(ctx, created.id);
     }
 
     async remove(ctx: OrgContext, id: string) {

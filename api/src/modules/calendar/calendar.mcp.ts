@@ -5,9 +5,11 @@ import { McpRegistry } from '@/core/mcp/mcp.registry';
 import { CalendarEventsService } from './calendar-events.service';
 import { AvailabilityService } from './availability.service';
 import { BookingLinksService } from './booking-links.service';
-import { CalendarEventQuerySchema, CreateCalendarEventSchema } from './dto/calendar-event.dto';
+import { CalendarEventQuerySchema, CreateCalendarEventSchema, UpdateOccurrenceSchema } from './dto/calendar-event.dto';
 import { FreeBusyQuerySchema, SuggestQuerySchema } from './dto/availability.dto';
 import { BookingQuerySchema } from './dto/booking.dto';
+import { ProjectedQuerySchema } from './dto/projected.dto';
+import { CalendarProjectedService } from './calendar-projected.service';
 
 /** MCP adapter for 19 — same service methods and validation as REST; the organization comes from the credential. */
 @Injectable()
@@ -17,6 +19,7 @@ export class CalendarMcp implements OnModuleInit {
         private readonly events: CalendarEventsService,
         private readonly availability: AvailabilityService,
         private readonly links: BookingLinksService,
+        private readonly projected: CalendarProjectedService,
     ) { }
 
     onModuleInit() {
@@ -51,6 +54,13 @@ export class CalendarMcp implements OnModuleInit {
                 handler: (ctx, { id, ...dto }) => this.events.update(ctx, id, dto),
             },
             {
+                name: 'calendar_events_update_occurrence',
+                description: 'Change one occurrence of a recurring event (occurrence_start = its start as listed); the rest of the series stays as is.',
+                permission: 'calendar.events.update_own', module: M, resource_type: 'calendar_event',
+                input: UpdateOccurrenceSchema,
+                handler: (ctx, { id, ...dto }) => this.events.editOccurrence(ctx, id, dto),
+            },
+            {
                 name: 'calendar_events_respond',
                 description: 'Answer an invitation: ACCEPTED, TENTATIVE or DECLINED.',
                 permission: 'calendar.events.read_own', module: M, resource_type: 'calendar_event',
@@ -63,6 +73,13 @@ export class CalendarMcp implements OnModuleInit {
                 permission: 'calendar.events.update_own', module: M, resource_type: 'calendar_event', sensitive: true,
                 input: z.object({ id: z.string().uuid(), reason: z.string().max(1000).optional(), occurrence_start: z.string().datetime({ offset: true }).optional() }),
                 handler: (ctx, { id, ...dto }) => this.events.cancel(ctx, id, dto),
+            },
+            {
+                name: 'calendar_projected_read',
+                description: 'Read-only dates from other modules between from and to (ISO): project milestones, my task due dates (tasks=all for every readable task), approved leave. Only modules the caller can read.',
+                permission: 'calendar.events.read_own', module: M, resource_type: 'calendar_projected',
+                input: ProjectedQuerySchema,
+                handler: (ctx, args) => this.projected.list(ctx, args),
             },
             {
                 name: 'calendar_availability_read',

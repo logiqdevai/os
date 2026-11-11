@@ -2,7 +2,7 @@ import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
 import type {
     AttendeeResponse, AvailabilitySchedule, Booking, BookingLink, BookingLinkDto, CalendarDetail, CalendarDto, CalendarEventDetail, CalendarEventsResponse, CalendarPreferences,
-    CalendarRole, CalendarRow, EventDto, EventType, FreeBusyRow, Paginated, Person, PublicBookingDto, PublicBookingPage, PublicBookingResult, Resource, ResourceDto, ResourceRequest,
+    CalendarFeedResult, CalendarRole, CalendarRow, EventDto, ProjectedResponse, EventType, FreeBusyRow, Paginated, Person, PublicBookingDto, PublicBookingPage, PublicBookingResult, Resource, ResourceDto, ResourceRequest,
     ScheduleDto, Slot,
 } from "../interfaces/calendar.interfaces";
 
@@ -13,6 +13,8 @@ export const getEvents = async (params: Params): Promise<CalendarEventsResponse>
 export const getEvent = async (id: string): Promise<CalendarEventDetail> => (await axiosInstance.get(R.event(id))).data;
 export const createEvent = async (dto: EventDto): Promise<CalendarEventDetail> => (await axiosInstance.post(R.events, dto)).data;
 export const updateEvent = async ({ id, ...dto }: Partial<EventDto> & { id: string }): Promise<CalendarEventDetail> => (await axiosInstance.patch(R.event(id), dto)).data;
+export const editOccurrence = async ({ id, ...dto }: Omit<Partial<EventDto>, "recurrence" | "calendar_id"> & { id: string; occurrence_start: string }): Promise<CalendarEventDetail> =>
+    (await axiosInstance.post(R.eventOccurrences(id), dto)).data;
 export const cancelEvent = async ({ id, ...dto }: { id: string; reason?: string; occurrence_start?: string }): Promise<CalendarEventDetail> => (await axiosInstance.post(R.eventCancel(id), dto)).data;
 export const deleteEvent = async (id: string) => (await axiosInstance.delete(R.event(id))).data;
 export const respondEvent = async ({ id, ...dto }: { id: string; response: AttendeeResponse; comment?: string }): Promise<CalendarEventDetail> =>
@@ -27,6 +29,9 @@ export const restoreCalendar = async (id: string) => (await axiosInstance.post(R
 export const shareCalendar = async ({ id, ...dto }: { id: string; membership_id?: string; team_id?: string; role: CalendarRole }) => (await axiosInstance.post(R.calendarShares(id), dto)).data;
 export const unshareCalendar = async ({ id, shareId }: { id: string; shareId: string }) => (await axiosInstance.delete(R.calendarShare(id, shareId))).data;
 
+export const rotateCalendarFeed = async (id: string): Promise<CalendarFeedResult> => (await axiosInstance.post(R.calendarFeed(id))).data;
+export const revokeCalendarFeed = async (id: string): Promise<CalendarFeedResult> => (await axiosInstance.delete(R.calendarFeed(id))).data;
+export const getProjected = async (params: Params): Promise<ProjectedResponse> => (await axiosInstance.get(R.projected, { params })).data;
 export const getEventTypes = async (): Promise<EventType[]> => (await axiosInstance.get(R.eventTypes)).data;
 export const getPreferences = async (): Promise<CalendarPreferences> => (await axiosInstance.get(R.preferences)).data;
 export const updatePreferences = async (dto: Partial<CalendarPreferences>): Promise<CalendarPreferences> => (await axiosInstance.put(R.preferences, dto)).data;

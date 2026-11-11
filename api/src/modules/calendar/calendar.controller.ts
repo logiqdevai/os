@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Ip, Param, ParseUUIDPipe, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Header, Ip, Param, ParseUUIDPipe, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { JwtGuard } from '@/shared/guards/jwt.guard';
@@ -12,7 +12,10 @@ import { AvailabilityService } from './availability.service';
 import { ResourcesService } from './resources.service';
 import { BookingLinksService } from './booking-links.service';
 import { PublicBookingService } from './public-booking.service';
-import { CalendarEventQuery, CalendarEventQuerySchema, CancelCalendarEventDto, CreateCalendarEventDto, RespondCalendarEventDto, UpdateCalendarEventDto } from './dto/calendar-event.dto';
+import { CalendarFeedService } from './calendar-feed.service';
+import { CalendarProjectedService } from './calendar-projected.service';
+import { ProjectedQuery, ProjectedQuerySchema } from './dto/projected.dto';
+import { CalendarEventQuery, CalendarEventQuerySchema, CancelCalendarEventDto, CreateCalendarEventDto, RespondCalendarEventDto, UpdateCalendarEventDto, UpdateOccurrenceDto } from './dto/calendar-event.dto';
 import {
     CalendarListQuery, CalendarListQuerySchema, CreateCalendarDto, CreateEventTypeDto, PeopleQuery, PeopleQuerySchema, ShareCalendarDto, UpdateCalendarDto, UpdateCalendarPreferenceDto, UpdateEventTypeDto,
 } from './dto/calendar.dto';
@@ -61,6 +64,13 @@ export class CalendarEventsController {
         return this.events.update(ctx, id, dto);
     }
 
+    @Post(':id/occurrences')
+    @RequireAnyPermission('calendar.events.update_own', 'calendar.events.manage')
+    @ApiOperation({ summary: 'Edit one occurrence of a series (creates an exception event; returns it)' })
+    editOccurrence(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateOccurrenceDto) {
+        return this.events.editOccurrence(ctx, id, dto);
+    }
+
     @Post(':id/cancel')
     @RequireAnyPermission('calendar.events.update_own', 'calendar.events.manage')
     @ApiOperation({ summary: 'Cancel an event or one occurrence of a series' })
@@ -89,7 +99,18 @@ export class CalendarEventsController {
 @Controller('calendar')
 @UseGuards(JwtGuard, PermissionsGuard)
 export class CalendarsController {
-    constructor(private readonly calendars: CalendarsService) { }
+    constructor(
+        private readonly calendars: CalendarsService,
+        private readonly feed: CalendarFeedService,
+        private readonly projected: CalendarProjectedService,
+    ) { }
+
+    @Get('projected')
+    @RequireAnyPermission(...READ)
+    @ApiOperation({ summary: 'Read-only overlay: project milestones, task due dates, approved leave I may see (modules=projects,tasks,leave)' })
+    projectedDates(@CurrentOrg() ctx: OrgContext, @Query(new ZodValidationPipe(ProjectedQuerySchema)) query: ProjectedQuery) {
+        return this.projected.list(ctx, query);
+    }
 
     @Get('calendars')
     @RequireAnyPermission(...READ)
@@ -145,6 +166,20 @@ export class CalendarsController {
     @ApiOperation({ summary: 'Remove a share' })
     unshare(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Param('shareId', ParseUUIDPipe) shareId: string) {
         return this.calendars.unshare(ctx, id, shareId);
+    }
+
+    @Post('calendars/:id/feed')
+    @RequireAnyPermission('calendar.calendars.manage', 'calendar.events.create')
+    @ApiOperation({ summary: 'Turn on (or rotate) the iCal subscription link; the URL with its secret is returned only now' })
+    rotateFeed(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string) {
+        return this.feed.rotate(ctx, id);
+    }
+
+    @Delete('calendars/:id/feed')
+    @RequireAnyPermission('calendar.calendars.manage', 'calendar.events.create')
+    @ApiOperation({ summary: 'Revoke the iCal subscription link' })
+    revokeFeed(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string) {
+        return this.feed.revoke(ctx, id);
     }
 
     @Get('event-types')
@@ -392,6 +427,27 @@ export class BookingLinksController {
         const a = map[action as keyof typeof map];
         if (!a) throw new BadRequestException({ message: 'Unknown booking action', code: 'invalid_booking_action' });
         return this.links.act(ctx, id, a, dto.reason);
+    }
+}
+
+/** 19 §7 — public read-only iCalendar feed (secret link; rate limited per IP). */
+@ApiTags('Calendar · Feed')
+@Controller('calendar/feed')
+@UseGuards(JwtGuard)
+@Public()
+export class CalendarFeedController {
+    constructor(
+        private readonly feed: CalendarFeedService,
+        private readonly booking: PublicBookingService,
+    ) { }
+
+    @Get(':file')
+    @Header('Content-Type', 'text/calendar; charset=utf-8')
+    @Header('Cache-Control', 'private, max-age=300')
+    @ApiOperation({ summary: 'iCalendar (.ics) of one calendar for Google / Apple / Outlook subscriptions' })
+    ics(@Ip() ip: string, @Param('file') file: string) {
+        this.booking.limit(`feed:${ip}`, 60, 60_000);
+        return this.feed.render(file);
     }
 }
 
