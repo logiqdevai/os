@@ -71,6 +71,8 @@ function parseBlocks(src: string): Block[] {
         }
         const body: string[] = [];
         while (i < lines.length && lines[i].trim() && !/^(#{1,6}\s|```|>|\s*([-*+]|\d+[.)])\s)/.test(lines[i])) body.push(lines[i++]);
+        // Always consume at least one line so an unexpected line shape can never stall the parser.
+        if (!body.length) body.push(lines[i++]);
         out.push({ type: "paragraph", text: body.join("\n") });
     }
     return out;
@@ -127,9 +129,11 @@ function inline(text: string, wiki?: (t: string) => string | null): ReactNode[] 
     const nodes: ReactNode[] = [];
     let last = 0;
     let m: RegExpExecArray | null;
-    TOKEN.lastIndex = 0;
+    // A fresh regex per call: inline() recurses for **bold** / *italic*, and a shared /g regex would have its
+    // lastIndex reset by the inner call, making the outer loop match the same token forever (frozen tab).
+    const token = new RegExp(TOKEN.source, "g");
     let k = 0;
-    while ((m = TOKEN.exec(text))) {
+    while ((m = token.exec(text))) {
         if (m.index > last) nodes.push(text.slice(last, m.index));
         const t = m[0];
         if (m[1]) nodes.push(<code key={k++} className="rounded bg-secondary px-1 py-0.5 font-mono text-[0.85em]">{t.slice(1, -1)}</code>);
