@@ -1,21 +1,24 @@
-import { Route, Routes } from "react-router-dom";
-import { Construction } from "lucide-react";
-import { Page, PageHeader } from "@/components/ui/page";
-import { EmptyState } from "@/components/ui/states";
+import { lazy } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { SettingsLayout } from "./components/settings-layout";
 
-function Placeholder() {
-    return (
-        <Page>
-            <PageHeader title="Settings" />
-            <EmptyState icon={Construction} title="This area is being built" description="Check back soon." />
-        </Page>
-    );
-}
+const ProfilePage = lazy(() => import("./pages/profile"));
+const PasswordPage = lazy(() => import("./pages/password"));
+const AppearancePage = lazy(() => import("./pages/appearance"));
+const SessionsPage = lazy(() => import("./pages/sessions"));
 
+/** /settings/* — personal settings of the signed-in person (no organization permission needed). */
 export default function SettingsRoutes() {
     return (
         <Routes>
-            <Route path="*" element={<Placeholder />} />
+            <Route element={<SettingsLayout />}>
+                <Route index element={<Navigate to="/settings/profile" replace />} />
+                <Route path="profile" element={<ProfilePage />} />
+                <Route path="password" element={<PasswordPage />} />
+                <Route path="appearance" element={<AppearancePage />} />
+                <Route path="sessions" element={<SessionsPage />} />
+                <Route path="*" element={<Navigate to="/settings/profile" replace />} />
+            </Route>
         </Routes>
     );
 }

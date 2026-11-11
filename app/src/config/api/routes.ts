@@ -1,3 +1,4 @@
+import { AdminApiRoutes } from "./modules/admin.routes";
 
 /**
  * Central API route map. Each module keeps its routes in `config/api/modules/<module>.routes.ts`
@@ -22,4 +23,5 @@ export const ApiRoutes = {
         accept_invitation: "/auth/invitations/accept",
     },
     mcp: { tools: "/mcp/tools" },
+    admin: AdminApiRoutes,
 };
