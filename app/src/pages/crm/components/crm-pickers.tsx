@@ -17,9 +17,10 @@ const NONE = "__none";
 export function MemberSelect({ value, onChange, allowNone, disabled, label = "Owner", className }: { value: string | undefined | null; onChange: (v: string | undefined) => void; allowNone?: boolean; disabled?: boolean; label?: string; className?: string }) {
     const members = useCrmMembers();
     return (
-        <Select value={value ?? NONE} onValueChange={(v) => onChange(v === NONE ? undefined : v)} disabled={disabled}>
+        // No value on create = the API makes the caller the owner, so say so instead of showing an empty field.
+        <Select value={value ?? (allowNone ? NONE : "")} onValueChange={(v) => onChange(v === NONE ? undefined : v)} disabled={disabled}>
             <SelectTrigger aria-label={label} className={className}>
-                <SelectValue placeholder={members.isPending ? "Loading members…" : "Choose a member"} />
+                <SelectValue placeholder={members.isPending ? "Loading members…" : "You (default)"} />
             </SelectTrigger>
             <SelectContent>
                 {allowNone && <SelectItem value={NONE}>Unassigned</SelectItem>}
