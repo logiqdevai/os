@@ -20,15 +20,16 @@ import { usePortal } from "../components/portal-context";
 import { PortalCard, PortalHeader, PortalThread, RequestStatusBadge } from "../components/portal-ui";
 import { PORTAL_PATHS } from "../portal-paths";
 
-/** Customer requests — /portal/requests (mockup 07-portal `cp-requests`). @perm portal.requests.create */
+/** Customer requests — /portal/requests (mockup 07-portal `cp-requests`). @perm portal.requests.read (list) · portal.requests.create (new request, replies) */
 export function PortalRequestsPage() {
     const [state, setState] = useState("open");
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
     const requests = usePortalRequests({ status: state === "everything" ? undefined : state, search: search || undefined, page, limit: 20 });
+    const canCreate = usePortal().can("portal.requests.create");
     return (
         <>
-            <PortalHeader title="Requests" description="Questions, bugs and changes you asked the team about." actions={<Button asChild><Link to={PORTAL_PATHS.newRequest}><Plus /> New request</Link></Button>} />
+            <PortalHeader title="Requests" description="Questions, bugs and changes you asked the team about." actions={canCreate && <Button asChild><Link to={PORTAL_PATHS.newRequest}><Plus /> New request</Link></Button>} />
             <div className="mb-4 flex flex-col gap-2 sm:flex-row">
                 <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search requests…" className="h-9 sm:max-w-xs" aria-label="Search requests" />
                 <Select value={state} onValueChange={(v) => { setState(v); setPage(1); }}>
@@ -37,7 +38,7 @@ export function PortalRequestsPage() {
                 </Select>
             </div>
             {requests.isLoading ? <ListSkeleton /> : requests.error ? <ErrorState error={requests.error} onRetry={() => requests.refetch()} /> : !requests.data?.data.length ? (
-                <EmptyState icon={LifeBuoy} title={search ? "No requests match" : "No requests here"} description="Need something? Open a request and the team will pick it up." action={<Button asChild size="sm"><Link to={PORTAL_PATHS.newRequest}><Plus /> New request</Link></Button>} />
+                <EmptyState icon={LifeBuoy} title={search ? "No requests match" : "No requests here"} description="Need something? Open a request and the team will pick it up." action={canCreate ? <Button asChild size="sm"><Link to={PORTAL_PATHS.newRequest}><Plus /> New request</Link></Button> : undefined} />
             ) : (
                 <PortalCard>
                     <ul className="divide-y divide-border-soft">

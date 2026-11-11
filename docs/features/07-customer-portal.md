@@ -78,7 +78,7 @@ Every capability of this module is built for **all access channels at once**. Ea
 | API key / service account | Explicit permission keys and scope, never a human's full access; usable on every endpoint and MCP tool of this module; audit actor `SERVICE_ACCOUNT` |
 | Webhooks and automation | Events, triggers and actions registered with [20](./20-automation-engine.md); automation runs as a service account or membership with the same checks |
 
-**Permission keys in the catalog today** (`api/prisma/seed/permission-catalog.ts`, 19 keys; `*` = sensitive):
+**Permission keys in the catalog today** (`api/prisma/seed/permission-catalog.ts`, 20 keys; `*` = sensitive):
 
 | Resource key prefix | Actions |
 | -- | -- |
@@ -92,7 +92,7 @@ Every capability of this module is built for **all access channels at once**. Ea
 | `portal.profile_changes` | review* |
 | `portal.projects` | read |
 | `portal.proposals` | read, accept* |
-| `portal.requests` | create |
+| `portal.requests` | create, read |
 | `portal.settings` | manage |
 | `portal.subscriptions` | manage* |
 | `portal.users` | manage*, read |

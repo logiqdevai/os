@@ -57,6 +57,7 @@ export const PortalApprovalStateOptions: DropdownOption<"awaiting" | "changes_re
 export const PortalPermissionOptions: DropdownOption<string>[] = [
     { id: "portal.projects.read", label: "See projects" },
     { id: "portal.deliverables.approve", label: "Approve deliverables" },
+    { id: "portal.requests.read", label: "See requests" },
     { id: "portal.requests.create", label: "Open and follow requests" },
     { id: "portal.conversations.participate", label: "Message the team" },
     { id: "portal.documents.read", label: "See documents" },

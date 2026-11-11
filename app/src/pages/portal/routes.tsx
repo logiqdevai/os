@@ -39,9 +39,9 @@ export default function PortalRoutes() {
                 <Route path="projects" element={page(<PortalGate anyOf={["portal.projects.read"]} feature="projects"><Projects /></PortalGate>)} />
                 <Route path="projects/:id" element={page(<PortalGate anyOf={["portal.projects.read"]} feature="projects"><Project /></PortalGate>)} />
                 <Route path="approvals" element={page(<PortalGate anyOf={["portal.deliverables.approve"]} feature="projects"><Approvals /></PortalGate>)} />
-                <Route path="requests" element={page(<PortalGate anyOf={["portal.requests.create"]} feature="requests"><Requests /></PortalGate>)} />
+                <Route path="requests" element={page(<PortalGate anyOf={["portal.requests.read", "portal.requests.create"]} feature="requests"><Requests /></PortalGate>)} />
                 <Route path="requests/new" element={page(<PortalGate anyOf={["portal.requests.create"]} feature="requests"><NewRequest /></PortalGate>)} />
-                <Route path="requests/:reference" element={page(<PortalGate anyOf={["portal.requests.create"]} feature="requests"><Request /></PortalGate>)} />
+                <Route path="requests/:reference" element={page(<PortalGate anyOf={["portal.requests.read", "portal.requests.create"]} feature="requests"><Request /></PortalGate>)} />
                 <Route path="messages" element={page(<PortalGate anyOf={["portal.conversations.participate"]} feature="conversations"><Messages /></PortalGate>)} />
                 <Route path="messages/:id" element={page(<PortalGate anyOf={["portal.conversations.participate"]} feature="conversations"><Conversation /></PortalGate>)} />
                 <Route path="documents" element={page(<PortalGate anyOf={["portal.documents.read"]} feature="documents"><Documents /></PortalGate>)} />

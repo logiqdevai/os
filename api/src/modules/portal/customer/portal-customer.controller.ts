@@ -107,14 +107,14 @@ export class PortalCustomerController {
     // --- Requests --------------------------------------------------------------------------------
 
     @Get('requests')
-    @RequirePortalPermission('portal.requests.create')
+    @RequirePortalPermission('portal.requests.read')
     @ApiOperation({ summary: "Your company's requests (status=open|closed)" })
     requests(@CurrentPortal() p: PortalContext, @Query(new ZodValidationPipe(PortalListQuerySchema)) q: PortalListQuery) {
         return this.portal.requests(p, q);
     }
 
     @Get('requests/:idOrReference')
-    @RequirePortalPermission('portal.requests.create')
+    @RequirePortalPermission('portal.requests.read')
     @ApiOperation({ summary: 'One request with its public thread (internal notes are never returned)' })
     request(@CurrentPortal() p: PortalContext, @Param('idOrReference') idOrReference: string) {
         return this.portal.request(p, idOrReference);

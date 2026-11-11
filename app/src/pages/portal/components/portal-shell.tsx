@@ -31,7 +31,7 @@ const NAV: NavEntry[] = [
     { label: "Dashboard", to: PORTAL_PATHS.home, end: true },
     { label: "Projects", to: PORTAL_PATHS.projects, perms: ["portal.projects.read"], feature: "projects" },
     { label: "Approvals", to: PORTAL_PATHS.approvals, perms: ["portal.deliverables.approve"], feature: "projects" },
-    { label: "Requests", to: PORTAL_PATHS.requests, perms: ["portal.requests.create"], feature: "requests" },
+    { label: "Requests", to: PORTAL_PATHS.requests, perms: ["portal.requests.read", "portal.requests.create"], feature: "requests" },
     { label: "Messages", to: PORTAL_PATHS.messages, perms: ["portal.conversations.participate"], feature: "conversations" },
     { label: "Documents", to: PORTAL_PATHS.documents, perms: ["portal.documents.read"], feature: "documents" },
     { label: "Agreements", to: PORTAL_PATHS.agreements, perms: ["portal.proposals.read", "portal.contracts.read"] },

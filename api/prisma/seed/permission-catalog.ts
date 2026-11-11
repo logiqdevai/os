@@ -88,6 +88,8 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'portal.projects.read', module: ModuleKey.CUSTOMER_PORTAL, resource: 'projects', action: 'read' },
   { key: 'portal.deliverables.approve', module: ModuleKey.CUSTOMER_PORTAL, resource: 'deliverables', action: 'approve' },
   { key: 'portal.requests.create', module: ModuleKey.CUSTOMER_PORTAL, resource: 'requests', action: 'create' },
+  // 07 — see the company's support requests and their replies (read-only portal users included).
+  { key: 'portal.requests.read', module: ModuleKey.CUSTOMER_PORTAL, resource: 'requests', action: 'read' },
   { key: 'portal.documents.read', module: ModuleKey.CUSTOMER_PORTAL, resource: 'documents', action: 'read' },
   { key: 'portal.documents.upload', module: ModuleKey.CUSTOMER_PORTAL, resource: 'documents', action: 'upload' },
   { key: 'portal.proposals.read', module: ModuleKey.CUSTOMER_PORTAL, resource: 'proposals', action: 'read' },
@@ -536,13 +538,13 @@ export const ROLE_TEMPLATES: RoleTemplateSeed[] = [
     slug: 'customer-administrator', name: 'Customer Administrator', type: RoleType.CUSTOMER_PORTAL, default_scope: ScopeType.CUSTOMER,
     description: 'Manages portal users and settings; cannot sign or pay unless also granted.',
     modules: [ModuleKey.CUSTOMER_PORTAL],
-    permissions: ['portal.users.manage', 'portal.settings.manage', 'portal.projects.read', 'portal.requests.create', 'portal.documents.read', 'portal.documents.upload', 'portal.proposals.read', 'portal.contracts.read', 'portal.invoices.read', 'portal.conversations.participate', 'portal.deliverables.approve'],
+    permissions: ['portal.users.manage', 'portal.settings.manage', 'portal.projects.read', 'portal.requests.read', 'portal.requests.create', 'portal.documents.read', 'portal.documents.upload', 'portal.proposals.read', 'portal.contracts.read', 'portal.invoices.read', 'portal.conversations.participate', 'portal.deliverables.approve'],
   },
   {
     slug: 'customer-manager', name: 'Customer Manager', type: RoleType.CUSTOMER_PORTAL, default_scope: ScopeType.CUSTOMER,
     description: 'Day-to-day project collaboration and approvals.',
     modules: [ModuleKey.CUSTOMER_PORTAL],
-    permissions: ['portal.projects.read', 'portal.deliverables.approve', 'portal.requests.create', 'portal.documents.read', 'portal.documents.upload', 'portal.proposals.read', 'portal.contracts.read', 'portal.conversations.participate'],
+    permissions: ['portal.projects.read', 'portal.deliverables.approve', 'portal.requests.read', 'portal.requests.create', 'portal.documents.read', 'portal.documents.upload', 'portal.proposals.read', 'portal.contracts.read', 'portal.conversations.participate'],
   },
   {
     slug: 'customer-finance', name: 'Customer Finance', type: RoleType.CUSTOMER_PORTAL, default_scope: ScopeType.CUSTOMER,
@@ -560,7 +562,7 @@ export const ROLE_TEMPLATES: RoleTemplateSeed[] = [
     slug: 'customer-viewer', name: 'Customer Viewer', type: RoleType.CUSTOMER_PORTAL, default_scope: ScopeType.CUSTOMER,
     description: 'Read-only portal access.',
     modules: [ModuleKey.CUSTOMER_PORTAL],
-    permissions: ['portal.projects.read', 'portal.documents.read', 'portal.proposals.read', 'portal.contracts.read', 'portal.invoices.read'],
+    permissions: ['portal.projects.read', 'portal.requests.read', 'portal.documents.read', 'portal.proposals.read', 'portal.contracts.read', 'portal.invoices.read'],
   },
 ];
 

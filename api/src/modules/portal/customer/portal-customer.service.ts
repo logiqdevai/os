@@ -672,7 +672,7 @@ export class PortalCustomerService {
         const [projects, approvals, requests, invoices, documents, conversations, incidents] = await Promise.all([
             show('projects', 'portal.projects.read') ? this.projects(p, { page: 1, limit: 5, order_direction: 'desc' }) : null,
             show('projects', 'portal.deliverables.approve') ? this.approvals(p, { page: 1, limit: 5, order_direction: 'desc' }) : null,
-            show('requests', 'portal.requests.create') ? this.requests(p, { page: 1, limit: 5, order_direction: 'desc', status: 'open' }) : null,
+            show('requests', 'portal.requests.read') ? this.requests(p, { page: 1, limit: 5, order_direction: 'desc', status: 'open' }) : null,
             show('billing', 'portal.invoices.read') ? this.invoices(p, { page: 1, limit: 5, order_direction: 'desc', status: 'outstanding' }) : null,
             show('documents', 'portal.documents.read') ? this.documents(p, { page: 1, limit: 5, order_direction: 'desc' }) : null,
             show('conversations', 'portal.conversations.participate') ? this.conversationsList(p, { page: 1, limit: 5, order_direction: 'desc' }) : null,
