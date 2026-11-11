@@ -39,7 +39,9 @@ async function bootstrap() {
     origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Organization-Id', 'X-Api-Key', 'X-Mcp-Client', 'X-Branch-Id'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Organization-Id', 'X-Api-Key', 'X-Mcp-Client', 'X-Branch-Id', 'X-Portal-Membership-Id', 'X-Proposal-Access'],
+    // Headers the browser app reads from responses (CSV exports, file downloads).
+    exposedHeaders: ['Content-Disposition', 'X-Record-Count', 'X-Row-Count'],
   });
 
   app.enableShutdownHooks();
