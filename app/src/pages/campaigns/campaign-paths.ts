@@ -1,0 +1,21 @@
+/** Frontend paths of the Campaigns app (module 11). */
+export const CampaignPaths = {
+    root: "/campaigns",
+    overview: "/campaigns/overview",
+    analytics: "/campaigns/analytics",
+    new: "/campaigns/new",
+    detail: (id: string) => `/campaigns/${id}`,
+    edit: (id: string) => `/campaigns/${id}/edit`,
+    segments: "/campaigns/segments",
+    segment_new: "/campaigns/segments/new",
+    segment: (id: string) => `/campaigns/segments/${id}`,
+    lists: "/campaigns/lists",
+    list: (id: string) => `/campaigns/lists/${id}`,
+    templates: "/campaigns/templates",
+    template_new: "/campaigns/templates/new",
+    template: (id: string) => `/campaigns/templates/${id}`,
+    suppressions: "/campaigns/suppressions",
+    messages: "/campaigns/messages",
+    message: (id: string) => `/campaigns/messages/${id}`,
+    senders: "/campaigns/senders",
+} as const;

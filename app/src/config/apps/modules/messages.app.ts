@@ -1,6 +1,7 @@
-import { AtSign, Bookmark, Hash, House, MessageSquare, MessagesSquare } from "lucide-react";
+import { AtSign, Bookmark, Hash, House, MessageSquare, MessagesSquare, Search } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
+/** Module 12 Messaging. Every key below exists in api/prisma/seed/permission-catalog.ts. */
 export const messagesApp: AppDefinition = {
     id: "messages",
     label: "Messages",
@@ -14,10 +15,11 @@ export const messagesApp: AppDefinition = {
     nav: [
         { items: [
             { label: "Home", to: "/messages", icon: House, end: true },
-            { label: "Threads", to: "/messages/threads", icon: MessagesSquare },
-            { label: "Mentions", to: "/messages/mentions", icon: AtSign },
-            { label: "Saved", to: "/messages/saved", icon: Bookmark },
-            { label: "Browse channels", to: "/messages/channels", icon: Hash },
+            { label: "Threads", to: "/messages/threads", icon: MessagesSquare, permissions: ["messaging.messages.read"] },
+            { label: "Mentions", to: "/messages/mentions", icon: AtSign, permissions: ["messaging.messages.read"] },
+            { label: "Saved", to: "/messages/saved", icon: Bookmark, permissions: ["messaging.messages.read"] },
+            { label: "Search", to: "/messages/search", icon: Search, permissions: ["messaging.messages.read"] },
+            { label: "Browse channels", to: "/messages/channels", icon: Hash, permissions: ["messaging.channels.read"] },
         ] },
     ],
 };

@@ -1,7 +1,9 @@
 import { TeamsModule } from './admin/teams/teams.module';
 import { AdminModule } from './admin/admin.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { MessagingModule } from './messaging/messaging.module';
 import { CrmModule } from './crm/crm.module';
+import { CommunicationsModule } from './communications/communications.module';
 import { SupportModule } from './support/support.module';
 import { PortalModule } from './portal/portal.module';
 import { CalendarModule } from './calendar/calendar.module';
@@ -16,7 +18,9 @@ export const FEATURE_MODULES: any[] = [
     TeamsModule,
     AdminModule,
     NotificationsModule,
+    MessagingModule,
     CrmModule,
+    CommunicationsModule,
     SupportModule,
     PortalModule,
     CalendarModule,
