@@ -1,3 +1,4 @@
+import type { CoalesceKey, DeliveryMode, DeliveryStatus, DigestStatus, EventStatus, RuleKind, SkipReason } from "@/features/notifications/interfaces/notification-admin.interfaces";
 import type {
     AnnouncementStatus, DigestFrequency, NotificationCategory, NotificationChannel, NotificationLevel, NotificationPriority, NotificationState,
 } from "@/features/notifications/interfaces/notifications.interfaces";
@@ -109,6 +110,84 @@ export const WeekdayShortOptions: { id: number; label: string }[] = [
     { id: 6, label: "Sat" },
     { id: 0, label: "Sun" },
 ];
+
+// ---------------------------------------------------------------- administration (14 §4–§10)
+
+export const DeliveryModeFormOptions: { id: DeliveryMode; label: string }[] = [
+    { id: "IMMEDIATE", label: "Right away" },
+    { id: "DIGEST", label: "In a digest" },
+    { id: "OFF", label: "Off" },
+];
+
+export const DeliveryStatusOptions: { id: DeliveryStatus; label: string }[] = [
+    { id: "PENDING", label: "Pending" },
+    { id: "QUEUED", label: "Queued" },
+    { id: "SENT", label: "Sent" },
+    { id: "DELIVERED", label: "Delivered" },
+    { id: "FAILED", label: "Failed" },
+    { id: "SKIPPED", label: "Skipped" },
+    { id: "DIGESTED", label: "In digest" },
+    { id: "EXPIRED", label: "Expired" },
+    { id: "CANCELLED", label: "Cancelled" },
+];
+export const DeliveryStatusFilterOptions: { id: DeliveryStatus | "all"; label: string }[] = [{ id: "all", label: "All statuses" }, ...DeliveryStatusOptions];
+
+export const SkipReasonOptions: { id: SkipReason; label: string }[] = [
+    { id: "PREFERENCE_OFF", label: "Turned off by the recipient" },
+    { id: "LEVEL_FILTERED", label: "Filtered by level" },
+    { id: "RECORD_MUTED", label: "Record muted" },
+    { id: "QUIET_HOURS", label: "Quiet hours" },
+    { id: "CHANNEL_DISABLED", label: "Channel off / suppressed" },
+    { id: "CHANNEL_NOT_AVAILABLE", label: "No provider connected" },
+    { id: "NO_ADDRESS", label: "No address" },
+    { id: "NO_DEVICE", label: "No device" },
+    { id: "DEDUPLICATED", label: "Duplicate" },
+    { id: "COALESCED", label: "Coalesced" },
+    { id: "THROTTLED", label: "Throttled" },
+    { id: "PERMISSION_DENIED", label: "No access" },
+    { id: "NOT_CUSTOMER_VISIBLE", label: "Not for customers" },
+    { id: "EXPIRED", label: "Expired" },
+];
+export const SkipReasonFilterOptions: { id: SkipReason | "all"; label: string }[] = [{ id: "all", label: "Any reason" }, ...SkipReasonOptions];
+
+export const EventStatusOptions: { id: EventStatus; label: string }[] = [
+    { id: "RECEIVED", label: "Received" },
+    { id: "PROCESSING", label: "Processing" },
+    { id: "PROCESSED", label: "Processed" },
+    { id: "IGNORED", label: "Ignored" },
+    { id: "FAILED", label: "Failed" },
+];
+
+export const DigestStatusOptions: { id: DigestStatus; label: string }[] = [
+    { id: "OPEN", label: "Collecting" },
+    { id: "SCHEDULED", label: "Scheduled" },
+    { id: "SENDING", label: "Sending" },
+    { id: "SENT", label: "Sent" },
+    { id: "EMPTY", label: "Empty" },
+    { id: "FAILED", label: "Failed" },
+];
+
+export const RuleKindFormOptions: { id: RuleKind; label: string; hint: string }[] = [
+    { id: "DEDUPLICATE", label: "Deduplicate", hint: "Never send the same event about the same record twice inside the window." },
+    { id: "COALESCE", label: "Coalesce", hint: "Fold repeated events into the recipient's unread notification." },
+    { id: "THROTTLE", label: "Throttle", hint: "At most N notifications per recipient inside the window." },
+    { id: "SUPPRESS", label: "Suppress", hint: "Drop matching events (mandatory events are never suppressed)." },
+];
+
+export const CoalesceKeyFormOptions: { id: CoalesceKey; label: string }[] = [
+    { id: "RECORD", label: "Same record" },
+    { id: "RECORD_AND_ACTOR", label: "Same record and person" },
+    { id: "EVENT_TYPE", label: "Same event type" },
+    { id: "RECIPIENT", label: "Anything for the recipient" },
+];
+
+export const EventScopeFilterOptions: { id: "all" | "platform" | "organization"; label: string }[] = [
+    { id: "all", label: "All event types" },
+    { id: "platform", label: "Platform" },
+    { id: "organization", label: "This organization" },
+];
+
+export const HourOptions: { id: string; label: string }[] = Array.from({ length: 24 }, (_, h) => ({ id: String(h), label: `${String(h).padStart(2, "0")}:00` }));
 
 export const ActivityScopeOptions: { id: "organization" | "project" | "customer"; label: string }[] = [
     { id: "organization", label: "Organization" },
