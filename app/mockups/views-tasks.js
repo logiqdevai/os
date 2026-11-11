@@ -86,7 +86,8 @@
      ===================================================================================================================== */
   function mine() {
     const g = (c) => T.filter((r) => r[2] === c && r[7] !== "KL");
-    return '<div class="tk">' + bar2("My tasks <span class='badge'>10</span>", '<button class="btn sm">' + I("filter", 13) + ' Filter</button><button class="btn sm">' + I("sort", 13) + " Display</button>") +
+    return '<div class="tk">' + bar2("My tasks <span class='badge'>10</span>", '<button class="btn sm">' + I("filter", 13) + ' Filter</button><button class="btn sm">' + I("sort", 13) + " Display</button>" + btn("New task", "plus", "sm primary")) +
+      '<div style="padding:8px 20px;border-bottom:1px solid var(--hairline)">' + window.UI.filters.filterBar([["Assignee", "is", "Me"], ["Status category", "is not", "Done"]], sel("Group: Status") + sel("Order: Priority") + sel("List", "list") + btn("Save view", "plus", "sm")) + "</div>" +
       '<div class="tk-list">' + ["IN_REVIEW", "IN_PROGRESS", "BLOCKED", "TODO", "BACKLOG"].map((c) => group(c, g(c), "WEB-142")).join("") + "</div>" +
       '<div style="padding:16px 20px">' + dm(["Task · number, title, status_id, priority, assignee_membership_id, due_date, estimate_points, blocked, project_id", "Team · task_key", "TaskStatus · category · TaskLabel · TaskAssignee", "SavedView · entity_type TASK (columns, grouping, sorting)"], []) + "</div></div>";
   }
@@ -165,6 +166,16 @@
       cd("<b>Properties</b>", prop("Status", glyph("IN_PROGRESS") + " In progress") + prop("Priority", pr("HIGH") + " High") + prop("Assignee", wh("MS")) + prop("Also assigned", av("AM")) + prop("Reporter", "Anna Meyer") + prop("Labels", lbl("Frontend", "blue")) + prop("Type", "Feature") + prop("Estimate", "3 points · 6 h") + prop("Actual", "4.5 h " + muted("from time (18)")) + prop("Start", "Nov 8") + prop("Due", "Nov 14") + prop("Cycle", "Cycle 14") + prop("Release", "2026.11 website") + prop("Customer visible", sw(1))) +
       '<div style="height:12px"></div>' +
       cd("<b>Project & links</b>", prop("Project", "Acme Rebrand Website " + muted("(05)")) + prop("Milestone", "Launch · Nov 28") + prop("Workstream", "Website build") + prop("Blocked by", "WEB-139 " + muted("BLOCKS")) + prop("Ticket", "TCK-2041 " + muted("(13)")) + prop("Deal", "Acme redesign " + muted("(02)")) + prop("Attachments", "2 documents " + muted("(17)"))) +
+      '<div style="height:12px"></div>' +
+      cd("<b>Dependencies</b><span class='r'>" + btn("Add", "plus", "sm") + "</span>", '<div class="rowx"><div class="grow"><b>Blocked by WEB-139</b><small>' + E("BLOCKS") + ' · Stripe webhook retries</small></div>' + glyph("IN_REVIEW") + '</div><div class="rowx"><div class="grow"><b>Related to WEB-120</b><small>' + E("RELATED") + ' · Migrate analytics events</small></div>' + glyph("BACKLOG") + "</div>", 1) +
+      '<div style="height:12px"></div>' +
+      cd("<b>Time</b><span class='r muted'>TimeEntry (18)</span>", '<div class="rowx"><div class="grow"><b>Marco Silva</b><small>Nov 10 · hero layout</small></div><span>2.5 h</span></div><div class="rowx"><div class="grow"><b>Marco Silva</b><small>Nov 11 · plan cards</small></div><span>2.0 h</span></div>' + '<div class="rowx"><div class="grow"><b>Total 4.5 h</b><small>of 6 h estimated</small></div>' + btn("Start timer", "time", "sm") + "</div>", 1) +
+      '<div style="height:12px"></div>' +
+      cd("<b>Watchers</b><span class='r'>" + btn("Add", "plus", "sm") + "</span>", '<div class="rowx">' + av("MS") + av("AM") + av("JK") + "</div>", 1) +
+      '<div style="height:12px"></div>' +
+      cd("<b>AI</b><span class='r muted'>suggestions, never applied automatically</span>", '<div class="rowx"><div class="grow"><b>Suggest sub-tasks</b><small>From the description</small></div>' + btn("Generate", "sparkles", "sm") + '</div><div class="rowx"><div class="grow"><b>Estimate effort</b><small>Based on 12 similar tasks</small></div>' + btn("Suggest", "sparkles", "sm") + "</div>", 1) +
+      '<div style="height:12px"></div>' +
+      cd("<b>History</b><span class='r muted'>audit_events</span>", '<div class="tl"><div class="ev"><b>Due date changed Nov 12 → Nov 14</b><small>Anna Meyer · Nov 9</small></div><div class="ev"><b>Estimate set to 3 points</b><small>Marco Silva · Nov 8</small></div><div class="ev"><b>Task created</b><small>Anna Meyer · Nov 3</small></div></div>') +
       "</div></div>" +
       dm(["Task · all columns (see the property panel)", "TaskAssignee · TaskLabelAssignment · TaskDependency (type BLOCKS | RELATED | DUPLICATE_OF) · TaskChecklistItem · TaskWatcher", "TaskComment · visibility, mentions, reactions, parent_comment_id · TaskAttachment (document_id) · TaskLink (entity_type, entity_id, relation) · TaskStatusHistory", "Read-only: TimeEntry (18), Project/ProjectMilestone (05), Ticket (13)"], []) + "</div>";
   }
@@ -266,7 +277,99 @@
       dm(["TaskStatus · category, team_id, project_type_id, allowed_transitions, is_default, archived_at", "TaskType · template, is_default · TaskLabel · parent_label_id", "Team · task_key (the key prefix per team, e.g. WEB)"], []) + "</div>";
   }
 
-  const MAP = { mine, board, backlog, detail, cycles, releases, workload, reports, settings };
+  /* =====================================================================================================================
+     FILTER BAR + SAVED VIEWS (spec §5, §6) — shared pattern, also exposed as UI.filters for other apps
+     @impl Filters are a typed tree stored in SavedView.filters (Json): { and: [ {field, op, value}, { or: [...] } ] } so the same JSON drives the API query (GET /tasks?filter=<json>) and a saved view.
+           Fields for TASK: status (TaskStatus, or category), priority (TaskPriority), assignee, reporter, team, project, workstream, milestone, cycle, release, label, type, due date, start date, created, completed,
+           estimate, blocked, customer_visible, has parent, text search (Task.search_vector, full-text), custom field (02 §24–26), tag. Operators depend on the type: is / is not / is any of / contains / before / after / between /
+           is empty / is not empty.
+           Sorting = SavedView.sorting [{field, dir}], grouping = SavedView.grouping, columns = SavedView.columns, layout = SavedView.layout (list | table | kanban | timeline | calendar). visibility PERSONAL | TEAM | ORGANIZATION
+           (TEAM needs team_id). Creating TEAM or ORGANIZATION views needs tasks.tasks.update at that scope. Each filter value picker is a shadcn Popover + Command (searchable, multi-select).
+     ===================================================================================================================== */
+  const chip = (f, o, v) => '<span class="fchip"><b>' + f + "</b><i>" + o + "</i><span>" + v + "</span>" + I("x", 12) + "</span>";
+  const filterBar = (chips, extra) => '<div class="fbar"><div class="fchips">' + chips.map((c) => chip(c[0], c[1], c[2])).join("") + '<button class="btn sm ghost">' + I("plus", 13) + ' Add filter</button></div><div class="fright">' + (extra || "") + "</div></div>";
+  window.UI.filters = { chip, filterBar };
+
+  /* =====================================================================================================================
+     ALL TASKS — table view with filters, columns, sorting, bulk actions (spec §5, §6, §12)
+     @route  /tasks/all?view=<savedViewId>&filter=<json>&sort=&group=&q=
+     @perm   VIEW tasks.tasks.read · bulk tasks.bulk.execute · delete tasks.tasks.delete* · export tasks.tasks.read + a data export permission
+     @api    GET /tasks?filter=&sort=&group=&q=&cursor= · POST /tasks/bulk {task_ids|filter, patch|action} · GET/POST/PATCH /saved-views?entity_type=TASK
+     @mcp    tasks_tasks_read (supports the same filter JSON) · tasks_bulk_execute
+     @data   Task (all columns selectable) · SavedView (entity_type TASK, layout, visibility, team_id, filters, sorting, grouping, columns, search, is_default)
+     @ui     Table with column chooser, filter bar (above), Popover+Command pickers, multi-select checkboxes with a sticky bulk action bar, shadcn DropdownMenu for row actions, "Save view" Dialog
+     @states loading skeleton · empty ("No tasks match these filters" + clear filters) · error · no-access · partial results warning when a filter hits a restricted field
+     @audit  bulk actions write one audit event per task plus a summary event with the filter used
+     @note   Pagination is cursor-based and virtualized; "select all" selects by FILTER (the API re-evaluates it) not by loaded rows, and the bulk bar says how many tasks it will touch. Bulk actions: assign, change status
+             (only transitions allowed for every selected task), set priority, add/remove label, set cycle, set release, move to project, set due date, delete*. Full-text search is Task.search_vector.
+     ===================================================================================================================== */
+  function all() {
+    const cols = ["Key", "Title", "Status", "Priority", "Assignee", "Project", "Cycle", "Estimate", "Due", "Labels"];
+    return '<div class="a-page">' + head("All tasks", "Every task you can see across teams.", btn("Export", "file") + btn("New task", "plus", "primary")) +
+      '<div class="toolbar">' + search("Search title, description, key") + sel("Table", "grid") + sel("Group: None") + sel("Sort: Due date ↑", "sort") + sel("Columns (10)", "settings") + sel("Views: Overdue this week", "star") + "</div>" +
+      filterBar([["Status category", "is any of", "Todo, In progress, In review"], ["Assignee", "is", "Anyone"], ["Due date", "before", "Nov 30"], ["Customer visible", "is", "any"]], btn("Clear", "", "sm ghost") + btn("Save view", "plus", "sm")) +
+      '<div class="bulk"><span class="cb on"></span><b>3 selected</b><span class="muted">the bulk bar appears when rows are selected</span><span style="flex:1"></span>' + sel("Assign to…", "users") + sel("Status…") + sel("Priority…") + sel("Label…", "tag") + sel("Cycle…") + btn("Delete", "x", "sm") + "</div>" +
+      '<div class="panel" style="margin-top:0"><table>' + th([""].concat(cols)) + "<tbody>" + T.map((r, i) => "<tr><td>" + cb(i < 3) + "</td><td class='muted'>" + r[0] + "</td><td>" + ink(r[1]) + "</td><td>" + glyph(r[2]) + " " + r[3] + "</td><td>" + pr(r[4]) + " " + U.en(r[4]) + "</td><td>" + wh(r[7]) + "</td><td>" + r[6] + "</td><td>" + (r[2] === "BACKLOG" ? "—" : "Cycle 14") + "</td><td>" + r[9] + " pts</td><td>" + r[8] + "</td><td>" + r[5].map((l) => lbl(l[0], l[1])).join(" ") + "</td></tr>").join("") + "</tbody></table></div>" +
+      '<div class="pager"><span class="muted">1–11 of 248</span><span style="flex:1"></span>' + btn("Previous", "", "sm") + btn("Next", "", "sm") + "</div>" +
+      dm(["Task · every column is selectable and sortable", "SavedView · entity_type TASK, layout, visibility, team_id, filters, sorting, grouping, columns, search, is_default", "Task.search_vector · full-text index"], []) + "</div>";
+  }
+
+  /* =====================================================================================================================
+     CREATE TASK — full page (and the quick-create dialog with the same fields, spec §3, §12)
+     @route  /tasks/new?team=&project=&parent=&from=<entityType>:<id> · quick create = Dialog opened with "c" from any list
+     @perm   tasks.tasks.create · assigning others tasks.tasks.assign · customer_visible requires the caller to see the project's customer-facing settings · attaching documents needs documents.documents.read on them
+     @api    POST /tasks {team_id, project_id?, workstream_id?, milestone_id?, parent_task_id?, cycle_id?, release_id?, type_id, status_id?, title, description, priority, assignee_membership_id?, assignee_ids[], estimate_points?,
+             estimate_hours?, start_date?, due_date?, label_ids[], acceptance_criteria?, customer_visible, checklist[], links[{entity_type, entity_id, relation}], attachment_document_ids[], watcher_ids[]}
+     @mcp    tasks_tasks_create
+     @data   Task · TaskAssignee · TaskLabelAssignment · TaskChecklistItem · TaskLink · TaskAttachment · TaskWatcher · TaskType.template (defaults) · Team.task_key (the new key is assigned on save)
+     @ui     Form with sections, shadcn Select / Popover+Command / DatePicker / Textarea (Markdown editor with slash menu), file drop zone (uploads to 17), "Create more" toggle, Ctrl+Enter submits
+     @states validation errors inline · saving · saved (toast with the new key and an Undo) · permission error on a field (that control is disabled with the reason) · draft restored from local storage
+     @audit  task created (with source record if created from CRM, ticket, change request or checklist)
+     @note   Choosing a TASK TYPE applies TaskType.template (default field values and a starter checklist) but never overwrites fields the user already filled. Status defaults to the team's default TaskStatus. Project
+             changes the available workstreams, milestones and cycles. "Create from record" prefills title and link from the source (a CRM deal, a ticket, a change request, a contract obligation, a project checklist item).
+             The new key (WEB-152) is assigned by the API in one transaction; the client never invents numbers. Drafts survive a reload.
+     ===================================================================================================================== */
+  function create() {
+    const f = (l, h, hint) => '<div class="fld"><label>' + l + "</label>" + h + (hint ? '<div class="sub-note">' + hint + "</div>" : "") + "</div>";
+    const box = (t) => '<div class="input-fake">' + t + "</div>";
+    return '<div class="a-page">' + head("New task", "Create a task in Web. The key is assigned when you save.", btn("Cancel") + btn("Create task", "plus", "primary")) +
+      '<div class="g2" style="grid-template-columns:1.7fr 1fr;align-items:start"><div>' +
+      cd("<b>What needs doing</b>", f("Type", '<div class="rowx" style="gap:8px;padding:0">' + ["Task", "Bug", "Feature", "Improvement", "Chore", "Follow-up"].map((t, i) => '<span class="seg' + (i === 0 ? " on" : "") + '">' + t + "</span>").join("") + "</div>", "Selecting a type applies its template (default values and a starter checklist).") + f("Title", box("Short, specific summary")) + f("Description", '<div class="editor"><div class="ed-bar">' + ["B", "I", "H", "•", "1.", "</>", "Link", "/"].map((x) => "<span>" + x + "</span>").join("") + '</div><div class="ed-body">Markdown. Type “/” for blocks, “@” to mention a person, “#” to link a task.</div></div>') +
+        f("Acceptance criteria", box("Add criteria the reviewer will tick") + '<div class="sub-note">Stored as a checklist in Task.acceptance_criteria.</div>')) +
+      '<div style="height:12px"></div>' +
+      cd("<b>Checklist</b><span class='r'>" + btn("Add item", "plus", "sm") + "</span>", [["Steps to reproduce", 0], ["Expected result", 0], ["Actual result", 0]].map((r) => '<div class="rowx">' + cb(0) + '<div class="grow">' + r[0] + "</div>" + more + "</div>").join(""), 1) +
+      '<div style="height:12px"></div>' +
+      cd("<b>Attachments & links</b>", '<div class="drop">' + I("clip", 16) + " Drop files or choose from Documents (17)</div>" + f("Link a record", sel("Add link…", "link"), "Relations: relates to, caused by, blocks, from ticket, from deal, from change request, from contract obligation (TaskLink.relation).") + f("Dependencies", sel("Blocked by / blocks / duplicate of…", "link"), "TaskDependency: BLOCKS, RELATED, DUPLICATE_OF. The API rejects cycles.")) +
+      "</div><div>" +
+      cd("<b>Properties</b>", f("Team", sel("Web · WEB", "users")) + f("Status", sel("Todo")) + f("Priority", sel("No priority")) + f("Assignee", sel("Unassigned", "users")) + f("Additional assignees", sel("Add people…", "users")) + f("Labels", sel("Add labels…", "tag")) + f("Estimate", '<div class="rowx" style="gap:8px;padding:0">' + box("Points") + box("Hours") + "</div>") + f("Start date", sel("Pick a date", "calendar")) + f("Due date", sel("Pick a date", "calendar"))) +
+      '<div style="height:12px"></div>' +
+      cd("<b>Planning</b>", f("Project", sel("No project", "folder")) + f("Workstream", sel("—")) + f("Milestone", sel("—", "flag")) + f("Cycle", sel("Cycle 14 · active")) + f("Release", sel("—")) + f("Parent task", sel("—", "link"))) +
+      '<div style="height:12px"></div>' +
+      cd("<b>Visibility & people</b>", '<div class="rowx"><div class="grow"><b>Customer visible</b><small>Shows in the customer portal (07). Off by default.</small></div>' + sw(0) + "</div>" + f("Watchers", sel("Add watchers…", "bell"), "The reporter and assignees watch automatically.")) +
+      '<div style="height:12px"></div><div class="rowx"><div class="grow"><b>Create more</b><small>Keep the dialog open and reuse team, project, cycle</small></div>' + sw(0) + "</div>" +
+      "</div></div>" +
+      dm(["Task · every column written on create", "TaskType · template (applied defaults) · TaskAssignee · TaskLabelAssignment · TaskChecklistItem · TaskLink · TaskAttachment (document_id) · TaskWatcher · TaskDependency", "Team · task_key (the key prefix) · TaskStatus · is_default"], []) + "</div>";
+  }
+
+  /* =====================================================================================================================
+     TASK TIMELINE / CALENDAR (spec §5)
+     @route  /tasks/teams/:teamSlug/timeline · /tasks/teams/:teamSlug/calendar
+     @perm   VIEW tasks.tasks.read · drag to reschedule tasks.tasks.update
+     @api    GET /tasks?filter=&from=&to= · PATCH /tasks/:id {start_date, due_date}
+     @data   Task (start_date, due_date, status category, assignee, parent_task_id) · TaskDependency (arrows) · CalendarEvent (19, read-only, shown on the calendar layout only)
+     @states loading · empty · error · no-access
+     @note   Tasks without dates are listed in an "Unscheduled" tray. Dragging a task that blocks others warns about the tasks it pushes. Calendar events from 19 are shown read-only; they are never tasks.
+     ===================================================================================================================== */
+  function timeline() {
+    const rows = [["WEB-142 Pricing hero", 5, 38, "var(--yellow)"], ["WEB-144 Plan cards", 12, 30, "var(--yellow)"], ["WEB-151 Approval flow", 25, 62, "var(--red)"], ["WEB-148 VAT validation", 40, 58, "var(--mute)"], ["DES-33 Illustrations", 55, 90, "var(--mute)"]];
+    return '<div class="a-page">' + head("Web · Timeline", "Task start and due dates with dependencies.", sel("Timeline", "calendar") + sel("Month")) +
+      filterBar([["Cycle", "is", "14"], ["Status category", "is not", "Done"]]) +
+      '<div class="gantt"><div class="g-head" style="grid-template-columns:220px repeat(4,1fr)"><span class="g-l"></span><span>Nov 3</span><span>Nov 10</span><span>Nov 17</span><span>Nov 24</span></div>' + rows.map((r) => '<div class="g-row"><span class="g-l">' + r[0] + '</span><div class="g-track"><i class="g-bar" style="left:' + r[1] + "%;width:" + (r[2] - r[1]) + "%;background:" + r[3] + ';opacity:.35;border-color:' + r[3] + '"></i></div></div>').join("") + "</div>" +
+      '<div class="sub-note" style="margin-top:8px">Unscheduled (3): MOB-92 · WEB-120 · WEB-117. Drag a task onto the timeline to give it dates.</div>' +
+      dm(["Task · start_date, due_date, parent_task_id", "TaskDependency · type BLOCKS (arrows)", "Read-only: CalendarEvent (19)"], []) + "</div>";
+  }
+
+  const MAP = { mine, all, create, board, backlog, timeline, detail, cycles, releases, workload, reports, settings };
   const CRUMB = { detail: "WEB-142" };
   window.VIEWS.tasks = { html: function (s) { return (MAP[s || "mine"] || MAP.mine)(s); }, crumb: function (s) { return CRUMB[s] || ""; }, fill: false };
 })();

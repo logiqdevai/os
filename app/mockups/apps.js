@@ -40,11 +40,11 @@
        @data Task, TaskStatus, TaskType, TaskLabel, Cycle (sprints), Release, ReleaseDeployment, Team.task_key (key prefix).
        @note "Teams" are Team rows of module 01 (kind TEAM/DEPARTMENT) that have a task_key; "Views" are SavedView rows (entity_type TASK, module 02 platform table). The page of one task is /tasks/WEB-142 (alias of "My tasks" here).
              Linear-style: the panel is the filter; keep URLs shareable (`/tasks/teams/web/board?cycle=14`). */
-    { id: "tasks", label: "Tasks", icon: "tasks", newLabel: "New task",
+    { id: "tasks", label: "Tasks", icon: "tasks", newLabel: "New task", newRoute: "create",
       alias: { detail: "mine" },
       panel: P("Tasks", [
-        items([{ l: "My tasks", i: "tasks", k: "mine" }, { l: "Workload", i: "users", k: "workload" }, { l: "Reports", i: "chart", k: "reports" }]),
-        sec("Web team", [{ l: "Board", i: "layers", k: "board" }, { l: "Backlog", i: "inbox", k: "backlog", c: 2 }, { l: "Cycles", i: "time", k: "cycles" }, { l: "Task page", i: "file", k: "detail" }]),
+        items([{ l: "My tasks", i: "tasks", k: "mine" }, { l: "All tasks", i: "list", k: "all" }, { l: "New task", i: "plus", k: "create" }, { l: "Workload", i: "users", k: "workload" }, { l: "Reports", i: "chart", k: "reports" }]),
+        sec("Web team", [{ l: "Board", i: "layers", k: "board" }, { l: "Backlog", i: "inbox", k: "backlog", c: 2 }, { l: "Timeline", i: "calendar", k: "timeline" }, { l: "Cycles", i: "time", k: "cycles" }, { l: "Task page", i: "file", k: "detail" }]),
         sec("Organization", [{ l: "Releases", i: "flag", k: "releases" }]),
         sec("Views", [{ l: "Overdue", i: "filter" }, { l: "Unassigned", i: "filter" }, { l: "Client requests", i: "filter" }, { l: "Blocked", i: "filter" }], "plus"),
         items([{ l: "Setup", i: "settings", k: "settings" }]),

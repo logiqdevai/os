@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="admin.css">
 <link rel="stylesheet" href="crm.css">
 <link rel="stylesheet" href="projects.css">
+<link rel="stylesheet" href="tasks.css">
 <script src="shared.js"></script>
 </head>
 <body>
@@ -156,6 +157,7 @@
     const extra = v && v.crumb ? v.crumb(s) : '';
     $('crumbs').innerHTML = `${LQ.icon(a.icon, 14)}<span>${a.label}</span>${LQ.icon('right', 12)}${extra ? `<span>${act.l}</span>${LQ.icon('right', 12)}<b>${extra}</b>` : `<b>${act.l}</b>`}`;
     $('newBtn').innerHTML = `${LQ.icon('plus', 14)}${a.newLabel}`;
+    $('newBtn').onclick = () => { if (a.newRoute) location.hash = '#' + a.id + '/' + a.newRoute; }; /* @impl PRIMARY ACTION target: apps.js newRoute = create screen of the app */
     LQ.hydrate(page);
   }
 
