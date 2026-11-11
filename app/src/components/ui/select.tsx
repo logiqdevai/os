@@ -3,7 +3,13 @@ import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const Select = SelectPrimitive.Root;
+/**
+ * Radix Select can keep showing an empty trigger when a controlled value changes after mount (e.g. a form
+ * reset once data loads). Remounting on value change keeps the trigger text in sync.
+ */
+function Select(props: React.ComponentProps<typeof SelectPrimitive.Root>) {
+  return <SelectPrimitive.Root key={props.value === undefined ? undefined : String(props.value)} {...props} />;
+}
 
 const SelectGroup = SelectPrimitive.Group;
 
