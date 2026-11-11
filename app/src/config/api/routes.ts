@@ -2,7 +2,9 @@ import { AdminApiRoutes } from "./modules/admin.routes";
 import { CrmApiRoutes } from "./modules/crm.routes";
 import { ProjectsApiRoutes } from "./modules/projects.routes";
 import { TasksApiRoutes } from "./modules/tasks.routes";
+import { ContractsApiRoutes } from "./modules/contracts.routes";
 import { MessagingApiRoutes } from "./modules/messaging.routes";
+import { ProposalsApiRoutes } from "./modules/proposals.routes";
 import { CommunicationsApiRoutes } from "./modules/communications.routes";
 import { NotificationsApiRoutes } from "./modules/notifications.routes";
 import { CalendarApiRoutes } from "./modules/calendar.routes";
@@ -37,7 +39,9 @@ export const ApiRoutes = {
     admin: AdminApiRoutes,
     projects: ProjectsApiRoutes,
     tasks: TasksApiRoutes,
+    contracts: ContractsApiRoutes,
     messaging: MessagingApiRoutes,
+    proposals: ProposalsApiRoutes,
     communications: CommunicationsApiRoutes,
     crm: CrmApiRoutes,
     notifications: NotificationsApiRoutes,

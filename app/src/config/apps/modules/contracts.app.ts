@@ -18,7 +18,7 @@ export const contractsApp: AppDefinition = {
             { label: "Renewals", to: "/contracts/renewals", icon: CalendarClock },
         ] },
         { label: "Library", items: [
-            { label: "Templates & clauses", to: "/contracts/templates", icon: BookOpen, permissions: ["contracts.templates.manage"] },
+            { label: "Templates & clauses", to: "/contracts/templates", icon: BookOpen, permissions: ["contracts.templates.manage", "contracts.clauses.manage", "contracts.types.manage", "contracts.approval_rules.manage"] },
         ] },
     ],
 };

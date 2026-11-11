@@ -15,7 +15,7 @@ export const proposalsApp: AppDefinition = {
             { label: "Analytics", to: "/proposals/analytics", icon: ChartColumn, permissions: ["proposals.analytics.read"] },
         ] },
         { label: "Setup", items: [
-            { label: "Templates", to: "/proposals/templates", icon: LayoutTemplate, permissions: ["proposals.templates.manage"] },
+            { label: "Templates & rules", to: "/proposals/templates", icon: LayoutTemplate, permissions: ["proposals.templates.manage", "proposals.approval_rules.manage"] },
         ] },
     ],
 };
