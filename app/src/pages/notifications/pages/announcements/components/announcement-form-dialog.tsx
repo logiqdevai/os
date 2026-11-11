@@ -9,9 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiPicker } from "@/components/ui/multi-picker";
 import { NotificationPriorityFormOptions } from "@/config/constants/dropdowns/notifications/notification.options";
 import { announcementFormSchema, type AnnouncementFormValues } from "@/features/notifications/validation-schemas/announcement.schema";
-import { useCreateAnnouncement, useUpdateAnnouncement } from "@/features/notifications/hooks/use-notifications";
+import { useAnnouncementAudienceOptions, useCreateAnnouncement, useUpdateAnnouncement } from "@/features/notifications/hooks/use-notifications";
 import type { Announcement } from "@/features/notifications/interfaces/notifications.interfaces";
 
 const toLocal = (iso: string | null | undefined) => (iso ? format(new Date(iso), "yyyy-MM-dd'T'HH:mm") : "");
@@ -23,31 +24,39 @@ interface Props {
     announcement?: Announcement | null;
 }
 
-/** Create / edit a draft or scheduled announcement (audience: every member). */
+/** Create / edit a draft or scheduled announcement. Audience: every member, or selected members / teams / branches (union). */
 export function AnnouncementFormDialog({ open, onOpenChange, announcement }: Props) {
     const create = useCreateAnnouncement();
     const update = useUpdateAnnouncement();
+    const options = useAnnouncementAudienceOptions(open);
     const form = useForm<AnnouncementFormValues>({
         resolver: zodResolver(announcementFormSchema),
-        defaultValues: { title: "", body: "", severity: "NORMAL", requires_ack: false, publish_at: "", expires_at: "" },
+        defaultValues: { title: "", body: "", severity: "NORMAL", requires_ack: false, audience_mode: "all", membership_ids: [], team_ids: [], branch_ids: [], publish_at: "", expires_at: "" },
     });
 
     useEffect(() => {
         if (open) {
+            const a = announcement?.audience;
             form.reset({
                 title: announcement?.title ?? "",
                 body: announcement?.body ?? "",
                 severity: announcement?.severity ?? "NORMAL",
                 requires_ack: announcement?.requires_ack ?? false,
+                audience_mode: a && (a.membership_ids?.length || a.team_ids?.length || a.branch_ids?.length) ? "custom" : "all",
+                membership_ids: a?.membership_ids ?? [],
+                team_ids: a?.team_ids ?? [],
+                branch_ids: a?.branch_ids ?? [],
                 publish_at: toLocal(announcement?.publish_at),
                 expires_at: toLocal(announcement?.expires_at),
             });
         }
     }, [open, announcement, form]);
 
+    const mode = form.watch("audience_mode");
     const pending = create.isPending || update.isPending;
     const submit = form.handleSubmit((v) => {
-        const dto = { title: v.title, body: v.body, severity: v.severity, requires_ack: v.requires_ack, publish_at: toIso(v.publish_at), expires_at: toIso(v.expires_at) };
+        const audience = v.audience_mode === "all" ? null : { membership_ids: v.membership_ids, team_ids: v.team_ids, branch_ids: v.branch_ids };
+        const dto = { title: v.title, body: v.body, severity: v.severity, requires_ack: v.requires_ack, audience, publish_at: toIso(v.publish_at), expires_at: toIso(v.expires_at) };
         const options = { onSuccess: () => onOpenChange(false) };
         if (announcement) update.mutate({ id: announcement.id, ...dto }, options);
         else create.mutate(dto, options);
@@ -55,12 +64,12 @@ export function AnnouncementFormDialog({ open, onOpenChange, announcement }: Pro
 
     return (
         <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
                             <DialogTitle>{announcement ? "Edit announcement" : "New announcement"}</DialogTitle>
-                            <DialogDescription>Goes to every member's inbox when published. Leave “Publish at” empty to publish manually.</DialogDescription>
+                            <DialogDescription>Goes to the audience's inboxes when published. Leave “Publish at” empty to publish manually.</DialogDescription>
                         </DialogHeader>
                         <FormField control={form.control} name="title" render={({ field }) => (
                             <FormItem>
@@ -94,6 +103,56 @@ export function AnnouncementFormDialog({ open, onOpenChange, announcement }: Pro
                                 </FormItem>
                             )} />
                         </div>
+                        <FormField control={form.control} name="audience_mode" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Audience</FormLabel>
+                                <Select value={field.value} onValueChange={field.onChange}>
+                                    <FormControl><SelectTrigger aria-label="Audience"><SelectValue /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="all">Every member</SelectItem>
+                                        <SelectItem value="custom">Selected members, teams or branches</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        {mode === "custom" && (
+                            <div className="space-y-3 rounded-md border border-border bg-muted/40 p-3">
+                                {options.isError && <p className="text-xs text-destructive">Could not load members, teams and branches.</p>}
+                                <FormField control={form.control} name="membership_ids" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Members</FormLabel>
+                                        <MultiPicker
+                                            items={(options.data?.members ?? []).map((m) => ({ id: m.id, label: m.name, hint: m.email, keywords: m.email }))}
+                                            value={field.value} onChange={field.onChange} loading={options.isLoading}
+                                            placeholder="Add members" searchPlaceholder="Search members…" emptyText="No members found"
+                                        />
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="team_ids" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Teams</FormLabel>
+                                        <MultiPicker
+                                            items={(options.data?.teams ?? []).map((t) => ({ id: t.id, label: t.name, hint: `${t.member_count} member${t.member_count === 1 ? "" : "s"}` }))}
+                                            value={field.value} onChange={field.onChange} loading={options.isLoading}
+                                            placeholder="Add teams" searchPlaceholder="Search teams…" emptyText="No teams"
+                                        />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="branch_ids" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Branches</FormLabel>
+                                        <MultiPicker
+                                            items={(options.data?.branches ?? []).map((b) => ({ id: b.id, label: b.name }))}
+                                            value={field.value} onChange={field.onChange} loading={options.isLoading}
+                                            placeholder="Add branches" searchPlaceholder="Search branches…" emptyText="No branches"
+                                        />
+                                        <FormDescription>Everyone who matches any selection receives it.</FormDescription>
+                                    </FormItem>
+                                )} />
+                            </div>
+                        )}
                         <div className="grid gap-4 sm:grid-cols-2">
                             <FormField control={form.control} name="publish_at" render={({ field }) => (
                                 <FormItem>

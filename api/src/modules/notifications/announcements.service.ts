@@ -8,7 +8,7 @@ import { OrgContext } from '@/shared/authorization/interfaces/org-context.interf
 import { orderBy, paginate, skipTake } from '@/shared/utils/pagination/pagination.utils';
 import { AnnouncementQuery, CreateAnnouncementDto, UpdateAnnouncementDto } from './dto/announcement.dto';
 import { NotificationsService } from './notifications.service';
-import { memberUserSelect, systemContext } from './utils/system-context';
+import { displayName, memberUserSelect, systemContext } from './utils/system-context';
 
 interface Audience {
     membership_ids?: string[];
@@ -63,6 +63,21 @@ export class AnnouncementsService {
         if (!row) throw new NotFoundException({ message: 'Announcement not found', code: 'announcement_not_found' });
         const audience_size = (await this.expandAudience(ctx.organization_id, row.audience as Audience | null)).length;
         return { ...row, audience_size };
+    }
+
+    /** Audience picker data (members, teams, branches of this organization) for announcement managers. */
+    async audienceOptions(ctx: OrgContext) {
+        const org = ctx.organization_id;
+        const [members, teams, branches] = await Promise.all([
+            this.prisma.membership.findMany({ where: { organization_id: org, status: 'ACTIVE' }, select: { id: true, user: { select: memberUserSelect } }, orderBy: { user: { first_name: 'asc' } }, take: 1000 }),
+            this.prisma.team.findMany({ where: { organization_id: org, archived_at: null }, select: { id: true, name: true, _count: { select: { members: { where: { ended_at: null } } } } }, orderBy: { name: 'asc' } }),
+            this.prisma.branch.findMany({ where: { organization_id: org, archived_at: null }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+        ]);
+        return {
+            members: members.map((m) => ({ id: m.id, name: displayName(m.user), email: m.user.email })),
+            teams: teams.map((t) => ({ id: t.id, name: t.name, member_count: t._count.members })),
+            branches,
+        };
     }
 
     async create(ctx: OrgContext, dto: CreateAnnouncementDto) {

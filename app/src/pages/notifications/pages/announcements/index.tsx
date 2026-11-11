@@ -79,7 +79,7 @@ export default function AnnouncementsPage() {
     ];
 
     const confirm = {
-        publish: { title: "Publish now?", description: "Every member gets it in their inbox right away.", text: "Publish", m: publish },
+        publish: { title: "Publish now?", description: "Everyone in the audience gets it in their inbox right away.", text: "Publish", m: publish },
         withdraw: { title: "Withdraw this announcement?", description: "It is removed from every inbox. This cannot be undone.", text: "Withdraw", m: withdraw },
         delete: { title: "Delete this draft?", description: "This cannot be undone.", text: "Delete", m: remove },
     } as const;
@@ -121,7 +121,7 @@ export default function AnnouncementsPage() {
                         <div className="mt-4 space-y-5">
                             <p className="whitespace-pre-wrap text-sm text-body">{detail.data.body}</p>
                             <KeyValueList columns={1} items={[
-                                { label: "Audience", value: `Everyone (${detail.data.audience_size} members)` },
+                                { label: "Audience", value: `${detail.data.audience ? "Selected members, teams or branches" : "Everyone"} (${detail.data.audience_size} members)` },
                                 { label: "Created by", value: detail.data.created_by ? personName(detail.data.created_by.user) : "—" },
                                 { label: "Published", value: detail.data.published_at ? formatDateTime(detail.data.published_at) : "Not yet" },
                                 { label: "Expires", value: detail.data.expires_at ? formatDateTime(detail.data.expires_at) : "Never" },

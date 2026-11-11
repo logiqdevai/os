@@ -118,6 +118,12 @@ export interface AnnouncementAudience {
     branch_ids?: string[];
 }
 
+export interface AnnouncementAudienceOptions {
+    members: { id: string; name: string; email: string }[];
+    teams: { id: string; name: string; member_count: number }[];
+    branches: { id: string; name: string }[];
+}
+
 export interface Announcement {
     id: string;
     title: string;

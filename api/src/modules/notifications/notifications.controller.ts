@@ -206,6 +206,13 @@ export class AnnouncementsController {
         return this.announcements.findAll(ctx, query);
     }
 
+    @Get('audience-options')
+    @RequirePermission('notifications.announcements.manage')
+    @ApiOperation({ summary: 'Members, teams and branches for the audience picker' })
+    audienceOptions(@CurrentOrg() ctx: OrgContext) {
+        return this.announcements.audienceOptions(ctx);
+    }
+
     @Get(':id')
     @RequirePermission('notifications.announcements.manage')
     @ApiOperation({ summary: 'Announcement with acknowledgements' })

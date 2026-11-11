@@ -1,7 +1,7 @@
 import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
 import type {
-    ActivityItem, Announcement, AnnouncementDetail, AnnouncementDto, EventPreferenceRow, NotificationChannel, NotificationCounts, NotificationItem, Paginated,
+    ActivityItem, Announcement, AnnouncementAudienceOptions, AnnouncementDetail, AnnouncementDto, EventPreferenceRow, NotificationChannel, NotificationCounts, NotificationItem, Paginated,
     RecipientSettings, UpdateRecipientSettingsDto,
 } from "../interfaces/notifications.interfaces";
 
@@ -31,6 +31,7 @@ export const getActivity = async (params: Params): Promise<Paginated<ActivityIte
 export const getMyActivity = async (params: Params): Promise<Paginated<ActivityItem>> => (await axiosInstance.get(R.myActivity, { params })).data;
 
 export const getAnnouncements = async (params: Params): Promise<Paginated<Announcement>> => (await axiosInstance.get(R.announcements.list, { params })).data;
+export const getAnnouncementAudienceOptions = async (): Promise<AnnouncementAudienceOptions> => (await axiosInstance.get(R.announcements.audienceOptions)).data;
 export const getLiveAnnouncements = async (): Promise<Announcement[]> => (await axiosInstance.get(R.announcements.live)).data;
 export const getAnnouncement = async (id: string): Promise<AnnouncementDetail> => (await axiosInstance.get(R.announcements.detail(id))).data;
 export const createAnnouncement = async (dto: AnnouncementDto): Promise<Announcement> => (await axiosInstance.post(R.announcements.list, dto)).data;

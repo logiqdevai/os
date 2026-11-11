@@ -68,6 +68,8 @@ export const useMyActivity = (params: Params, enabled = true) =>
 export const useAnnouncements = (params: Params, enabled = true) =>
     useQuery({ queryKey: [...ANNOUNCEMENTS_KEY, "list", params], queryFn: () => service.getAnnouncements(params), placeholderData: keepPreviousData, enabled });
 export const useLiveAnnouncements = (enabled = true) => useQuery({ queryKey: [...ANNOUNCEMENTS_KEY, "live"], queryFn: service.getLiveAnnouncements, enabled });
+export const useAnnouncementAudienceOptions = (enabled = true) =>
+    useQuery({ queryKey: [...ANNOUNCEMENTS_KEY, "audience-options"], queryFn: service.getAnnouncementAudienceOptions, enabled, staleTime: 60_000 });
 export const useAnnouncement = (id: string | undefined) =>
     useQuery({ queryKey: [...ANNOUNCEMENTS_KEY, "detail", id], queryFn: () => service.getAnnouncement(id as string), enabled: !!id });
 
