@@ -8,6 +8,10 @@
 // Ownership is read from the section banners in api/prisma/schema.prisma
 // (`// ====` blocks naming a module number). The generated block lives between
 // <!-- schema-refs:start --> and <!-- schema-refs:end --> and is replaced on each run.
+//
+// It also injects a one-line "Schema:" pointer under every spec section heading (`## 3. Title` or
+// `## Title`) that a model, enum or column references in its `///` doc comment (`06 §3`, `09 "Expense
+// Management"`), between <!-- schema-section:start --> and <!-- schema-section:end -->.
 
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
@@ -134,6 +138,139 @@ function commentRefs(mod) {
     for (const f of m.fields) if (f.comment && re.test(f.comment)) hits.push({ model: m, field: f });
   }
   return hits;
+}
+
+
+// ---------------------------------------------------------------------------
+// 2b. Spec-section references: "NN §K" / "NN §K–M" / "NN §K, §L" / NN "Heading title" in doc comments.
+// ---------------------------------------------------------------------------
+
+/** text → [{ module, key }] where key is a section number string or a lowercased heading title. */
+function parseSectionRefs(text) {
+  const out = [];
+  if (!text) return out;
+  const numbered = /(?:^|[^\d])(\d{2}) ((?:§\s?\d+(?:\s?[–-]\s?\d+)?)(?:\s?,\s?§\s?\d+(?:\s?[–-]\s?\d+)?)*)/g;
+  let m;
+  while ((m = numbered.exec(text))) {
+    const mod = m[1];
+    for (const part of m[2].split(',')) {
+      const r = part.match(/§\s?(\d+)(?:\s?[–-]\s?(\d+))?/);
+      if (!r) continue;
+      const a = Number(r[1]);
+      const b = r[2] ? Number(r[2]) : a;
+      if (b < a || b - a > 40) { out.push({ module: mod, key: String(a) }); continue; }
+      for (let k = a; k <= b; k++) out.push({ module: mod, key: String(k) });
+    }
+  }
+  // NN "Title" or NN "Title A", "Title B", … (unnumbered specs: 03, 08, 09, 10, 11).
+  const quoted = /(?:^|[^\d])(\d{2}) ("[^"]+"(?:\s?,\s?"[^"]+")*)/g;
+  while ((m = quoted.exec(text))) {
+    for (const t of m[2].match(/"([^"]+)"/g)) out.push({ module: m[1], key: normalizeTitle(t.slice(1, -1)) });
+  }
+  return out;
+}
+const normalizeTitle = (t) => t.toLowerCase().replace(/[^a-z0-9 &/-]+/g, '').replace(/\s+/g, ' ').trim();
+
+/** `${module}|${key}` → { models: Map<name, Set<field>>, enums: Set<name> } (entities of any module). */
+const sectionIndex = new Map();
+function sectionBucket(ref) {
+  const k = `${ref.module}|${ref.key}`;
+  if (!sectionIndex.has(k)) sectionIndex.set(k, { models: new Map(), enums: new Set() });
+  return sectionIndex.get(k);
+}
+for (const e of entities.values()) {
+  for (const ref of parseSectionRefs(e.doc)) {
+    const b = sectionBucket(ref);
+    if (e.kind === 'enum') b.enums.add(e.name);
+    else if (!b.models.has(e.name)) b.models.set(e.name, new Set());
+  }
+  if (e.kind !== 'model') continue;
+  for (const f of e.fields) {
+    if (entities.has(f.type)) continue; // relation fields: the FK column carries the comment
+    for (const ref of parseSectionRefs(f.comment)) {
+      const b = sectionBucket(ref);
+      (b.models.get(e.name) ?? b.models.set(e.name, new Set()).get(e.name)).add(f.name);
+    }
+  }
+}
+
+const SEC_START = '<!-- schema-section:start -->';
+const SEC_END = '<!-- schema-section:end -->';
+
+/** One-line pointer for a spec section, or null when nothing references it. */
+function renderSection(mod, key, link) {
+  const b = sectionIndex.get(`${mod}|${key}`);
+  if (!b) return null;
+  const own = [];
+  const foreign = [];
+  const fmt = (name, fields) => {
+    const e = entities.get(name);
+    const base = `\`${name}\` ([${e.table ?? 'enum'}](${link}#L${e.line}))`;
+    const cols = [...fields].sort().map((f) => `\`${f}\``).join(', ');
+    return cols ? `${base}: ${cols}` : base;
+  };
+  for (const [name, fields] of [...b.models].sort()) {
+    const e = entities.get(name);
+    (e.module === mod ? own : foreign).push(e.module === mod ? fmt(name, fields) : `${fmt(name, fields)} (${modLink(e.module)})`);
+  }
+  for (const name of [...b.enums].sort()) {
+    const e = entities.get(name);
+    const t = `enum \`${name}\` ([L${e.line}](${link}#L${e.line}))`;
+    (e.module === mod ? own : foreign).push(e.module === mod ? t : `${t} (${modLink(e.module)})`);
+  }
+  if (!own.length && !foreign.length) return null;
+  const parts = [];
+  if (own.length) parts.push(own.join(' · '));
+  if (foreign.length) parts.push(`other modules: ${foreign.join(' · ')}`);
+  return `> **Schema:** ${parts.join(' — ')}`;
+}
+
+/** Heading line → section key, or null for headings that are not spec sections. */
+function headingKey(line) {
+  const h = line.match(/^(#{1,3}) (.+?)\s*#*\s*$/);
+  if (!h) return null;
+  const title = h[2].trim();
+  if (/^Data model \(Prisma\)/.test(title)) return null;
+  const n = title.match(/^(\d+)\.\s/);
+  if (n) return n[1];
+  if (h[1] === '##') return normalizeTitle(title);
+  return null;
+}
+
+/** Insert / refresh / remove the per-section pointer blocks of one spec file. */
+function syncSections(text, mod, link, eol) {
+  const src = text.split(eol);
+  const out = [];
+  let inFence = false;
+  let inTop = false;
+  for (let i = 0; i < src.length; i++) {
+    const line = src[i];
+    if (line.startsWith('```')) inFence = !inFence;
+    if (line === START) inTop = true;
+    if (line === END) inTop = false;
+    out.push(line);
+    if (inFence || inTop) continue;
+    const key = headingKey(line);
+    if (key === null) continue;
+    // Drop an existing generated block right after the heading (allowing one blank line).
+    let j = i + 1;
+    while (j < src.length && src[j].trim() === '') j++;
+    if (src[j] === SEC_START) {
+      let k = j;
+      while (k < src.length && src[k] !== SEC_END) k++;
+      i = k; // skip old block (its trailing blank line is re-added below)
+      while (i + 1 < src.length && src[i + 1].trim() === '') i++;
+      out.push('');
+    }
+    const block =
+      renderSection(mod, key, link) ??
+      '> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.';
+    if (out[out.length - 1] !== '') out.push('');
+    out.push(SEC_START, block, SEC_END);
+    // Keep exactly one blank line between the block and the following content.
+    if (i + 1 < src.length && src[i + 1].trim() !== '') out.push('');
+  }
+  return out.join(eol);
 }
 
 // ---------------------------------------------------------------------------
@@ -267,6 +404,7 @@ for (const file of featureFiles) {
     const idx = src.search(/^## /m);
     next = idx === -1 ? `${src}${eol}${block}${eol}` : `${src.slice(0, idx)}${block}${eol}${eol}${src.slice(idx)}`;
   }
+  next = syncSections(next, mod, schemaLink(path), eol);
   if (next !== src) {
     writeFileSync(path, next);
     changed++;

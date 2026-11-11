@@ -25,32 +25,32 @@
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Configuration: types, templates, clauses, approval rules** | | | |
-| `ContractType` | `contract_types` | [L2871](../../api/prisma/schema.prisma#L2871) | 04 §2 — configurable contract types with defaults. |
-| `ContractTemplate` | `contract_templates` | [L2906](../../api/prisma/schema.prisma#L2906) | 04 §8, §77 — reusable contractual structure. Content is versioned in ContractTemplateVersion; changing a template never modifies existing contracts. |
-| `ContractTemplateVersion` | `contract_template_versions` | [L2936](../../api/prisma/schema.prisma#L2936) | 04 §8–10, §14 — one immutable template version: sections, variables, conditional clause rules, signature blocks, required fields, appendices. |
-| `ContractClause` | `contract_clauses` | [L2963](../../api/prisma/schema.prisma#L2963) | 04 §11 — clause library entry. Text lives in ContractClauseVersion (04 §12). |
-| `ContractClauseVersion` | `contract_clause_versions` | [L2991](../../api/prisma/schema.prisma#L2991) | 04 §12 — a generated contract keeps the exact clause version used. |
-| `ContractApprovalRule` | `contract_approval_rules` | [L3012](../../api/prisma/schema.prisma#L3012) | 04 §28 — approval requirements by value, type, liability, discount, payment terms, duration, customer category, risk, custom fields. |
+| `ContractType` | `contract_types` | [L3321](../../api/prisma/schema.prisma#L3321) | 04 §2 — configurable contract types with defaults. |
+| `ContractTemplate` | `contract_templates` | [L3356](../../api/prisma/schema.prisma#L3356) | 04 §8, §77 — reusable contractual structure. Content is versioned in ContractTemplateVersion; changing a template never modifies existing contracts. |
+| `ContractTemplateVersion` | `contract_template_versions` | [L3386](../../api/prisma/schema.prisma#L3386) | 04 §8–10, §14 — one immutable template version: sections, variables, conditional clause rules, signature blocks, required fields, appendices. |
+| `ContractClause` | `contract_clauses` | [L3413](../../api/prisma/schema.prisma#L3413) | 04 §11 — clause library entry. Text lives in ContractClauseVersion (04 §12). |
+| `ContractClauseVersion` | `contract_clause_versions` | [L3441](../../api/prisma/schema.prisma#L3441) | 04 §12 — a generated contract keeps the exact clause version used. |
+| `ContractApprovalRule` | `contract_approval_rules` | [L3462](../../api/prisma/schema.prisma#L3462) | 04 §28 — approval requirements by value, type, liability, discount, payment terms, duration, customer category, risk, custom fields. |
 | **Contract record** | | | |
-| `Contract` | `contracts` | [L3034](../../api/prisma/schema.prisma#L3034) | 04 §3 — the structured business record. Document content lives in versions. |
-| `ContractParty` | `contract_parties` | [L3135](../../api/prisma/schema.prisma#L3135) | 04 §4 — a party to the contract. References a CRM Company (02) without duplicating it; the agency itself is a party of type AGENCY. |
-| `ContractSignatory` | `contract_signatories` | [L3158](../../api/prisma/schema.prisma#L3158) | 04 §4, §31 — a signatory for a party; a party may have several. Internal signatories are Members, external ones are CRM Contacts or free-text. |
-| `ContractProject` | `contract_projects` | [L3180](../../api/prisma/schema.prisma#L3180) | 04 §56 — a contract can reference many projects (05). |
+| `Contract` | `contracts` | [L3484](../../api/prisma/schema.prisma#L3484) | 04 §3 — the structured business record. Document content lives in versions. |
+| `ContractParty` | `contract_parties` | [L3593](../../api/prisma/schema.prisma#L3593) | 04 §4 — a party to the contract. References a CRM Company (02) without duplicating it; the agency itself is a party of type AGENCY. |
+| `ContractSignatory` | `contract_signatories` | [L3616](../../api/prisma/schema.prisma#L3616) | 04 §4, §31 — a signatory for a party; a party may have several. Internal signatories are Members, external ones are CRM Contacts or free-text. |
+| `ContractProject` | `contract_projects` | [L3638](../../api/prisma/schema.prisma#L3638) | 04 §56 — a contract can reference many projects (05). |
 | **Versions** | | | |
-| `ContractVersion` | `contract_versions` | [L3198](../../api/prisma/schema.prisma#L3198) | 04 §19–20 — every material draft change creates a version. Signed versions are immutable (04 §39). |
-| `ContractSection` | `contract_sections` | [L3248](../../api/prisma/schema.prisma#L3248) | 04 §14 — addressable section of a version; may embed an exact clause version (04 §12). |
+| `ContractVersion` | `contract_versions` | [L3656](../../api/prisma/schema.prisma#L3656) | 04 §19–20 — every material draft change creates a version. Signed versions are immutable (04 §39). |
+| `ContractSection` | `contract_sections` | [L3708](../../api/prisma/schema.prisma#L3708) | 04 §14 — addressable section of a version; may embed an exact clause version (04 §12). |
 | **Review, comments, change requests, approval** | | | |
-| `ContractReview` | `contract_reviews` | [L3277](../../api/prisma/schema.prisma#L3277) | 04 §23–24 — a review request references one exact version. Internal reviewers are Members; customer reviewers are Customer Portal Users (id only) or contacts. |
-| `ContractComment` | `contract_comments` | [L3299](../../api/prisma/schema.prisma#L3299) | 04 §13, §23–24 — comments on a version or section; internal comments never reach the portal. |
-| `ContractChangeRequest` | `contract_change_requests` | [L3325](../../api/prisma/schema.prisma#L3325) | 04 §26 — Contract Change Request: a request to change contract language. Never mutates the current version; an accepted request produces a new version or an … |
-| `ContractApproval` | `contract_approvals` | [L3355](../../api/prisma/schema.prisma#L3355) | 04 §27–29 — business approval bound to an exact version. Approval of v1.0 does not approve v1.1. |
+| `ContractReview` | `contract_reviews` | [L3737](../../api/prisma/schema.prisma#L3737) | 04 §23–24 — a review request references one exact version. Internal reviewers are Members; customer reviewers are Customer Portal Users (id only) or contacts. |
+| `ContractComment` | `contract_comments` | [L3759](../../api/prisma/schema.prisma#L3759) | 04 §13, §23–24 — comments on a version or section; internal comments never reach the portal. |
+| `ContractChangeRequest` | `contract_change_requests` | [L3785](../../api/prisma/schema.prisma#L3785) | 04 §26 — Contract Change Request: a request to change contract language. Never mutates the current version; an accepted request produces a new version or an … |
+| `ContractApproval` | `contract_approvals` | [L3815](../../api/prisma/schema.prisma#L3815) | 04 §27–29 — business approval bound to an exact version. Approval of v1.0 does not approve v1.1. |
 | **E-signature provider abstraction (04 §30–42, §71, §78–79)** | | | |
-| `SignatureRequest` | `signature_requests` | [L3380](../../api/prisma/schema.prisma#L3380) | 04 §34 — a signature request bound immutably to one subject version (contract or proposal). Provider-specific data stays in provider_* fields and metadata, n… |
-| `Signer` | `signers` | [L3428](../../api/prisma/schema.prisma#L3428) | 04 §31–32, §36 — a signer on a request with mapped fields and signing position. |
-| `SignatureEvent` | `signature_events` | [L3463](../../api/prisma/schema.prisma#L3463) | 04 §38, §71 — provider and internal events; (provider, provider_event_id) is unique so duplicate callbacks are ignored. |
+| `SignatureRequest` | `signature_requests` | [L3840](../../api/prisma/schema.prisma#L3840) | 04 §34 — a signature request bound immutably to one subject version (contract or proposal). Provider-specific data stays in provider_* fields and metadata, n… |
+| `Signer` | `signers` | [L3891](../../api/prisma/schema.prisma#L3891) | 04 §31–32, §36 — a signer on a request with mapped fields and signing position. |
+| `SignatureEvent` | `signature_events` | [L3926](../../api/prisma/schema.prisma#L3926) | 04 §38, §71 — provider and internal events; (provider, provider_event_id) is unique so duplicate callbacks are ignored. |
 | **Obligations & termination** | | | |
-| `ContractObligation` | `contract_obligations` | [L3487](../../api/prisma/schema.prisma#L3487) | 04 §49–50, §75 — operational obligations linked to a contract section; execution may create a Task (06) rather than duplicating task functionality. |
-| `ContractTermination` | `contract_terminations` | [L3523](../../api/prisma/schema.prisma#L3523) | 04 §53 — termination record. Never alters the signed document. |
+| `ContractObligation` | `contract_obligations` | [L3950](../../api/prisma/schema.prisma#L3950) | 04 §49–50, §75 — operational obligations linked to a contract section; execution may create a Task (06) rather than duplicating task functionality. |
+| `ContractTermination` | `contract_terminations` | [L3986](../../api/prisma/schema.prisma#L3986) | 04 §53 — termination record. Never alters the signed document. |
 
 **Owned enums (21):** `ContractStatus`, `ContractVersionStatus`, `ContractRelationKind`, `ContractRenewalType`, `ContractPartyType`, `ContractTemplateStatus`, `ContractClauseStatus`, `ContractReviewDecision`, `ContractApprovalDecision`, `ContractChangeRequestStatus`, `ContractObligationType`, `ContractObligationStatus`, `ExtractionReviewState`, `ContractTerminationType`, `ContractRiskLevel`, `SignatureProvider`, `SignatureSubjectType`, `SigningOrder`, `SignatureRequestStatus`, `SignerStatus`, `SignatureEventType`
 
@@ -67,22 +67,35 @@
 | [03](./03-proposal-quotation-generator.md) | `ProposalVersion` (`proposal_versions`) | `Contract.proposal_version`, `SignatureRequest.proposal_version` |
 | [05](./05-project-management.md) | `Project` (`projects`) | `ContractProject.project` |
 | [06](./06-task-management.md) | `Task` (`tasks`) | `ContractObligation.task` |
+| [17](./17-documents-file-management.md) | `Document` (`documents`) | `ContractTermination.document`, `ContractVersion.document`, `ContractVersion.signed_document`, `SignatureRequest.audit_certificate_document` +1 more |
+
+**Reused enums:** `BillingModel` ([08](./08-financial-management-stripe-integration.md)), `TimeNonBillableCategory` ([18](./18-time-tracking.md))
 
 ### Referenced by other modules
 
 - [08](./08-financial-management-stripe-integration.md): `Invoice`, `Subscription`
+- [09](./09-income-expense-management.md): `LedgerRecord`
+- [10](./10-employee-management-system.md): `EmployeeDocument`
+- [18](./18-time-tracking.md): `TimeProjectSettings`
 
 ### Plain-id references from other modules
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `ProposalVersion.contracts` ([03](./03-proposal-quotation-generator.md), [L2386](../../api/prisma/schema.prisma#L2386)) — Contracts generated from this exact proposal version (04 §7, §55).
-- `ProposalAcceptance.signature_request_id` ([03](./03-proposal-quotation-generator.md), [L2626](../../api/prisma/schema.prisma#L2626)) — Signature request id from the e-signature provider abstraction (04 §33–38); id only.
-- `ProjectChangeRequest.proposal_id` ([05](./05-project-management.md), [L4317](../../api/prisma/schema.prisma#L4317)) — Commercial links (03, 04) and the contract change request this originated (04 §26, §43).
+- `ProposalVersion.contracts` ([03](./03-proposal-quotation-generator.md), [L2833](../../api/prisma/schema.prisma#L2833)) — Contracts generated from this exact proposal version (04 §7, §55).
+- `ProposalAcceptance.signature_request_id` ([03](./03-proposal-quotation-generator.md), [L3076](../../api/prisma/schema.prisma#L3076)) — Signature request id from the e-signature provider abstraction (04 §33–38); id only.
+- `ProjectChangeRequest.proposal_id` ([05](./05-project-management.md), [L4822](../../api/prisma/schema.prisma#L4822)) — Commercial links (03, 04) and the contract change request this originated (04 §26, §43).
+- `DocumentRetentionPolicy.enforced_by_module` ([17](./17-documents-file-management.md), [L15118](../../api/prisma/schema.prisma#L15118)) — Module that mandates this policy (e.g. CONTRACTS for 04 §84); null for organization policies.
+- `DocumentVersion.checksum_sha256` ([17](./17-documents-file-management.md), [L15399](../../api/prisma/schema.prisma#L15399)) — SHA-256 of the stored bytes (integrity, dedupe, 04 §17 hashes).
+- `TimeProjectSettings.contract_id` ([18](./18-time-tracking.md), [L16160](../../api/prisma/schema.prisma#L16160)) — Contract that defines the billing context (04 §54).
 
 <!-- schema-refs:end -->
 
 ## 1. Purpose
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 The Contracts module is the contractual source of truth for the Agency
 Operating System. It manages the lifecycle of agreements from generation
@@ -115,6 +128,10 @@ modules without recreating their domain logic.
 
 ## 2. Contract Types
 
+<!-- schema-section:start -->
+> **Schema:** `ContractType` ([contract_types](../../api/prisma/schema.prisma#L3321))
+<!-- schema-section:end -->
+
 Configurable types should include:
 
 * Master Service Agreement (MSA)
@@ -146,6 +163,10 @@ relationships.
 ---
 
 ## 3. Contract Record
+
+<!-- schema-section:start -->
+> **Schema:** `Contract` ([contracts](../../api/prisma/schema.prisma#L3484)) · enum `ContractRenewalType` ([L3156](../../api/prisma/schema.prisma#L3156))
+<!-- schema-section:end -->
 
 A contract is a structured business record plus one or more document
 versions.
@@ -182,6 +203,10 @@ artifact.
 
 ## 4. Parties
 
+<!-- schema-section:start -->
+> **Schema:** `Contract` ([contracts](../../api/prisma/schema.prisma#L3484)): `primary_company_id` · `ContractParty` ([contract_parties](../../api/prisma/schema.prisma#L3593)) · `ContractSignatory` ([contract_signatories](../../api/prisma/schema.prisma#L3616)) · enum `ContractPartyType` ([L3164](../../api/prisma/schema.prisma#L3164))
+<!-- schema-section:end -->
+
 Contracts support multiple parties.
 
 Each party can reference an existing CRM/company/contact record rather
@@ -202,6 +227,10 @@ A contract may have multiple signatories for the same party.
 ---
 
 ## 5. Contract Lifecycle States
+
+<!-- schema-section:start -->
+> **Schema:** enum `ContractStatus` ([L3117](../../api/prisma/schema.prisma#L3117))
+<!-- schema-section:end -->
 
 Recommended states:
 
@@ -227,6 +256,10 @@ Lifecycle status and document/version status are separate concepts.
 
 ## 6. Contract Numbering
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 Support configurable numbering rules such as `CTR-2026-0001`, including
 prefixes, year, type and organization-specific sequences.
 
@@ -235,6 +268,10 @@ Contract numbers should be stable and auditable.
 ---
 
 ## 7. Generation Sources
+
+<!-- schema-section:start -->
+> **Schema:** `Contract` ([contracts](../../api/prisma/schema.prisma#L3484)): `proposal_id`
+<!-- schema-section:end -->
 
 A contract can be created from:
 
@@ -259,6 +296,10 @@ generation.
 
 ## 8. Template System
 
+<!-- schema-section:start -->
+> **Schema:** `ContractTemplate` ([contract_templates](../../api/prisma/schema.prisma#L3356)) · `ContractTemplateVersion` ([contract_template_versions](../../api/prisma/schema.prisma#L3386)) · enum `ContractTemplateStatus` ([L3175](../../api/prisma/schema.prisma#L3175))
+<!-- schema-section:end -->
+
 Templates are reusable contractual structures containing:
 
 * Sections
@@ -277,6 +318,10 @@ modifies existing contracts.
 ---
 
 ## 9. Template Variables
+
+<!-- schema-section:start -->
+> **Schema:** `ContractTemplateVersion` ([contract_template_versions](../../api/prisma/schema.prisma#L3386)): `variables` · `ContractVersion` ([contract_versions](../../api/prisma/schema.prisma#L3656)): `variables`
+<!-- schema-section:end -->
 
 Variables populate contractual data from platform records.
 
@@ -299,6 +344,10 @@ Required unresolved variables prevent final generation.
 
 ## 10. Conditional Clauses
 
+<!-- schema-section:start -->
+> **Schema:** `Contract` ([contracts](../../api/prisma/schema.prisma#L3484)): `processes_personal_data` · `ContractTemplateVersion` ([contract_template_versions](../../api/prisma/schema.prisma#L3386)): `conditional_rules`
+<!-- schema-section:end -->
+
 Templates can conditionally include clauses based on structured contract
 data.
 
@@ -315,6 +364,10 @@ Rules must be deterministic, reviewable and versioned.
 ---
 
 ## 11. Clause Library
+
+<!-- schema-section:start -->
+> **Schema:** `ContractClause` ([contract_clauses](../../api/prisma/schema.prisma#L3413)): `usage_restrictions` · enum `ContractClauseStatus` ([L3182](../../api/prisma/schema.prisma#L3182))
+<!-- schema-section:end -->
 
 Reusable clauses should have:
 
@@ -337,6 +390,10 @@ warranty, termination, renewal, SLA, security and governing law.
 
 ## 12. Clause Versioning
 
+<!-- schema-section:start -->
+> **Schema:** `ContractClause` ([contract_clauses](../../api/prisma/schema.prisma#L3413)) · `ContractClauseVersion` ([contract_clause_versions](../../api/prisma/schema.prisma#L3441)) · `ContractSection` ([contract_sections](../../api/prisma/schema.prisma#L3708)) · enum `ContractClauseStatus` ([L3182](../../api/prisma/schema.prisma#L3182))
+<!-- schema-section:end -->
+
 A clause change creates a new clause version.
 
 A previously generated contract retains the exact clause version used at
@@ -347,6 +404,10 @@ No historical contract should silently inherit a newer clause.
 ---
 
 ## 13. Contract Editor
+
+<!-- schema-section:start -->
+> **Schema:** `ContractComment` ([contract_comments](../../api/prisma/schema.prisma#L3759))
+<!-- schema-section:end -->
 
 Authorized users can edit draft versions using a rich document editor
 supporting:
@@ -370,6 +431,10 @@ Signed documents cannot be edited.
 ---
 
 ## 14. Structured Sections
+
+<!-- schema-section:start -->
+> **Schema:** `ContractSection` ([contract_sections](../../api/prisma/schema.prisma#L3708)) · `ContractTemplateVersion` ([contract_template_versions](../../api/prisma/schema.prisma#L3386))
+<!-- schema-section:end -->
 
 Sections should be addressable individually so the system can support
 review comments, diffs and amendments against a specific section.
@@ -399,6 +464,10 @@ Typical sections:
 
 ## 15. Contract Generation Workflow
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
  1. Select contract type.
  2. Select template.
  3. Select parties.
@@ -420,6 +489,10 @@ Typical sections:
 
 ## 16. Generation Validation
 
+<!-- schema-section:start -->
+> **Schema:** `ContractType` ([contract_types](../../api/prisma/schema.prisma#L3321)): `required_metadata`
+<!-- schema-section:end -->
+
 Before generation validate:
 
 * Contract type
@@ -438,6 +511,10 @@ Errors should identify the exact missing input.
 
 ## 17. Rendered Document
 
+<!-- schema-section:start -->
+> **Schema:** `ContractVersion` ([contract_versions](../../api/prisma/schema.prisma#L3656)): `content_hash`, `variables` — other modules: `DocumentVersion` ([document_versions](../../api/prisma/schema.prisma#L15399)): `checksum_sha256` ([17](./17-documents-file-management.md))
+<!-- schema-section:end -->
+
 Every finalized generation creates a document artifact containing:
 
 * Contract ID
@@ -454,6 +531,10 @@ Every finalized generation creates a document artifact containing:
 
 ## 18. PDF Generation
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 The final signature artifact should support stable PDF generation with
 preserved pagination, formatting, tables, headers, footers, signature
 blocks and appendices.
@@ -463,6 +544,10 @@ The exact rendering engine is an implementation detail.
 ---
 
 ## 19. Version Model
+
+<!-- schema-section:start -->
+> **Schema:** `ContractVersion` ([contract_versions](../../api/prisma/schema.prisma#L3656)): `label` · enum `ContractVersionStatus` ([L3136](../../api/prisma/schema.prisma#L3136))
+<!-- schema-section:end -->
 
 Every material draft change creates a version.
 
@@ -482,6 +567,10 @@ Version numbering can be configurable.
 
 ## 20. Version Record
 
+<!-- schema-section:start -->
+> **Schema:** `ContractVersion` ([contract_versions](../../api/prisma/schema.prisma#L3656)) · enum `ContractVersionStatus` ([L3136](../../api/prisma/schema.prisma#L3136))
+<!-- schema-section:end -->
+
 Each version stores:
 
 * Version ID
@@ -499,6 +588,10 @@ Each version stores:
 ---
 
 ## 21. Version Comparison
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 Users can compare any two versions.
 
@@ -519,6 +612,10 @@ Comparison must be read-only and must never modify either version.
 
 ## 22. Version Timeline
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 Show a chronological version graph with author, timestamp, state, change
 summary, approvals and signature status.
 
@@ -529,6 +626,10 @@ Example:
 ---
 
 ## 23. Review Workflow
+
+<!-- schema-section:start -->
+> **Schema:** `ContractComment` ([contract_comments](../../api/prisma/schema.prisma#L3759)) · `ContractReview` ([contract_reviews](../../api/prisma/schema.prisma#L3737)) · enum `ContractReviewDecision` ([L3189](../../api/prisma/schema.prisma#L3189))
+<!-- schema-section:end -->
 
 A review request references one exact version.
 
@@ -548,6 +649,10 @@ Old review history remains attached to the old version.
 
 ## 24. Internal vs External Review
 
+<!-- schema-section:start -->
+> **Schema:** `ContractComment` ([contract_comments](../../api/prisma/schema.prisma#L3759)) · `ContractReview` ([contract_reviews](../../api/prisma/schema.prisma#L3737)) · `ContractVersion` ([contract_versions](../../api/prisma/schema.prisma#L3656)): `customer_visible`
+<!-- schema-section:end -->
+
 Comments and review requests must distinguish:
 
 * Internal
@@ -559,6 +664,10 @@ Internal notes must never be exposed through the Customer Portal.
 
 ## 25. Negotiation Workflow
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 Support:
 
 **Internal Draft → Customer Review → Requested Changes → New Version →**
@@ -569,6 +678,10 @@ Every negotiation round remains traceable.
 ---
 
 ## 26. Contract Change Requests
+
+<!-- schema-section:start -->
+> **Schema:** `ContractChangeRequest` ([contract_change_requests](../../api/prisma/schema.prisma#L3785)) · enum `ContractChangeRequestStatus` ([L3204](../../api/prisma/schema.prisma#L3204)) — other modules: `ProjectChangeRequest` ([project_change_requests](../../api/prisma/schema.prisma#L4822)): `proposal_id` ([05](./05-project-management.md)) · enum `ProjectChangeRequestStatus` ([L4150](../../api/prisma/schema.prisma#L4150)) ([05](./05-project-management.md))
+<!-- schema-section:end -->
 
 A Contract Change Request asks for a change to contract language or terms. It is distinct from a Project Change Request (05 §45), which changes delivery scope; an approved Project Change Request may originate a Contract Change Request and an Amendment (§43).
 
@@ -589,6 +702,10 @@ A customer request should never directly mutate the current contract.
 
 ## 27. Approval Workflow
 
+<!-- schema-section:start -->
+> **Schema:** `ContractApproval` ([contract_approvals](../../api/prisma/schema.prisma#L3815)) · `ContractType` ([contract_types](../../api/prisma/schema.prisma#L3321)): `approval_workflow` · enum `ContractApprovalDecision` ([L3197](../../api/prisma/schema.prisma#L3197))
+<!-- schema-section:end -->
+
 Signature approval is separate from internal business approval.
 
 Approval steps may include:
@@ -604,6 +721,10 @@ Each approval is bound to an exact contract version.
 ---
 
 ## 28. Approval Rules
+
+<!-- schema-section:start -->
+> **Schema:** `ContractApproval` ([contract_approvals](../../api/prisma/schema.prisma#L3815)) · `ContractApprovalRule` ([contract_approval_rules](../../api/prisma/schema.prisma#L3462)) · enum `ContractApprovalDecision` ([L3197](../../api/prisma/schema.prisma#L3197))
+<!-- schema-section:end -->
 
 Approval requirements can depend on:
 
@@ -625,6 +746,10 @@ Example:
 
 ## 29. Approval Audit
 
+<!-- schema-section:start -->
+> **Schema:** `ContractApproval` ([contract_approvals](../../api/prisma/schema.prisma#L3815)) · enum `ContractApprovalDecision` ([L3197](../../api/prisma/schema.prisma#L3197))
+<!-- schema-section:end -->
+
 Record:
 
 * Version
@@ -640,6 +765,10 @@ Approval of v1.0 does not approve v1.1.
 
 ## 30. Signature Preparation
 
+<!-- schema-section:start -->
+> **Schema:** `ContractComment` ([contract_comments](../../api/prisma/schema.prisma#L3759)): `is_blocking`
+<!-- schema-section:end -->
+
 Before sending for signature validate:
 
 * Exact version selected
@@ -654,6 +783,10 @@ Before sending for signature validate:
 ---
 
 ## 31. Signature Blocks
+
+<!-- schema-section:start -->
+> **Schema:** `ContractSignatory` ([contract_signatories](../../api/prisma/schema.prisma#L3616)) · `ContractTemplateVersion` ([contract_template_versions](../../api/prisma/schema.prisma#L3386)): `signature_blocks` · `Signer` ([signers](../../api/prisma/schema.prisma#L3891)): `fields`
+<!-- schema-section:end -->
 
 Support:
 
@@ -672,6 +805,10 @@ Each field is mapped to a specific signer.
 
 ## 32. Signature Workflow
 
+<!-- schema-section:start -->
+> **Schema:** `Signer` ([signers](../../api/prisma/schema.prisma#L3891)) · enum `SigningOrder` ([L3274](../../api/prisma/schema.prisma#L3274))
+<!-- schema-section:end -->
+
 Support:
 
 * Single signer
@@ -686,6 +823,10 @@ Support:
 
 ## 33. Signature Provider Abstraction
 
+<!-- schema-section:start -->
+> **Schema:** enum `SignatureProvider` ([L3259](../../api/prisma/schema.prisma#L3259)) — other modules: `ProposalAcceptance` ([proposal_acceptances](../../api/prisma/schema.prisma#L3076)): `signature_request_id` ([03](./03-proposal-quotation-generator.md))
+<!-- schema-section:end -->
+
 Use a provider abstraction so the product can support providers such as
 DocuSign, Dropbox Sign, Adobe Acrobat Sign or another provider without
 changing the Contracts domain model.
@@ -696,6 +837,10 @@ fields.
 ---
 
 ## 34. Signature Request
+
+<!-- schema-section:start -->
+> **Schema:** `SignatureRequest` ([signature_requests](../../api/prisma/schema.prisma#L3840)) · enum `SignatureSubjectType` ([L3268](../../api/prisma/schema.prisma#L3268)) — other modules: `ProposalAcceptance` ([proposal_acceptances](../../api/prisma/schema.prisma#L3076)): `signature_request_id` ([03](./03-proposal-quotation-generator.md))
+<!-- schema-section:end -->
 
 A signature request contains:
 
@@ -717,6 +862,10 @@ The version relationship is immutable.
 
 ## 35. Signature States
 
+<!-- schema-section:start -->
+> **Schema:** enum `SignatureRequestStatus` ([L3280](../../api/prisma/schema.prisma#L3280)) — other modules: `ProposalAcceptance` ([proposal_acceptances](../../api/prisma/schema.prisma#L3076)): `signature_request_id` ([03](./03-proposal-quotation-generator.md))
+<!-- schema-section:end -->
+
 Support:
 
 * Not Sent
@@ -733,6 +882,10 @@ Support:
 ---
 
 ## 36. Signer Experience
+
+<!-- schema-section:start -->
+> **Schema:** `Signer` ([signers](../../api/prisma/schema.prisma#L3891)) — other modules: `ProposalAcceptance` ([proposal_acceptances](../../api/prisma/schema.prisma#L3076)): `signature_request_id` ([03](./03-proposal-quotation-generator.md))
+<!-- schema-section:end -->
 
 The signer sees:
 
@@ -751,6 +904,10 @@ through its supported integration.
 
 ## 37. Signature Reminders
 
+<!-- schema-section:start -->
+> **Schema:** `SignatureRequest` ([signature_requests](../../api/prisma/schema.prisma#L3840)): `reminder_settings` — other modules: `ProposalAcceptance` ([proposal_acceptances](../../api/prisma/schema.prisma#L3076)): `signature_request_id` ([03](./03-proposal-quotation-generator.md))
+<!-- schema-section:end -->
+
 Support configurable reminder frequency, maximum reminders and
 expiration.
 
@@ -759,6 +916,10 @@ Reminder delivery uses [14 Notifications](./14-notifications-activity-center.md)
 ---
 
 ## 38. Signature Audit Trail
+
+<!-- schema-section:start -->
+> **Schema:** `SignatureEvent` ([signature_events](../../api/prisma/schema.prisma#L3926)) · enum `SignatureEventType` ([L3304](../../api/prisma/schema.prisma#L3304)) — other modules: `ProposalAcceptance` ([proposal_acceptances](../../api/prisma/schema.prisma#L3076)): `signature_request_id` ([03](./03-proposal-quotation-generator.md))
+<!-- schema-section:end -->
 
 Record provider events including:
 
@@ -779,6 +940,10 @@ method, provider event ID and audit certificate reference.
 
 ## 39. Signed Artifact Immutability
 
+<!-- schema-section:start -->
+> **Schema:** `ContractVersion` ([contract_versions](../../api/prisma/schema.prisma#L3656))
+<!-- schema-section:end -->
+
 After full signature:
 
 * Document cannot be edited.
@@ -791,6 +956,10 @@ After full signature:
 
 ## 40. Signed Artifact Integrity
 
+<!-- schema-section:start -->
+> **Schema:** `ContractVersion` ([contract_versions](../../api/prisma/schema.prisma#L3656)): `content_hash`
+<!-- schema-section:end -->
+
 Store an integrity hash/fingerprint of the finalized signed artifact
 where appropriate.
 
@@ -800,6 +969,10 @@ changed.
 ---
 
 ## 41. Signature Completion
+
+<!-- schema-section:start -->
+> **Schema:** `ContractVersion` ([contract_versions](../../api/prisma/schema.prisma#L3656)): `signed_document_id`
+<!-- schema-section:end -->
 
 When all required signatures are completed:
 
@@ -817,6 +990,10 @@ When all required signatures are completed:
 
 ## 42. Signature Failure / Expiration
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 Failed or expired requests must preserve history and allow authorized
 retry.
 
@@ -828,6 +1005,10 @@ If content changes, create a new version first.
 ---
 
 ## 43. Amendments
+
+<!-- schema-section:start -->
+> **Schema:** `Contract` ([contracts](../../api/prisma/schema.prisma#L3484)): `parent_contract_id`, `project_change_request_id` · enum `ContractRelationKind` ([L3146](../../api/prisma/schema.prisma#L3146)) — other modules: `ProjectChangeRequest` ([project_change_requests](../../api/prisma/schema.prisma#L4822)): `proposal_id` ([05](./05-project-management.md))
+<!-- schema-section:end -->
 
 An amendment is a first-class record linked to the original signed
 contract.
@@ -851,6 +1032,10 @@ Fields:
 
 ## 44. Amendment Generation
 
+<!-- schema-section:start -->
+> **Schema:** `Contract` ([contracts](../../api/prisma/schema.prisma#L3484)): `parent_contract_id`
+<!-- schema-section:end -->
+
 Workflow:
 
  1. Select active contract.
@@ -871,6 +1056,10 @@ The original contract remains unchanged.
 
 ## 45. Amendment Document
 
+<!-- schema-section:start -->
+> **Schema:** `Contract` ([contracts](../../api/prisma/schema.prisma#L3484)): `parent_contract_id`
+<!-- schema-section:end -->
+
 The amendment should clearly identify:
 
 * Original agreement
@@ -884,6 +1073,10 @@ The amendment should clearly identify:
 ---
 
 ## 46. Renewal
+
+<!-- schema-section:start -->
+> **Schema:** `Contract` ([contracts](../../api/prisma/schema.prisma#L3484)): `parent_contract_id` · enum `ContractRelationKind` ([L3146](../../api/prisma/schema.prisma#L3146))
+<!-- schema-section:end -->
 
 Renewals should preserve lineage:
 
@@ -901,6 +1094,10 @@ Support:
 
 ## 47. Superseding Contract
 
+<!-- schema-section:start -->
+> **Schema:** `Contract` ([contracts](../../api/prisma/schema.prisma#L3484)): `parent_contract_id`, `superseded_by_contract_id` · enum `ContractRelationKind` ([L3146](../../api/prisma/schema.prisma#L3146))
+<!-- schema-section:end -->
+
 A new contract can supersede an existing contract.
 
 Relationship:
@@ -912,6 +1109,10 @@ The old contract remains historically accessible.
 ---
 
 ## 48. Master Agreement / SOW Structure
+
+<!-- schema-section:start -->
+> **Schema:** `Contract` ([contracts](../../api/prisma/schema.prisma#L3484)): `parent_contract_id` · enum `ContractRelationKind` ([L3146](../../api/prisma/schema.prisma#L3146))
+<!-- schema-section:end -->
 
 Support structures such as:
 
@@ -925,6 +1126,10 @@ Each SOW may link to a Project.
 ---
 
 ## 49. Contract Obligations
+
+<!-- schema-section:start -->
+> **Schema:** `ContractObligation` ([contract_obligations](../../api/prisma/schema.prisma#L3950)) · enum `ContractObligationType` ([L3214](../../api/prisma/schema.prisma#L3214)) — other modules: `TaskLink` ([task_links](../../api/prisma/schema.prisma#L5528)) ([06](./06-task-management.md))
+<!-- schema-section:end -->
 
 Authorized users may track operational obligations such as:
 
@@ -945,6 +1150,10 @@ of duplicating task functionality.
 
 ## 50. Obligation Tracking
 
+<!-- schema-section:start -->
+> **Schema:** `ContractObligation` ([contract_obligations](../../api/prisma/schema.prisma#L3950)) · enum `ContractObligationType` ([L3214](../../api/prisma/schema.prisma#L3214))
+<!-- schema-section:end -->
+
 An obligation contains:
 
 * Title
@@ -961,6 +1170,10 @@ An obligation contains:
 ---
 
 ## 51. Contract Dates
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 Distinguish:
 
@@ -981,6 +1194,10 @@ These dates should be independently addressable by automation.
 
 ## 52. Expiration / Renewal Monitoring
 
+<!-- schema-section:start -->
+> **Schema:** `ContractType` ([contract_types](../../api/prisma/schema.prisma#L3321)): `reminder_windows_days`
+<!-- schema-section:end -->
+
 The system should monitor upcoming expiration and notice dates.
 
 Configurable reminder windows can include 180, 120, 90, 60, 30, 14 and 7
@@ -991,6 +1208,10 @@ The exact windows should be organization-configurable.
 ---
 
 ## 53. Termination
+
+<!-- schema-section:start -->
+> **Schema:** `ContractTermination` ([contract_terminations](../../api/prisma/schema.prisma#L3986)) · enum `ContractTerminationType` ([L3242](../../api/prisma/schema.prisma#L3242))
+<!-- schema-section:end -->
 
 Termination records:
 
@@ -1009,6 +1230,10 @@ Termination never deletes or alters the original signed document.
 
 ## 54. Contract Value / Payment Context
 
+<!-- schema-section:start -->
+> **Schema:** other modules: `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L16160)): `contract_id` ([18](./18-time-tracking.md))
+<!-- schema-section:end -->
+
 Contracts may store structured contractual context:
 
 * Total value
@@ -1024,6 +1249,10 @@ and accounting records.
 ---
 
 ## 55. Proposal Integration
+
+<!-- schema-section:start -->
+> **Schema:** `Contract` ([contracts](../../api/prisma/schema.prisma#L3484)): `proposal_id`
+<!-- schema-section:end -->
 
 Contracts reference the Proposal and exact Proposal version that produced the
 contractual commercial context.
@@ -1045,6 +1274,10 @@ acceptance.
 
 ## 56. Project Integration
 
+<!-- schema-section:start -->
+> **Schema:** `ContractProject` ([contract_projects](../../api/prisma/schema.prisma#L3638))
+<!-- schema-section:end -->
+
 Contracts can reference multiple Projects.
 
 Projects can surface:
@@ -1063,6 +1296,10 @@ Projects remain authoritative for delivery execution.
 
 ## 57. Project / Contract Creation Flow
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 Example:
 
 **Proposal Accepted → Contract Generated → Contract Signed → Project**
@@ -1074,6 +1311,10 @@ entire contract as a second source of truth.
 ---
 
 ## 58. Finance Integration
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 Finance may consume contract context such as:
 
@@ -1090,6 +1331,10 @@ Finance owns invoices, payments, expenses and accounting records.
 
 ## 59. CRM Integration
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 Contracts should appear from the relevant customer/company/contact
 context.
 
@@ -1100,6 +1345,10 @@ Contracts own contractual records.
 ---
 
 ## 60. Documents Integration
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 > Defined by → [17 Documents & File Management](./17-documents-file-management.md) · Linear LOG-407.
 
@@ -1120,6 +1369,10 @@ Documents owns storage, file metadata and document infrastructure.
 
 ## 61. Customer Portal Integration
 
+<!-- schema-section:start -->
+> **Schema:** `Contract` ([contracts](../../api/prisma/schema.prisma#L3484)): `customer_visible` · `ContractVersion` ([contract_versions](../../api/prisma/schema.prisma#L3656)): `customer_visible`
+<!-- schema-section:end -->
+
 The Customer Portal can expose, when authorized:
 
 * Contracts for review
@@ -1136,6 +1389,10 @@ Portal module.
 ---
 
 ## 62. Notifications & Messaging Integration
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 > Notification engine defined by → [14 Notifications](./14-notifications-activity-center.md) · Linear LOG-403. Conversations defined by → [12 Messaging](./12-messaging-team-communication.md) · Linear LOG-313.
 
@@ -1154,6 +1411,10 @@ Actual conversations remain in Messaging.
 
 ## 63. Calendar Integration
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 > Defined by → [19 Calendar](./19-calendar.md) · Linear LOG-409.
 
 Contract dates are projected onto the Calendar as read-only dates (19 §2) for:
@@ -1169,6 +1430,10 @@ Calendar remains authoritative for actual events.
 ---
 
 ## 64. Contract Search / Views
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 Search by:
 
@@ -1205,6 +1470,10 @@ Views:
 
 ## 65. Contract Dashboard
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 Widgets should include:
 
 * Active contracts
@@ -1222,6 +1491,10 @@ Widgets should include:
 ---
 
 ## 66. Contract Timeline
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 Show the complete lifecycle:
 
@@ -1241,6 +1514,10 @@ Show the complete lifecycle:
 ---
 
 ## 67. Permissions
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 > Roles, scopes, approval rights and the permission catalog are defined by → [01](./01-users-organizations-permissions.md) · Linear LOG-406. Keys follow 01 §46 (`contracts.contracts.read`, `contracts.contracts.approve`, `contracts.templates.manage`, and so on).
 
@@ -1268,6 +1545,10 @@ Signed content requires stricter controls than drafts.
 
 ## 68. Audit Trail
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 Audit all material actions:
 
 * Created
@@ -1291,6 +1572,10 @@ action.
 ---
 
 ## 69. API
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 Contracts should be first-class API resources.
 
@@ -1319,6 +1604,10 @@ The API must prevent unauthorized mutation of signed artifacts.
 
 ## 70. Webhooks
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 Recommended events:
 
 * `contract.created`
@@ -1344,6 +1633,10 @@ Delivery follows the platform webhook standard in `docs/Product_Specification.md
 
 ## 71. Signature Provider Events
 
+<!-- schema-section:start -->
+> **Schema:** `SignatureEvent` ([signature_events](../../api/prisma/schema.prisma#L3926))
+<!-- schema-section:end -->
+
 Provider callbacks must be processed idempotently.
 
 Duplicate callbacks must not:
@@ -1358,6 +1651,10 @@ troubleshooting.
 ---
 
 ## 72. AI Assistance
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 AI may assist with:
 
@@ -1378,6 +1675,10 @@ language.
 
 ## 73. AI Contract Review
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 AI can flag:
 
 * Missing clauses
@@ -1395,6 +1696,10 @@ is an AI-generated recommendation.
 ---
 
 ## 74. Contract Risk Scoring
+
+<!-- schema-section:start -->
+> **Schema:** enum `ContractRiskLevel` ([L3251](../../api/prisma/schema.prisma#L3251))
+<!-- schema-section:end -->
 
 Optional configurable scoring may consider:
 
@@ -1414,6 +1719,10 @@ advice.
 
 ## 75. AI Obligation Extraction
 
+<!-- schema-section:start -->
+> **Schema:** `ContractObligation` ([contract_obligations](../../api/prisma/schema.prisma#L3950)): `is_ai_extracted` · enum `ExtractionReviewState` ([L3235](../../api/prisma/schema.prisma#L3235))
+<!-- schema-section:end -->
+
 The system may extract obligations from the final contract:
 
 * Obligation
@@ -1431,6 +1740,10 @@ extraction unless explicitly configured.
 
 ## 76. Contract Knowledge Search
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 Authorized users can search contractual content across active and
 historical versions.
 
@@ -1443,6 +1756,10 @@ historical language.
 ---
 
 ## 77. Contract Template Governance
+
+<!-- schema-section:start -->
+> **Schema:** `ContractTemplate` ([contract_templates](../../api/prisma/schema.prisma#L3356)) · enum `ContractTemplateStatus` ([L3175](../../api/prisma/schema.prisma#L3175))
+<!-- schema-section:end -->
 
 Templates require:
 
@@ -1459,6 +1776,10 @@ Only authorized users can publish templates.
 
 ## 78. Contract Package
 
+<!-- schema-section:start -->
+> **Schema:** `SignatureRequest` ([signature_requests](../../api/prisma/schema.prisma#L3840)): `package_documents`
+<!-- schema-section:end -->
+
 A signature package can contain multiple documents:
 
 * MSA
@@ -1474,6 +1795,10 @@ submitted for signature.
 
 ## 79. Package Validation
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 Before signature validate:
 
 * Primary document exists
@@ -1487,6 +1812,10 @@ Before signature validate:
 ---
 
 ## 80. Version Locking Rules
+
+<!-- schema-section:start -->
+> **Schema:** enum `ContractVersionStatus` ([L3136](../../api/prisma/schema.prisma#L3136))
+<!-- schema-section:end -->
 
 ### Review lock
 
@@ -1510,6 +1839,10 @@ Any subsequent change creates a new version or amendment.
 
 ## 81. Re-signing
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 If a signed document must change:
 
 1. Identify required change.
@@ -1522,6 +1855,10 @@ If a signed document must change:
 ---
 
 ## 82. Bulk Generation
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 Authorized users may generate multiple independent contracts from one
 template.
@@ -1538,6 +1875,10 @@ Each generated contract must have:
 
 ## 83. Contract Closeout
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 When a contract expires or terminates:
 
 * Record final state.
@@ -1553,6 +1894,10 @@ When a contract expires or terminates:
 
 ## 84. Data Retention
 
+<!-- schema-section:start -->
+> **Schema:** `ContractType` ([contract_types](../../api/prisma/schema.prisma#L3321)): `retention_days` — other modules: `DocumentRetentionPolicy` ([document_retention_policies](../../api/prisma/schema.prisma#L15118)) ([17](./17-documents-file-management.md))
+<!-- schema-section:end -->
+
 Retention policies should be configurable by organization and contract
 type.
 
@@ -1564,6 +1909,10 @@ auditable.
 ---
 
 ## 85. Security / Isolation
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 > Defined by → [01](./01-users-organizations-permissions.md) §3, §9, §85, §136–137 · Linear LOG-406.
 
@@ -1585,6 +1934,10 @@ contracts.
 
 ## 86. Operational vs Legal State
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 The UI should clearly separate:
 
 * Document state
@@ -1602,6 +1955,10 @@ These states are related but independently owned.
 ---
 
 ## 87. Contract Lifecycle Automation
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 > Engine defined by → [20 Automation Engine](./20-automation-engine.md) · Linear LOG-410. Contracts declares its triggers and actions; the rules run in the engine. Mandatory rules (signed-version immutability, approval before signature) are module logic and are never configurable rules.
 
@@ -1621,6 +1978,10 @@ Automations must be configurable.
 ---
 
 ## 88. Recommended MVP
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 ### Core
 
@@ -1702,6 +2063,10 @@ Automations must be configurable.
 
 ## 89. Phase 2
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 * Advanced negotiation
 * Clause governance
 * AI contract review
@@ -1718,6 +2083,10 @@ Automations must be configurable.
 
 ## 90. Phase 3
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 * AI-assisted drafting
 * Jurisdiction-aware clause systems
 * Advanced obligation monitoring
@@ -1729,6 +2098,10 @@ Automations must be configurable.
 ---
 
 ## 91. End-to-End Example
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 **CRM**
 
@@ -1812,6 +2185,10 @@ artifact.
 ---
 
 ## 92. Final Architecture Rule
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 Contracts should be the **single contractual source of truth**.
 

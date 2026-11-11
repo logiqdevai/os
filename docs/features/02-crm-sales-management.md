@@ -20,6 +20,10 @@ The CRM should function as the central source of truth for all commercial relati
 
 # 1. CRM Core Entities
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 The CRM should support the following primary entities:
 
 CRM-owned entities:
@@ -60,6 +64,10 @@ Company
 ---
 
 # 2. Companies
+
+<!-- schema-section:start -->
+> **Schema:** `CrmCompany` ([crm_companies](../../api/prisma/schema.prisma#L2045)) · enum `CrmCompanyType` ([L1824](../../api/prisma/schema.prisma#L1824)) — other modules: `Calendar` ([calendars](../../api/prisma/schema.prisma#L16919)): `company_id` ([19](./19-calendar.md)) · `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L17038)): `company_id` ([19](./19-calendar.md)) · `LedgerInvoiceImport` ([ledger_invoice_imports](../../api/prisma/schema.prisma#L7038)): `matched_company_id` ([09](./09-income-expense-management.md)) · `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L6844)): `company_id` ([09](./09-income-expense-management.md)) · `LedgerSupplierProfile` ([ledger_supplier_profiles](../../api/prisma/schema.prisma#L6808)) ([09](./09-income-expense-management.md)) · `RecurringExpense` ([recurring_expenses](../../api/prisma/schema.prisma#L7133)): `company_id` ([09](./09-income-expense-management.md))
+<!-- schema-section:end -->
 
 Provide complete company management. A Company is any external legal entity the agency deals with: prospect, customer, partner or vendor. Company type and lifecycle stage distinguish them; there is one record model.
 
@@ -122,6 +130,10 @@ Vendor companies link to supplier invoices and expenses in [09 Income & Expense]
 
 # 3. Contacts
 
+<!-- schema-section:start -->
+> **Schema:** `CrmContact` ([crm_contacts](../../api/prisma/schema.prisma#L2154)) · enum `CrmContactRole` ([L1833](../../api/prisma/schema.prisma#L1833)) — other modules: `BillingProfile` ([billing_profiles](../../api/prisma/schema.prisma#L5852)): `billing_contact_ids` ([08](./08-financial-management-stripe-integration.md))
+<!-- schema-section:end -->
+
 Provide detailed contact management.
 
 Each contact should support:
@@ -166,6 +178,10 @@ Allow users to identify specific contacts as:
 
 # 4. Lead Management
 
+<!-- schema-section:start -->
+> **Schema:** `CrmLead` ([crm_leads](../../api/prisma/schema.prisma#L2226)) · `CrmLeadStatus` ([crm_lead_statuses](../../api/prisma/schema.prisma#L1929))
+<!-- schema-section:end -->
+
 Provide a dedicated lead management system for prospects that have not yet become qualified opportunities.
 
 Lead records should support:
@@ -207,6 +223,10 @@ Lead statuses should be configurable, for example:
 
 # 5. Lead Sources
 
+<!-- schema-section:start -->
+> **Schema:** `CrmLead` ([crm_leads](../../api/prisma/schema.prisma#L2226)) · `CrmLeadSource` ([crm_lead_sources](../../api/prisma/schema.prisma#L1908))
+<!-- schema-section:end -->
+
 Track where every lead originated.
 
 Support configurable lead sources such as:
@@ -232,6 +252,10 @@ Track source attribution throughout the sales lifecycle so management can unders
 
 # 6. Lead Qualification
 
+<!-- schema-section:start -->
+> **Schema:** `CrmLead` ([crm_leads](../../api/prisma/schema.prisma#L2226)): `qualification`
+<!-- schema-section:end -->
+
 Provide structured lead qualification.
 
 Users should be able to evaluate:
@@ -255,6 +279,10 @@ Support lead scoring based on configurable rules and manually assigned scores.
 
 # 7. Lead Conversion
 
+<!-- schema-section:start -->
+> **Schema:** `CrmLead` ([crm_leads](../../api/prisma/schema.prisma#L2226))
+<!-- schema-section:end -->
+
 Provide a controlled lead conversion workflow.
 
 A qualified lead should be convertible into:
@@ -271,6 +299,10 @@ Users should be able to select which existing company/contact records should be 
 ---
 
 # 8. Sales Pipeline
+
+<!-- schema-section:start -->
+> **Schema:** `CrmDealStageHistory` ([crm_deal_stage_history](../../api/prisma/schema.prisma#L2393)) · `CrmPipeline` ([crm_pipelines](../../api/prisma/schema.prisma#L1990)) · `CrmPipelineStage` ([crm_pipeline_stages](../../api/prisma/schema.prisma#L2014))
+<!-- schema-section:end -->
 
 Provide a complete visual sales pipeline similar to HubSpot.
 
@@ -316,6 +348,10 @@ Closed Lost
 
 # 9. Deals / Opportunities
 
+<!-- schema-section:start -->
+> **Schema:** `CrmDeal` ([crm_deals](../../api/prisma/schema.prisma#L2283)) · `CrmDealContact` ([crm_deal_contacts](../../api/prisma/schema.prisma#L2349))
+<!-- schema-section:end -->
+
 Provide comprehensive deal management.
 
 Each deal should support:
@@ -356,6 +392,10 @@ Each deal should support:
 
 # 10. Deal Products & Line Items
 
+<!-- schema-section:start -->
+> **Schema:** `CrmDeal` ([crm_deals](../../api/prisma/schema.prisma#L2283)) · `CrmDealLineItem` ([crm_deal_line_items](../../api/prisma/schema.prisma#L2364))
+<!-- schema-section:end -->
+
 Deals should support structured commercial line items.
 
 Each deal may contain:
@@ -385,6 +425,10 @@ For each line item support:
 The deal total should automatically update when line items change.
 
 # 11. Deal Forecasting
+
+<!-- schema-section:start -->
+> **Schema:** enum `CrmForecastCategory` ([L1869](../../api/prisma/schema.prisma#L1869))
+<!-- schema-section:end -->
 
 Provide sales forecasting capabilities.
 
@@ -419,6 +463,10 @@ Support configurable forecast categories such as:
 
 # 12. Deal Activities
 
+<!-- schema-section:start -->
+> **Schema:** `CrmActivity` ([crm_activities](../../api/prisma/schema.prisma#L2415))
+<!-- schema-section:end -->
+
 Every deal should maintain a complete activity timeline.
 
 Track:
@@ -441,6 +489,10 @@ The activity timeline should provide a chronological history of the relationship
 ---
 
 # 13. Activities
+
+<!-- schema-section:start -->
+> **Schema:** `CrmActivity` ([crm_activities](../../api/prisma/schema.prisma#L2415)) · enum `CrmActivityType` ([L1843](../../api/prisma/schema.prisma#L1843))
+<!-- schema-section:end -->
 
 Provide a unified activity system across the CRM.
 
@@ -480,6 +532,10 @@ Activities should be visible from both the individual record and a centralized a
 
 # 14. Tasks & Follow-Ups
 
+<!-- schema-section:start -->
+> **Schema:** `CrmActivity` ([crm_activities](../../api/prisma/schema.prisma#L2415)) — other modules: `TaskLink` ([task_links](../../api/prisma/schema.prisma#L5528)) ([06](./06-task-management.md))
+<!-- schema-section:end -->
+
 > Defined by → [06 Task Management](./06-task-management.md) · Linear LOG-102.
 
 CRM tasks are ordinary Tasks owned by Task Management, linked to a Lead, Company, Contact or Deal. The CRM does not implement a second task entity. The CRM surfaces linked Tasks on the record and in the activity timeline, and offers quick creation with the CRM record pre-linked.
@@ -506,6 +562,10 @@ Automatic follow-up reminders for inactive deals are an Automation Engine rule (
 ---
 
 # 15. Meetings
+
+<!-- schema-section:start -->
+> **Schema:** `CrmActivity` ([crm_activities](../../api/prisma/schema.prisma#L2415)) — other modules: `CalendarEvent` ([calendar_events](../../api/prisma/schema.prisma#L17038)) ([19](./19-calendar.md)) · `CalendarEventType` ([calendar_event_types](../../api/prisma/schema.prisma#L16848)): `is_customer_facing` ([19](./19-calendar.md))
+<!-- schema-section:end -->
 
 > Event record defined by → [19 Calendar](./19-calendar.md) · Linear LOG-409.
 
@@ -535,6 +595,10 @@ Meeting notes should remain attached to the relevant CRM records.
 
 # 16. Notes
 
+<!-- schema-section:start -->
+> **Schema:** `CrmNote` ([crm_notes](../../api/prisma/schema.prisma#L2480)): `edit_history`
+<!-- schema-section:end -->
+
 Provide flexible notes throughout the CRM.
 
 Notes should support:
@@ -563,6 +627,10 @@ Notes should be attachable to:
 
 # 17. Customer Lifecycle
 
+<!-- schema-section:start -->
+> **Schema:** `CrmLifecycleHistory` ([crm_lifecycle_history](../../api/prisma/schema.prisma#L1972)) · `CrmLifecycleStage` ([crm_lifecycle_stages](../../api/prisma/schema.prisma#L1950)) · enum `CrmCompanyType` ([L1824](../../api/prisma/schema.prisma#L1824))
+<!-- schema-section:end -->
+
 Provide configurable lifecycle stages such as:
 
 ```
@@ -588,6 +656,10 @@ Lifecycle stages should be configurable by the organization.
 Maintain historical lifecycle changes.
 
 # 18. Customer 360 View
+
+<!-- schema-section:start -->
+> **Schema:** other modules: `CommMessageLink` ([comm_message_links](../../api/prisma/schema.prisma#L9921)) ([11](./11-communication-center.md))
+<!-- schema-section:end -->
 
 Every company and contact should have a unified **360° relationship view**.
 
@@ -624,6 +696,10 @@ This should provide a complete understanding of the customer's relationship with
 
 # 19. Customer Revenue & Commercial History
 
+<!-- schema-section:start -->
+> **Schema:** other modules: `LedgerProfitabilitySnapshot` ([ledger_profitability_snapshots](../../api/prisma/schema.prisma#L7411)) ([09](./09-income-expense-management.md)) · enum `LedgerProfitabilityScope` ([L6670](../../api/prisma/schema.prisma#L6670)) ([09](./09-income-expense-management.md))
+<!-- schema-section:end -->
+
 Provide financial visibility directly inside CRM records.
 
 For each customer show:
@@ -647,6 +723,10 @@ Financial details should link directly to the Finance module rather than creatin
 
 # 20. Customer Ownership
 
+<!-- schema-section:start -->
+> **Schema:** `CrmAssignmentRule` ([crm_assignment_rules](../../api/prisma/schema.prisma#L2509)) · `CrmCompany` ([crm_companies](../../api/prisma/schema.prisma#L2045)): `owner_membership_id`
+<!-- schema-section:end -->
+
 Every CRM record should support ownership and responsibility.
 
 Support:
@@ -663,6 +743,10 @@ Provide automatic assignment rules based on configurable criteria.
 ---
 
 # 21. CRM Teams & Permissions
+
+<!-- schema-section:start -->
+> **Schema:** `CrmPipeline` ([crm_pipelines](../../api/prisma/schema.prisma#L1990)): `team_id`
+<!-- schema-section:end -->
 
 > Teams, roles, scopes and the permission catalog are defined by → [01 Users, Organizations & Permissions](./01-users-organizations-permissions.md) · Linear LOG-406. This section lists only CRM-specific permissions, named per 01 §46 (`crm.companies.read`, `crm.deals.update`, `crm.records.export`, and so on).
 
@@ -694,6 +778,10 @@ Support record-level visibility where required.
 
 # 22. Import & Export
 
+<!-- schema-section:start -->
+> **Schema:** `CrmImportJob` ([crm_import_jobs](../../api/prisma/schema.prisma#L2530)) · enum `CrmImportStatus` ([L1885](../../api/prisma/schema.prisma#L1885))
+<!-- schema-section:end -->
+
 Provide robust CRM data import and export.
 
 Support importing:
@@ -720,6 +808,10 @@ Support:
 ---
 
 # 24. Custom Fields
+
+<!-- schema-section:start -->
+> **Schema:** `CustomFieldDefinition` ([custom_field_definitions](../../api/prisma/schema.prisma#L1698)): `visibility` · enum `CustomFieldType` ([L1650](../../api/prisma/schema.prisma#L1650))
+<!-- schema-section:end -->
 
 > **Platform-wide definition.** Sections 24–26 define the custom field model for the whole Agency OS. Other modules (04 Contracts, 05 Projects, 06 Tasks, 13 Support, 17 Documents, 09 Income & Expense) consume this definition and only list which of their entities support custom fields.
 
@@ -778,6 +870,10 @@ Custom fields should support:
 
 # 25. Shared Custom Fields
 
+<!-- schema-section:start -->
+> **Schema:** `CustomFieldDefinition` ([custom_field_definitions](../../api/prisma/schema.prisma#L1698)) · `CustomFieldGroup` ([custom_field_groups](../../api/prisma/schema.prisma#L1681))
+<!-- schema-section:end -->
+
 Provide **Shared Custom Fields** that can be reused across multiple modules.
 
 For example, an organization should be able to define:
@@ -804,6 +900,10 @@ Support field groups to organize shared fields into logical sections.
 ---
 
 # 26. Custom Fields API
+
+<!-- schema-section:start -->
+> **Schema:** `CustomFieldDefinition` ([custom_field_definitions](../../api/prisma/schema.prisma#L1698))
+<!-- schema-section:end -->
 
 Provide a **developer-friendly API for custom fields**, similar in concept to Stripe's extensibility model.
 
@@ -840,6 +940,10 @@ Custom fields should support stable identifiers so external integrations can saf
 ---
 
 # 27. CRM API & Webhooks
+
+<!-- schema-section:start -->
+> **Schema:** `CrmCompany` ([crm_companies](../../api/prisma/schema.prisma#L2045)): `external_ids`
+<!-- schema-section:end -->
 
 Provide a comprehensive API for CRM entities.
 
@@ -887,6 +991,10 @@ Webhook delivery follows the platform standard in `docs/Product_Specification.md
 
 # 28. Record Relationships
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 Provide flexible relationships between CRM records.
 
 Support relationships such as:
@@ -922,6 +1030,10 @@ Allow multiple records to be associated with the same entity where appropriate.
 
 # 29. CRM Views
 
+<!-- schema-section:start -->
+> **Schema:** `SavedView` ([saved_views](../../api/prisma/schema.prisma#L1786)) — other modules: `Segment` ([segments](../../api/prisma/schema.prisma#L10052)) ([11](./11-communication-center.md))
+<!-- schema-section:end -->
+
 Provide multiple ways to work with CRM data:
 
 * Table view
@@ -947,6 +1059,10 @@ Support personal and shared team views.
 ---
 
 # 30. CRM Search
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 Provide fast global CRM search across:
 
@@ -974,6 +1090,10 @@ Search should support:
 ---
 
 # 31. Sales Automation
+
+<!-- schema-section:start -->
+> **Schema:** `CrmPipelineStage` ([crm_pipeline_stages](../../api/prisma/schema.prisma#L2014)): `stale_after_days`
+<!-- schema-section:end -->
 
 > Engine defined by → [20 Automation Engine](./20-automation-engine.md) · Linear LOG-410.
 
@@ -1003,6 +1123,10 @@ Support configurable triggers, conditions, and actions.
 ---
 
 # 32. CRM Dashboard
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 Provide comprehensive sales dashboards including:
 
@@ -1037,6 +1161,10 @@ Allow dashboards to be customized by role and team.
 
 # 33. Sales Performance
 
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
+
 Provide sales performance tracking for individual users and teams.
 
 Track:
@@ -1061,6 +1189,10 @@ Track:
 
 # 34. Customer & Deal History
 
+<!-- schema-section:start -->
+> **Schema:** `CrmDealStageHistory` ([crm_deal_stage_history](../../api/prisma/schema.prisma#L2393))
+<!-- schema-section:end -->
+
 Maintain a complete immutable activity history for every CRM record.
 
 Track:
@@ -1083,6 +1215,10 @@ Users should be able to understand exactly how a relationship and deal evolved o
 ---
 
 # 35. Integrations
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 The CRM should be designed to integrate with the rest of the Agency Operating System.
 
@@ -1127,6 +1263,10 @@ Data should be linked between these modules rather than duplicated.
 
 # 36. Extensibility
 
+<!-- schema-section:start -->
+> **Schema:** other modules: `SupportConversation` ([support_conversations](../../api/prisma/schema.prisma#L12132)) ([13](./13-customer-support-communication-hub.md)) · `TaskLabel` ([task_labels](../../api/prisma/schema.prisma#L5265)) ([06](./06-task-management.md))
+<!-- schema-section:end -->
+
 The CRM should be designed as an extensible platform rather than a fixed set of fields and workflows.
 
 Organizations should be able to customize:
@@ -1154,6 +1294,10 @@ Customizations should not require changes to the core application.
 ---
 
 # 37. Default CRM Configuration
+
+<!-- schema-section:start -->
+> **Schema:** no dedicated tables — this section is behaviour, UI or policy over the tables listed under "Data model (Prisma)" above.
+<!-- schema-section:end -->
 
 > Provisioning hook defined by → [01](./01-users-organizations-permissions.md) §11 "Module default provisioning" · Linear LOG-406.
 
@@ -1199,35 +1343,35 @@ The CRM should provide a flexible foundation that can support different types of
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **platform shared** | | | |
-| `CustomFieldGroup` | `custom_field_groups` | [L1271](../../api/prisma/schema.prisma#L1271) | 02 §25 — logical sections for shared fields. |
-| `CustomFieldDefinition` | `custom_field_definitions` | [L1288](../../api/prisma/schema.prisma#L1288) | 02 §24–26 — one definition; shared fields list several entity types (02 §25). `key` is the stable API identifier (02 §26); `label` may change. |
-| `CustomFieldValue` | `custom_field_values` | [L1325](../../api/prisma/schema.prisma#L1325) | Value of a custom field on a record. entity_id points at the table named by entity_type. |
-| `Tag` | `tags` | [L1345](../../api/prisma/schema.prisma#L1345) | Organization-scoped tags, applied to any record through Tagging. |
-| `Tagging` | `taggings` | [L1362](../../api/prisma/schema.prisma#L1362) |  |
-| `SavedView` | `saved_views` | [L1376](../../api/prisma/schema.prisma#L1376) | 02 §29 — saved views with filters, sorting, grouping, columns; personal, team or organization-wide. |
+| `CustomFieldGroup` | `custom_field_groups` | [L1681](../../api/prisma/schema.prisma#L1681) | 02 §25 — logical sections for shared fields. |
+| `CustomFieldDefinition` | `custom_field_definitions` | [L1698](../../api/prisma/schema.prisma#L1698) | 02 §24–26 — one definition; shared fields list several entity types (02 §25). `key` is the stable API identifier (02 §26); `label` may change. |
+| `CustomFieldValue` | `custom_field_values` | [L1735](../../api/prisma/schema.prisma#L1735) | Value of a custom field on a record. entity_id points at the table named by entity_type. |
+| `Tag` | `tags` | [L1755](../../api/prisma/schema.prisma#L1755) | Organization-scoped tags, applied to any record through Tagging. |
+| `Tagging` | `taggings` | [L1772](../../api/prisma/schema.prisma#L1772) |  |
+| `SavedView` | `saved_views` | [L1786](../../api/prisma/schema.prisma#L1786) | 02 §29, 06 §5 — saved views with filters, sorting, grouping, columns; personal, team or organization-wide. Used by every list/board view. |
 | **Configuration** | | | |
-| `CrmLeadSource` | `crm_lead_sources` | [L1497](../../api/prisma/schema.prisma#L1497) | 02 §5 — configurable lead sources. |
-| `CrmLeadStatus` | `crm_lead_statuses` | [L1518](../../api/prisma/schema.prisma#L1518) | 02 §4 — configurable lead statuses. |
-| `CrmLifecycleStage` | `crm_lifecycle_stages` | [L1539](../../api/prisma/schema.prisma#L1539) | 02 §17 — configurable lifecycle stages (Lead → MQL → SQL → Opportunity → Customer → …). |
-| `CrmLifecycleHistory` | `crm_lifecycle_history` | [L1561](../../api/prisma/schema.prisma#L1561) | 02 §17 — historical lifecycle changes. |
-| `CrmPipeline` | `crm_pipelines` | [L1579](../../api/prisma/schema.prisma#L1579) | 02 §8 — multiple pipelines per organization. |
-| `CrmPipelineStage` | `crm_pipeline_stages` | [L1603](../../api/prisma/schema.prisma#L1603) | 02 §8 — pipeline-specific stages with default probability. |
+| `CrmLeadSource` | `crm_lead_sources` | [L1908](../../api/prisma/schema.prisma#L1908) | 02 §5 — configurable lead sources. |
+| `CrmLeadStatus` | `crm_lead_statuses` | [L1929](../../api/prisma/schema.prisma#L1929) | 02 §4 — configurable lead statuses. |
+| `CrmLifecycleStage` | `crm_lifecycle_stages` | [L1950](../../api/prisma/schema.prisma#L1950) | 02 §17 — configurable lifecycle stages (Lead → MQL → SQL → Opportunity → Customer → …). |
+| `CrmLifecycleHistory` | `crm_lifecycle_history` | [L1972](../../api/prisma/schema.prisma#L1972) | 02 §17 — historical lifecycle changes. |
+| `CrmPipeline` | `crm_pipelines` | [L1990](../../api/prisma/schema.prisma#L1990) | 02 §8 — multiple pipelines per organization. |
+| `CrmPipelineStage` | `crm_pipeline_stages` | [L2014](../../api/prisma/schema.prisma#L2014) | 02 §8 — pipeline-specific stages with default probability. |
 | **Core records** | | | |
-| `CrmCompany` | `crm_companies` | [L1634](../../api/prisma/schema.prisma#L1634) | 02 §2 — any external legal entity: prospect, customer, partner or vendor. One record model. Never a platform Organization (01 §8) and never a Branch (01 §16). |
-| `CrmCompanyBranch` | `crm_company_branches` | [L1706](../../api/prisma/schema.prisma#L1706) | 01 §31, §37 — branch relationships on one company record instead of duplicate companies. |
-| `CrmContact` | `crm_contacts` | [L1723](../../api/prisma/schema.prisma#L1723) | 02 §3 — a person at a Company. Not a platform User (01 §4). |
-| `CrmLead` | `crm_leads` | [L1782](../../api/prisma/schema.prisma#L1782) | 02 §4–7 — prospect before qualification. Conversion links to the created records (02 §7). |
-| `CrmDeal` | `crm_deals` | [L1839](../../api/prisma/schema.prisma#L1839) | 02 §9 — deal / opportunity. Totals derive from line items when any exist (02 §10). |
-| `CrmDealContact` | `crm_deal_contacts` | [L1905](../../api/prisma/schema.prisma#L1905) | 02 §9 — additional contacts on a deal. |
-| `CrmDealLineItem` | `crm_deal_line_items` | [L1920](../../api/prisma/schema.prisma#L1920) | 02 §10 — deal line items. product_id references the Finance catalog (08); no FK until 08 exists. |
-| `CrmDealStageHistory` | `crm_deal_stage_history` | [L1949](../../api/prisma/schema.prisma#L1949) | 02 §8, §34 — stage transitions for duration, velocity and history. |
+| `CrmCompany` | `crm_companies` | [L2045](../../api/prisma/schema.prisma#L2045) | 02 §2 — any external legal entity: prospect, customer, partner or vendor. One record model. Never a platform Organization (01 §8) and never a Branch (01 §16). |
+| `CrmCompanyBranch` | `crm_company_branches` | [L2137](../../api/prisma/schema.prisma#L2137) | 01 §31, §37 — branch relationships on one company record instead of duplicate companies. |
+| `CrmContact` | `crm_contacts` | [L2154](../../api/prisma/schema.prisma#L2154) | 02 §3 — a person at a Company. Not a platform User (01 §4). |
+| `CrmLead` | `crm_leads` | [L2226](../../api/prisma/schema.prisma#L2226) | 02 §4–7 — prospect before qualification. Conversion links to the created records (02 §7). |
+| `CrmDeal` | `crm_deals` | [L2283](../../api/prisma/schema.prisma#L2283) | 02 §9 — deal / opportunity. Totals derive from line items when any exist (02 §10). |
+| `CrmDealContact` | `crm_deal_contacts` | [L2349](../../api/prisma/schema.prisma#L2349) | 02 §9 — additional contacts on a deal. |
+| `CrmDealLineItem` | `crm_deal_line_items` | [L2364](../../api/prisma/schema.prisma#L2364) | 02 §10 — deal line items. product_id references the Finance catalog (08); no FK until 08 exists. |
+| `CrmDealStageHistory` | `crm_deal_stage_history` | [L2393](../../api/prisma/schema.prisma#L2393) | 02 §8, §34 — stage transitions for duration, velocity and history. |
 | **Activities & notes** | | | |
-| `CrmActivity` | `crm_activities` | [L1971](../../api/prisma/schema.prisma#L1971) | 02 §12–15 — unified CRM activity. Tasks are NOT activities: they live in 06 and link back to CRM records from Task Management. MEETING rows reference a Calen… |
-| `CrmActivityParticipant` | `crm_activity_participants` | [L2018](../../api/prisma/schema.prisma#L2018) | Participants of an activity: internal Members (by membership id) and CRM Contacts. |
-| `CrmNote` | `crm_notes` | [L2034](../../api/prisma/schema.prisma#L2034) | 02 §16 — notes attachable to companies, contacts, leads, deals and other modules' records. |
+| `CrmActivity` | `crm_activities` | [L2415](../../api/prisma/schema.prisma#L2415) | 02 §12–15 — unified CRM activity. Tasks are NOT activities: they live in 06 and link back to CRM records from Task Management. MEETING rows reference a Calen… |
+| `CrmActivityParticipant` | `crm_activity_participants` | [L2464](../../api/prisma/schema.prisma#L2464) | Participants of an activity: internal Members (by membership id) and CRM Contacts. |
+| `CrmNote` | `crm_notes` | [L2480](../../api/prisma/schema.prisma#L2480) | 02 §16 — notes attachable to companies, contacts, leads, deals and other modules' records. |
 | **Operations** | | | |
-| `CrmAssignmentRule` | `crm_assignment_rules` | [L2063](../../api/prisma/schema.prisma#L2063) | 02 §20 — automatic assignment rules (evaluated by the Automation Engine, 20). |
-| `CrmImportJob` | `crm_import_jobs` | [L2084](../../api/prisma/schema.prisma#L2084) | 02 §22 — CSV import jobs with mapping, preview, validation, history and rollback. |
+| `CrmAssignmentRule` | `crm_assignment_rules` | [L2509](../../api/prisma/schema.prisma#L2509) | 02 §20 — automatic assignment rules (evaluated by the Automation Engine, 20). |
+| `CrmImportJob` | `crm_import_jobs` | [L2530](../../api/prisma/schema.prisma#L2530) | 02 §22 — CSV import jobs with mapping, preview, validation, history and rollback. |
 
 **Owned enums (12):** `RecordEntityType`, `CustomFieldType`, `SavedViewVisibility`, `CrmCompanyType`, `CrmContactRole`, `CrmActivityType`, `CrmActivityStatus`, `CrmPriority`, `CrmForecastCategory`, `CrmDealStatus`, `CrmImportStatus`, `CrmBranchRelationType`
 
@@ -1241,20 +1385,41 @@ The CRM should provide a flexible foundation that can support different types of
 | [01](./01-users-organizations-permissions.md) | `Team` (`teams`) | `CrmCompany.team`, `CrmDeal.team`, `CrmPipeline.team`, `SavedView.team` |
 | [05](./05-project-management.md) | `Project` (`projects`) | `CrmDeal.project` |
 | [08](./08-financial-management-stripe-integration.md) | `Product` (`products`) | `CrmDealLineItem.product` |
+| [09](./09-income-expense-management.md) | `LedgerSupplierProfile` (`ledger_supplier_profiles`) | `CrmCompany.ledger_supplier_profile` |
+| [17](./17-documents-file-management.md) | `Document` (`documents`) | `CrmImportJob.document` |
+| [19](./19-calendar.md) | `CalendarEvent` (`calendar_events`) | `CrmActivity.calendar_event` |
+| [20](./20-automation-engine.md) | `AutomationRule` (`automation_rules`) | `CrmActivity.automation_rule` |
 
 ### Referenced by other modules
 
+- [01](./01-users-organizations-permissions.md): `Invitation`
 - [03](./03-proposal-quotation-generator.md): `Proposal`, `ProposalAcceptance`, `ProposalDelivery`
 - [04](./04-contracts.md): `Contract`, `ContractParty`, `ContractSignatory`
 - [05](./05-project-management.md): `Project`, `ProjectStakeholder`
+- [07](./07-customer-portal.md): `CustomerPortalProfileChangeRequest`
 - [08](./08-financial-management-stripe-integration.md): `BillingProfile`, `Invoice`, `Subscription`
+- [09](./09-income-expense-management.md): `FinancialPeriodSummary`, `LedgerInvoiceImport`, `LedgerProfitabilitySnapshot`, `LedgerRecord`, `LedgerSupplierProfile`, `RecurringExpense`
+- [11](./11-communication-center.md): `CampaignRecipient`, `CommConsent`, `CommMessage`, `CommMessageRecipient`, `CommRecipientListMember`, `CommSuppression`, `CommThread`, `Segment`
+- [12](./12-messaging-team-communication.md): `Channel`
+- [13](./13-customer-support-communication-hub.md): `SupportConversation`, `SupportCsatRating`, `Ticket`
+- [17](./17-documents-file-management.md): `Document`, `Folder`, `VaultEntry`
+- [19](./19-calendar.md): `BookingLink`, `Calendar`, `CalendarBooking`, `CalendarEvent`, `CalendarEventAttendee`
 
 ### Plain-id references from other modules
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `CustomerPortalMembership.customer_id` ([01](./01-users-organizations-permissions.md), [L1138](../../api/prisma/schema.prisma#L1138)) — CRM Company id (02). No FK until LOG-404 is implemented.
-- `Proposal.company_id` ([03](./03-proposal-quotation-generator.md), [L2299](../../api/prisma/schema.prisma#L2299)) — CRM references (02). company_id is the Customer the proposal is addressed to.
-- `BillingProfile.billing_contact_ids` ([08](./08-financial-management-stripe-integration.md), [L5212](../../api/prisma/schema.prisma#L5212)) — CRM contact ids with the BILLING role (02 §3).
+- `Invitation.customer_id` ([01](./01-users-organizations-permissions.md), [L1379](../../api/prisma/schema.prisma#L1379)) — 01 §79, 07 §2 — CRM Company (02) the invitee joins as a Customer Portal user; set instead of branch_id/team_id.
+- `CustomerPortalMembership.customer_id` ([01](./01-users-organizations-permissions.md), [L1533](../../api/prisma/schema.prisma#L1533)) — CRM Company id (02). No FK until LOG-404 is implemented.
+- `Proposal.company_id` ([03](./03-proposal-quotation-generator.md), [L2746](../../api/prisma/schema.prisma#L2746)) — CRM references (02). company_id is the Customer the proposal is addressed to.
+- `BillingProfile.billing_contact_ids` ([08](./08-financial-management-stripe-integration.md), [L5852](../../api/prisma/schema.prisma#L5852)) — CRM contact ids with the BILLING role (02 §3).
+- `LedgerRecord.company_id` ([09](./09-income-expense-management.md), [L6844](../../api/prisma/schema.prisma#L6844)) — Customer or supplier (CRM company, 02 §2a).
+- `LedgerInvoiceImport.matched_company_id` ([09](./09-income-expense-management.md), [L7038](../../api/prisma/schema.prisma#L7038)) — CRM company matched from supplier/customer data (02 §2a); confirmed in review.
+- `RecurringExpense.company_id` ([09](./09-income-expense-management.md), [L7133](../../api/prisma/schema.prisma#L7133)) — Supplier (CRM company, 02 §2a).
+- `Segment.saved_view_id` ([11](./11-communication-center.md), [L10052](../../api/prisma/schema.prisma#L10052)) — Optional 02 SavedView whose filter this segment was created from.
+- `CalendarEventType.is_customer_facing` ([19](./19-calendar.md), [L16848](../../api/prisma/schema.prisma#L16848)) — Customer meeting type used by CRM meetings (02 §15).
+- `Calendar.company_id` ([19](./19-calendar.md), [L16919](../../api/prisma/schema.prisma#L16919)) — Customer calendar (CRM company, 02 §2) — holds customer-visible events shown in the portal (§8).
+- `CalendarEvent.company_id` ([19](./19-calendar.md), [L17038](../../api/prisma/schema.prisma#L17038)) — Customer context: CRM company (02 §2). Required for CUSTOMER_VISIBLE events (§8).
+- `AutomationRule.crm_activities` ([20](./20-automation-engine.md), [L17996](../../api/prisma/schema.prisma#L17996)) — 02 §31 — activities created by this rule.
 
 <!-- schema-refs:end -->

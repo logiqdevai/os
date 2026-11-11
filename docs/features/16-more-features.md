@@ -4,6 +4,10 @@
 
 This file was a parking lot. Its items now live in their canonical modules. No requirements are defined here.
 
+## Data model (Prisma)
+
+This module owns no tables and has no section in [`api/prisma/schema.prisma`](../../api/prisma/schema.prisma). The schema for each item below lives with its canonical module: the credential vault is `vault_entries` (17 §12), vendor contacts are `crm_companies` of type VENDOR (02 §2a), and portal identity is `customer_portal_memberships` (01 §79).
+
 | Original note | Canonical home |
 | -- | -- |
 | Password manager for clients | [17 Documents & File Management](./17-documents-file-management.md) §12 Secure Credential Vault · LOG-407. Replaces the per-project encrypted key value storage formerly in 06. |
