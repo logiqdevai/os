@@ -45,7 +45,10 @@ export default function CalendarViewPage({ forcedView, startCreate }: { forcedVi
     const set = (patch: Record<string, string | null>) =>
         setSp((prev) => {
             const next = new URLSearchParams(prev);
-            for (const [k, v] of Object.entries(patch)) v ? next.set(k, v) : next.delete(k);
+            for (const [k, v] of Object.entries(patch)) {
+                if (v) next.set(k, v);
+                else next.delete(k);
+            }
             return next;
         }, { replace: true });
 

@@ -1,6 +1,5 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable jsx-a11y/role-supports-aria-props */
 import { cn } from "@/lib/utils";
 import { Slot } from "@radix-ui/react-slot";
 import { FileArchiveIcon, FileAudioIcon, FileCodeIcon, FileCogIcon, FileIcon, FileTextIcon, FileVideoIcon } from "lucide-react";

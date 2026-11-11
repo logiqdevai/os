@@ -64,7 +64,7 @@ const CountrySelect = ({ disabled, value: selectedCountry, options: countryList,
       modal
       onOpenChange={(open) => {
         setIsOpen(open);
-        open && setSearchValue("");
+        if (open) setSearchValue("");
       }}
     >
       <PopoverTrigger asChild>

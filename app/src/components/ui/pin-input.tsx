@@ -387,7 +387,7 @@ const getValidChildren = (children: React.ReactNode) =>
       return React.isValidElement(child);
     }
     throw new Error(`${PinInput.displayName} contains invalid children.`);
-  }) as React.ReactElement<any>[];
+  }) as React.ReactElement<Record<string, unknown>>[];
 
 const getInputFieldCount = (children: React.ReactNode) =>
   React.Children.toArray(children).filter((child) => {

@@ -4,6 +4,7 @@ import { DayPicker } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- starter component written against the react-day-picker v8 API
 export type CalendarProps = React.ComponentProps<any>;
 
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
