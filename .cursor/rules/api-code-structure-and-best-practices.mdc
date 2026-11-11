@@ -309,15 +309,18 @@ return {
 ### Guards
 
 - `JwtGuard` — validates Bearer token; throws `UnauthorizedException` on failure
-- `RolesGuard` — checks the `@Roles()` decorator metadata; allows privileged roles to bypass restrictions
+- `PermissionsGuard` + `@RequirePermission('module.resource.action')` — organization permission checks through the central authorization service. **Mandatory on every organization endpoint.** See `roles-and-permissions-in-every-feature.mdc`
+- `RolesGuard` — checks `@Roles()` against the platform role (`AuthRole`) only, for SaaS-staff endpoints. Never use it for organization features
 - WebSocket endpoints use a separate `WsJwtGuard`
 
 ### Usage
 
 ```ts
-@UseGuards(JwtGuard)               // Auth only
-@UseGuards(JwtGuard, RolesGuard)   // Auth + role check
-@Roles('ADMIN')                    // Set required role
+@UseGuards(JwtGuard)                          // Auth only (public-to-any-signed-in-user endpoints)
+@UseGuards(JwtGuard, PermissionsGuard)        // Auth + organization permission check
+@RequirePermission('tasks.tasks.update')      // Required permission key
+@UseGuards(JwtGuard, RolesGuard)              // Platform staff only
+@Roles('SUPER_ADMIN')                         // Platform role (AuthRole)
 
 @CurrentUser()                     // Full user object
 @CurrentUser('account_uuid')       // Specific field from user
@@ -326,7 +329,10 @@ return {
 ### Rules
 
 - All non-public endpoints must have `@UseGuards(JwtGuard)`
-- Use `@Roles()` with `RolesGuard` for role-based endpoint restrictions
+- Every organization endpoint declares `@RequirePermission(...)`; add the key to the permission catalog and role templates in the same change
+- Check permissions, not role names; never write `user.role === ...` in feature code
+- `organization_id` comes from the authenticated context, never from the request body; filter lists by the person's branch, team and project scope
+- `@Roles()` with `RolesGuard` is for platform roles only
 - Never decode or verify tokens manually in a controller or service
 - Auth strategy and guards live in `shared/` — do not duplicate them in feature modules
 
@@ -409,6 +415,7 @@ const ConfigModule = ConfigModule.forRoot({
 | Wrap fire-and-forget in `setImmediate` + `try/catch` | `await` side effects in the request path        |
 | Import integration modules into feature modules      | Import SDK clients directly into services       |
 | Define all guards and decorators in `shared/`        | Duplicate auth logic in feature modules         |
+| Add `@RequirePermission` and catalog keys with the feature | Ship endpoints now and add permissions later |
 | Use `@nestjs/config` + `ConfigService` for env vars  | Access `process.env` directly in features       |
 | Export Zod inferred types next to their schemas      | Re-define types that duplicate Zod shapes       |
 | Use `Promise.all()` for independent parallel queries | Await independent DB calls sequentially         |

@@ -46,7 +46,7 @@ Modules are listed in recommended build order. Each links to its detailed spec.
 | 19 | Calendar | Events, meetings, availability, booking links, projected dates from other modules, external sync. | [19](./features/19-calendar.md) |
 | 20 | Automation Engine | Event bus, rules (trigger, condition, action), scheduled jobs and run history for every module. | [20](./features/20-automation-engine.md) |
 
-Modules 14 and 17–20 are **shared concepts**: they are depended on by most other modules and should be built early, alongside module 01.
+Modules 14 and 17–20 are **shared concepts**: they are depended on by most other modules and should be built early, alongside module 01. The central authorization service (01 §136) is built first of all: no other module ships endpoints before it exists.
 
 ## 4. Architecture Principles
 
@@ -81,6 +81,32 @@ These principles recur across the feature specs.
 8. **API and webhooks.** Each module is a first-class API resource and emits webhooks with event IDs, signatures, retries and idempotency.
 9. **AI-assisted but human-controlled.** AI drafts, classifies, summarizes and recommends. Output is editable and reviewable. Sensitive or high-impact actions need human approval and are logged.
 10. **Real-time and notification-driven.** Live updates where useful, with a shared notification engine instead of per-module delivery systems.
+11. **Every access channel, one permission model.** Each capability is reachable through the UI, the REST API, MCP tools, API keys, service accounts, webhooks and automation actions, and every channel is checked by the same central authorization service (01 §136) with the same permission keys. See §4a.
+
+## 4a. Access Channels
+
+A feature is complete only when every channel below exists for it and enforces the same permissions. Roles and permissions are designed with the feature, never added afterwards.
+
+| Channel | Used by | Identity | Notes |
+|---|---|---|---|
+| UI | People | User with a Membership | Routes, navigation, buttons and fields gated by permission key. Hiding is not security. |
+| REST API | The app, integrations | User token, API key or service account | One endpoint per resource action, each declaring its permission key. |
+| MCP | AI assistants and agents | The caller's own identity: user, API key or service account | One tool per agent-useful action, a thin adapter over the same service. |
+| API keys | Developers | Owned by a Membership or a service account | `scopes` can only narrow the owner's permissions, never widen them. Expiry, rotation, audit history (01 §75). |
+| Service accounts | Automation, integrations, unattended agents | Non-human identity with explicit permissions, scope, owner and expiry (01 §76) | Not an employee. Audit actor type `SERVICE_ACCOUNT`. |
+| Webhooks | External systems | Organization endpoint with signing secret | Event catalog and delivery owned by 20. |
+| Automation actions | Rules and scheduled jobs | Run-as service account or membership | Same checks as a request. No bypass because no request exists. |
+| Customer Portal | Customers | Customer Portal User with `portal.*` keys | Customer-visible records only. |
+
+Rules for every channel:
+
+1. **One decision point.** The central authorization service decides. No channel, module or tool reimplements permission logic.
+2. **Same keys everywhere.** The permission key `<module>.<resource>.<action>` that guards the REST endpoint also guards the UI control, the MCP tool and the automation action.
+3. **MCP tools mirror permission keys.** Name a tool `<module>_<resource>_<action>` (for example `tasks_tasks_update`). A tool reuses the service layer and the same validation schemas, and is listed only to callers who hold its permission. Tools for sensitive or destructive actions require human confirmation or an approval step when an AI agent calls them (principle 9).
+4. **Organization context comes from the credential.** No tool or endpoint takes the organization id as a caller-supplied parameter.
+5. **Least privilege for non-human identities.** API keys and service accounts get explicit permission keys and scope. They never inherit a human's full access.
+6. **Audit every write** from every channel in `audit_events`, with the actor type and, in the event metadata, the channel (`ui`, `api`, `mcp`, `automation`) and the credential id.
+7. **Limits per credential.** Rate limits and quotas apply per API key and service account.
 
 ## 5. User Roles
 

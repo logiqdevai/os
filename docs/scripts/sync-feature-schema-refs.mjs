@@ -12,10 +12,42 @@
 // It also injects a one-line "Schema:" pointer under every spec section heading (`## 3. Title` or
 // `## Title`) that a model, enum or column references in its `///` doc comment (`06 §3`, `09 "Expense
 // Management"`), between <!-- schema-section:start --> and <!-- schema-section:end -->.
+//
+// It also generates an "Access channels & permissions" block after the data model block of every spec
+// (between <!-- access-channels:start --> and <!-- access-channels:end -->): the permission keys the module
+// has in api/prisma/seed/permission-catalog.ts and what each access channel (UI, REST, MCP, API key,
+// service account, webhooks, automation) must provide. Standard: docs/Product_Specification.md §4a.
 
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, openSync, writeSync, ftruncateSync, closeSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+
+/**
+ * Write a file, tolerating Windows "user-mapped section open" errors (an editor or indexer maps the file
+ * and truncating writes fail). Falls back to an in-place write; the file may only grow in that case.
+ */
+function writeResilient(path, text) {
+  try {
+    writeFileSync(path, text);
+    return;
+  } catch (err) {
+    if (err.code !== 'UNKNOWN' && err.code !== 'EBUSY' && err.code !== 'EPERM') throw err;
+  }
+  const buf = Buffer.from(text, 'utf8');
+  const fd = openSync(path, 'r+');
+  try {
+    writeSync(fd, buf, 0, buf.length, 0);
+    try {
+      ftruncateSync(fd, buf.length);
+    } catch {
+      const old = readFileSync(path).length;
+      if (old !== buf.length) throw new Error(`cannot shrink ${path} while it is open in another program; close it and re-run`);
+    }
+  } finally {
+    closeSync(fd);
+  }
+}
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const schemaPath = join(root, 'api', 'prisma', 'schema.prisma');
@@ -246,8 +278,8 @@ function syncSections(text, mod, link, eol) {
   for (let i = 0; i < src.length; i++) {
     const line = src[i];
     if (line.startsWith('```')) inFence = !inFence;
-    if (line === START) inTop = true;
-    if (line === END) inTop = false;
+    if (line === START || line === ACCESS_START) inTop = true;
+    if (line === END || line === ACCESS_END) inTop = false;
     out.push(line);
     if (inFence || inTop) continue;
     const key = headingKey(line);
@@ -271,6 +303,90 @@ function syncSections(text, mod, link, eol) {
     if (i + 1 < src.length && src[i + 1].trim() !== '') out.push('');
   }
   return out.join(eol);
+}
+
+
+// ---------------------------------------------------------------------------
+// 2c. Permission catalog (api/prisma/seed/permission-catalog.ts) → per-module permission keys.
+// ---------------------------------------------------------------------------
+
+const catalogPath = join(root, 'api', 'prisma', 'seed', 'permission-catalog.ts');
+/** ModuleKey enum value → feature module number. */
+const MODULE_NUMBER = {
+  ADMINISTRATION: '01', CRM: '02', PROPOSALS: '03', CONTRACTS: '04', PROJECTS: '05', TASKS: '06',
+  CUSTOMER_PORTAL: '07', FINANCE: '08', INCOME_EXPENSE: '09', EMPLOYEES: '10', COMMUNICATION: '11',
+  MESSAGING: '12', SUPPORT: '13', NOTIFICATIONS: '14', BUSINESS_DOCS: '15', DOCUMENTS: '17',
+  TIME_TRACKING: '18', CALENDAR: '19', AUTOMATION: '20',
+};
+
+/** module number → Map<"prefix.resource", Map<action, sensitive>> */
+function parseCatalog() {
+  const text = readFileSync(catalogPath, 'utf8');
+  const byModule = new Map();
+  const add = (moduleKey, prefix, resource, action, sensitive) => {
+    const mod = MODULE_NUMBER[moduleKey];
+    if (!mod) return;
+    const group = `${prefix}.${resource}`;
+    const groups = byModule.get(mod) ?? byModule.set(mod, new Map()).get(mod);
+    const actions = groups.get(group) ?? groups.set(group, new Map()).get(group);
+    actions.set(action, sensitive || actions.get(action) === true);
+  };
+  const list = (src) => (src ? [...src.matchAll(/'([^']+)'/g)].map((m) => m[1]) : []);
+  // Explicit entries: { key: 'a.b.c', module: ModuleKey.X, resource: 'r', action: 'act', is_sensitive: true }
+  for (const m of text.matchAll(/\{\s*key:\s*'([^']+)',\s*module:\s*ModuleKey\.(\w+),[^}]*?action:\s*'([^']+)'([^}]*)\}/g)) {
+    const parts = m[1].split('.');
+    parts.pop();
+    add(m[2], parts[0], parts.slice(1).join('.'), m[3], /is_sensitive:\s*true/.test(m[4]));
+  }
+  // crud helper: ...crud(ModuleKey.X, 'prefix', 'resource', ['extra'], ['sensitive'])
+  for (const m of text.matchAll(/\.\.\.crud\(ModuleKey\.(\w+),\s*'([^']+)',\s*'([^']+)'(?:,\s*\[([^\]]*)\])?(?:,\s*\[([^\]]*)\])?\)/g)) {
+    const sensitive = list(m[5]);
+    for (const action of ['read', 'create', 'update', 'delete', 'archive', 'export', ...list(m[4])]) {
+      add(m[1], m[2], m[3], action, sensitive.includes(action) || action === 'export' || action === 'delete');
+    }
+  }
+  return byModule;
+}
+const catalogByModule = parseCatalog();
+
+const ACCESS_START = '<!-- access-channels:start -->';
+const ACCESS_END = '<!-- access-channels:end -->';
+
+function renderAccess(mod) {
+  const groups = catalogByModule.get(mod);
+  const fileOf = (n) => fileForModule[n];
+  const auth = fileOf('01') ? `[01 §136](./${fileOf('01')})` : '01 §136';
+  const out = [ACCESS_START, '', '## Access channels & permissions', ''];
+  out.push(
+    '> Generated by `node docs/scripts/sync-feature-schema-refs.mjs` — do not edit by hand. Standard: [Product Specification §4a](../Product_Specification.md). Rules: `.cursor/rules/roles-and-permissions-in-every-feature.mdc`.',
+    '',
+    `Every capability of this module is built for **all access channels at once**. Each channel goes through the central authorization service (${auth}) and the same permission keys, so roles and permissions exist from the first commit and are never added later.`,
+    '',
+    '| Channel | Required for this module |',
+    '| -- | -- |',
+    '| UI | Routes, navigation, buttons and fields gated by permission key; no-access state for `403`/`404` |',
+    '| REST API | One endpoint per resource action with `@RequirePermission`, organization taken from the credential, lists filtered by branch/team/project scope |',
+    '| MCP | A tool `<module>_<resource>_<action>` per agent-useful action, a thin adapter over the same service and validation, listed only to callers holding the key; sensitive tools need human confirmation when an AI agent calls them |',
+    "| API key / service account | Explicit permission keys and scope, never a human's full access; usable on every endpoint and MCP tool of this module; audit actor `SERVICE_ACCOUNT` |",
+    `| Webhooks and automation | Events, triggers and actions registered with ${fileOf('20') ? `[20](./${fileOf('20')})` : '20'}; automation runs as a service account or membership with the same checks |`,
+    '',
+  );
+  if (groups?.size) {
+    const total = [...groups.values()].reduce((n, a) => n + a.size, 0);
+    out.push(`**Permission keys in the catalog today** (\`api/prisma/seed/permission-catalog.ts\`, ${total} keys; \`*\` = sensitive):`, '', '| Resource key prefix | Actions |', '| -- | -- |');
+    for (const [group, actions] of [...groups].sort()) {
+      out.push(`| \`${group}\` | ${[...actions].map(([a, sens]) => `${a}${sens ? '*' : ''}`).join(', ')} |`);
+    }
+    out.push('');
+  } else {
+    out.push('**Permission keys in the catalog today:** none. Add `<module>.<resource>.<action>` keys to `api/prisma/seed/permission-catalog.ts` for every resource this module introduces.', '');
+  }
+  out.push(
+    'Definition of done for each resource of this module: permission keys in the catalog and in the role templates, seed re-run, REST endpoint, MCP tool, service-account and API-key access verified, webhook events and automation triggers declared, audit events written, tests for allow / deny / wrong scope / wrong organization.',
+    '',
+    ACCESS_END,
+  );
+  return out.join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -404,9 +520,15 @@ for (const file of featureFiles) {
     const idx = src.search(/^## /m);
     next = idx === -1 ? `${src}${eol}${block}${eol}` : `${src.slice(0, idx)}${block}${eol}${eol}${src.slice(idx)}`;
   }
+  const access = renderAccess(mod).replace(/\n/g, eol);
+  if (next.includes(ACCESS_START)) {
+    next = next.replace(new RegExp(`${ACCESS_START}[\\s\\S]*?${ACCESS_END}`), () => access);
+  } else {
+    next = next.replace(END, () => `${END}${eol}${eol}${access}`);
+  }
   next = syncSections(next, mod, schemaLink(path), eol);
   if (next !== src) {
-    writeFileSync(path, next);
+    writeResilient(path, next);
     changed++;
   }
 }

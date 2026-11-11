@@ -496,6 +496,15 @@ When adding a new route, **always add it to `routes.ts` first**, then reference 
 - Return `response.data` directly, not the full Axios response object
 - All env vars are accessed through a typed `environments` object — never use `import.meta.env.*` directly in components or features
 
+### Roles and permissions
+
+Every screen is built permission-aware from the start. Follow `roles-and-permissions-in-every-feature.mdc`.
+
+- Read the signed-in person's effective permission keys from the session through one shared helper (`usePermission` hook and `<Can permission="module.resource.action">` component); do not scatter ad hoc checks
+- Gate routes, navigation items, buttons, menu actions and form fields by permission key, never by role name
+- Hiding is not security: handle `403` and `404` from the API with a clear no-access state
+- A new screen lists the permission keys it needs in the PR description, and those keys must exist in the API permission catalog
+
 ---
 
 ## 10. Styling Guidelines

@@ -1,0 +1,104 @@
+---
+description: Every feature is built with roles, permissions, scope and tenant isolation, and with API, MCP, API-key and service-account access, from the first commit. Follow when adding or changing any API endpoint, MCP tool, module, page, button or background job.
+globs: api/**, app/**, react-starter/**, nextjs-app/**
+alwaysApply: false
+---
+
+# Roles & Permissions — Built In, Not Added Later
+
+Source of truth: `docs/features/01-users-organizations-permissions.md` (§44–63 roles and permissions, §75–76 API keys and service accounts, §79 customer portal, §136 authorization API) and `docs/Product_Specification.md` §4a (access channels). Each feature spec has a generated "Access channels & permissions" block listing its permission keys; keep it in sync with `node docs/scripts/sync-feature-schema-refs.mjs`. Schema: `Permission`, `Role`, `RolePermission`, `RoleAssignment`, `PermissionGrant`, `Membership` in `api/prisma/schema.prisma`. Seed: `api/prisma/seed/permission-catalog.ts`.
+
+## 1. The model in one minute
+
+| Layer | What it is | Where |
+| -- | -- | -- |
+| Platform role (`AuthRole`) | Operates the SaaS itself (e.g. `SUPER_ADMIN`). Never used for organization features. | `users.role` |
+| Permission | One thing a person may do. Key format `<module>.<resource>.<action>`, e.g. `tasks.tasks.update`. One global list, defined only in code. | `permissions` |
+| Role | A named bundle of permissions. System templates (seeded, `organization_id` null) plus custom roles per organization. | `roles`, `role_permissions` |
+| Assignment | A role given to a membership, optionally limited to a branch, team, project or resource, optionally with an expiry. | `role_assignments` |
+| Grant | A per-person allow or deny of one permission, with scope and expiry. Deny wins. | `permission_grants` |
+| Customer portal | Same model with `portal.*` keys and customer roles. | `customer_portal_memberships` |
+
+Custom roles combine existing permissions. Organizations cannot create new permission keys, because code has to check each one.
+
+## 2. Definition of done for any feature
+
+A feature is not finished until all of these exist in the same change:
+
+1. **Permission keys** added to `PERMISSION_CATALOG` for every action the feature introduces (use the `crud` helper, add extras such as `approve`, `assign`, `publish`). Mark `delete`, `export`, anything touching money, security, credentials or personal data as `is_sensitive`.
+2. **Role templates updated**: decide which of the 18 templates get each new key and add it to `ROLE_TEMPLATES`. Defaults: Owner and Admin get everything, managers get their module, Employee and Viewer get read only, Customer roles only get `portal.*` keys.
+3. **Seed re-run** (`npx prisma db seed`, idempotent) and the feature spec's "Permissions" section updated with the exact keys.
+4. **API enforcement** on every endpoint, service method and background job (section 3).
+5. **UI enforcement** for every route, menu item, button and form field (section 4).
+6. **MCP tools, API keys and service accounts** work for every capability (section 5): a tool per agent-useful action, usable by an API key or service account holding the permission key.
+7. **Webhook events and automation triggers/actions** declared with module 20, running under the same checks.
+8. **Tests**: allowed, denied, wrong scope, wrong organization, and a non-human identity (API key, service account).
+9. **Audit**: every write, from every channel, writes an event to `audit_events`; sensitive actions are flagged.
+10. **Spec updated**: the feature's Permissions and API sections list the keys, tools and events, then run the sync script.
+
+Never ship an endpoint and promise to "add permissions later". An endpoint with no permission check is a bug.
+
+## 3. API rules
+
+- **Check permissions, never role names.** Do not write `user.role === 'ADMIN'` or compare role slugs in feature code. Ask whether the person has the permission.
+- **One authorization service** (01 §136). Guards, decorators and the service live in `api/src/shared/`: a `PermissionsGuard`, a `@RequirePermission('module.resource.action')` decorator, and an `AuthorizationService` with check permission, resolve scope, and explain result. Modules call it. Modules never build their own permission engine. If this does not exist yet when you start, build it once in `shared/` as a separate piece of work first, and do not write a per-module substitute.
+- The existing `RolesGuard` and `@Roles()` are for platform roles (`AuthRole`) only, such as SaaS staff endpoints.
+- **Default deny.** No decorator means no access for new organization endpoints. Public endpoints must be explicitly marked public.
+- **Tenant isolation.** Take `organization_id` from the authenticated context, never from the request body or query. Every query on a tenant table filters by it.
+- **Scope in queries.** When a role is limited to a branch, team or project, the service filters list queries and checks single records against that scope. A permission check on the route alone is not enough for lists.
+- **Deny wins.** An explicit deny overrides any allow. Return `403` with an explainable reason for administrators, `404` when revealing existence would leak data.
+- **Resource ownership checks** (owner, assignee, project member) are additional rules inside the service, on top of the permission, and must be written down in the spec.
+- **Field-level permissions** (01 §60): salary, bank details, credentials and similar fields are removed from responses when the person lacks the field permission.
+- **Background jobs and automations** run as a service account or on behalf of a membership and use the same checks. A job must not bypass permissions because no request is involved.
+- **Customer portal** (07, 01 §79): use `portal.*` keys, return only records marked customer-visible, re-evaluate on every read, never return internal notes, internal fields or other customers' data.
+- **Invalidate caches** when roles, assignments or grants change. Permission changes must take effect quickly and predictably (01 §135).
+- Nest guard order: `JwtGuard`, then `PermissionsGuard`.
+
+```ts
+@UseGuards(JwtGuard, PermissionsGuard)
+@RequirePermission('tasks.tasks.update')
+@Patch(':id')
+update(@CurrentOrg() org: OrgContext, @Param('id') id: string, @Body() dto: UpdateTaskDto) {
+  return this.tasksService.update(org, id, dto); // service filters by org.id and org scope
+}
+```
+
+## 4. UI rules
+
+- **One source** for the signed-in person's effective permissions, loaded with the session. One helper (a `usePermission` hook and a `<Can permission="…">` component) in the shared layer. Do not scatter ad hoc checks.
+- Gate **routes** (redirect or forbidden page), **navigation items**, **buttons and menu actions**, and **form fields** (read-only or hidden) using permission keys, not role names.
+- **Hiding is not security.** The API is the authority. The UI hides what a person cannot do, but must also handle `403` and `404` gracefully.
+- Show a clear no-access state, not a blank page or a crash. Disabled buttons need a tooltip explaining why when the reason is useful.
+- Respect enabled modules: if the organization has not enabled a module, its navigation and routes are absent.
+- The customer portal app only uses `portal.*` keys and only shows customer-visible data.
+- When adding a new screen, list the permission keys it needs in the PR description.
+
+## 5. API, MCP, API keys and service accounts
+
+Build every capability for every access channel at once (`docs/Product_Specification.md` §4a). Adding a channel later means reopening every endpoint.
+
+- **One service layer, many adapters.** The REST controller, the MCP tool, the WebSocket handler and the automation action all call the same service method. Business logic and permission checks are never duplicated in an adapter.
+- **MCP tools mirror permission keys.** Name a tool `<module>_<resource>_<action>`, for example `tasks_tasks_update`, one tool per permission key worth exposing. Reuse the same DTO or Zod validation schemas as the REST endpoint. Register tools from the feature module that owns the resource, in the shared MCP server module, not in a separate codebase.
+- **Callers see only what they may use.** The tool list returned to a caller includes only tools whose permission key the caller holds. A call is still checked at execution time.
+- **The caller's own identity.** MCP and API calls run as a user, an API key or a service account. Never use a shared super-user credential for tools. The organization comes from the credential, never from a tool argument.
+- **Sensitive or destructive tools** (catalog `is_sensitive`, deletes, sends, payments, approvals, permission changes) require human confirmation or an approval step when an AI agent calls them, and are always audited.
+- **API keys narrow, never widen.** `ApiKey.scopes` can only restrict the owner's permissions. Keys have an owner, expiry, rotation and audit history (01 §75).
+- **Service accounts** are the identity for unattended automation, integrations and AI agents: explicit permission keys and scope, an owner, a purpose, an expiry (01 §76). They are not employees and do not appear in HR data. Automation rules run as a service account or membership and never skip checks.
+- **Test with non-human identities.** Every feature has tests proving a service account or API key with the key can act, one without it gets `403`, and one scoped to another branch, team or project cannot reach the record.
+- **Audit the channel.** Write `channel` (`ui`, `api`, `mcp`, `automation`) and the credential id into the audit event `metadata`, with actor type `SERVICE_ACCOUNT` for service accounts.
+- **Limits.** Apply rate limits and quotas per API key and service account.
+
+## 6. Quick checklist before finishing
+
+- [ ] Keys added to the catalog and flagged sensitive where needed
+- [ ] Role templates updated, seed re-run
+- [ ] Every endpoint has `@RequirePermission` and filters by organization and scope
+- [ ] Lists and single reads both respect scope
+- [ ] Field-level and customer-visibility rules applied
+- [ ] UI routes, nav, buttons and fields gated
+- [ ] MCP tool per agent-useful action, same service and validation as the REST endpoint
+- [ ] API key and service account access works and is narrowed by scope
+- [ ] Webhook events and automation triggers/actions declared
+- [ ] Tests for allow, deny, wrong scope, wrong organization, non-human identity
+- [ ] Every write audited with channel and actor type; sensitive actions flagged
+- [ ] Spec "Permissions" and API sections list keys, tools and events; sync script run

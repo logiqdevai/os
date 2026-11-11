@@ -186,6 +186,130 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'automation.rules.manage', module: ModuleKey.AUTOMATION, resource: 'rules', action: 'manage', is_sensitive: true },
   { key: 'docs.pages.read', module: ModuleKey.BUSINESS_DOCS, resource: 'pages', action: 'read' },
   { key: 'docs.pages.publish', module: ModuleKey.BUSINESS_DOCS, resource: 'pages', action: 'publish' },
+  // --- Added from the feature specs' permission sections and module scopes (08–20) --------------------
+  ...crud(ModuleKey.COMMUNICATION, 'communications', 'messages', ['send'], ['send']),
+  ...crud(ModuleKey.COMMUNICATION, 'communications', 'templates'),
+  ...crud(ModuleKey.COMMUNICATION, 'communications', 'campaigns', ['send', 'approve'], ['send', 'approve']),
+  ...crud(ModuleKey.COMMUNICATION, 'communications', 'segments'),
+  ...crud(ModuleKey.INCOME_EXPENSE, 'finance', 'income'),
+  ...crud(ModuleKey.SUPPORT, 'support', 'conversations', ['assign', 'reply', 'close']),
+  ...crud(ModuleKey.SUPPORT, 'support', 'knowledge', ['publish'], ['publish']),
+  ...crud(ModuleKey.BUSINESS_DOCS, 'docs', 'forms', ['assign', 'review']),
+  { key: 'finance.dashboard.read', module: ModuleKey.FINANCE, resource: 'dashboard', action: 'read', is_sensitive: true },
+  { key: 'finance.invoice_templates.manage', module: ModuleKey.FINANCE, resource: 'invoice_templates', action: 'manage' },
+  { key: 'finance.adjustments.manage', module: ModuleKey.FINANCE, resource: 'adjustments', action: 'manage', is_sensitive: true },
+  { key: 'finance.categories.manage', module: ModuleKey.INCOME_EXPENSE, resource: 'categories', action: 'manage' },
+  { key: 'finance.vat.read', module: ModuleKey.INCOME_EXPENSE, resource: 'vat', action: 'read' },
+  { key: 'finance.vat.manage', module: ModuleKey.INCOME_EXPENSE, resource: 'vat', action: 'manage', is_sensitive: true },
+  { key: 'finance.periods.manage', module: ModuleKey.INCOME_EXPENSE, resource: 'periods', action: 'manage', is_sensitive: true },
+  { key: 'finance.payroll.read', module: ModuleKey.INCOME_EXPENSE, resource: 'payroll', action: 'read', is_sensitive: true },
+  { key: 'finance.payroll.manage', module: ModuleKey.INCOME_EXPENSE, resource: 'payroll', action: 'manage', is_sensitive: true },
+  { key: 'finance.recurring_expenses.manage', module: ModuleKey.INCOME_EXPENSE, resource: 'recurring_expenses', action: 'manage' },
+  { key: 'finance.invoice_imports.review', module: ModuleKey.INCOME_EXPENSE, resource: 'invoice_imports', action: 'review' },
+  { key: 'finance.profit_loss.read', module: ModuleKey.INCOME_EXPENSE, resource: 'profit_loss', action: 'read', is_sensitive: true },
+  { key: 'finance.profitability.read', module: ModuleKey.INCOME_EXPENSE, resource: 'profitability', action: 'read', is_sensitive: true },
+  { key: 'finance.ledger_settings.manage', module: ModuleKey.INCOME_EXPENSE, resource: 'ledger_settings', action: 'manage', is_sensitive: true },
+  { key: 'employees.leave.read_own', module: ModuleKey.EMPLOYEES, resource: 'leave', action: 'read_own' },
+  { key: 'employees.leave.read_all', module: ModuleKey.EMPLOYEES, resource: 'leave', action: 'read_all' },
+  { key: 'employees.leave.request_own', module: ModuleKey.EMPLOYEES, resource: 'leave', action: 'request_own' },
+  { key: 'employees.leave.manage_policies', module: ModuleKey.EMPLOYEES, resource: 'leave', action: 'manage_policies', is_sensitive: true },
+  { key: 'employees.leave.manage_balances', module: ModuleKey.EMPLOYEES, resource: 'leave', action: 'manage_balances', is_sensitive: true },
+  { key: 'employees.attendance.read_own', module: ModuleKey.EMPLOYEES, resource: 'attendance', action: 'read_own' },
+  { key: 'employees.attendance.read_all', module: ModuleKey.EMPLOYEES, resource: 'attendance', action: 'read_all' },
+  { key: 'employees.attendance.record_own', module: ModuleKey.EMPLOYEES, resource: 'attendance', action: 'record_own' },
+  { key: 'employees.attendance.manage', module: ModuleKey.EMPLOYEES, resource: 'attendance', action: 'manage', is_sensitive: true },
+  { key: 'employees.skills.read', module: ModuleKey.EMPLOYEES, resource: 'skills', action: 'read' },
+  { key: 'employees.skills.manage', module: ModuleKey.EMPLOYEES, resource: 'skills', action: 'manage' },
+  { key: 'employees.performance.read_own', module: ModuleKey.EMPLOYEES, resource: 'performance', action: 'read_own' },
+  { key: 'employees.performance.read_all', module: ModuleKey.EMPLOYEES, resource: 'performance', action: 'read_all', is_sensitive: true },
+  { key: 'employees.performance.manage', module: ModuleKey.EMPLOYEES, resource: 'performance', action: 'manage', is_sensitive: true },
+  { key: 'employees.documents.read', module: ModuleKey.EMPLOYEES, resource: 'documents', action: 'read', is_sensitive: true },
+  { key: 'employees.documents.manage', module: ModuleKey.EMPLOYEES, resource: 'documents', action: 'manage', is_sensitive: true },
+  { key: 'employees.hr_notes.read', module: ModuleKey.EMPLOYEES, resource: 'hr_notes', action: 'read', is_sensitive: true },
+  { key: 'employees.hr_notes.manage', module: ModuleKey.EMPLOYEES, resource: 'hr_notes', action: 'manage', is_sensitive: true },
+  { key: 'employees.capacity.read', module: ModuleKey.EMPLOYEES, resource: 'capacity', action: 'read' },
+  { key: 'employees.directory.read', module: ModuleKey.EMPLOYEES, resource: 'directory', action: 'read' },
+  { key: 'employees.availability.manage', module: ModuleKey.EMPLOYEES, resource: 'availability', action: 'manage' },
+  { key: 'employees.profile.update_own', module: ModuleKey.EMPLOYEES, resource: 'profile', action: 'update_own' },
+  { key: 'communications.sender_identities.manage', module: ModuleKey.COMMUNICATION, resource: 'sender_identities', action: 'manage', is_sensitive: true },
+  { key: 'communications.suppressions.manage', module: ModuleKey.COMMUNICATION, resource: 'suppressions', action: 'manage', is_sensitive: true },
+  { key: 'communications.analytics.read', module: ModuleKey.COMMUNICATION, resource: 'analytics', action: 'read' },
+  { key: 'communications.settings.manage', module: ModuleKey.COMMUNICATION, resource: 'settings', action: 'manage', is_sensitive: true },
+  { key: 'messaging.settings.manage', module: ModuleKey.MESSAGING, resource: 'settings', action: 'manage', is_sensitive: true },
+  { key: 'messaging.users.manage', module: ModuleKey.MESSAGING, resource: 'users', action: 'manage' },
+  { key: 'messaging.retention.manage', module: ModuleKey.MESSAGING, resource: 'retention', action: 'manage', is_sensitive: true },
+  { key: 'messaging.integrations.manage', module: ModuleKey.MESSAGING, resource: 'integrations', action: 'manage', is_sensitive: true },
+  { key: 'messaging.audit.read', module: ModuleKey.MESSAGING, resource: 'audit', action: 'read', is_sensitive: true },
+  { key: 'messaging.data.export', module: ModuleKey.MESSAGING, resource: 'data', action: 'export', is_sensitive: true },
+  { key: 'messaging.channels.read', module: ModuleKey.MESSAGING, resource: 'channels', action: 'read' },
+  { key: 'messaging.channels.create', module: ModuleKey.MESSAGING, resource: 'channels', action: 'create' },
+  { key: 'messaging.messages.read', module: ModuleKey.MESSAGING, resource: 'messages', action: 'read' },
+  { key: 'messaging.messages.post', module: ModuleKey.MESSAGING, resource: 'messages', action: 'post' },
+  { key: 'messaging.messages.pin', module: ModuleKey.MESSAGING, resource: 'messages', action: 'pin' },
+  { key: 'messaging.channel_members.manage', module: ModuleKey.MESSAGING, resource: 'channel_members', action: 'manage' },
+  { key: 'support.tickets.merge', module: ModuleKey.SUPPORT, resource: 'tickets', action: 'merge' },
+  { key: 'support.tickets.escalate', module: ModuleKey.SUPPORT, resource: 'tickets', action: 'escalate' },
+  { key: 'support.tickets.convert_to_task', module: ModuleKey.SUPPORT, resource: 'tickets', action: 'convert_to_task' },
+  { key: 'support.sla_policies.manage', module: ModuleKey.SUPPORT, resource: 'sla_policies', action: 'manage' },
+  { key: 'support.canned_responses.manage', module: ModuleKey.SUPPORT, resource: 'canned_responses', action: 'manage' },
+  { key: 'support.inboxes.manage', module: ModuleKey.SUPPORT, resource: 'inboxes', action: 'manage' },
+  { key: 'support.automation.manage', module: ModuleKey.SUPPORT, resource: 'automation', action: 'manage' },
+  { key: 'support.ai.configure', module: ModuleKey.SUPPORT, resource: 'ai', action: 'configure', is_sensitive: true },
+  { key: 'support.ai.use', module: ModuleKey.SUPPORT, resource: 'ai', action: 'use' },
+  { key: 'support.analytics.read', module: ModuleKey.SUPPORT, resource: 'analytics', action: 'read' },
+  { key: 'support.settings.manage', module: ModuleKey.SUPPORT, resource: 'settings', action: 'manage' },
+  { key: 'support.csat.read', module: ModuleKey.SUPPORT, resource: 'csat', action: 'read' },
+  { key: 'notifications.templates.manage', module: ModuleKey.NOTIFICATIONS, resource: 'templates', action: 'manage' },
+  { key: 'notifications.audit.read', module: ModuleKey.NOTIFICATIONS, resource: 'audit', action: 'read', is_sensitive: true },
+  { key: 'notifications.preferences.manage_own', module: ModuleKey.NOTIFICATIONS, resource: 'preferences', action: 'manage_own' },
+  { key: 'notifications.delivery_rules.manage', module: ModuleKey.NOTIFICATIONS, resource: 'delivery_rules', action: 'manage' },
+  { key: 'docs.pages.create', module: ModuleKey.BUSINESS_DOCS, resource: 'pages', action: 'create' },
+  { key: 'docs.pages.update', module: ModuleKey.BUSINESS_DOCS, resource: 'pages', action: 'update' },
+  { key: 'docs.pages.archive', module: ModuleKey.BUSINESS_DOCS, resource: 'pages', action: 'archive' },
+  { key: 'docs.pages.delete', module: ModuleKey.BUSINESS_DOCS, resource: 'pages', action: 'delete', is_sensitive: true },
+  { key: 'docs.spaces.manage', module: ModuleKey.BUSINESS_DOCS, resource: 'spaces', action: 'manage' },
+  { key: 'docs.forms.anonymous_responses.read', module: ModuleKey.BUSINESS_DOCS, resource: 'forms.anonymous_responses', action: 'read', is_sensitive: true },
+  { key: 'docs.ai.query', module: ModuleKey.BUSINESS_DOCS, resource: 'ai', action: 'query' },
+  { key: 'docs.checklists.manage', module: ModuleKey.BUSINESS_DOCS, resource: 'checklists', action: 'manage' },
+  { key: 'documents.folders.manage', module: ModuleKey.DOCUMENTS, resource: 'folders', action: 'manage' },
+  { key: 'documents.retention.manage', module: ModuleKey.DOCUMENTS, resource: 'retention', action: 'manage', is_sensitive: true },
+  { key: 'documents.categories.manage', module: ModuleKey.DOCUMENTS, resource: 'categories', action: 'manage' },
+  { key: 'documents.deletions.approve', module: ModuleKey.DOCUMENTS, resource: 'deletions', action: 'approve', is_sensitive: true },
+  { key: 'documents.storage.manage', module: ModuleKey.DOCUMENTS, resource: 'storage', action: 'manage', is_sensitive: true },
+  { key: 'time.entries.create_own', module: ModuleKey.TIME_TRACKING, resource: 'entries', action: 'create_own' },
+  { key: 'time.entries.read_own', module: ModuleKey.TIME_TRACKING, resource: 'entries', action: 'read_own' },
+  { key: 'time.entries.read_team', module: ModuleKey.TIME_TRACKING, resource: 'entries', action: 'read_team' },
+  { key: 'time.entries.update_own', module: ModuleKey.TIME_TRACKING, resource: 'entries', action: 'update_own' },
+  { key: 'time.entries.unlock', module: ModuleKey.TIME_TRACKING, resource: 'entries', action: 'unlock', is_sensitive: true },
+  { key: 'time.rates.read', module: ModuleKey.TIME_TRACKING, resource: 'rates', action: 'read', is_sensitive: true },
+  { key: 'time.rates.manage', module: ModuleKey.TIME_TRACKING, resource: 'rates', action: 'manage', is_sensitive: true },
+  { key: 'time.reports.read', module: ModuleKey.TIME_TRACKING, resource: 'reports', action: 'read' },
+  { key: 'time.timesheets.submit_own', module: ModuleKey.TIME_TRACKING, resource: 'timesheets', action: 'submit_own' },
+  { key: 'time.timesheets.approve', module: ModuleKey.TIME_TRACKING, resource: 'timesheets', action: 'approve' },
+  { key: 'time.settings.manage', module: ModuleKey.TIME_TRACKING, resource: 'settings', action: 'manage' },
+  { key: 'calendar.availability.read', module: ModuleKey.CALENDAR, resource: 'availability', action: 'read' },
+  { key: 'calendar.booking_links.manage', module: ModuleKey.CALENDAR, resource: 'booking_links', action: 'manage' },
+  { key: 'calendar.calendars.manage', module: ModuleKey.CALENDAR, resource: 'calendars', action: 'manage' },
+  { key: 'calendar.calendars.read_team', module: ModuleKey.CALENDAR, resource: 'calendars', action: 'read_team' },
+  { key: 'calendar.events.create', module: ModuleKey.CALENDAR, resource: 'events', action: 'create' },
+  { key: 'calendar.events.delete_own', module: ModuleKey.CALENDAR, resource: 'events', action: 'delete_own' },
+  { key: 'calendar.events.read_own', module: ModuleKey.CALENDAR, resource: 'events', action: 'read_own' },
+  { key: 'calendar.events.update_own', module: ModuleKey.CALENDAR, resource: 'events', action: 'update_own' },
+  { key: 'calendar.sync.manage_own', module: ModuleKey.CALENDAR, resource: 'sync', action: 'manage_own' },
+  { key: 'calendar.resources.manage', module: ModuleKey.CALENDAR, resource: 'resources', action: 'manage' },
+  { key: 'automation.rules.read', module: ModuleKey.AUTOMATION, resource: 'rules', action: 'read' },
+  { key: 'automation.rules.create', module: ModuleKey.AUTOMATION, resource: 'rules', action: 'create' },
+  { key: 'automation.rules.update', module: ModuleKey.AUTOMATION, resource: 'rules', action: 'update' },
+  { key: 'automation.rules.delete', module: ModuleKey.AUTOMATION, resource: 'rules', action: 'delete', is_sensitive: true },
+  { key: 'automation.rules.enable', module: ModuleKey.AUTOMATION, resource: 'rules', action: 'enable', is_sensitive: true },
+  { key: 'automation.runs.read', module: ModuleKey.AUTOMATION, resource: 'runs', action: 'read' },
+  { key: 'automation.service_accounts.manage', module: ModuleKey.AUTOMATION, resource: 'service_accounts', action: 'manage', is_sensitive: true },
+  { key: 'automation.actions.destructive.enable', module: ModuleKey.AUTOMATION, resource: 'actions.destructive', action: 'enable', is_sensitive: true },
+  { key: 'automation.webhooks.manage', module: ModuleKey.AUTOMATION, resource: 'webhooks', action: 'manage', is_sensitive: true },
+  { key: 'automation.jobs.read', module: ModuleKey.AUTOMATION, resource: 'jobs', action: 'read' },
+  { key: 'automation.jobs.manage', module: ModuleKey.AUTOMATION, resource: 'jobs', action: 'manage', is_sensitive: true },
+  { key: 'automation.settings.manage', module: ModuleKey.AUTOMATION, resource: 'settings', action: 'manage', is_sensitive: true },
+  { key: 'projects.members.manage', module: ModuleKey.PROJECTS, resource: 'members', action: 'manage' },
 ];
 
 /**
@@ -209,6 +333,12 @@ const OPERATIONAL_MODULES: ModuleKey[] = [
   ModuleKey.NOTIFICATIONS, ModuleKey.BUSINESS_DOCS,
 ];
 
+/** Time tracking keys for people who manage a team's time, without rate administration or unlocking approved entries. */
+const TIME_TEAM_PERMISSIONS = [
+  'time.entries.read_all', 'time.entries.read_team', 'time.entries.approve', 'time.entries.create_own', 'time.entries.read_own',
+  'time.entries.update_own', 'time.reports.read', 'time.timesheets.submit_own', 'time.timesheets.approve',
+];
+
 export const ROLE_TEMPLATES: RoleTemplateSeed[] = [
   {
     slug: 'owner', name: 'Owner', type: RoleType.SYSTEM, default_scope: ScopeType.ORGANIZATION,
@@ -228,7 +358,7 @@ export const ROLE_TEMPLATES: RoleTemplateSeed[] = [
     permissions: [
       'organizations.branches.read', 'organizations.branches.members.manage', 'organizations.branches.settings.manage',
       'organizations.teams.*', 'users.members.read', 'users.members.invite',
-      'crm.*', 'projects.*', 'tasks.*', 'support.*', 'documents.documents.*', 'calendar.*', 'time.*', 'messaging.channels.manage',
+      'crm.*', 'projects.*', 'tasks.*', 'support.*', 'documents.documents.*', 'calendar.*', ...TIME_TEAM_PERMISSIONS, 'messaging.channels.manage',
     ],
   },
   {
@@ -238,7 +368,7 @@ export const ROLE_TEMPLATES: RoleTemplateSeed[] = [
     permissions: [
       'users.members.read', 'organizations.branches.read', 'organizations.teams.read',
       'crm.*', 'proposals.*', 'contracts.contracts.read', 'contracts.contracts.create', 'contracts.contracts.update',
-      'projects.*', 'tasks.*', 'support.*', 'documents.documents.*', 'calendar.*', 'time.*',
+      'projects.*', 'tasks.*', 'support.*', 'documents.documents.*', 'calendar.*', ...TIME_TEAM_PERMISSIONS,
       'finance.invoices.read', 'finance.reports.read', 'employees.employees.read', 'employees.leave.approve',
       'messaging.channels.manage', 'docs.pages.*',
     ],
@@ -269,7 +399,7 @@ export const ROLE_TEMPLATES: RoleTemplateSeed[] = [
     slug: 'support-agent', name: 'Support Agent', type: RoleType.ORGANIZATION, default_scope: ScopeType.ORGANIZATION,
     description: 'Handles support tickets and conversations.',
     modules: [ModuleKey.SUPPORT, ModuleKey.CRM, ModuleKey.TASKS, ModuleKey.MESSAGING, ModuleKey.DOCUMENTS, ModuleKey.BUSINESS_DOCS],
-    permissions: ['support.*', 'crm.companies.read', 'crm.contacts.read', 'tasks.tasks.read', 'tasks.tasks.create', 'documents.documents.read', 'docs.pages.read'],
+    permissions: ['support.tickets.*', 'support.conversations.*', 'support.knowledge.read', 'support.knowledge.create', 'support.knowledge.update', 'crm.companies.read', 'crm.contacts.read', 'tasks.tasks.read', 'tasks.tasks.create', 'documents.documents.read', 'docs.pages.read'],
   },
   {
     slug: 'developer', name: 'Developer', type: RoleType.ORGANIZATION, default_scope: ScopeType.ORGANIZATION,
@@ -333,6 +463,74 @@ export const ROLE_TEMPLATES: RoleTemplateSeed[] = [
     permissions: ['portal.projects.read', 'portal.documents.read', 'portal.proposals.read', 'portal.contracts.read', 'portal.invoices.read'],
   },
 ];
+
+/**
+ * Keys granted to role templates for the modules added after the first catalog (08–20).
+ * Applied on top of each template's own list so the templates above stay readable.
+ */
+const SELF_SERVICE_PERMISSIONS = [
+  'notifications.preferences.manage_own', 'employees.directory.read', 'employees.profile.update_own',
+  'employees.leave.read_own', 'employees.leave.request_own', 'employees.attendance.read_own', 'employees.attendance.record_own',
+  'employees.performance.read_own', 'time.entries.create_own', 'time.entries.read_own', 'time.entries.update_own',
+  'time.timesheets.submit_own', 'calendar.availability.read', 'calendar.events.create', 'calendar.events.read_own',
+  'calendar.events.update_own', 'calendar.events.delete_own', 'calendar.sync.manage_own',
+  'messaging.channels.read', 'messaging.messages.read', 'messaging.messages.post', 'docs.pages.read',
+];
+
+/** Day-to-day use of outbound communication, messaging and wiki, without organization-level configuration. */
+const COMMUNICATIONS_OPERATIONAL = [
+  'communications.messages.*', 'communications.templates.*', 'communications.campaigns.*', 'communications.segments.*',
+  'communications.analytics.read',
+];
+const MESSAGING_OPERATIONAL = [
+  'messaging.channels.read', 'messaging.channels.create', 'messaging.channels.manage', 'messaging.messages.read',
+  'messaging.messages.post', 'messaging.messages.pin', 'messaging.channel_members.manage',
+];
+const DOCS_OPERATIONAL = [
+  'docs.pages.*', 'docs.forms.read', 'docs.forms.create', 'docs.forms.update', 'docs.forms.assign', 'docs.forms.review',
+  'docs.checklists.manage', 'docs.ai.query',
+];
+
+const ROLE_EXTRAS: Record<string, string[]> = {
+  'branch-admin': [
+    ...COMMUNICATIONS_OPERATIONAL, ...MESSAGING_OPERATIONAL, ...DOCS_OPERATIONAL, 'documents.folders.manage',
+    'employees.leave.read_all', 'employees.attendance.read_all', 'employees.capacity.read',
+  ],
+  manager: [
+    ...COMMUNICATIONS_OPERATIONAL, ...MESSAGING_OPERATIONAL, ...DOCS_OPERATIONAL, 'documents.folders.manage',
+    'employees.leave.read_all', 'employees.attendance.read_all', 'employees.capacity.read', 'employees.skills.read',
+    'finance.dashboard.read', 'automation.rules.read', 'automation.runs.read',
+  ],
+  'project-manager': [
+    'time.entries.read_team', 'time.reports.read', 'time.timesheets.approve', 'employees.capacity.read', 'employees.skills.read',
+    'docs.pages.create', 'docs.pages.update', 'documents.folders.manage', 'messaging.channels.create', 'messaging.messages.pin',
+    'support.tickets.convert_to_task',
+  ],
+  'sales-manager': [
+    ...COMMUNICATIONS_OPERATIONAL, 'docs.pages.create', 'docs.pages.update', 'messaging.channels.create', 'automation.rules.read',
+  ],
+  'finance-manager': [
+    'time.rates.read', 'time.reports.read', 'employees.compensation.read', 'communications.messages.read',
+    'communications.messages.create', 'communications.messages.send', 'communications.templates.read',
+  ],
+  'support-agent': [
+    'communications.messages.read', 'communications.messages.create', 'communications.messages.send',
+    'communications.templates.read', 'support.tickets.convert_to_task', 'support.ai.use',
+  ],
+  developer: ['tasks.releases.manage'],
+  employee: [],
+  viewer: ['notifications.preferences.manage_own', 'employees.directory.read', 'calendar.availability.read', 'messaging.channels.read', 'messaging.messages.read', 'docs.pages.read'],
+  'external-collaborator': ['notifications.preferences.manage_own'],
+};
+
+// Roles that do not receive the standard internal self-service set.
+const NO_SELF_SERVICE = new Set(['owner', 'admin', 'viewer', 'external-collaborator']);
+
+for (const template of ROLE_TEMPLATES) {
+  if (template.type === RoleType.CUSTOMER_PORTAL) continue;
+  if (!NO_SELF_SERVICE.has(template.slug)) template.permissions.push(...SELF_SERVICE_PERMISSIONS);
+  template.permissions.push(...(ROLE_EXTRAS[template.slug] ?? []));
+}
 
 /** Expand glob-style template entries against the catalog. `*` matches everything. */
 export function resolvePermissionKeys(patterns: string[], catalog: PermissionSeed[]): string[] {
