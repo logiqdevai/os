@@ -1,2 +1,3 @@
 /app/.env
 .typecheck.lock/
+app/public/__sweep.html
