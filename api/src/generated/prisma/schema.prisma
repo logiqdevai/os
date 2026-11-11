@@ -8,7 +8,7 @@
 //   05 Project Management → docs/features/05-project-management.md (LOG-405)
 //   06 Task Management → docs/features/06-task-management.md (LOG-102)
 //   07 Customer Portal (portal settings only) → docs/features/07-customer-portal.md (LOG-103)
-//   08 Financial Management & Stripe (incl. platform products catalog) → docs/features/08-financial-management-stripe-integration.md (LOG-104)
+//   08 Financial Management & Payment Providers (incl. platform products catalog) → docs/features/08-financial-management-stripe-integration.md (LOG-104)
 //   09 Income & Expense Management (ledger, VAT, periods, payroll cost) → docs/features/09-income-expense-management.md (LOG-105)
 //   10 Employee Management (HR, leave, attendance, capacity) → docs/features/10-employee-management-system.md (LOG-107)
 //   11 Communication Center (outbound email/SMS, templates, campaigns) → docs/features/11-communication-center.md (LOG-106)
@@ -677,6 +677,7 @@ model Organization {
   project_deliverable_reviews      ProjectDeliverableReview[]
   project_status_update_comments   ProjectStatusUpdateComment[]
   payment_provider_connections     PaymentProviderConnection[]
+  payment_provider_objects         PaymentProviderObject[]
 
   @@index([status])
   @@map("organizations")
@@ -785,9 +786,10 @@ model Branch {
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
 
-  organization                 Organization               @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  parent                       Branch?                    @relation("BranchHierarchy", fields: [parent_branch_id], references: [id], onDelete: Restrict)
-  children                     Branch[]                   @relation("BranchHierarchy")
+  organization                 Organization                @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  payment_provider_connections PaymentProviderConnection[]
+  parent                       Branch?                     @relation("BranchHierarchy", fields: [parent_branch_id], references: [id], onDelete: Restrict)
+  children                     Branch[]                    @relation("BranchHierarchy")
   managers                     BranchManager[]
   holidays                     BranchHoliday[]
   memberships                  MembershipBranch[]
@@ -805,9 +807,9 @@ model Branch {
   ledger_records               LedgerRecord[]
   recurring_expenses           RecurringExpense[]
   financial_period_summaries   FinancialPeriodSummary[]
-  employees                    Employee[]                 @relation("EmployeePrimaryBranch")
-  employee_positions           EmployeePosition[]         @relation("EmployeePositionBranch")
-  leave_policies               LeavePolicy[]              @relation("LeavePolicyBranch")
+  employees                    Employee[]                  @relation("EmployeePrimaryBranch")
+  employee_positions           EmployeePosition[]          @relation("EmployeePositionBranch")
+  leave_policies               LeavePolicy[]               @relation("LeavePolicyBranch")
   comm_sender_identities       CommSenderIdentity[]
   comm_templates               CommTemplate[]
   comm_messages                CommMessage[]
@@ -5703,7 +5705,7 @@ model CustomerPortalProfileChangeRequest {
 }
 
 // =====================================================================
-// 08 Financial Management & Stripe Integration — docs/features/08-financial-management-stripe-integration.md (LOG-104)
+// 08 Financial Management & Payment Providers — docs/features/08-financial-management-stripe-integration.md (LOG-104)
 // Owns: billing profiles and payment methods, the platform products & services catalog, prices,
 // tax rates, coupons, invoices and line items, payments, allocations, refunds, credit notes,
 // subscriptions, dunning, project billing settings, provider webhook idempotency.
@@ -5779,11 +5781,33 @@ enum BillingModel {
   MAINTENANCE
 }
 
-/// 08 "Payments"
+/// 08 "Payment Providers" — online providers have an adapter and a PaymentProviderConnection; MANUAL and BANK are
+/// recorded by hand and never have a connection. Adding a provider = a new value here + an adapter (08 spec).
 enum PaymentProvider {
   STRIPE
+  VIVA_WALLET
+  PAYPAL
+  MOLLIE
+  ADYEN
   MANUAL
   BANK
+}
+
+/// 08 "Payment Providers"
+enum PaymentProviderConnectionStatus {
+  PENDING
+  ACTIVE
+  ERROR
+  DISCONNECTED
+}
+
+/// 08 "Payment Providers" — platform record types mirrored at a provider (PaymentProviderObject.object_type).
+enum ProviderObjectType {
+  CUSTOMER
+  PRODUCT
+  PRICE
+  TAX_RATE
+  COUPON
 }
 
 enum PaymentMethodType {
@@ -5848,70 +5872,78 @@ enum DunningAction {
 
 // --- Customer billing --------------------------------------------------------------
 
-/// 08 "Customer Billing" — billing profile of a Customer (CRM Company, 02). Stripe customer lives here.
+/// 08 "Customer Billing" — billing profile of a Customer (CRM Company, 02). The customer record at each connected
+/// provider is a PaymentProviderObject (object_type CUSTOMER, local_id = this id).
 model BillingProfile {
-  id                        String   @id @default(uuid())
-  organization_id           String
-  company_id                String
-  legal_name                String
-  billing_email             String?
+  id                               String   @id @default(uuid())
+  organization_id                  String
+  company_id                       String
+  legal_name                       String
+  billing_email                    String?
   /// CRM contact ids with the BILLING role (02 §3).
-  billing_contact_ids       String[] @default([])
-  billing_address           Json?
-  shipping_address          Json?
-  tax_id                    String?
-  vat_number                String?
-  tax_exempt                Boolean  @default(false)
-  currency                  String
+  billing_contact_ids              String[] @default([])
+  billing_address                  Json?
+  shipping_address                 Json?
+  tax_id                           String?
+  vat_number                       String?
+  tax_exempt                       Boolean  @default(false)
+  currency                         String
   /// Net payment terms in days (e.g. 14, 30).
-  payment_terms_days        Int      @default(14)
+  payment_terms_days               Int      @default(14)
   /// 08 "Recurring Billing" — dunning policy applied to this customer's invoices; null = organization default policy.
-  dunning_policy_id         String?
-  default_payment_method_id String?  @unique
-  stripe_customer_id        String?  @unique
+  dunning_policy_id                String?
+  default_payment_method_id        String?  @unique
+  /// 08 "Payment Providers" — connection used for this customer's invoices and subscriptions; null = organization routing.
+  preferred_provider_connection_id String?
   /// Customer-specific pricing: { product_id: unit_amount } or coupon reference (08 "Taxes & Discounts").
-  custom_pricing            Json?
-  notes                     String?
-  created_at                DateTime @default(now())
-  updated_at                DateTime @updatedAt
+  custom_pricing                   Json?
+  notes                            String?
+  created_at                       DateTime @default(now())
+  updated_at                       DateTime @updatedAt
 
-  organization           Organization    @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  company                CrmCompany      @relation(fields: [company_id], references: [id], onDelete: Cascade)
-  default_payment_method PaymentMethod?  @relation("BillingProfileDefaultMethod", fields: [default_payment_method_id], references: [id], onDelete: SetNull)
-  payment_methods        PaymentMethod[]
-  invoices               Invoice[]
-  payments               Payment[]
-  subscriptions          Subscription[]
-  credit_notes           CreditNote[]
-  dunning_policy         DunningPolicy?  @relation(fields: [dunning_policy_id], references: [id], onDelete: SetNull)
+  organization                  Organization               @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  company                       CrmCompany                 @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  default_payment_method        PaymentMethod?             @relation("BillingProfileDefaultMethod", fields: [default_payment_method_id], references: [id], onDelete: SetNull)
+  payment_methods               PaymentMethod[]
+  invoices                      Invoice[]
+  payments                      Payment[]
+  subscriptions                 Subscription[]
+  credit_notes                  CreditNote[]
+  dunning_policy                DunningPolicy?             @relation(fields: [dunning_policy_id], references: [id], onDelete: SetNull)
+  preferred_provider_connection PaymentProviderConnection? @relation("BillingProfilePreferredProvider", fields: [preferred_provider_connection_id], references: [id], onDelete: SetNull)
 
   @@unique([organization_id, company_id])
   @@map("billing_profiles")
 }
 
 /// 08 "Customer Billing" — stored payment methods; card data never stored, only provider tokens.
+/// A saved method belongs to one provider connection and can only be charged through it.
 model PaymentMethod {
-  id                 String            @id @default(uuid())
-  billing_profile_id String
-  type               PaymentMethodType
-  provider           PaymentProvider   @default(STRIPE)
-  provider_method_id String?
-  brand              String?
-  last4              String?
-  exp_month          Int?
-  exp_year           Int?
+  id                     String            @id @default(uuid())
+  billing_profile_id     String
+  type                   PaymentMethodType
+  provider               PaymentProvider
+  /// 08 "Payment Providers" — connection that holds the token; null for MANUAL / BANK methods.
+  provider_connection_id String?
+  /// Provider token: Stripe payment method, Viva Wallet card token, PayPal vault id, Mollie mandate …
+  provider_method_id     String?
+  brand                  String?
+  last4                  String?
+  exp_month              Int?
+  exp_year               Int?
   /// Bank details for transfers (IBAN masked, bank name) when provider is BANK.
   /// Encrypted at the application layer (envelope encryption with the organization VaultKey, 17 §12); never returned in list endpoints.
-  bank_details       Json?
-  is_default         Boolean           @default(false)
-  disabled_at        DateTime?
-  created_at         DateTime          @default(now())
+  bank_details           Json?
+  is_default             Boolean           @default(false)
+  disabled_at            DateTime?
+  created_at             DateTime          @default(now())
 
-  billing_profile BillingProfile  @relation(fields: [billing_profile_id], references: [id], onDelete: Cascade)
-  default_for     BillingProfile? @relation("BillingProfileDefaultMethod")
-  payments        Payment[]
+  billing_profile     BillingProfile             @relation(fields: [billing_profile_id], references: [id], onDelete: Cascade)
+  provider_connection PaymentProviderConnection? @relation(fields: [provider_connection_id], references: [id], onDelete: SetNull)
+  default_for         BillingProfile?            @relation("BillingProfileDefaultMethod")
+  payments            Payment[]
 
-  @@unique([provider, provider_method_id])
+  @@unique([provider_connection_id, provider_method_id])
   @@index([billing_profile_id])
   @@map("payment_methods")
 }
@@ -5929,7 +5961,6 @@ model Product {
   /// Unit label (hour, month, project, seat).
   unit                String?
   default_tax_rate_id String?
-  stripe_product_id   String?     @unique
   is_active           Boolean     @default(true)
   archived_at         DateTime?
   created_at          DateTime    @default(now())
@@ -5951,21 +5982,20 @@ model Product {
 
 /// 08 — a price of a product: one-time or recurring, per currency.
 model Price {
-  id              String           @id @default(uuid())
-  product_id      String
-  name            String?
-  currency        String
-  unit_amount     Decimal          @db.Decimal(18, 2)
-  type            PriceType        @default(ONE_TIME)
-  interval        BillingInterval?
-  interval_count  Int?
-  trial_days      Int?
+  id             String           @id @default(uuid())
+  product_id     String
+  name           String?
+  currency       String
+  unit_amount    Decimal          @db.Decimal(18, 2)
+  type           PriceType        @default(ONE_TIME)
+  interval       BillingInterval?
+  interval_count Int?
+  trial_days     Int?
   /// Setup fee charged on first subscription invoice.
-  setup_fee       Decimal?         @db.Decimal(18, 2)
-  stripe_price_id String?          @unique
-  is_active       Boolean          @default(true)
-  created_at      DateTime         @default(now())
-  updated_at      DateTime         @updatedAt
+  setup_fee      Decimal?         @db.Decimal(18, 2)
+  is_active      Boolean          @default(true)
+  created_at     DateTime         @default(now())
+  updated_at     DateTime         @updatedAt
 
   product            Product            @relation(fields: [product_id], references: [id], onDelete: Cascade)
   invoice_line_items InvoiceLineItem[]
@@ -5977,17 +6007,16 @@ model Price {
 
 /// 08 "Taxes & Discounts" — tax rates incl. VAT and regional rules.
 model TaxRate {
-  id                 String      @id @default(uuid())
-  organization_id    String
-  name               String
-  percentage         Decimal     @db.Decimal(5, 2)
-  country            String?
-  region             String?
-  behavior           TaxBehavior @default(EXCLUSIVE)
-  is_default         Boolean     @default(false)
-  stripe_tax_rate_id String?     @unique
-  is_active          Boolean     @default(true)
-  created_at         DateTime    @default(now())
+  id              String      @id @default(uuid())
+  organization_id String
+  name            String
+  percentage      Decimal     @db.Decimal(5, 2)
+  country         String?
+  region          String?
+  behavior        TaxBehavior @default(EXCLUSIVE)
+  is_default      Boolean     @default(false)
+  is_active       Boolean     @default(true)
+  created_at      DateTime    @default(now())
 
   organization                    Organization            @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   products                        Product[]
@@ -6005,22 +6034,21 @@ model TaxRate {
 
 /// 08 "Taxes & Discounts" — percentage or fixed discounts, reusable as coupons.
 model Coupon {
-  id               String         @id @default(uuid())
-  organization_id  String
-  name             String
-  code             String?
-  type             DiscountType
-  value            Decimal        @db.Decimal(18, 2)
-  currency         String?
-  duration         CouponDuration @default(ONCE)
-  duration_months  Int?
-  max_redemptions  Int?
-  redemptions      Int            @default(0)
-  valid_from       DateTime?
-  valid_until      DateTime?
-  stripe_coupon_id String?        @unique
-  is_active        Boolean        @default(true)
-  created_at       DateTime       @default(now())
+  id              String         @id @default(uuid())
+  organization_id String
+  name            String
+  code            String?
+  type            DiscountType
+  value           Decimal        @db.Decimal(18, 2)
+  currency        String?
+  duration        CouponDuration @default(ONCE)
+  duration_months Int?
+  max_redemptions Int?
+  redemptions     Int            @default(0)
+  valid_from      DateTime?
+  valid_until     DateTime?
+  is_active       Boolean        @default(true)
+  created_at      DateTime       @default(now())
 
   organization  Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   invoices      Invoice[]
@@ -6103,7 +6131,12 @@ model Invoice {
   template_id                       String?
   /// Generated PDF (17); id only.
   pdf_document_id                   String?
-  stripe_invoice_id                 String?             @unique
+  /// 08 "Payment Providers" — connection that collects this invoice; null = paid outside a provider (bank transfer, cash).
+  /// Fixed when the invoice is finalized or when the customer starts an online payment (08 routing rules).
+  provider_connection_id            String?
+  /// Invoice object at the provider when it has one (e.g. Stripe invoice); null when the platform issues the invoice itself.
+  provider_invoice_id               String?
+  /// Payment page for the customer: the provider's hosted page or the portal (07) pay link.
   hosted_invoice_url                String?
   is_recurring                      Boolean             @default(false)
   scheduled_send_at                 DateTime?
@@ -6120,17 +6153,18 @@ model Invoice {
   created_at                        DateTime            @default(now())
   updated_at                        DateTime            @updatedAt
 
-  organization    Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  branch          Branch?          @relation(fields: [branch_id], references: [id], onDelete: SetNull)
-  billing_profile BillingProfile   @relation(fields: [billing_profile_id], references: [id], onDelete: Restrict)
-  company         CrmCompany       @relation(fields: [company_id], references: [id], onDelete: Restrict)
-  project         Project?         @relation(fields: [project_id], references: [id], onDelete: SetNull)
-  contract        Contract?        @relation(fields: [contract_id], references: [id], onDelete: SetNull)
-  subscription    Subscription?    @relation(fields: [subscription_id], references: [id], onDelete: SetNull)
-  coupon          Coupon?          @relation(fields: [coupon_id], references: [id], onDelete: SetNull)
-  template        InvoiceTemplate? @relation(fields: [template_id], references: [id], onDelete: SetNull)
-  revises         Invoice?         @relation("InvoiceRevision", fields: [revises_invoice_id], references: [id], onDelete: SetNull)
-  revised_by      Invoice?         @relation("InvoiceRevision")
+  organization        Organization               @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  provider_connection PaymentProviderConnection? @relation(fields: [provider_connection_id], references: [id], onDelete: SetNull)
+  branch              Branch?                    @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  billing_profile     BillingProfile             @relation(fields: [billing_profile_id], references: [id], onDelete: Restrict)
+  company             CrmCompany                 @relation(fields: [company_id], references: [id], onDelete: Restrict)
+  project             Project?                   @relation(fields: [project_id], references: [id], onDelete: SetNull)
+  contract            Contract?                  @relation(fields: [contract_id], references: [id], onDelete: SetNull)
+  subscription        Subscription?              @relation(fields: [subscription_id], references: [id], onDelete: SetNull)
+  coupon              Coupon?                    @relation(fields: [coupon_id], references: [id], onDelete: SetNull)
+  template            InvoiceTemplate?           @relation(fields: [template_id], references: [id], onDelete: SetNull)
+  revises             Invoice?                   @relation("InvoiceRevision", fields: [revises_invoice_id], references: [id], onDelete: SetNull)
+  revised_by          Invoice?                   @relation("InvoiceRevision")
 
   line_items                     InvoiceLineItem[]
   allocations                    PaymentAllocation[]
@@ -6142,6 +6176,7 @@ model Invoice {
   time_entries                   TimeEntry[]
   proposal_payment_schedule_item ProposalPaymentScheduleItem? @relation(fields: [proposal_payment_schedule_item_id], references: [id], onDelete: SetNull)
 
+  @@unique([provider_connection_id, provider_invoice_id])
   @@unique([organization_id, number])
   @@index([organization_id, status])
   @@index([company_id, status])
@@ -6211,44 +6246,51 @@ model InvoiceReminder {
 
 /// 08 "Payments" — a payment received (online or manually recorded). Allocations split it across invoices.
 model Payment {
-  id                  String            @id @default(uuid())
-  organization_id     String
-  billing_profile_id  String?
-  payment_method_id   String?
-  provider            PaymentProvider   @default(STRIPE)
-  provider_payment_id String?
-  method_type         PaymentMethodType @default(CARD)
-  status              PaymentStatus     @default(PENDING)
-  currency            String
-  amount              Decimal           @db.Decimal(18, 2)
-  fee_amount          Decimal           @default(0) @db.Decimal(18, 2)
+  id                     String            @id @default(uuid())
+  organization_id        String
+  billing_profile_id     String?
+  payment_method_id      String?
+  provider               PaymentProvider
+  /// 08 "Payment Providers" — connection that processed the payment; null for MANUAL / BANK.
+  provider_connection_id String?
+  /// Provider transaction id (Stripe payment intent, Viva Wallet transaction id, PayPal capture id …).
+  provider_payment_id    String?
+  /// Hosted checkout that started the payment (Stripe Checkout session, Viva Wallet order code, PayPal order id).
+  provider_checkout_id   String?
+  method_type            PaymentMethodType @default(CARD)
+  status                 PaymentStatus     @default(PENDING)
+  currency               String
+  amount                 Decimal           @db.Decimal(18, 2)
+  fee_amount             Decimal           @default(0) @db.Decimal(18, 2)
   /// 08 "Payments" — tax / VAT portion of the amount, for the ledger (09 VAT management).
-  tax_amount          Decimal           @default(0) @db.Decimal(18, 2)
-  net_amount          Decimal?          @db.Decimal(18, 2)
-  refunded_amount     Decimal           @default(0) @db.Decimal(18, 2)
+  tax_amount             Decimal           @default(0) @db.Decimal(18, 2)
+  net_amount             Decimal?          @db.Decimal(18, 2)
+  refunded_amount        Decimal           @default(0) @db.Decimal(18, 2)
   /// deposit | milestone | invoice | subscription | one_time
-  kind                String?
-  reference           String?
-  failure_code        String?
-  failure_message     String?
+  kind                   String?
+  reference              String?
+  failure_code           String?
+  failure_message        String?
   /// Receipt document (17); id only.
-  receipt_document_id String?
-  received_at         DateTime?
-  recorded_by_user_id String?
-  metadata            Json?
-  created_at          DateTime          @default(now())
-  updated_at          DateTime          @updatedAt
+  receipt_document_id    String?
+  received_at            DateTime?
+  recorded_by_user_id    String?
+  metadata               Json?
+  created_at             DateTime          @default(now())
+  updated_at             DateTime          @updatedAt
 
-  organization         Organization        @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  billing_profile      BillingProfile?     @relation(fields: [billing_profile_id], references: [id], onDelete: SetNull)
-  payment_method       PaymentMethod?      @relation(fields: [payment_method_id], references: [id], onDelete: SetNull)
+  organization         Organization               @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  billing_profile      BillingProfile?            @relation(fields: [billing_profile_id], references: [id], onDelete: SetNull)
+  payment_method       PaymentMethod?             @relation(fields: [payment_method_id], references: [id], onDelete: SetNull)
+  provider_connection  PaymentProviderConnection? @relation(fields: [provider_connection_id], references: [id], onDelete: SetNull)
   allocations          PaymentAllocation[]
   refunds              Refund[]
-  origin_ledger_record LedgerRecord?       @relation("LedgerRecordOriginPayment")
+  origin_ledger_record LedgerRecord?              @relation("LedgerRecordOriginPayment")
   ledger_settlements   LedgerSettlement[]
-  receipt_document     Document?           @relation("PaymentReceipt", fields: [receipt_document_id], references: [id], onDelete: SetNull)
+  receipt_document     Document?                  @relation("PaymentReceipt", fields: [receipt_document_id], references: [id], onDelete: SetNull)
 
-  @@unique([provider, provider_payment_id])
+  @@unique([provider_connection_id, provider_payment_id])
+  @@index([provider_connection_id, provider_checkout_id])
   @@index([organization_id, status])
   @@index([billing_profile_id])
   @@index([received_at])
@@ -6286,39 +6328,42 @@ model Refund {
   payment            Payment            @relation(fields: [payment_id], references: [id], onDelete: Cascade)
   ledger_settlements LedgerSettlement[]
 
-  @@unique([provider_refund_id])
+  @@unique([payment_id, provider_refund_id])
   @@index([payment_id])
   @@map("refunds")
 }
 
 /// 08 "Invoicing" — credit notes issued against an invoice. Numbered via NumberSequence.
 model CreditNote {
-  id                    String           @id @default(uuid())
-  organization_id       String
-  billing_profile_id    String
-  invoice_id            String?
-  number                String
-  status                CreditNoteStatus @default(DRAFT)
-  currency              String
-  subtotal              Decimal          @default(0) @db.Decimal(18, 2)
-  tax_total             Decimal          @default(0) @db.Decimal(18, 2)
-  total                 Decimal          @default(0) @db.Decimal(18, 2)
-  reason                String?
+  id                      String           @id @default(uuid())
+  organization_id         String
+  billing_profile_id      String
+  invoice_id              String?
+  number                  String
+  status                  CreditNoteStatus @default(DRAFT)
+  currency                String
+  subtotal                Decimal          @default(0) @db.Decimal(18, 2)
+  tax_total               Decimal          @default(0) @db.Decimal(18, 2)
+  total                   Decimal          @default(0) @db.Decimal(18, 2)
+  reason                  String?
   /// Line items mirrored from the invoice: [{ description, quantity, unit_amount, tax_percent, amount }].
-  lines                 Json?
-  pdf_document_id       String?
-  stripe_credit_note_id String?          @unique
-  issued_at             DateTime?
-  applied_at            DateTime?
-  voided_at             DateTime?
-  created_by_user_id    String?
-  created_at            DateTime         @default(now())
+  lines                   Json?
+  pdf_document_id         String?
+  provider_connection_id  String?
+  provider_credit_note_id String?
+  issued_at               DateTime?
+  applied_at              DateTime?
+  voided_at               DateTime?
+  created_by_user_id      String?
+  created_at              DateTime         @default(now())
 
-  organization    Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  billing_profile BillingProfile @relation(fields: [billing_profile_id], references: [id], onDelete: Restrict)
-  invoice         Invoice?       @relation(fields: [invoice_id], references: [id], onDelete: SetNull)
-  pdf_document    Document?      @relation("CreditNotePdf", fields: [pdf_document_id], references: [id], onDelete: SetNull)
+  organization        Organization               @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  provider_connection PaymentProviderConnection? @relation(fields: [provider_connection_id], references: [id], onDelete: SetNull)
+  billing_profile     BillingProfile             @relation(fields: [billing_profile_id], references: [id], onDelete: Restrict)
+  invoice             Invoice?                   @relation(fields: [invoice_id], references: [id], onDelete: SetNull)
+  pdf_document        Document?                  @relation("CreditNotePdf", fields: [pdf_document_id], references: [id], onDelete: SetNull)
 
+  @@unique([provider_connection_id, provider_credit_note_id])
   @@unique([organization_id, number])
   @@index([invoice_id])
   @@map("credit_notes")
@@ -6328,55 +6373,62 @@ model CreditNote {
 
 /// 08 "Subscription Management" — multiple active subscriptions per customer.
 model Subscription {
-  id                     String             @id @default(uuid())
-  organization_id        String
-  billing_profile_id     String
-  company_id             String
-  project_id             String?
-  contract_id            String?
+  id                       String             @id @default(uuid())
+  organization_id          String
+  billing_profile_id       String
+  company_id               String
+  project_id               String?
+  contract_id              String?
   /// 08 "Proposals & Quotations" — accepted proposal version (03) that created this subscription; permanent link.
-  proposal_version_id    String?
-  status                 SubscriptionStatus @default(INCOMPLETE)
-  currency               String
-  interval               BillingInterval    @default(MONTH)
-  interval_count         Int                @default(1)
-  collection_method      CollectionMethod   @default(CHARGE_AUTOMATICALLY)
-  coupon_id              String?
-  trial_start            DateTime?
-  trial_end              DateTime?
-  current_period_start   DateTime?
-  current_period_end     DateTime?
-  started_at             DateTime?
+  proposal_version_id      String?
+  status                   SubscriptionStatus @default(INCOMPLETE)
+  currency                 String
+  interval                 BillingInterval    @default(MONTH)
+  interval_count           Int                @default(1)
+  collection_method        CollectionMethod   @default(CHARGE_AUTOMATICALLY)
+  coupon_id                String?
+  trial_start              DateTime?
+  trial_end                DateTime?
+  current_period_start     DateTime?
+  current_period_end       DateTime?
+  started_at               DateTime?
   /// Scheduled cancellation at period end (08 "Scheduled cancellations").
-  cancel_at              DateTime?
-  cancel_at_period_end   Boolean            @default(false)
-  cancelled_at           DateTime?
-  cancellation_reason    String?
-  paused_at              DateTime?
-  resume_at              DateTime?
-  ended_at               DateTime?
-  stripe_subscription_id String?            @unique
+  cancel_at                DateTime?
+  cancel_at_period_end     Boolean            @default(false)
+  cancelled_at             DateTime?
+  cancellation_reason      String?
+  paused_at                DateTime?
+  resume_at                DateTime?
+  ended_at                 DateTime?
+  /// 08 "Payment Providers" — connection that charges this subscription.
+  provider_connection_id   String?
+  /// Subscription object at the provider (Stripe, PayPal, Mollie). Null when the platform runs the schedule itself
+  /// (providers without native subscriptions, e.g. Viva Wallet recurring card tokens): 20 creates each invoice and
+  /// charges the saved PaymentMethod.
+  provider_subscription_id String?
   /// 08 "Subscription Management" — one-time setup fee charged on the first invoice; overrides Price.setup_fee for custom (proposal-derived) items.
-  setup_fee              Decimal?           @db.Decimal(18, 2)
-  setup_fee_invoiced_at  DateTime?
+  setup_fee                Decimal?           @db.Decimal(18, 2)
+  setup_fee_invoiced_at    DateTime?
   /// Snapshot of recurring total per period.
-  period_amount          Decimal            @default(0) @db.Decimal(18, 2)
-  metadata               Json?
-  created_by_user_id     String?
-  created_at             DateTime           @default(now())
-  updated_at             DateTime           @updatedAt
+  period_amount            Decimal            @default(0) @db.Decimal(18, 2)
+  metadata                 Json?
+  created_by_user_id       String?
+  created_at               DateTime           @default(now())
+  updated_at               DateTime           @updatedAt
 
-  organization    Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  billing_profile BillingProfile     @relation(fields: [billing_profile_id], references: [id], onDelete: Restrict)
-  company         CrmCompany         @relation(fields: [company_id], references: [id], onDelete: Restrict)
-  project         Project?           @relation(fields: [project_id], references: [id], onDelete: SetNull)
-  contract        Contract?          @relation(fields: [contract_id], references: [id], onDelete: SetNull)
-  coupon          Coupon?            @relation(fields: [coupon_id], references: [id], onDelete: SetNull)
-  items           SubscriptionItem[]
-  invoices        Invoice[]
-  proposals       Proposal[]         @relation("ProposalSubscription")
-  ledger_records  LedgerRecord[]
+  organization        Organization               @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  provider_connection PaymentProviderConnection? @relation(fields: [provider_connection_id], references: [id], onDelete: SetNull)
+  billing_profile     BillingProfile             @relation(fields: [billing_profile_id], references: [id], onDelete: Restrict)
+  company             CrmCompany                 @relation(fields: [company_id], references: [id], onDelete: Restrict)
+  project             Project?                   @relation(fields: [project_id], references: [id], onDelete: SetNull)
+  contract            Contract?                  @relation(fields: [contract_id], references: [id], onDelete: SetNull)
+  coupon              Coupon?                    @relation(fields: [coupon_id], references: [id], onDelete: SetNull)
+  items               SubscriptionItem[]
+  invoices            Invoice[]
+  proposals           Proposal[]                 @relation("ProposalSubscription")
+  ledger_records      LedgerRecord[]
 
+  @@unique([provider_connection_id, provider_subscription_id])
   @@index([organization_id, status])
   @@index([company_id, status])
   @@index([current_period_end])
@@ -6385,21 +6437,22 @@ model Subscription {
 
 /// 08 — plan lines of a subscription (upgrades/downgrades change items, history in audit_events).
 model SubscriptionItem {
-  id              String   @id @default(uuid())
-  subscription_id String
-  product_id      String?
-  price_id        String?
-  description     String?
-  quantity        Decimal  @default(1) @db.Decimal(12, 3)
-  unit_amount     Decimal  @db.Decimal(18, 2)
-  stripe_item_id  String?  @unique
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  id               String   @id @default(uuid())
+  subscription_id  String
+  product_id       String?
+  price_id         String?
+  description      String?
+  quantity         Decimal  @default(1) @db.Decimal(12, 3)
+  unit_amount      Decimal  @db.Decimal(18, 2)
+  provider_item_id String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
 
   subscription Subscription @relation(fields: [subscription_id], references: [id], onDelete: Cascade)
   product      Product?     @relation(fields: [product_id], references: [id], onDelete: SetNull)
   price        Price?       @relation(fields: [price_id], references: [id], onDelete: SetNull)
 
+  @@unique([subscription_id, provider_item_id])
   @@index([subscription_id])
   @@map("subscription_items")
 }
@@ -6450,50 +6503,107 @@ model ProjectBillingSettings {
   @@map("project_billing_settings")
 }
 
-/// 08 "Payments" — the organization's connection to a payment provider (Stripe account / API keys today).
-/// Resolves incoming provider webhooks (ProviderWebhookEvent) to an organization and holds the per-tenant provider
-/// identity; secrets live behind credentials_ref (envelope encryption, 17 §12), never in plain text.
+/// 08 "Payment Providers" — one connected payment provider account of an organization. An organization can connect
+/// several providers (Stripe, Viva Wallet, PayPal …) and several accounts of the same provider (per country, per
+/// branch, test and live). Resolves incoming provider webhooks (ProviderWebhookEvent) to an organization and holds the
+/// per-tenant provider identity; secrets live behind credentials_ref (envelope encryption, 17 §12), never in plain text.
 model PaymentProviderConnection {
-  id                   String          @id @default(uuid())
-  organization_id      String
-  provider             PaymentProvider @default(STRIPE)
-  /// Provider-side account identifier (Stripe acct_…).
-  provider_account_id  String?
+  id                       String                          @id @default(uuid())
+  organization_id          String
+  provider                 PaymentProvider
+  /// Label shown to admins and, when several are offered, to customers at checkout ("Stripe EU", "Viva Wallet GR").
+  display_name             String
+  status                   PaymentProviderConnectionStatus @default(PENDING)
+  /// Provider-side account identifier (Stripe acct_…, Viva Wallet merchant id, PayPal merchant id).
+  provider_account_id      String?
   /// live | test
-  mode                 String          @default("live")
-  /// Reference to encrypted credentials (API key, webhook signing secret); never plain text.
-  credentials_ref      String?
-  /// Non-secret provider options (statement descriptor, automatic tax, default payment method types).
-  config               Json?
-  is_default           Boolean         @default(true)
-  connected_by_user_id String?
-  connected_at         DateTime?
-  disconnected_at      DateTime?
-  last_checked_at      DateTime?
-  last_error           String?
-  created_at           DateTime        @default(now())
-  updated_at           DateTime        @updatedAt
+  mode                     String                          @default("live")
+  /// Reference to encrypted credentials (API keys, OAuth tokens, webhook signing secret); never plain text.
+  credentials_ref          String?
+  /// Non-secret provider options (statement descriptor, automatic tax, Viva Wallet source code, checkout branding).
+  config                   Json?
+  /// What the adapter supports for this account, refreshed on connect and on health checks:
+  /// { recurring, saved_methods, refunds, partial_refunds, provider_invoices, provider_subscriptions, payouts }.
+  capabilities             Json?
+  /// Routing (08 "Payment Providers"): currencies and method types this connection collects; empty = everything the
+  /// provider supports. Lower priority wins among matching connections; is_default breaks the remaining tie.
+  currencies               String[]                        @default([])
+  method_types             PaymentMethodType[]             @default([])
+  priority                 Int                             @default(100)
+  /// At most one default per organization and mode (enforced by the service).
+  is_default               Boolean                         @default(false)
+  /// 01 §34 — limit the connection to one branch; null = whole organization.
+  branch_id                String?
+  /// 09 — ledger payment method that payouts and fees of this connection are booked against.
+  ledger_payment_method_id String?
+  connected_by_user_id     String?
+  connected_at             DateTime?
+  disconnected_at          DateTime?
+  last_checked_at          DateTime?
+  last_error               String?
+  created_at               DateTime                        @default(now())
+  updated_at               DateTime                        @updatedAt
 
-  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  organization          Organization            @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  branch                Branch?                 @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  ledger_payment_method LedgerPaymentMethod?    @relation(fields: [ledger_payment_method_id], references: [id], onDelete: SetNull)
+  provider_objects      PaymentProviderObject[]
+  payment_methods       PaymentMethod[]
+  payments              Payment[]
+  invoices              Invoice[]
+  credit_notes          CreditNote[]
+  subscriptions         Subscription[]
+  preferred_by_profiles BillingProfile[]        @relation("BillingProfilePreferredProvider")
+  webhook_events        ProviderWebhookEvent[]
 
-  @@unique([provider, provider_account_id])
+  @@unique([provider, provider_account_id, mode])
   @@index([organization_id, provider])
+  @@index([organization_id, status])
   @@map("payment_provider_connections")
 }
 
-/// Idempotent processing of provider webhooks (Stripe today; signature providers also use SignatureEvent).
-model ProviderWebhookEvent {
-  id                String    @id @default(uuid())
-  organization_id   String?
-  provider          String
-  provider_event_id String
-  event_type        String
-  payload           Json
-  received_at       DateTime  @default(now())
-  processed_at      DateTime?
-  error             String?
+/// 08 "Payment Providers" — the copy of a platform billing record at one provider connection (customer, product,
+/// price, tax rate, coupon). One row per record and connection, so the same product or customer can be synced to
+/// Stripe and Viva Wallet at once. local_id is the id of the BillingProfile / Product / Price / TaxRate / Coupon
+/// named by object_type.
+model PaymentProviderObject {
+  id                     String             @id @default(uuid())
+  organization_id        String
+  provider_connection_id String
+  object_type            ProviderObjectType
+  local_id               String
+  provider_object_id     String
+  last_synced_at         DateTime?
+  last_error             String?
+  metadata               Json?
+  created_at             DateTime           @default(now())
+  updated_at             DateTime           @updatedAt
 
-  organization         Organization?       @relation(fields: [organization_id], references: [id], onDelete: SetNull)
+  organization        Organization              @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  provider_connection PaymentProviderConnection @relation(fields: [provider_connection_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider_connection_id, object_type, local_id], map: "payment_provider_objects_connection_local_key")
+  @@unique([provider_connection_id, object_type, provider_object_id], map: "payment_provider_objects_connection_remote_key")
+  @@index([organization_id, object_type, local_id])
+  @@map("payment_provider_objects")
+}
+
+/// Idempotent processing of provider webhooks (payment providers, email/SMS providers; signature providers also use SignatureEvent).
+model ProviderWebhookEvent {
+  id                     String    @id @default(uuid())
+  organization_id        String?
+  /// 08 "Payment Providers" — payment connection the webhook was verified against; null for non-payment providers.
+  provider_connection_id String?
+  provider               String
+  provider_event_id      String
+  event_type             String
+  payload                Json
+  received_at            DateTime  @default(now())
+  processed_at           DateTime?
+  error                  String?
+
+  organization         Organization?              @relation(fields: [organization_id], references: [id], onDelete: SetNull)
+  provider_connection  PaymentProviderConnection? @relation(fields: [provider_connection_id], references: [id], onDelete: SetNull)
   comm_delivery_events CommDeliveryEvent[]
 
   @@unique([provider, provider_event_id])
@@ -6774,7 +6884,7 @@ model LedgerCategory {
   @@map("ledger_categories")
 }
 
-/// 09 "Financial Categories" — custom payment methods (bank account X, cash, company card, Stripe …),
+/// 09 "Financial Categories" — custom payment methods (bank account X, cash, company card, Stripe, Viva Wallet …),
 /// classified by the platform PaymentMethodType (08).
 model LedgerPaymentMethod {
   id              String            @id @default(uuid())
@@ -6792,11 +6902,12 @@ model LedgerPaymentMethod {
 
   organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
 
-  records            LedgerRecord[]
-  settlements        LedgerSettlement[]
-  recurring_expenses RecurringExpense[]
-  payroll_schedules  PayrollSchedule[]
-  payroll_entries    PayrollEntry[]
+  provider_connections PaymentProviderConnection[]
+  records              LedgerRecord[]
+  settlements          LedgerSettlement[]
+  recurring_expenses   RecurringExpense[]
+  payroll_schedules    PayrollSchedule[]
+  payroll_entries      PayrollEntry[]
 
   @@unique([organization_id, slug])
   @@map("ledger_payment_methods")
@@ -6897,7 +7008,7 @@ model LedgerRecord {
   /// 08 invoice that produced this income record: exactly one record per invoice row; a revised invoice is a
   /// new row and therefore a new record (the superseded record is VOIDED, see LedgerRecordStatus).
   invoice_id                String?             @unique
-  /// 08 payment that produced this income record when it is not allocated to an invoice (one-off Stripe/bank/cash payment).
+  /// 08 payment that produced this income record when it is not allocated to an invoice (one-off provider/bank/cash payment).
   origin_payment_id         String?             @unique
   subscription_id           String?
   contract_id               String?
@@ -17663,7 +17774,7 @@ model CalendarConferencingAccount {
 // inbound webhook endpoints, run locks and per-organization engine settings.
 // Does not own: the records actions touch (tasks 06, tickets 13, projects 05, …), notification
 // delivery (14), outbound email/SMS (11), chat messages (12), service accounts (01 §76),
-// provider webhooks such as Stripe (08 provider_webhook_events), the audit log (01). Rule
+// provider webhooks such as payment providers (08 provider_webhook_events), the audit log (01). Rule
 // create/edit/enable and destructive runs are also written to audit_events (20 §11).
 // =====================================================================
 

@@ -12,7 +12,7 @@ The platform should be a modern, scalable, AI-first system that helps software a
 
 - **Linear-inspired project and task management.** Projects, milestones, tasks, subtasks, priorities, deadlines and assignments, with real-time progress tracking.
 - **Customer portal.** Clients log in to see project status, progress, milestones and completed work. They can create requests, upload files, message the agency in a project thread, and access documents. They can also view and pay invoices, manage subscriptions, review payment history, and download invoices and quotations.
-- **Stripe-driven finance.** One-time payments, recurring subscriptions, automatic invoicing, payment tracking and subscription management, with minimal manual financial administration.
+- **Provider-agnostic finance.** Payments through one or more connected providers (Stripe, Viva Wallet and others). One-time payments, recurring subscriptions, automatic invoicing, payment tracking and subscription management, with minimal manual financial administration.
 - **AI proposal and quotation generator.** Branded PDF offers built from reusable templates, project information, pricing, timelines and requirements. Offers can be reviewed, edited, exported and sent directly to clients.
 - **Communication module.** Individual and bulk email and SMS for project updates, payment reminders, campaigns and maintenance notices, using reusable templates and AI-generated content.
 - **Employee management.** Employees, departments, vacations, sick leave, days off, internal notes, workload and project assignments.
@@ -32,7 +32,7 @@ Modules are listed in recommended build order. Each links to its detailed spec.
 | 5 | Project Management | Operational delivery layer: workspaces, milestones, risks, change requests, health and reporting. | [05](./features/05-project-management.md) |
 | 6 | Task Management | Linear-style tasks, subtasks, views, agile planning, workload and AI assistance. | [06](./features/06-task-management.md) |
 | 7 | Customer Portal | Customer-facing surface: visibility, requests, deliverable approvals, documents and self-service finance. | [07](./features/07-customer-portal.md) |
-| 8 | Financial Management & Stripe | Invoices, payments, subscriptions, quotes, taxes, dashboards and project billing. | [08](./features/08-financial-management-stripe-integration.md) |
+| 8 | Financial Management & Payment Providers | Invoices, payments, subscriptions, quotes, taxes, dashboards and project billing. | [08](./features/08-financial-management-stripe-integration.md) |
 | 9 | Income & Expense Management | Bookkeeping: income and expense records, OCR invoice intake, VAT, payroll costs, P&L and project profitability. | [09](./features/09-income-expense-management.md) |
 | 10 | Employee Management | HR and workforce: profiles, leave, attendance, workload, performance and skills. | [10](./features/10-employee-management-system.md) |
 | 11 | Communication Center | Email and SMS, campaigns, templates, segmentation, delivery tracking and automation. | [11](./features/11-communication-center.md) |
@@ -60,7 +60,7 @@ These principles recur across the feature specs.
    - 05 Projects owns delivery context: milestones, deliverables, workstreams, risks, project issues, project change requests, planned allocation.
    - 06 Task Management owns the only Task entity and Releases.
    - 07 Customer Portal owns the customer-facing surface only.
-   - 08 Finance owns billing: invoices, payments, subscriptions, the products and services catalog, Stripe.
+   - 08 Finance owns billing: invoices, payments, subscriptions, the products and services catalog, payment providers.
    - 09 Income & Expense owns the ledger: income and expense records, VAT, payroll expense, P&L, profitability.
    - 10 Employees owns HR data, compensation, availability and capacity.
    - 11 Communication Center owns outbound email/SMS and campaigns, and delivers notification email/SMS.
@@ -153,7 +153,7 @@ Canonical terms for all specs, Linear issues and code. Synonyms in the right col
 
 ## 6. Integrations
 
-- **Payments:** Stripe.
+- **Payments:** provider abstraction with several connections per organization (Stripe and Viva Wallet at launch; PayPal, Mollie, Adyen later). See 08 "Payment Providers".
 - **Email and SMS:** providers behind the Communication Center. Local API development uses `.env.staging` for working keys.
 - **E-signature:** provider abstraction (for example DocuSign, Dropbox Sign, Adobe Acrobat Sign).
 - **AI:** one shared AI integration layer used by every module (drafting, classification, extraction, retrieval over 15 Business Docs and 13 knowledge base, automation AI steps). Models are configurable per capability behind the layer; Support (13) specifies the JEV model from Typesafe AI for classification and the support agent.

@@ -7,10 +7,22 @@
  */
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma';
-import { PERMISSION_CATALOG, ROLE_TEMPLATES, resolvePermissionKeys } from './seed/permission-catalog';
+import { PERMISSION_CATALOG, RENAMED_PERMISSION_KEYS, ROLE_TEMPLATES, resolvePermissionKeys } from './seed/permission-catalog';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL as string });
 const prisma = new PrismaClient({ adapter });
+
+async function renamePermissions() {
+  for (const [oldKey, newKey] of Object.entries(RENAMED_PERMISSION_KEYS)) {
+    const existing = await prisma.permission.findUnique({ where: { key: oldKey } });
+    if (!existing) continue;
+    if (await prisma.permission.findUnique({ where: { key: newKey } })) {
+      throw new Error(`Cannot rename permission "${oldKey}" to "${newKey}": both exist. Merge their grants manually.`);
+    }
+    await prisma.permission.update({ where: { id: existing.id }, data: { key: newKey } });
+    console.log(`permission renamed: ${oldKey} → ${newKey}`);
+  }
+}
 
 async function seedPermissions() {
   for (const p of PERMISSION_CATALOG) {
@@ -74,6 +86,7 @@ async function seedRoleTemplates() {
 }
 
 async function main() {
+  await renamePermissions();
   await seedPermissions();
   await seedRoleTemplates();
 }

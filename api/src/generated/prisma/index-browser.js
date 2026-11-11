@@ -2415,7 +2415,7 @@ exports.Prisma.BillingProfileScalarFieldEnum = {
   payment_terms_days: 'payment_terms_days',
   dunning_policy_id: 'dunning_policy_id',
   default_payment_method_id: 'default_payment_method_id',
-  stripe_customer_id: 'stripe_customer_id',
+  preferred_provider_connection_id: 'preferred_provider_connection_id',
   custom_pricing: 'custom_pricing',
   notes: 'notes',
   created_at: 'created_at',
@@ -2427,6 +2427,7 @@ exports.Prisma.PaymentMethodScalarFieldEnum = {
   billing_profile_id: 'billing_profile_id',
   type: 'type',
   provider: 'provider',
+  provider_connection_id: 'provider_connection_id',
   provider_method_id: 'provider_method_id',
   brand: 'brand',
   last4: 'last4',
@@ -2447,7 +2448,6 @@ exports.Prisma.ProductScalarFieldEnum = {
   description: 'description',
   unit: 'unit',
   default_tax_rate_id: 'default_tax_rate_id',
-  stripe_product_id: 'stripe_product_id',
   is_active: 'is_active',
   archived_at: 'archived_at',
   created_at: 'created_at',
@@ -2465,7 +2465,6 @@ exports.Prisma.PriceScalarFieldEnum = {
   interval_count: 'interval_count',
   trial_days: 'trial_days',
   setup_fee: 'setup_fee',
-  stripe_price_id: 'stripe_price_id',
   is_active: 'is_active',
   created_at: 'created_at',
   updated_at: 'updated_at'
@@ -2480,7 +2479,6 @@ exports.Prisma.TaxRateScalarFieldEnum = {
   region: 'region',
   behavior: 'behavior',
   is_default: 'is_default',
-  stripe_tax_rate_id: 'stripe_tax_rate_id',
   is_active: 'is_active',
   created_at: 'created_at'
 };
@@ -2499,7 +2497,6 @@ exports.Prisma.CouponScalarFieldEnum = {
   redemptions: 'redemptions',
   valid_from: 'valid_from',
   valid_until: 'valid_until',
-  stripe_coupon_id: 'stripe_coupon_id',
   is_active: 'is_active',
   created_at: 'created_at'
 };
@@ -2556,7 +2553,8 @@ exports.Prisma.InvoiceScalarFieldEnum = {
   footer: 'footer',
   template_id: 'template_id',
   pdf_document_id: 'pdf_document_id',
-  stripe_invoice_id: 'stripe_invoice_id',
+  provider_connection_id: 'provider_connection_id',
+  provider_invoice_id: 'provider_invoice_id',
   hosted_invoice_url: 'hosted_invoice_url',
   is_recurring: 'is_recurring',
   scheduled_send_at: 'scheduled_send_at',
@@ -2613,7 +2611,9 @@ exports.Prisma.PaymentScalarFieldEnum = {
   billing_profile_id: 'billing_profile_id',
   payment_method_id: 'payment_method_id',
   provider: 'provider',
+  provider_connection_id: 'provider_connection_id',
   provider_payment_id: 'provider_payment_id',
+  provider_checkout_id: 'provider_checkout_id',
   method_type: 'method_type',
   status: 'status',
   currency: 'currency',
@@ -2668,7 +2668,8 @@ exports.Prisma.CreditNoteScalarFieldEnum = {
   reason: 'reason',
   lines: 'lines',
   pdf_document_id: 'pdf_document_id',
-  stripe_credit_note_id: 'stripe_credit_note_id',
+  provider_connection_id: 'provider_connection_id',
+  provider_credit_note_id: 'provider_credit_note_id',
   issued_at: 'issued_at',
   applied_at: 'applied_at',
   voided_at: 'voided_at',
@@ -2702,7 +2703,8 @@ exports.Prisma.SubscriptionScalarFieldEnum = {
   paused_at: 'paused_at',
   resume_at: 'resume_at',
   ended_at: 'ended_at',
-  stripe_subscription_id: 'stripe_subscription_id',
+  provider_connection_id: 'provider_connection_id',
+  provider_subscription_id: 'provider_subscription_id',
   setup_fee: 'setup_fee',
   setup_fee_invoiced_at: 'setup_fee_invoiced_at',
   period_amount: 'period_amount',
@@ -2720,7 +2722,7 @@ exports.Prisma.SubscriptionItemScalarFieldEnum = {
   description: 'description',
   quantity: 'quantity',
   unit_amount: 'unit_amount',
-  stripe_item_id: 'stripe_item_id',
+  provider_item_id: 'provider_item_id',
   created_at: 'created_at',
   updated_at: 'updated_at'
 };
@@ -2756,11 +2758,19 @@ exports.Prisma.PaymentProviderConnectionScalarFieldEnum = {
   id: 'id',
   organization_id: 'organization_id',
   provider: 'provider',
+  display_name: 'display_name',
+  status: 'status',
   provider_account_id: 'provider_account_id',
   mode: 'mode',
   credentials_ref: 'credentials_ref',
   config: 'config',
+  capabilities: 'capabilities',
+  currencies: 'currencies',
+  method_types: 'method_types',
+  priority: 'priority',
   is_default: 'is_default',
+  branch_id: 'branch_id',
+  ledger_payment_method_id: 'ledger_payment_method_id',
   connected_by_user_id: 'connected_by_user_id',
   connected_at: 'connected_at',
   disconnected_at: 'disconnected_at',
@@ -2770,9 +2780,24 @@ exports.Prisma.PaymentProviderConnectionScalarFieldEnum = {
   updated_at: 'updated_at'
 };
 
+exports.Prisma.PaymentProviderObjectScalarFieldEnum = {
+  id: 'id',
+  organization_id: 'organization_id',
+  provider_connection_id: 'provider_connection_id',
+  object_type: 'object_type',
+  local_id: 'local_id',
+  provider_object_id: 'provider_object_id',
+  last_synced_at: 'last_synced_at',
+  last_error: 'last_error',
+  metadata: 'metadata',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
 exports.Prisma.ProviderWebhookEventScalarFieldEnum = {
   id: 'id',
   organization_id: 'organization_id',
+  provider_connection_id: 'provider_connection_id',
   provider: 'provider',
   provider_event_id: 'provider_event_id',
   event_type: 'event_type',
@@ -8840,6 +8865,10 @@ exports.PaymentMethodType = exports.$Enums.PaymentMethodType = {
 
 exports.PaymentProvider = exports.$Enums.PaymentProvider = {
   STRIPE: 'STRIPE',
+  VIVA_WALLET: 'VIVA_WALLET',
+  PAYPAL: 'PAYPAL',
+  MOLLIE: 'MOLLIE',
+  ADYEN: 'ADYEN',
   MANUAL: 'MANUAL',
   BANK: 'BANK'
 };
@@ -8943,6 +8972,21 @@ exports.SubscriptionStatus = exports.$Enums.SubscriptionStatus = {
   PAUSED: 'PAUSED',
   CANCELLED: 'CANCELLED',
   EXPIRED: 'EXPIRED'
+};
+
+exports.PaymentProviderConnectionStatus = exports.$Enums.PaymentProviderConnectionStatus = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+  ERROR: 'ERROR',
+  DISCONNECTED: 'DISCONNECTED'
+};
+
+exports.ProviderObjectType = exports.$Enums.ProviderObjectType = {
+  CUSTOMER: 'CUSTOMER',
+  PRODUCT: 'PRODUCT',
+  PRICE: 'PRICE',
+  TAX_RATE: 'TAX_RATE',
+  COUPON: 'COUPON'
 };
 
 exports.LedgerCategoryKind = exports.$Enums.LedgerCategoryKind = {
@@ -11154,6 +11198,7 @@ exports.Prisma.ModelName = {
   DunningPolicy: 'DunningPolicy',
   ProjectBillingSettings: 'ProjectBillingSettings',
   PaymentProviderConnection: 'PaymentProviderConnection',
+  PaymentProviderObject: 'PaymentProviderObject',
   ProviderWebhookEvent: 'ProviderWebhookEvent',
   LedgerSettings: 'LedgerSettings',
   LedgerCategory: 'LedgerCategory',

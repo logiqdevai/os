@@ -164,7 +164,7 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'finance.dunning.manage', module: ModuleKey.FINANCE, resource: 'dunning', action: 'manage' },
   { key: 'finance.project_billing.manage', module: ModuleKey.FINANCE, resource: 'project_billing', action: 'manage' },
   { key: 'finance.reports.read', module: ModuleKey.FINANCE, resource: 'reports', action: 'read', is_sensitive: true },
-  { key: 'finance.stripe.manage', module: ModuleKey.FINANCE, resource: 'stripe', action: 'manage', is_sensitive: true },
+  { key: 'finance.payment_providers.manage', module: ModuleKey.FINANCE, resource: 'payment_providers', action: 'manage', is_sensitive: true, description: 'Connect, configure, route and disconnect payment providers (Stripe, Viva Wallet, PayPal …).' },
   ...crud(ModuleKey.INCOME_EXPENSE, 'finance', 'expenses', ['approve'], ['approve']),
   ...crud(ModuleKey.SUPPORT, 'support', 'tickets', ['assign']),
   ...crud(ModuleKey.EMPLOYEES, 'employees', 'employees'),
@@ -313,6 +313,14 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
 ];
 
 /**
+ * Renamed permission keys: old key → new key. The seed renames the existing row in place so grants on
+ * organization-defined roles keep working. Never reuse an old key for something else.
+ */
+export const RENAMED_PERMISSION_KEYS: Record<string, string> = {
+  'finance.stripe.manage': 'finance.payment_providers.manage',
+};
+
+/**
  * Role templates — 01 §44, §111 (internal) and §79 (customer portal).
  * `permissions` entries may be exact keys or glob-style prefixes ending in `*`.
  */
@@ -349,7 +357,7 @@ export const ROLE_TEMPLATES: RoleTemplateSeed[] = [
     slug: 'admin', name: 'Admin', type: RoleType.ORGANIZATION, default_scope: ScopeType.ORGANIZATION,
     description: 'Organization administrator (01 §63). Everything except billing and organization deletion.',
     modules: ALL_MODULES,
-    permissions: ['*'],
+    permissions: ['*', '!organizations.billing.manage', '!organizations.organization.delete', '!users.members.transfer_ownership'],
   },
   {
     slug: 'branch-admin', name: 'Branch Admin', type: RoleType.BRANCH, default_scope: ScopeType.BRANCH,
@@ -532,20 +540,23 @@ for (const template of ROLE_TEMPLATES) {
   template.permissions.push(...(ROLE_EXTRAS[template.slug] ?? []));
 }
 
-/** Expand glob-style template entries against the catalog. `*` matches everything. */
+/** Expand glob-style template entries against the catalog. `*` matches everything; a `!` prefix removes matches (applied after all grants). */
 export function resolvePermissionKeys(patterns: string[], catalog: PermissionSeed[]): string[] {
   const keys = new Set<string>();
-  for (const pattern of patterns) {
+  const excluded = new Set<string>();
+  for (const raw of patterns) {
+    const negate = raw.startsWith('!');
+    const pattern = negate ? raw.slice(1) : raw;
+    const target = negate ? excluded : keys;
     if (pattern === '*') {
-      catalog.forEach((p) => keys.add(p.key));
-      continue;
-    }
-    if (pattern.endsWith('*')) {
+      catalog.forEach((p) => target.add(p.key));
+    } else if (pattern.endsWith('*')) {
       const prefix = pattern.slice(0, -1);
-      catalog.filter((p) => p.key.startsWith(prefix)).forEach((p) => keys.add(p.key));
-      continue;
+      catalog.filter((p) => p.key.startsWith(prefix)).forEach((p) => target.add(p.key));
+    } else {
+      target.add(pattern);
     }
-    keys.add(pattern);
   }
+  excluded.forEach((k) => keys.delete(k));
   return [...keys];
 }

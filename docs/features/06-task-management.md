@@ -25,24 +25,24 @@
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Configuration** | | | |
-| `TaskStatus` | `task_statuses` | [L5212](../../api/prisma/schema.prisma#L5212) | 06 §3 — configurable statuses with workflow transitions. Scoped to a Team when team_id is set, otherwise organization-wide. |
-| `TaskType` | `task_types` | [L5243](../../api/prisma/schema.prisma#L5243) | 06 §3 — task types (task, bug, feature, improvement, chore, follow-up …). |
-| `TaskLabel` | `task_labels` | [L5265](../../api/prisma/schema.prisma#L5265) | 06 §3 — Linear-style labels. Platform tags (02 §36) also apply to tasks. |
-| `Cycle` | `cycles` | [L5286](../../api/prisma/schema.prisma#L5286) | 06 §4 — cycles / sprints, per team or project. |
+| `TaskStatus` | `task_statuses` | [L5214](../../api/prisma/schema.prisma#L5214) | 06 §3 — configurable statuses with workflow transitions. Scoped to a Team when team_id is set, otherwise organization-wide. |
+| `TaskType` | `task_types` | [L5245](../../api/prisma/schema.prisma#L5245) | 06 §3 — task types (task, bug, feature, improvement, chore, follow-up …). |
+| `TaskLabel` | `task_labels` | [L5267](../../api/prisma/schema.prisma#L5267) | 06 §3 — Linear-style labels. Platform tags (02 §36) also apply to tasks. |
+| `Cycle` | `cycles` | [L5288](../../api/prisma/schema.prisma#L5288) | 06 §4 — cycles / sprints, per team or project. |
 | **Task** | | | |
-| `Task` | `tasks` | [L5315](../../api/prisma/schema.prisma#L5315) | 06 §1, §3, §6, §12 — the Task record (full-text search over title/description, inline editing). Work hierarchy: Organization → Team → Project → Workstream/Mi… |
-| `TaskAssignee` | `task_assignees` | [L5423](../../api/prisma/schema.prisma#L5423) | 06 §3 — additional assignees beyond the primary assignee. |
-| `TaskLabelAssignment` | `task_label_assignments` | [L5436](../../api/prisma/schema.prisma#L5436) |  |
-| `TaskDependency` | `task_dependencies` | [L5449](../../api/prisma/schema.prisma#L5449) | 06 §3 — blocks / related / duplicates between tasks, including cross-project links. |
-| `TaskChecklistItem` | `task_checklist_items` | [L5466](../../api/prisma/schema.prisma#L5466) | 06 §3 — checklists inside a task. |
-| `TaskComment` | `task_comments` | [L5482](../../api/prisma/schema.prisma#L5482) | 06 §7 — comments with threads, mentions and reactions. Customer-visible comments surface in 07. |
-| `TaskAttachment` | `task_attachments` | [L5511](../../api/prisma/schema.prisma#L5511) | 06 §8 — attachments are Documents (17 §2). |
-| `TaskLink` | `task_links` | [L5528](../../api/prisma/schema.prisma#L5528) | 06 §13 — polymorphic link from a task to the record it originated from or serves: CRM records (02 §14), tickets (13 §4), project change requests (05), custom… |
-| `TaskStatusHistory` | `task_status_history` | [L5547](../../api/prisma/schema.prisma#L5547) | 06 §4, §11 — status transition log per task; source for lead time, cycle time, throughput and time-in-status metrics. Full field-level history stays in audit… |
-| `TaskWatcher` | `task_watchers` | [L5569](../../api/prisma/schema.prisma#L5569) | Members following a task for notifications (14). |
+| `Task` | `tasks` | [L5317](../../api/prisma/schema.prisma#L5317) | 06 §1, §3, §6, §12 — the Task record (full-text search over title/description, inline editing). Work hierarchy: Organization → Team → Project → Workstream/Mi… |
+| `TaskAssignee` | `task_assignees` | [L5425](../../api/prisma/schema.prisma#L5425) | 06 §3 — additional assignees beyond the primary assignee. |
+| `TaskLabelAssignment` | `task_label_assignments` | [L5438](../../api/prisma/schema.prisma#L5438) |  |
+| `TaskDependency` | `task_dependencies` | [L5451](../../api/prisma/schema.prisma#L5451) | 06 §3 — blocks / related / duplicates between tasks, including cross-project links. |
+| `TaskChecklistItem` | `task_checklist_items` | [L5468](../../api/prisma/schema.prisma#L5468) | 06 §3 — checklists inside a task. |
+| `TaskComment` | `task_comments` | [L5484](../../api/prisma/schema.prisma#L5484) | 06 §7 — comments with threads, mentions and reactions. Customer-visible comments surface in 07. |
+| `TaskAttachment` | `task_attachments` | [L5513](../../api/prisma/schema.prisma#L5513) | 06 §8 — attachments are Documents (17 §2). |
+| `TaskLink` | `task_links` | [L5530](../../api/prisma/schema.prisma#L5530) | 06 §13 — polymorphic link from a task to the record it originated from or serves: CRM records (02 §14), tickets (13 §4), project change requests (05), custom… |
+| `TaskStatusHistory` | `task_status_history` | [L5549](../../api/prisma/schema.prisma#L5549) | 06 §4, §11 — status transition log per task; source for lead time, cycle time, throughput and time-in-status metrics. Full field-level history stays in audit… |
+| `TaskWatcher` | `task_watchers` | [L5571](../../api/prisma/schema.prisma#L5571) | Members following a task for notifications (14). |
 | **Releases** | | | |
-| `Release` | `releases` | [L5585](../../api/prisma/schema.prisma#L5585) | 06 §9 — a shippable set of tasks. A Release may map to a Project Milestone (05). |
-| `ReleaseDeployment` | `release_deployments` | [L5619](../../api/prisma/schema.prisma#L5619) | 06 §9 — deployment status per environment. |
+| `Release` | `releases` | [L5587](../../api/prisma/schema.prisma#L5587) | 06 §9 — a shippable set of tasks. A Release may map to a Project Milestone (05). |
+| `ReleaseDeployment` | `release_deployments` | [L5621](../../api/prisma/schema.prisma#L5621) | 06 §9 — deployment status per environment. |
 
 **Owned enums (7):** `TaskStatusCategory`, `TaskPriority`, `TaskDependencyType`, `CycleStatus`, `ReleaseStatus`, `DeploymentStatus`, `TaskCommentVisibility`
 
@@ -74,15 +74,15 @@
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `ContractObligation.project_id` ([04](./04-contracts.md), [L3950](../../api/prisma/schema.prisma#L3950)) — Related Project (05) and Task (06); ids only.
-- `ProjectChecklistItem.task_id` ([05](./05-project-management.md), [L4966](../../api/prisma/schema.prisma#L4966)) — Task created from this item (06).
-- `Employee.onboarding_completed_at` ([10](./10-employee-management-system.md), [L7939](../../api/prisma/schema.prisma#L7939)) — Onboarding tasks are Tasks linked via TaskLink(EMPLOYEE) (06 §13); workflows in 20.
-- `SupportSettings.default_task_type_id` ([13](./13-customer-support-communication-hub.md), [L12006](../../api/prisma/schema.prisma#L12006)) — 13 §4 — default project / task type used when converting tickets (06 TaskType id).
-- `Ticket.release_id` ([13](./13-customer-support-communication-hub.md), [L12435](../../api/prisma/schema.prisma#L12435)) — 06 Release that shipped the fix (notified to the customer, §4); id only.
-- `SupportIncident.project_id` ([13](./13-customer-support-communication-hub.md), [L12732](../../api/prisma/schema.prisma#L12732)) — 05 Project / 06 Task the incident is tracked in; ids only.
-- `KnowledgeArticle.release_id` ([13](./13-customer-support-communication-hub.md), [L12859](../../api/prisma/schema.prisma#L12859)) — 06 Release whose notes this article publishes, when applicable; id only.
-- `WikiChecklistItem.task_type_id` ([15](./15-notion-business-docs.md), [L14410](../../api/prisma/schema.prisma#L14410)) — Task type (06 §3) for the generated Task; id only.
-- `CustomForm.opens_at` ([15](./15-notion-business-docs.md), [L14503](../../api/prisma/schema.prisma#L14503)) — Automatic 06 Task / 13 Ticket creation is configured in 20 rules; this is the default hint shown there.
+- `ContractObligation.project_id` ([04](./04-contracts.md), [L3952](../../api/prisma/schema.prisma#L3952)) — Related Project (05) and Task (06); ids only.
+- `ProjectChecklistItem.task_id` ([05](./05-project-management.md), [L4968](../../api/prisma/schema.prisma#L4968)) — Task created from this item (06).
+- `Employee.onboarding_completed_at` ([10](./10-employee-management-system.md), [L8050](../../api/prisma/schema.prisma#L8050)) — Onboarding tasks are Tasks linked via TaskLink(EMPLOYEE) (06 §13); workflows in 20.
+- `SupportSettings.default_task_type_id` ([13](./13-customer-support-communication-hub.md), [L12117](../../api/prisma/schema.prisma#L12117)) — 13 §4 — default project / task type used when converting tickets (06 TaskType id).
+- `Ticket.release_id` ([13](./13-customer-support-communication-hub.md), [L12546](../../api/prisma/schema.prisma#L12546)) — 06 Release that shipped the fix (notified to the customer, §4); id only.
+- `SupportIncident.project_id` ([13](./13-customer-support-communication-hub.md), [L12843](../../api/prisma/schema.prisma#L12843)) — 05 Project / 06 Task the incident is tracked in; ids only.
+- `KnowledgeArticle.release_id` ([13](./13-customer-support-communication-hub.md), [L12970](../../api/prisma/schema.prisma#L12970)) — 06 Release whose notes this article publishes, when applicable; id only.
+- `WikiChecklistItem.task_type_id` ([15](./15-notion-business-docs.md), [L14521](../../api/prisma/schema.prisma#L14521)) — Task type (06 §3) for the generated Task; id only.
+- `CustomForm.opens_at` ([15](./15-notion-business-docs.md), [L14614](../../api/prisma/schema.prisma#L14614)) — Automatic 06 Task / 13 Ticket creation is configured in 20 rules; this is the default hint shown there.
 
 <!-- schema-refs:end -->
 
@@ -121,7 +121,7 @@ Definition of done for each resource of this module: permission keys in the cata
 ## 1. Overview
 
 <!-- schema-section:start -->
-> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L5315))
+> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L5317))
 <!-- schema-section:end -->
 
 Develop a **Linear-inspired task management system** that provides a fast and highly responsive experience for planning, tracking and delivering work. The module covers the lifecycle of a work item from backlog to release.
@@ -135,7 +135,7 @@ Organization and Team come from 01. Project, Workstream and Milestone come from 
 ## 2. Project Context
 
 <!-- schema-section:start -->
-> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L5315)): `project_id`
+> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L5317)): `project_id`
 <!-- schema-section:end -->
 
 > Defined by → [05 Project Management](./05-project-management.md) · Linear LOG-405.
@@ -145,7 +145,7 @@ Project overview, health, objectives, templates, duplication, archive, documenta
 ## 3. Task Record
 
 <!-- schema-section:start -->
-> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L5315)): `actual_hours`, `blocked_reason`, `cloned_from_task_id`, `duplicate_of_task_id` · `TaskAssignee` ([task_assignees](../../api/prisma/schema.prisma#L5423)) · `TaskChecklistItem` ([task_checklist_items](../../api/prisma/schema.prisma#L5466)) · `TaskDependency` ([task_dependencies](../../api/prisma/schema.prisma#L5449)) · `TaskLabel` ([task_labels](../../api/prisma/schema.prisma#L5265)) · `TaskStatus` ([task_statuses](../../api/prisma/schema.prisma#L5212)): `project_type_id` · `TaskType` ([task_types](../../api/prisma/schema.prisma#L5243)): `template` · enum `TaskDependencyType` ([L5172](../../api/prisma/schema.prisma#L5172)) · enum `TaskPriority` ([L5163](../../api/prisma/schema.prisma#L5163)) · enum `TaskStatusCategory` ([L5152](../../api/prisma/schema.prisma#L5152)) — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L1570)) ([01](./01-users-organizations-permissions.md)) · `WikiChecklistItem` ([wiki_checklist_items](../../api/prisma/schema.prisma#L14410)): `task_type_id` ([15](./15-notion-business-docs.md))
+> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L5317)): `actual_hours`, `blocked_reason`, `cloned_from_task_id`, `duplicate_of_task_id` · `TaskAssignee` ([task_assignees](../../api/prisma/schema.prisma#L5425)) · `TaskChecklistItem` ([task_checklist_items](../../api/prisma/schema.prisma#L5468)) · `TaskDependency` ([task_dependencies](../../api/prisma/schema.prisma#L5451)) · `TaskLabel` ([task_labels](../../api/prisma/schema.prisma#L5267)) · `TaskStatus` ([task_statuses](../../api/prisma/schema.prisma#L5214)): `project_type_id` · `TaskType` ([task_types](../../api/prisma/schema.prisma#L5245)): `template` · enum `TaskDependencyType` ([L5174](../../api/prisma/schema.prisma#L5174)) · enum `TaskPriority` ([L5165](../../api/prisma/schema.prisma#L5165)) · enum `TaskStatusCategory` ([L5154](../../api/prisma/schema.prisma#L5154)) — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L1572)) ([01](./01-users-organizations-permissions.md)) · `WikiChecklistItem` ([wiki_checklist_items](../../api/prisma/schema.prisma#L14521)): `task_type_id` ([15](./15-notion-business-docs.md))
 <!-- schema-section:end -->
 
 Tasks should include:
@@ -183,7 +183,7 @@ Tasks should support:
 ## 4. Planning & Agile
 
 <!-- schema-section:start -->
-> **Schema:** `Cycle` ([cycles](../../api/prisma/schema.prisma#L5286)) · `TaskStatusHistory` ([task_status_history](../../api/prisma/schema.prisma#L5547)) · enum `CycleStatus` ([L5179](../../api/prisma/schema.prisma#L5179))
+> **Schema:** `Cycle` ([cycles](../../api/prisma/schema.prisma#L5288)) · `TaskStatusHistory` ([task_status_history](../../api/prisma/schema.prisma#L5549)) · enum `CycleStatus` ([L5181](../../api/prisma/schema.prisma#L5181))
 <!-- schema-section:end -->
 
 Support Agile and traditional methodologies:
@@ -198,7 +198,7 @@ Support Agile and traditional methodologies:
 ## 5. Views
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `SavedView` ([saved_views](../../api/prisma/schema.prisma#L1786)) ([02](./02-crm-sales-management.md))
+> **Schema:** other modules: `SavedView` ([saved_views](../../api/prisma/schema.prisma#L1788)) ([02](./02-crm-sales-management.md))
 <!-- schema-section:end -->
 
 Provide multiple synchronized views:
@@ -218,7 +218,7 @@ Users can save custom views, group, filter, sort and customize visible columns. 
 ## 6. Search & Filtering
 
 <!-- schema-section:start -->
-> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L5315)): `search_vector`
+> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L5317)): `search_vector`
 <!-- schema-section:end -->
 
 Full-text search across all tasks in the organization, filtered by assignee, team, project, milestone, label, priority, status, due date, tag, custom field and related record. Task search feeds the platform global search.
@@ -226,7 +226,7 @@ Full-text search across all tasks in the organization, filtered by assignee, tea
 ## 7. Collaboration
 
 <!-- schema-section:start -->
-> **Schema:** `TaskComment` ([task_comments](../../api/prisma/schema.prisma#L5482)) · enum `TaskCommentVisibility` ([L5203](../../api/prisma/schema.prisma#L5203))
+> **Schema:** `TaskComment` ([task_comments](../../api/prisma/schema.prisma#L5484)) · enum `TaskCommentVisibility` ([L5205](../../api/prisma/schema.prisma#L5205))
 <!-- schema-section:end -->
 
 * Comments with mentions, reactions and threads
@@ -238,7 +238,7 @@ Full-text search across all tasks in the organization, filtered by assignee, tea
 ## 8. Attachments & Files
 
 <!-- schema-section:start -->
-> **Schema:** `TaskAttachment` ([task_attachments](../../api/prisma/schema.prisma#L5511))
+> **Schema:** `TaskAttachment` ([task_attachments](../../api/prisma/schema.prisma#L5513))
 <!-- schema-section:end -->
 
 > Defined by → [17 Documents & File Management](./17-documents-file-management.md) · Linear LOG-407.
@@ -248,7 +248,7 @@ Tasks attach Documents. Folder organization, versions, previews, deliverable fil
 ## 9. Releases
 
 <!-- schema-section:start -->
-> **Schema:** `Release` ([releases](../../api/prisma/schema.prisma#L5585)) · `ReleaseDeployment` ([release_deployments](../../api/prisma/schema.prisma#L5619)) · enum `ReleaseStatus` ([L5187](../../api/prisma/schema.prisma#L5187))
+> **Schema:** `Release` ([releases](../../api/prisma/schema.prisma#L5587)) · `ReleaseDeployment` ([release_deployments](../../api/prisma/schema.prisma#L5621)) · enum `ReleaseStatus` ([L5189](../../api/prisma/schema.prisma#L5189))
 <!-- schema-section:end -->
 
 Task Management owns Releases:
@@ -264,7 +264,7 @@ Milestones are project checkpoints owned by 05; a Release may map to a Milestone
 ## 10. Workload
 
 <!-- schema-section:start -->
-> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L5315)): `blocked_reason`
+> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L5317)): `blocked_reason`
 <!-- schema-section:end -->
 
 Task Management provides the **task distribution** view: open tasks, estimates and due dates per assignee and team, plus bottleneck detection on blocked and overdue work.
@@ -274,7 +274,7 @@ Capacity, availability and utilization are defined by [10 Employees](./10-employ
 ## 11. Reporting & Analytics
 
 <!-- schema-section:start -->
-> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L5315)): `actual_hours` · `TaskStatusHistory` ([task_status_history](../../api/prisma/schema.prisma#L5547))
+> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L5317)): `actual_hours` · `TaskStatusHistory` ([task_status_history](../../api/prisma/schema.prisma#L5549))
 <!-- schema-section:end -->
 
 Dashboards and reports for:
@@ -291,7 +291,7 @@ Project-level progress, health and milestone reporting are in 05 §40–41.
 ## 12. Productivity
 
 <!-- schema-section:start -->
-> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L5315))
+> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L5317))
 <!-- schema-section:end -->
 
 * Drag-and-drop, inline editing, optimistic UI, instant search
@@ -301,7 +301,7 @@ Project-level progress, health and milestone reporting are in 05 §40–41.
 ## 13. Linked Work from Other Modules
 
 <!-- schema-section:start -->
-> **Schema:** `TaskLink` ([task_links](../../api/prisma/schema.prisma#L5528)) — other modules: `Employee` ([employees](../../api/prisma/schema.prisma#L7939)): `onboarding_completed_at` ([10](./10-employee-management-system.md)) · `TicketTaskLink` ([ticket_task_links](../../api/prisma/schema.prisma#L12670)) ([13](./13-customer-support-communication-hub.md))
+> **Schema:** `TaskLink` ([task_links](../../api/prisma/schema.prisma#L5530)) — other modules: `Employee` ([employees](../../api/prisma/schema.prisma#L8050)): `onboarding_completed_at` ([10](./10-employee-management-system.md)) · `TicketTaskLink` ([ticket_task_links](../../api/prisma/schema.prisma#L12781)) ([13](./13-customer-support-communication-hub.md))
 <!-- schema-section:end -->
 
 | Source | Relationship |
@@ -337,7 +337,7 @@ AI output is editable and reviewable (`docs/Product_Specification.md` §4.9).
 ## 15. Permissions
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1224)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1226)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 Keys follow 01 §46:
@@ -353,7 +353,7 @@ Project roles (05 §10) and customer visibility flags determine which tasks a Me
 ## 16. API & Webhooks
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L18603)) ([20](./20-automation-engine.md))
+> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L18714)) ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 API: CRUD tasks and subtasks, transitions, assignment, comments, links to records, bulk operations, saved views, releases.
