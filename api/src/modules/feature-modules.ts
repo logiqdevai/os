@@ -43,4 +43,5 @@ export const FEATURE_MODULES: any[] = [
     CalendarModule,
     LedgerModule,
     BillingModule,
+    AutomationModule,
 ];
