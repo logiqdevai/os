@@ -1,0 +1,32 @@
+/** 08 Billing API (api/src/modules/billing). */
+export const BillingApiRoutes = {
+    dashboard: "/finance/dashboard",
+    report: (key: string) => `/finance/reports/${key}`,
+    report_export: (key: string) => `/finance/reports/${key}/export`,
+    invoices: {
+        list: "/finance/invoices",
+        detail: (id: string) => `/finance/invoices/${id}`,
+        action: (id: string, action: string) => `/finance/invoices/${id}/${action}`,
+    },
+    credit_notes: { list: "/finance/credit-notes", action: (id: string, action: string) => `/finance/credit-notes/${id}/${action}` },
+    payments: {
+        list: "/finance/payments",
+        detail: (id: string) => `/finance/payments/${id}`,
+        allocations: (id: string) => `/finance/payments/${id}/allocations`,
+        refunds: (id: string) => `/finance/payments/${id}/refunds`,
+    },
+    refunds: { list: "/finance/refunds", action: (id: string, action: string) => `/finance/refunds/${id}/${action}` },
+    subscriptions: { list: "/finance/subscriptions", detail: (id: string) => `/finance/subscriptions/${id}`, action: (id: string, action: string) => `/finance/subscriptions/${id}/${action}` },
+    products: { list: "/finance/products", detail: (id: string) => `/finance/products/${id}`, archive: (id: string) => `/finance/products/${id}/archive`, prices: (id: string) => `/finance/products/${id}/prices` },
+    prices: { detail: (id: string) => `/finance/prices/${id}` },
+    tax_rates: { list: "/finance/tax-rates", detail: (id: string) => `/finance/tax-rates/${id}` },
+    coupons: { list: "/finance/coupons", action: (id: string, action: string) => `/finance/coupons/${id}/${action}` },
+    billing_profiles: { list: "/finance/billing-profiles", detail: (id: string) => `/finance/billing-profiles/${id}` },
+    providers: { list: "/finance/payment-providers", detail: (id: string) => `/finance/payment-providers/${id}`, action: (id: string, action: string) => `/finance/payment-providers/${id}/${action}` },
+    payment_links: { list: "/finance/payment-links", disable: (id: string) => `/finance/payment-links/${id}/disable` },
+    dunning: { list: "/finance/dunning-policies", detail: (id: string) => `/finance/dunning-policies/${id}` },
+    approvals: "/finance/approvals",
+    approval_rules: { list: "/finance/approval-rules", detail: (id: string) => `/finance/approval-rules/${id}` },
+    company_lookup: "/crm/companies/lookup",
+    projects: "/projects",
+};

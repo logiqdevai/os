@@ -2,6 +2,8 @@ import { AdminApiRoutes } from "./modules/admin.routes";
 import { CrmApiRoutes } from "./modules/crm.routes";
 import { NotificationsApiRoutes } from "./modules/notifications.routes";
 import { CalendarApiRoutes } from "./modules/calendar.routes";
+import { BillingApiRoutes } from "./modules/billing.routes";
+import { ExpensesApiRoutes } from "./modules/expenses.routes";
 
 /**
  * Central API route map. Each module keeps its routes in `config/api/modules/<module>.routes.ts`
@@ -30,4 +32,6 @@ export const ApiRoutes = {
     crm: CrmApiRoutes,
     notifications: NotificationsApiRoutes,
     calendar: CalendarApiRoutes,
+    billing: BillingApiRoutes,
+    expenses: ExpensesApiRoutes,
 };
