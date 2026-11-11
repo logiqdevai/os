@@ -68,7 +68,11 @@ export default function AppShell() {
         return <ErrorState error={session.error} onRetry={() => session.refetch()} className="h-full" />;
     }
 
-    if (session.data && !session.data.active_organization) return <NoOrganization />;
+    if (session.data && !session.data.active_organization) {
+        // Customer portal users (01 §79) have no agency membership: send them to their own shell.
+        if (session.data.customer_memberships.some((m) => m.status === "ACTIVE")) return <Navigate to="/portal" replace />;
+        return <NoOrganization />;
+    }
 
     const showPanel = !!app && !collapsed && app.nav.length > 0;
     const allowed = !app || !loaded || canOpen(app);
