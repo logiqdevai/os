@@ -18,12 +18,9 @@ import type { ImprovementPlan, PipItemStatus } from "@/features/people/performan
 import { PipCloseOutcomeOptions, PipItemStatusFormOptions, PipItemStatusTone, PipStatusFormOptions, PipStatusTone } from "@/config/constants/dropdowns/people/performance-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { Panel, PersonCell } from "../../../components/person";
 import { PeoplePaths } from "../../../paths";
 
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 /**
  * Improvement plans (PIP): draft → active (shared with the employee) → closed with an outcome note; measurable items evaluated MET / NOT_MET.
@@ -80,7 +77,7 @@ function PlanCard({ plan, canManage }: { plan: ImprovementPlan; canManage: boole
                             {i.due_date && <div className="text-xs text-muted-foreground">due {formatDate(i.due_date, "d MMM")}</div>}
                         </div>
                         {canManage && open ? (
-                            <Select value={i.status} onValueChange={(v) => updateItem.mutate({ id: plan.id, itemId: i.id, status: v as PipItemStatus }, { onError: fail("Could not update the item") })}>
+                            <Select value={i.status} onValueChange={(v) => updateItem.mutate({ id: plan.id, itemId: i.id, status: v as PipItemStatus })}>
                                 <SelectTrigger className="h-7 w-28" aria-label={`Status of ${i.title}`}><SelectValue /></SelectTrigger>
                                 <SelectContent>{PipItemStatusFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                             </Select>
@@ -91,13 +88,13 @@ function PlanCard({ plan, canManage }: { plan: ImprovementPlan; canManage: boole
             {canManage && open && (
                 <div className="mt-2 flex gap-2">
                     <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} placeholder="Add a measurable item" className="h-8" aria-label="New item" />
-                    <Button size="sm" variant="outline" disabled={!newItem.trim()} loading={addItem.isPending} onClick={() => addItem.mutate({ id: plan.id, title: newItem.trim() }, { onSuccess: () => setNewItem(""), onError: fail("Could not add the item") })}><Plus /> Add</Button>
+                    <Button size="sm" variant="outline" disabled={!newItem.trim()} loading={addItem.isPending} onClick={() => addItem.mutate({ id: plan.id, title: newItem.trim() }, { onSuccess: () => setNewItem("") })}><Plus /> Add</Button>
                 </div>
             )}
             {plan.outcome_note && <p className="mt-3 rounded-md bg-secondary p-2 text-[13px] text-foreground"><span className="text-muted-foreground">Outcome: </span>{plan.outcome_note}</p>}
             {canManage && open && (
                 <div className="mt-3 flex flex-wrap justify-end gap-2">
-                    {plan.status === "DRAFT" && <Button size="sm" loading={activate.isPending} onClick={() => activate.mutate(plan.id, { onSuccess: () => toast({ title: "Plan shared with the employee" }), onError: fail("Could not activate") })}><Send /> Share with employee</Button>}
+                    {plan.status === "DRAFT" && <Button size="sm" loading={activate.isPending} onClick={() => activate.mutate(plan.id)}><Send /> Share with employee</Button>}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button size="sm" variant="outline">Close plan</Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => setClosing(true)}><CircleCheck /> Close with outcome…</DropdownMenuItem></DropdownMenuContent>
@@ -127,7 +124,7 @@ function CloseDialog({ plan, onClose }: { plan: ImprovementPlan | null; onClose:
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={onClose}>Cancel</Button>
-                    <Button disabled={note.trim().length < 3 || !value} loading={close.isPending} onClick={() => plan && value && close.mutate({ id: plan.id, outcome: value, outcome_note: note.trim() }, { onSuccess: () => { toast({ title: "Plan closed" }); setNote(""); onClose(); }, onError: fail("Could not close the plan") })}>Close plan</Button>
+                    <Button disabled={note.trim().length < 3 || !value} loading={close.isPending} onClick={() => plan && value && close.mutate({ id: plan.id, outcome: value, outcome_note: note.trim() }, { onSuccess: () => { setNote(""); onClose(); } })}>Close plan</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -176,7 +173,7 @@ function PlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
                     <Button disabled={!valid} loading={create.isPending} onClick={() => create.mutate({
                         employee_id: f.employee_id, title: f.title.trim(), reason: f.reason.trim() || undefined, start_date: f.start_date, end_date: f.end_date,
                         check_in_frequency_days: f.every ? Number(f.every) : undefined, items: items.map((t) => t.trim()).filter(Boolean).map((title) => ({ title })),
-                    }, { onSuccess: () => { toast({ title: "Draft plan created" }); onOpenChange(false); reset(); }, onError: fail("Could not create the plan") })}>Create draft</Button>
+                    }, { onSuccess: () => { onOpenChange(false); reset(); } })}>Create draft</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

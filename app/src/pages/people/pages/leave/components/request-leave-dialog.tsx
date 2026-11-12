@@ -11,7 +11,6 @@ import { useCreateLeave, useLeavePreview, useLeaveTypes } from "@/features/peopl
 import type { LeaveDayPart, LeaveRequestDto } from "@/features/people/leave/interfaces/leave.interfaces";
 import { LeaveDayPartFormOptions } from "@/config/constants/dropdowns/people/leave-form.options";
 import { formatNumber } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 
 interface Props {
@@ -55,10 +54,8 @@ export function RequestLeaveDialog({ open, onOpenChange, employeeId }: Props) {
     }, [dto]);
     const preview = useLeavePreview(open ? debounced : null);
 
-    const submit = (submitNow: boolean) => dto && create.mutate({ ...dto, submit: submitNow }, {
-        onSuccess: (r) => { toast({ title: submitNow ? (r.status === "APPROVED" ? "Leave booked" : "Leave requested") : "Draft saved", description: `${formatNumber(r.total_days, 1)} day(s) of ${r.leave_type.name}` }); onOpenChange(false); },
-        onError: (e) => toast({ variant: "destructive", title: "Could not request leave", description: getApiErrorMessage(e) }),
-    });
+    /** No toast: the dialog closes and the request appears in the lists; a refusal is shown inline below. */
+    const submit = (submitNow: boolean) => dto && create.mutate({ ...dto, submit: submitNow }, { onSuccess: () => onOpenChange(false) });
 
     return (
         <Dialog open={open} onOpenChange={(o) => !create.isPending && onOpenChange(o)}>
@@ -113,6 +110,7 @@ export function RequestLeaveDialog({ open, onOpenChange, employeeId }: Props) {
                     ) : null}
                 </div>
 
+                {create.error && <p role="alert" className="text-xs text-danger">{getApiErrorMessage(create.error)}</p>}
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>Cancel</Button>
                     <Button variant="outline" disabled={!dto || create.isPending} onClick={() => submit(false)}>Save draft</Button>

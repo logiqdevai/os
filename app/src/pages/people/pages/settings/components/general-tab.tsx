@@ -1,18 +1,16 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Save } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUpdateHrSettings } from "@/features/people/overview/hooks/use-overview";
+import { useAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import type { AttendanceSource, HrSettings, LeaveApproverStrategy, UpdateHrSettingsDto } from "@/features/people/overview/interfaces/overview.interfaces";
 import { AttendanceSourceFormOptions, LeaveApproverStrategyFormOptions } from "@/config/constants/dropdowns/people/leave-form.options";
 import { ProfileFieldFormOptions, WeekdayOptions } from "@/config/constants/dropdowns/people/employee-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { Panel } from "../../../components/person";
 
 export type GeneralSection = "general" | "attendance" | "capacity" | "selfservice";
@@ -75,15 +73,13 @@ const dayHours = (d: Form["schedule"][number]) => (d.on && d.start && d.end ? Ma
 /** One settings section (General / Attendance / Capacity / Self-service) of EmployeeHrSettings. @perm employees.settings.manage */
 export function GeneralTab({ settings, section }: { settings: HrSettings; section: GeneralSection }) {
     const update = useUpdateHrSettings();
-    const initial = useMemo(() => toForm(settings), [settings]);
-    const [f, setF] = useState<Form>(initial);
-    useEffect(() => setF(initial), [initial]);
+    // The form is loaded once; afterwards it is the source of truth (a refresh after an autosave never overwrites typing).
+    const [f, setF] = useState<Form>(() => toForm(settings));
     const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((prev) => ({ ...prev, [k]: v }));
-    const dirty = JSON.stringify(f) !== JSON.stringify(initial);
     const weekly = f.schedule.reduce((s, d) => s + dayHours(d), 0);
     const toggle = (list: string[], v: string, on: boolean) => (on ? [...new Set([...list, v])] : list.filter((x) => x !== v));
 
-    const save = () => {
+    const toDto = (f: Form) => {
         const dto: UpdateHrSettingsDto = {};
         if (section === "general") {
             dto.default_schedule = f.schedule.filter((d) => d.on).map((d) => ({ weekday: d.weekday, start: d.start, end: d.end, break_minutes: Number(d.break_minutes) || 0 }));
@@ -106,12 +102,14 @@ export function GeneralTab({ settings, section }: { settings: HrSettings; sectio
         if (section === "selfservice") {
             Object.assign(dto, { self_service_editable_fields: f.self_service_editable_fields, profile_changes_require_approval: f.profile_changes_require_approval, directory_visible_fields: f.directory_visible_fields });
         }
-        update.mutate(dto, { onSuccess: () => toast({ title: "Settings saved" }), onError: (e) => toast({ variant: "destructive", title: "Could not save settings", description: getApiErrorMessage(e) }) });
+        return dto;
     };
 
+    /** Autosave (no Save button): each change is saved after a short pause; a refusal shows in <SaveStatus /> with Retry. */
+    const autosave = useAutosave({ value: f, save: (v) => update.mutateAsync(toDto(v)) });
     const footer = (
-        <div className="flex justify-end">
-            <Button disabled={!dirty} loading={update.isPending} onClick={save}><Save /> Save changes</Button>
+        <div className="flex min-h-5 justify-end">
+            <SaveStatus state={autosave} />
         </div>
     );
 

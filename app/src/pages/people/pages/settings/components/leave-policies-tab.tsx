@@ -17,11 +17,8 @@ import type { LeaveAccrualMethod, LeavePolicy, LeavePolicyDto } from "@/features
 import { LeaveAccrualFormOptions, LeaveTypeColorTone } from "@/config/constants/dropdowns/people/leave-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatNumber } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { Field, Toggle } from "./general-tab";
 
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 const NONE = "__none__";
 
 /** LeavePolicy list, editor and explicit assignment (EmployeeLeavePolicy). @perm employees.leave.manage_policies */
@@ -63,8 +60,8 @@ export function LeavePoliciesTab({ branches }: { branches: { id: string; name: s
             <PolicyDialog value={editing} branches={branches} onClose={() => setEditing(null)} />
             <AssignDialog policy={assigning} onClose={() => setAssigning(null)} />
             <ConfirmationDialog isOpen={!!archiving} onClose={() => setArchiving(null)} title={`Archive ${archiving?.name ?? "policy"}?`} description="Existing balances keep their history; the policy no longer applies to new periods."
-                confirmText="Archive" variant="destructive" isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate(archiving.id, { onSuccess: () => { toast({ title: "Policy archived" }); setArchiving(null); }, onError: fail("Could not archive") })} />
+                confirmText="Archive" variant="destructive"
+                onConfirm={() => { if (archiving) archive.mutate(archiving.id); setArchiving(null); }} />
         </div>
     );
 }
@@ -113,11 +110,12 @@ function PolicyDialog({ value, branches, onClose }: { value: LeavePolicy | "new"
             ...(f.carry_over_expiry_months !== "" && { carry_over_expiry_months: Number(f.carry_over_expiry_months) }),
             ...(f.allow_negative_balance && f.max_negative_days !== "" && { max_negative_days: Number(f.max_negative_days) }),
         };
-        const done = { onSuccess: () => { toast({ title: "Policy saved" }); onClose(); }, onError: fail("Could not save the policy") };
-        if (value === "new") create.mutate(dto, done);
+        // Edits are optimistic (the list shows them at once), so the dialog closes right away; creating waits for the id.
+        if (value === "new") create.mutate(dto, { onSuccess: onClose });
         else if (value) {
             const { leave_type_id: _type, ...rest } = dto;
-            update.mutate({ id: value.id, ...rest }, done);
+            update.mutate({ id: value.id, ...rest });
+            onClose();
         }
     };
     return (
@@ -198,7 +196,7 @@ function AssignDialog({ policy, onClose }: { policy: LeavePolicy | null; onClose
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={onClose}>Cancel</Button>
-                    <Button disabled={!employeeId || !from} loading={assign.isPending} onClick={() => policy && assign.mutate({ id: policy.id, employee_id: employeeId, effective_from: from }, { onSuccess: () => { toast({ title: "Policy assigned" }); setEmployeeId(""); onClose(); }, onError: fail("Could not assign") })}>Assign</Button>
+                    <Button disabled={!employeeId || !from} loading={assign.isPending} onClick={() => policy && assign.mutate({ id: policy.id, employee_id: employeeId, effective_from: from }, { onSuccess: () => { setEmployeeId(""); onClose(); } })}>Assign</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

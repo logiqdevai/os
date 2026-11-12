@@ -12,11 +12,8 @@ import { useCreateLeaveType, useLeaveTypes, useSetLeaveTypeArchived, useUpdateLe
 import type { LeaveCategory, LeaveType, LeaveTypeDto } from "@/features/people/leave/interfaces/leave.interfaces";
 import { LeaveCategoryFormOptions, LeaveTypeColorFormOptions, LeaveTypeColorTone } from "@/config/constants/dropdowns/people/leave-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { Field, Toggle } from "./general-tab";
 
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 /** LeaveType list + editor. Archived types stay on old requests and balances. @perm employees.leave.manage_policies */
 export function LeaveTypesTab() {
@@ -41,7 +38,7 @@ export function LeaveTypesTab() {
                     <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" aria-label={`Actions for ${t.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         {!t.archived_at && <DropdownMenuItem onSelect={() => setEditing(t)}><Pencil /> Edit</DropdownMenuItem>}
-                        <DropdownMenuItem onSelect={() => setArch.mutate({ id: t.id, archived: !t.archived_at }, { onSuccess: () => toast({ title: t.archived_at ? "Leave type restored" : "Leave type archived" }), onError: fail("Action failed") })}>
+                        <DropdownMenuItem onSelect={() => setArch.mutate({ id: t.id, archived: !t.archived_at })}>
                             {t.archived_at ? <><ArchiveRestore /> Restore</> : <><Archive /> Archive</>}
                         </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -84,9 +81,9 @@ function LeaveTypeDialog({ value, onClose }: { value: LeaveType | "new" | null; 
     const codeOk = /^[A-Z][A-Z0-9_]{1,15}$/.test(f.code);
     const submit = () => {
         const dto: LeaveTypeDto = { ...f, name: f.name.trim(), ...(notice !== "" && { min_notice_days: Number(notice) }), ...(maxDays !== "" && { max_consecutive_days: Number(maxDays) }), ...(f.requires_attachment && attachAfter !== "" && { attachment_after_days: Number(attachAfter) }) };
-        const done = { onSuccess: () => { toast({ title: value === "new" ? "Leave type created" : "Leave type saved" }); onClose(); }, onError: fail("Could not save the leave type") };
-        if (value === "new") create.mutate(dto, done);
-        else if (value) update.mutate({ id: value.id, ...dto }, done);
+        // Edits are optimistic (the list shows them at once), so the dialog closes right away; creating waits for the id.
+        if (value === "new") create.mutate(dto, { onSuccess: onClose });
+        else if (value) { update.mutate({ id: value.id, ...dto }); onClose(); }
     };
     return (
         <Dialog open={!!value} onOpenChange={(o) => !o && !pending && onClose()}>

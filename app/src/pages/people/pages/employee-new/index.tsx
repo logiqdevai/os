@@ -16,8 +16,6 @@ import {
 } from "@/config/constants/dropdowns/people/employee-form.options";
 import { useSessionData } from "@/features/session/hooks/use-session";
 import { personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { Panel } from "../../components/person";
 import { PeoplePaths } from "../../paths";
 
@@ -54,8 +52,7 @@ export default function NewEmployeePage() {
             weekly_capacity_hours: v.weekly_capacity_hours ? Number(v.weekly_capacity_hours) : undefined,
         };
         create.mutate(dto, {
-            onSuccess: (e) => { toast({ title: "Employee created", description: `${e.name} · ${e.employee_number}` }); navigate(PeoplePaths.employee(e.id)); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not create employee", description: getApiErrorMessage(e) }),
+            onSuccess: (e) => navigate(PeoplePaths.employee(e.id)),
         });
     });
 

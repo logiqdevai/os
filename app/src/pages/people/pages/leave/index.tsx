@@ -19,8 +19,6 @@ import type { LeaveRequest } from "@/features/people/leave/interfaces/leave.inte
 import { LeaveDayPartFormOptions, LeaveStatusFilterOptions, LeaveStatusFormOptions, LeaveStatusTone } from "@/config/constants/dropdowns/people/leave-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatDateTime, formatNumber, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { PersonCell } from "../../components/person";
 import { PeoplePaths } from "../../paths";
 import { RequestLeaveDialog } from "./components/request-leave-dialog";
@@ -102,8 +100,8 @@ function LeaveRequestSheet({ id, onClose }: { id: string | null; onClose: () => 
     const cancel = useCancelLeave();
     const [note, setNote] = useState("");
     const r = q.data;
-    const pending = approve.isPending || reject.isPending || cancel.isPending;
-    const opts = (title: string) => ({ onSuccess: () => { toast({ title }); setNote(""); onClose(); }, onError: (e: unknown) => toast({ variant: "destructive", title: "Action failed", description: getApiErrorMessage(e) }) });
+    /** Optimistic decisions: the request's status changes in every list at once and the sheet closes right away. */
+    const decided = () => { setNote(""); onClose(); };
     const canCancel = r && ((r.employee.is_me && ["DRAFT", "PENDING"].includes(r.status)) || (r.employee.is_me && r.status === "APPROVED" && r.start_date > new Date().toISOString().slice(0, 10)));
 
     return (
@@ -147,13 +145,13 @@ function LeaveRequestSheet({ id, onClose }: { id: string | null; onClose: () => 
                                 <Label htmlFor="decision-note">Note (optional)</Label>
                                 <Textarea id="decision-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
                                 <div className="flex gap-2">
-                                    <Button className="flex-1" loading={approve.isPending} disabled={pending} onClick={() => approve.mutate({ id: r.id, note: note || undefined }, opts("Leave approved"))}><Check /> Approve</Button>
-                                    <Button className="flex-1" variant="outline" loading={reject.isPending} disabled={pending} onClick={() => reject.mutate({ id: r.id, note: note || undefined }, opts("Leave rejected"))}><X /> Reject</Button>
+                                    <Button className="flex-1" onClick={() => { approve.mutate({ id: r.id, note: note || undefined }); decided(); }}><Check /> Approve</Button>
+                                    <Button className="flex-1" variant="outline" onClick={() => { reject.mutate({ id: r.id, note: note || undefined }); decided(); }}><X /> Reject</Button>
                                 </div>
                             </div>
                         )}
                         {canCancel && (
-                            <Button variant="outline" className="w-full" loading={cancel.isPending} disabled={pending} onClick={() => cancel.mutate({ id: r.id }, opts(r.status === "APPROVED" ? "Leave cancelled" : "Request withdrawn"))}>
+                            <Button variant="outline" className="w-full" onClick={() => { cancel.mutate({ id: r.id }); decided(); }}>
                                 {r.status === "APPROVED" ? "Cancel leave" : "Withdraw request"}
                             </Button>
                         )}

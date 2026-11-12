@@ -13,8 +13,8 @@ import type { Review } from "@/features/people/performance/interfaces/performanc
 import { ReviewStatusFormOptions, ReviewStatusTone, ReviewTypeFormOptions } from "@/config/constants/dropdowns/people/performance-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatNumber, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { Panel } from "../../components/person";
 import { PeoplePaths } from "../../paths";
 
@@ -52,12 +52,17 @@ function ReviewView({ review: r }: { review: Review }) {
 
     const selfEditable = r.is_mine && ["DRAFT", "SELF_ASSESSMENT"].includes(r.status);
     const managerEditable = !r.is_mine && canManage && ["DRAFT", "SELF_ASSESSMENT", "MANAGER_ASSESSMENT", "SUBMITTED"].includes(r.status);
-    const ok = (title: string) => ({ onSuccess: () => toast({ title }), onError: (e: unknown) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) });
     const busy = update.isPending || action.isPending;
-    const saveManager = (then?: () => void) => update.mutate({
-        id: r.id, manager_assessment: manager, strengths, improvement_areas: improve,
+    const managerDraft = {
+        manager_assessment: manager, strengths, improvement_areas: improve,
         ratings: Object.fromEntries(Object.entries(ratings).filter(([, v]) => v !== "").map(([k, v]) => [k, Number(v)])),
-    }, { onSuccess: () => { toast({ title: "Review saved" }); then?.(); }, onError: ok("").onError });
+    };
+    const saveManager = (then?: () => void) => update.mutate({ id: r.id, ...managerDraft }, { onSuccess: () => then?.() });
+
+    /** Drafts autosave while typing (no Save draft buttons); failures show in the header's <SaveStatus />. */
+    const draft = useUpdateReview(false);
+    const selfAutosave = useAutosave({ value: self, enabled: selfEditable, save: (v) => draft.mutateAsync({ id: r.id, self_assessment: v }) });
+    const managerAutosave = useAutosave({ value: managerDraft, enabled: managerEditable, save: (v) => draft.mutateAsync({ id: r.id, ...v }) });
 
     return (
         <Page width="wide">
@@ -68,10 +73,12 @@ function ReviewView({ review: r }: { review: Review }) {
                 description={`${formatDate(r.period_start)} – ${formatDate(r.period_end)}${r.due_date ? ` · due ${formatDate(r.due_date)}` : ""}`}
                 actions={
                     <>
-                        {selfEditable && <Button loading={action.isPending} disabled={busy || !self.trim()} onClick={() => update.mutate({ id: r.id, self_assessment: self }, { onSuccess: () => action.mutate({ id: r.id, action: "submit-self" }, ok("Self assessment submitted")), onError: ok("").onError })}>Submit self assessment</Button>}
-                        {managerEditable && ["DRAFT", "SELF_ASSESSMENT", "MANAGER_ASSESSMENT"].includes(r.status) && <Button disabled={busy} onClick={() => saveManager(() => action.mutate({ id: r.id, action: "submit" }, ok("Review submitted")))}>Submit review</Button>}
-                        {!r.is_mine && canManage && r.status === "SUBMITTED" && <Button disabled={busy} onClick={() => action.mutate({ id: r.id, action: "complete" }, ok("Review completed and shared"))}>Complete & share</Button>}
-                        {r.is_mine && r.status === "COMPLETED" && <Button disabled={busy} onClick={() => update.mutate({ id: r.id, employee_comment: comment || undefined }, { onSuccess: () => action.mutate({ id: r.id, action: "acknowledge" }, ok("Review acknowledged")) })}>Acknowledge</Button>}
+                        {selfEditable && <SaveStatus state={selfAutosave} />}
+                        {managerEditable && <SaveStatus state={managerAutosave} />}
+                        {selfEditable && <Button loading={action.isPending} disabled={busy || !self.trim()} onClick={() => update.mutate({ id: r.id, self_assessment: self }, { onSuccess: () => action.mutate({ id: r.id, action: "submit-self" }) })}>Submit self assessment</Button>}
+                        {managerEditable && ["DRAFT", "SELF_ASSESSMENT", "MANAGER_ASSESSMENT"].includes(r.status) && <Button disabled={busy} onClick={() => saveManager(() => action.mutate({ id: r.id, action: "submit" }))}>Submit review</Button>}
+                        {!r.is_mine && canManage && r.status === "SUBMITTED" && <Button disabled={busy} onClick={() => action.mutate({ id: r.id, action: "complete" })}>Complete & share</Button>}
+                        {r.is_mine && r.status === "COMPLETED" && <Button disabled={busy} onClick={() => update.mutate({ id: r.id, employee_comment: comment || undefined }, { onSuccess: () => action.mutate({ id: r.id, action: "acknowledge" }) })}>Acknowledge</Button>}
                     </>
                 }
             />
@@ -80,8 +87,7 @@ function ReviewView({ review: r }: { review: Review }) {
                     <Panel title="Self assessment">
                         {selfEditable ? (
                             <div className="space-y-2">
-                                <Textarea rows={8} value={self} onChange={(e) => setSelf(e.target.value)} placeholder="What went well, what you learned, what you want to focus on next." />
-                                <div className="flex justify-end"><Button size="sm" variant="outline" loading={update.isPending} onClick={() => update.mutate({ id: r.id, self_assessment: self }, ok("Draft saved"))}>Save draft</Button></div>
+                                <Textarea rows={8} value={self} onChange={(e) => setSelf(e.target.value)} onBlur={selfAutosave.flush} aria-label="Self assessment" placeholder="What went well, what you learned, what you want to focus on next." />
                             </div>
                         ) : <p className="whitespace-pre-line text-[13px] text-foreground">{r.self_assessment || <span className="text-muted-foreground">Not written yet.</span>}</p>}
                     </Panel>
@@ -101,7 +107,6 @@ function ReviewView({ review: r }: { review: Review }) {
                                     <div className="space-y-1.5"><Label htmlFor="str">Strengths</Label><Textarea id="str" rows={3} value={strengths} onChange={(e) => setStrengths(e.target.value)} /></div>
                                     <div className="space-y-1.5"><Label htmlFor="imp">Areas to improve</Label><Textarea id="imp" rows={3} value={improve} onChange={(e) => setImprove(e.target.value)} /></div>
                                 </div>
-                                <div className="flex justify-end"><Button size="sm" variant="outline" loading={update.isPending} onClick={() => saveManager()}>Save draft</Button></div>
                             </div>
                         ) : r.manager_assessment === null && r.is_mine ? (
                             <p className="text-[13px] text-muted-foreground">Shared with you when the review is completed.</p>

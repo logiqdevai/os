@@ -36,7 +36,7 @@ export default function PeopleSettingsPage() {
             </Tabs>
             {q.error || !q.data ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : (
                 <>
-                    {["general", "attendance", "capacity", "selfservice"].includes(tab) && <GeneralTab settings={q.data} section={tab as GeneralSection} />}
+                    {["general", "attendance", "capacity", "selfservice"].includes(tab) && <GeneralTab key={tab} settings={q.data} section={tab as GeneralSection} />}
                     {tab === "types" && <LeaveTypesTab />}
                     {tab === "policies" && <LeavePoliciesTab branches={q.data.options.branches} />}
                     {tab === "holidays" && <HolidaysTab branches={q.data.options.branches} />}

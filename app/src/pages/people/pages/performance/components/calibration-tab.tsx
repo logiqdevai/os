@@ -15,8 +15,6 @@ import type { CalibrationView } from "@/features/people/performance/interfaces/p
 import { ReviewStatusFormOptions, ReviewStatusTone } from "@/config/constants/dropdowns/people/performance-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatNumber, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { Panel, PersonCell } from "../../../components/person";
 
 type Row = CalibrationView["reviews"][number];
@@ -105,8 +103,7 @@ function CalibrateDialog({ row, onClose }: { row: Row | null; onClose: () => voi
                 <DialogFooter>
                     <Button variant="ghost" onClick={onClose}>Cancel</Button>
                     <Button disabled={!valid} loading={calibrate.isPending} onClick={() => row && calibrate.mutate({ id: row.id, calibrated_rating: value, reason: reason.trim() }, {
-                        onSuccess: () => { toast({ title: "Rating calibrated" }); setRating(""); setReason(""); onClose(); },
-                        onError: (e) => toast({ variant: "destructive", title: "Could not calibrate", description: getApiErrorMessage(e) }),
+                        onSuccess: () => { setRating(""); setReason(""); onClose(); },
                     })}>Save</Button>
                 </DialogFooter>
             </DialogContent>

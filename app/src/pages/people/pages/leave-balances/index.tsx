@@ -13,8 +13,6 @@ import { usePermission, usePermissions } from "@/hooks/use-permission";
 import { useAdjustBalance, useLeaveBalances, useLeaveTransactions } from "@/features/people/leave/hooks/use-leave";
 import type { EmployeeBalances, LeaveBalance } from "@/features/people/leave/interfaces/leave.interfaces";
 import { formatDate, formatNumber } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { PersonCell } from "../../components/person";
 import { PeoplePaths } from "../../paths";
@@ -126,8 +124,7 @@ function BalanceDialog({ selected, onClose }: { selected: { employee: string; ba
                     <Button variant="ghost" onClick={onClose}>Close</Button>
                     {canAdjust && b && (
                         <Button disabled={!Number(days) || reason.trim().length < 3} loading={adjust.isPending} onClick={() => adjust.mutate({ id: b.id, days: Number(days), reason: reason.trim() }, {
-                            onSuccess: () => { toast({ title: "Balance adjusted" }); onClose(); setDays(""); setReason(""); },
-                            onError: (e) => toast({ variant: "destructive", title: "Could not adjust", description: getApiErrorMessage(e) }),
+                            onSuccess: () => { onClose(); setDays(""); setReason(""); },
                         })}>Apply adjustment</Button>
                     )}
                 </DialogFooter>

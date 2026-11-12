@@ -12,10 +12,10 @@ export const useEmployeeImport = (id: string | null) =>
 
 export const useUploadEmployeeImport = () => {
     const qc = useQueryClient();
-    return useMutation({ mutationFn: service.uploadEmployeeImport, onSuccess: () => qc.invalidateQueries({ queryKey: [...KEY, "list"] }) });
+    return useMutation({ mutationFn: service.uploadEmployeeImport, meta: { errorTitle: "Could not upload the file" }, onSuccess: () => qc.invalidateQueries({ queryKey: [...KEY, "list"] }) });
 };
-export const usePreviewEmployeeImport = () => useMutation({ mutationFn: service.previewEmployeeImport });
+export const usePreviewEmployeeImport = () => useMutation({ mutationFn: service.previewEmployeeImport, meta: { errorTitle: "Could not preview the import" } });
 export const useRunEmployeeImport = () => {
     const qc = useQueryClient();
-    return useMutation({ mutationFn: service.runEmployeeImport, onSuccess: () => qc.invalidateQueries({ queryKey: KEY }) });
+    return useMutation({ mutationFn: service.runEmployeeImport, meta: { errorTitle: "Could not run the import" }, onSuccess: () => qc.invalidateQueries({ queryKey: KEY }) });
 };

@@ -15,8 +15,6 @@ import type { ChangeRequest } from "@/features/people/employees/interfaces/emplo
 import { ChangeRequestStatusFilterOptions, ChangeRequestStatusFormOptions, ChangeRequestStatusTone, ProfileFieldFormOptions } from "@/config/constants/dropdowns/people/employee-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { PersonCell } from "../../components/person";
 import { PeoplePaths } from "../../paths";
 
@@ -88,16 +86,12 @@ export default function ChangeRequestsPage() {
 function DecisionDialog({ request, onClose }: { request: ChangeRequest | null; onClose: () => void }) {
     const decide = useDecideChangeRequest();
     const [note, setNote] = useState("");
-    const [pending, setPending] = useState<"approve" | "reject" | null>(null);
-    const close = () => { if (!decide.isPending) { onClose(); setNote(""); } };
+    const close = () => { onClose(); setNote(""); };
+    /** Optimistic: the request shows Approved / Rejected in the list at once and the dialog closes right away. */
     const run = (approve: boolean) => {
         if (!request) return;
-        setPending(approve ? "approve" : "reject");
-        decide.mutate({ id: request.id, approve, decision_note: note.trim() || undefined }, {
-            onSuccess: () => { toast({ title: approve ? "Changes applied" : "Request rejected" }); setNote(""); onClose(); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not save the decision", description: getApiErrorMessage(e) }),
-            onSettled: () => setPending(null),
-        });
+        decide.mutate({ id: request.id, approve, decision_note: note.trim() || undefined });
+        close();
     };
     return (
         <Dialog open={!!request} onOpenChange={(o) => !o && close()}>
@@ -114,8 +108,8 @@ function DecisionDialog({ request, onClose }: { request: ChangeRequest | null; o
                     </div>
                 )}
                 <DialogFooter>
-                    <Button variant="outline" loading={pending === "reject"} disabled={decide.isPending} onClick={() => run(false)}><X /> Reject</Button>
-                    <Button loading={pending === "approve"} disabled={decide.isPending} onClick={() => run(true)}><Check /> Approve</Button>
+                    <Button variant="outline" onClick={() => run(false)}><X /> Reject</Button>
+                    <Button onClick={() => run(true)}><Check /> Approve</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

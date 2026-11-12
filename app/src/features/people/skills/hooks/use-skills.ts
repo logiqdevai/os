@@ -1,5 +1,6 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PEOPLE_KEY } from "@/features/people/employees/hooks/use-employees";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { PEOPLE_KEY, usePeopleMutation } from "@/features/people/employees/hooks/use-employees";
+import { patchEntity, useEntityRemove, useOptimisticMutation } from "@/lib/query/optimistic";
 import * as service from "../services/skills.services";
 
 const KEY = [...PEOPLE_KEY, "skills"] as const;
@@ -11,14 +12,17 @@ export const useSkillSearch = (params: Record<string, unknown>, enabled = true) 
 export const useEmployeeSkills = (employeeId: string | undefined, enabled = true) =>
     useQuery({ queryKey: [...KEY, "employee", employeeId], queryFn: () => service.getEmployeeSkills(employeeId as string), enabled: !!employeeId && enabled });
 
-function useMutate<A, R>(fn: (a: A) => Promise<R>) {
-    const qc = useQueryClient();
-    return useMutation({ mutationFn: fn, onSuccess: () => qc.invalidateQueries({ queryKey: PEOPLE_KEY }) });
-}
-export const useCreateSkill = () => useMutate(service.createSkill);
-export const useArchiveSkill = () => useMutate(service.archiveSkill);
-export const useAssignSkill = () => useMutate(service.assignSkill);
-export const useRemoveEmployeeSkill = () => useMutate(service.removeEmployeeSkill);
-export const useVerifyEmployeeSkill = () => useMutate(service.verifyEmployeeSkill);
-export const useAddCertification = () => useMutate(service.addCertification);
-export const useRemoveCertification = () => useMutate(service.removeCertification);
+const useMutate = usePeopleMutation;
+const meta = (errorTitle: string) => ({ errorTitle });
+export const useCreateSkill = () => useMutate(service.createSkill, "Could not create the skill");
+/** Optimistic: the skill disappears from the catalog at once. */
+export const useArchiveSkill = () => useEntityRemove({ root: KEY, mutationFn: service.archiveSkill, alsoInvalidate: [PEOPLE_KEY], meta: meta("Could not archive the skill") });
+export const useAssignSkill = () => useMutate(service.assignSkill, "Could not add the skill");
+/** Optimistic: the skill disappears from the profile at once. */
+export const useRemoveEmployeeSkill = () => useEntityRemove({ root: KEY, mutationFn: service.removeEmployeeSkill, alsoInvalidate: [PEOPLE_KEY], meta: meta("Could not remove the skill") });
+/** Optimistic: the Verified badge shows at once. */
+export const useVerifyEmployeeSkill = () =>
+    useOptimisticMutation({ roots: [KEY], alsoInvalidate: [PEOPLE_KEY], mutationFn: service.verifyEmployeeSkill, meta: meta("Could not verify the skill"), apply: (qc, id) => patchEntity(qc, KEY, id, { verified_at: new Date().toISOString() }) });
+export const useAddCertification = () => useMutate(service.addCertification, "Could not add the certification");
+/** Optimistic: the certification disappears at once. */
+export const useRemoveCertification = () => useEntityRemove({ root: KEY, mutationFn: service.removeCertification, alsoInvalidate: [PEOPLE_KEY], meta: meta("Could not remove the certification") });

@@ -20,11 +20,8 @@ import type { FeedbackRequest } from "@/features/people/performance/interfaces/p
 import { FeedbackRequestBoxOptions, FeedbackRequestStatusFormOptions, FeedbackRequestStatusTone } from "@/config/constants/dropdowns/people/performance-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { PersonCell } from "../../../components/person";
 
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 /**
  * Feedback requests (360 / peer): ask colleagues for feedback about someone; recipients answer or decline.
@@ -49,7 +46,7 @@ export function RequestsTab() {
             key: "actions", header: <span className="sr-only">Actions</span>, className: "w-24",
             cell: (r) => r.status === "PENDING" && (r.is_recipient
                 ? <Button size="sm" onClick={() => setAnswering(r)}>Answer</Button>
-                : r.is_requester && <Button size="sm" variant="ghost" loading={cancel.isPending && cancel.variables === r.id} onClick={() => cancel.mutate(r.id, { onSuccess: () => toast({ title: "Request cancelled" }), onError: fail("Could not cancel") })}>Cancel</Button>),
+                : r.is_requester && <Button size="sm" variant="ghost" onClick={() => cancel.mutate(r.id)}>Cancel</Button>),
         },
     ];
     return (
@@ -75,8 +72,8 @@ function AnswerDialog({ request, onClose }: { request: FeedbackRequest | null; o
     const decline = useDeclineFeedbackRequest();
     const [body, setBody] = useState("");
     const [rating, setRating] = useState("");
-    const busy = submit.isPending || decline.isPending;
-    const done = (title: string) => ({ onSuccess: () => { toast({ title }); setBody(""); setRating(""); onClose(); }, onError: fail("Could not save") });
+    const busy = submit.isPending;
+    const reset = () => { setBody(""); setRating(""); onClose(); };
     return (
         <Dialog open={!!request} onOpenChange={(o) => !o && !busy && onClose()}>
             <DialogContent className="sm:max-w-lg">
@@ -90,8 +87,9 @@ function AnswerDialog({ request, onClose }: { request: FeedbackRequest | null; o
                     <div className="space-y-1.5"><Label htmlFor="fr-rating">Rating (optional, 1–5)</Label><Input id="fr-rating" type="number" min={1} max={5} value={rating} onChange={(e) => setRating(e.target.value)} className="w-24" /></div>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" loading={decline.isPending} disabled={busy} onClick={() => request && decline.mutate({ id: request.id }, done("Request declined"))}>Decline</Button>
-                    <Button disabled={!body.trim() || busy} loading={submit.isPending} onClick={() => request && submit.mutate({ id: request.id, body: body.trim(), rating: rating ? Number(rating) : undefined }, done("Feedback sent"))}>Send feedback</Button>
+                    {/* Optimistic: the request shows Declined at once, so the dialog closes right away. */}
+                    <Button variant="outline" disabled={busy} onClick={() => { if (!request) return; decline.mutate({ id: request.id }); reset(); }}>Decline</Button>
+                    <Button disabled={!body.trim() || busy} loading={submit.isPending} onClick={() => request && submit.mutate({ id: request.id, body: body.trim(), rating: rating ? Number(rating) : undefined }, { onSuccess: reset })}>Send feedback</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -153,8 +151,7 @@ function AskDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: bo
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
                     <Button disabled={!about || !picked.length} loading={create.isPending} onClick={() => create.mutate({ employee_id: about, requested_from_membership_ids: picked, due_date: due || undefined, message: message.trim() || undefined, is_anonymous: anonymous }, {
-                        onSuccess: (r) => { toast({ title: `${r.created} request${r.created === 1 ? "" : "s"} sent`, description: r.already_pending ? `${r.already_pending} already had a pending request.` : undefined }); onOpenChange(false); reset(); },
-                        onError: fail("Could not send the requests"),
+                        onSuccess: () => { onOpenChange(false); reset(); },
                     })}>Send</Button>
                 </DialogFooter>
             </DialogContent>

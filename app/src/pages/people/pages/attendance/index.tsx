@@ -16,8 +16,6 @@ import { AttendanceStateOptions, AttendanceStateTone } from "@/config/constants/
 import { WorkLocationFormOptions } from "@/config/constants/dropdowns/people/employee-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatMinutes } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { Panel, PersonCell } from "../../components/person";
 import { PeoplePaths } from "../../paths";
@@ -63,7 +61,6 @@ function ClockCard({ canRecord }: { canRecord: boolean }) {
     const endBreak = useEndBreak();
     const [location, setLocation] = useState<WorkLocation>("OFFICE");
     const elapsed = useElapsed(q.data?.open_break?.started_at ?? q.data?.open_session?.clock_in_at);
-    const opts = (title: string) => ({ onSuccess: () => toast({ title }), onError: (e: unknown) => toast({ variant: "destructive", title: "Could not update", description: getApiErrorMessage(e) }) });
     const busy = clockIn.isPending || clockOut.isPending || startBreak.isPending || endBreak.isPending;
 
     if (q.isLoading) return <ListSkeleton rows={3} />;
@@ -89,14 +86,14 @@ function ClockCard({ canRecord }: { canRecord: boolean }) {
                                         <SelectTrigger className="sm:w-40" aria-label="Work location"><SelectValue /></SelectTrigger>
                                         <SelectContent>{WorkLocationFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                                     </Select>
-                                    <Button loading={clockIn.isPending} disabled={busy} onClick={() => clockIn.mutate({ work_location: location }, opts("Clocked in"))}><LogIn /> Clock in</Button>
+                                    <Button loading={clockIn.isPending} disabled={busy} onClick={() => clockIn.mutate({ work_location: location })}><LogIn /> Clock in</Button>
                                 </>
                             ) : (
                                 <>
                                     {onBreak
-                                        ? <Button variant="outline" loading={endBreak.isPending} disabled={busy} onClick={() => endBreak.mutate(undefined, opts("Break ended"))}><Coffee /> End break</Button>
-                                        : <Button variant="outline" loading={startBreak.isPending} disabled={busy} onClick={() => startBreak.mutate(undefined, opts("Break started"))}><Coffee /> Start break</Button>}
-                                    <Button variant="destructive" loading={clockOut.isPending} disabled={busy} onClick={() => clockOut.mutate({}, opts("Clocked out"))}><LogOut /> Clock out</Button>
+                                        ? <Button variant="outline" loading={endBreak.isPending} disabled={busy} onClick={() => endBreak.mutate(undefined)}><Coffee /> End break</Button>
+                                        : <Button variant="outline" loading={startBreak.isPending} disabled={busy} onClick={() => startBreak.mutate(undefined)}><Coffee /> Start break</Button>}
+                                    <Button variant="destructive" loading={clockOut.isPending} disabled={busy} onClick={() => clockOut.mutate({})}><LogOut /> Clock out</Button>
                                 </>
                             )}
                         </div>

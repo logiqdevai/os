@@ -21,8 +21,6 @@ import {
     SkillCategoryFilterOptions, SkillCategoryFormOptions, SkillProficiencyFilterOptions, SkillProficiencyFormOptions,
 } from "@/config/constants/dropdowns/people/performance-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { AvailabilityBadge, PersonCell } from "../../components/person";
 import { PeoplePaths } from "../../paths";
 
@@ -53,7 +51,7 @@ export default function SkillsPage() {
                     <DropdownMenuContent align="end">
                         {canOwn && me.data && <DropdownMenuItem onSelect={() => setAdding(s)}><Plus /> Add to my profile</DropdownMenuItem>}
                         {canManage && <DropdownMenuItem onSelect={() => setFilter("skill", s.id)}><Search /> Find people</DropdownMenuItem>}
-                        {canManage && <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => archive.mutate(s.id, { onSuccess: () => toast({ title: "Skill archived" }), onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }) })}><Archive /> Archive</DropdownMenuItem>}
+                        {canManage && <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => archive.mutate(s.id)}><Archive /> Archive</DropdownMenuItem>}
                     </DropdownMenuContent>
                 </DropdownMenu>
             ),
@@ -154,7 +152,7 @@ function CreateSkillDialog({ open, onOpenChange }: { open: boolean; onOpenChange
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button disabled={!name.trim()} loading={create.isPending} onClick={() => create.mutate({ name: name.trim(), category }, { onSuccess: () => { toast({ title: "Skill created" }); onOpenChange(false); setName(""); }, onError: (e) => toast({ variant: "destructive", title: "Could not create skill", description: getApiErrorMessage(e) }) })}>Create</Button>
+                    <Button disabled={!name.trim()} loading={create.isPending} onClick={() => create.mutate({ name: name.trim(), category }, { onSuccess: () => { onOpenChange(false); setName(""); } })}>Create</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -177,7 +175,7 @@ function AddSkillDialog({ skill, employeeId, onClose }: { skill: Skill | null; e
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={onClose}>Cancel</Button>
-                    <Button loading={assign.isPending} disabled={!employeeId || !skill} onClick={() => skill && employeeId && assign.mutate({ employeeId, skill_id: skill.id, proficiency: level }, { onSuccess: () => { toast({ title: "Skill added to your profile" }); onClose(); }, onError: (e) => toast({ variant: "destructive", title: "Could not add skill", description: getApiErrorMessage(e) }) })}>Add</Button>
+                    <Button loading={assign.isPending} disabled={!employeeId || !skill} onClick={() => skill && employeeId && assign.mutate({ employeeId, skill_id: skill.id, proficiency: level }, { onSuccess: () => onClose() })}>Add</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

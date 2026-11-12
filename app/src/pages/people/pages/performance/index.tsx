@@ -26,15 +26,12 @@ import {
 } from "@/config/constants/dropdowns/people/performance-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatNumber, formatRelative, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { PersonCell } from "../../components/person";
 import { PeoplePaths } from "../../paths";
 import { PlansTab } from "./components/plans-tab";
 import { RequestsTab } from "./components/requests-tab";
 import { CalibrationTab } from "./components/calibration-tab";
 
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 /**
  * /people/performance — reviews, cycles (performance.manage), goals, feedback, feedback requests, improvement plans and calibration.
@@ -110,7 +107,7 @@ function CyclesTab() {
         {
             key: "actions", header: <span className="sr-only">Actions</span>, className: "w-24",
             cell: (c) => p.can("employees.performance.manage") && ["PLANNED", "ACTIVE"].includes(c.status) && (
-                <Button size="sm" variant="outline" loading={launch.isPending} onClick={() => launch.mutate(c.id, { onSuccess: (r) => toast({ title: r.launched ? `${r.launched} review(s) created` : "Everyone already has a review" }), onError: fail("Could not launch") })}><Rocket /> Launch</Button>
+                <Button size="sm" variant="outline" loading={launch.isPending} onClick={() => launch.mutate(c.id)}><Rocket /> Launch</Button>
             ),
         },
     ];
@@ -147,7 +144,7 @@ function CycleDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: 
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button disabled={!name.trim() || !start || !end || end < start} loading={create.isPending} onClick={() => create.mutate({ name: name.trim(), type, period_start: start, period_end: end, due_date: due || undefined }, { onSuccess: () => { toast({ title: "Cycle created" }); onOpenChange(false); }, onError: fail("Could not create cycle") })}>Create</Button>
+                    <Button disabled={!name.trim() || !start || !end || end < start} loading={create.isPending} onClick={() => create.mutate({ name: name.trim(), type, period_start: start, period_end: end, due_date: due || undefined }, { onSuccess: () => onOpenChange(false) })}>Create</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -215,7 +212,7 @@ function GoalDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button disabled={!title.trim() || !target} loading={create.isPending} onClick={() => create.mutate({ employee_id: target, title: title.trim(), due_date: due || undefined }, { onSuccess: () => { toast({ title: "Goal created" }); onOpenChange(false); setTitle(""); }, onError: fail("Could not create goal") })}>Create</Button>
+                    <Button disabled={!title.trim() || !target} loading={create.isPending} onClick={() => create.mutate({ employee_id: target, title: title.trim(), due_date: due || undefined }, { onSuccess: () => { onOpenChange(false); setTitle(""); } })}>Create</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -236,7 +233,7 @@ function CheckInDialog({ goal, onClose }: { goal: Goal | null; onClose: () => vo
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={onClose}>Cancel</Button>
-                    <Button disabled={progress === "" && !note.trim()} loading={update.isPending} onClick={() => goal && update.mutate({ id: goal.id, progress_percent: progress === "" ? undefined : Math.min(100, Math.max(0, Number(progress))), note: note || undefined }, { onSuccess: () => { toast({ title: "Check-in saved" }); onClose(); setProgress(""); setNote(""); }, onError: fail("Could not save check-in") })}>Save</Button>
+                    <Button disabled={progress === "" && !note.trim()} loading={update.isPending} onClick={() => goal && update.mutate({ id: goal.id, progress_percent: progress === "" ? undefined : Math.min(100, Math.max(0, Number(progress))), note: note || undefined }, { onSuccess: () => { onClose(); setProgress(""); setNote(""); } })}>Save</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -299,7 +296,7 @@ function FeedbackDialog({ open, onOpenChange, canManage }: { open: boolean; onOp
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button disabled={!employeeId || !body.trim()} loading={add.isPending} onClick={() => add.mutate({ employee_id: employeeId, kind, body: body.trim() }, { onSuccess: () => { toast({ title: "Feedback shared" }); onOpenChange(false); setBody(""); }, onError: fail("Could not share feedback") })}>Share</Button>
+                    <Button disabled={!employeeId || !body.trim()} loading={add.isPending} onClick={() => add.mutate({ employee_id: employeeId, kind, body: body.trim() }, { onSuccess: () => { onOpenChange(false); setBody(""); } })}>Share</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

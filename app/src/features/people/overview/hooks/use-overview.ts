@@ -6,7 +6,13 @@ export const usePeopleOverview = (enabled = true) => useQuery({ queryKey: [...PE
 export const useCapacity = (params: Record<string, unknown>, enabled = true) =>
     useQuery({ queryKey: [...PEOPLE_KEY, "capacity", params], queryFn: () => service.getCapacity(params), placeholderData: keepPreviousData, enabled });
 export const useHrSettings = (enabled = true) => useQuery({ queryKey: [...PEOPLE_KEY, "settings"], queryFn: service.getHrSettings, enabled, staleTime: 60_000 });
+/** Autosaved by People → Settings → General, which shows failures in its <SaveStatus /> (no toast). */
 export const useUpdateHrSettings = () => {
     const qc = useQueryClient();
-    return useMutation({ mutationFn: service.updateHrSettings, onSuccess: () => qc.invalidateQueries({ queryKey: PEOPLE_KEY }) });
+    return useMutation({
+        mutationFn: service.updateHrSettings,
+        meta: { errorToast: false },
+        onSuccess: (settings) => qc.setQueryData([...PEOPLE_KEY, "settings"], settings),
+        onSettled: () => qc.invalidateQueries({ queryKey: PEOPLE_KEY }),
+    });
 };

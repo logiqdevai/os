@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Archive, BadgeCheck, CalendarPlus, CheckCircle2, LogOut, MoreHorizontal, Plus, Trash2, UserCheck } from "lucide-react";
 import { Page, PageHeader, KeyValueList } from "@/components/ui/page";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,8 +26,6 @@ import { LeaveStatusFormOptions, LeaveStatusTone } from "@/config/constants/drop
 import { GoalStatusFormOptions, GoalStatusTone, ReviewStatusFormOptions, ReviewStatusTone, SkillProficiencyFormOptions } from "@/config/constants/dropdowns/people/performance-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatDateTime, formatMinutes, formatMoney, formatNumber, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { AvailabilityBadge, EmploymentStatusBadge, Panel, PersonCell, RestrictedCard } from "../../components/person";
 import { PeoplePaths } from "../../paths";
 import { AvailabilityDialog, CompensationDialog, DocumentDialog, EmergencyContactDialog, EquipmentDialog, HrNoteDialog, OffboardingDialog } from "./components/profile-dialogs";
@@ -81,7 +79,8 @@ function Profile({ employee: e }: { employee: EmployeeDetail }) {
         { id: "onboarding", label: "Onboarding", show: own || p.can("employees.employees.read") },
     ].filter((t) => t.show);
     const tab = tabs.some((t) => t.id === sp.get("tab")) ? (sp.get("tab") as string) : "overview";
-    const done = (title: string) => ({ onSuccess: () => { toast({ title }); setConfirm(null); }, onError: (err: unknown) => toast({ variant: "destructive", title: "Action failed", description: getApiErrorMessage(err) }) });
+    const navigate = useNavigate();
+    const done = { onSuccess: () => setConfirm(null) };
     const canAvailability = own ? p.canAny("employees.profile.update_own", "employees.availability.manage") : p.can("employees.availability.manage");
 
     return (
@@ -141,11 +140,12 @@ function Profile({ employee: e }: { employee: EmployeeDetail }) {
                 description={confirm === "archive" ? "Archived employees are hidden from lists and pickers." : confirm === "onboarded" ? "The status changes to Active." : "Closes the position and compensation, cancels future leave and hides the person from the directory."}
                 confirmText={confirm === "archive" ? "Archive" : "Complete"}
                 variant={confirm === "onboarded" ? "default" : "destructive"}
-                isLoading={archive.isPending || onboard.isPending || offboard.isPending}
+                isLoading={onboard.isPending || offboard.isPending}
                 onConfirm={() => {
-                    if (confirm === "archive") archive.mutate(e.id, done("Employee archived"));
-                    if (confirm === "onboarded") onboard.mutate(e.id, done("Onboarding completed"));
-                    if (confirm === "offboarded") offboard.mutate(e.id, done("Offboarding completed"));
+                    // Archive is optimistic: the employee leaves every list at once, so go straight back to the list.
+                    if (confirm === "archive") { archive.mutate(e.id); setConfirm(null); navigate(PeoplePaths.root); }
+                    if (confirm === "onboarded") onboard.mutate(e.id, done);
+                    if (confirm === "offboarded") offboard.mutate(e.id, done);
                 }}
             />
         </Page>
@@ -196,7 +196,7 @@ function OverviewTab({ e, onAddContact }: { e: EmployeeDetail; onAddContact: () 
                                         <div className="truncate text-xs text-muted-foreground">{[c.relationship, c.phone].filter(Boolean).join(" · ")}</div>
                                     </div>
                                     {(e.is_me ? p.can("employees.profile.update_own") : p.can("employees.personal_data.manage")) && (
-                                        <Button size="icon-sm" variant="ghost" aria-label={`Remove ${c.name}`} onClick={() => remove.mutate({ id: e.id, contactId: c.id }, { onError: (err) => toast({ variant: "destructive", title: "Could not remove", description: getApiErrorMessage(err) }) })}><Trash2 /></Button>
+                                        <Button size="icon-sm" variant="ghost" aria-label={`Remove ${c.name}`} onClick={() => remove.mutate({ id: e.id, contactId: c.id })}><Trash2 /></Button>
                                     )}
                                 </li>
                             ))}
@@ -353,7 +353,7 @@ function SkillsTab({ e }: { e: EmployeeDetail }) {
                                 <span className="flex items-center gap-2">
                                     <Badge variant="neutral">{getDropdownOptionLabel(SkillProficiencyFormOptions, s.proficiency)}</Badge>
                                     {s.verified_at ? <BadgeCheck className="size-4 text-success" aria-label="Verified" /> : p.can("employees.skills.manage") && !e.is_me && (
-                                        <Button size="sm" variant="ghost" onClick={() => verify.mutate(s.id, { onSuccess: () => toast({ title: "Skill verified" }), onError: (err) => toast({ variant: "destructive", title: "Could not verify", description: getApiErrorMessage(err) }) })}>Verify</Button>
+                                        <Button size="sm" variant="ghost" onClick={() => verify.mutate(s.id)}>Verify</Button>
                                     )}
                                 </span>
                             </li>
@@ -464,7 +464,7 @@ function EquipmentTab({ e, onAdd }: { e: EmployeeDetail; onAdd: () => void }) {
                         <li key={it.id} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
                             <div className="min-w-0"><div className="truncate text-[13px] text-foreground">{it.name}</div><div className="text-xs text-muted-foreground">{getDropdownOptionLabel(EquipmentTypeFormOptions, it.asset_type)}{it.serial_number ? ` · ${it.serial_number}` : ""} · {getDropdownOptionLabel(EquipmentConditionFormOptions, it.condition)} · since {formatDate(it.assigned_on)}</div></div>
                             {it.returned_on ? <Badge variant="neutral">Returned {formatDate(it.returned_on)}</Badge> : canManage ? (
-                                <Button size="sm" variant="outline" loading={update.isPending} onClick={() => update.mutate({ id: e.id, itemId: it.id, returned_on: new Date().toISOString().slice(0, 10) }, { onSuccess: () => toast({ title: "Marked as returned" }), onError: (err) => toast({ variant: "destructive", title: "Could not update", description: getApiErrorMessage(err) }) })}>Mark returned</Button>
+                                <Button size="sm" variant="outline" onClick={() => update.mutate({ id: e.id, itemId: it.id, returned_on: new Date().toISOString().slice(0, 10) })}>Mark returned</Button>
                             ) : <Badge variant="info">In use</Badge>}
                         </li>
                     ))}

@@ -15,12 +15,9 @@ import type { CompanyHoliday, HolidayDto } from "@/features/people/leave/interfa
 import { HolidayKindFormOptions } from "@/config/constants/dropdowns/people/leave-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { Panel } from "../../../components/person";
 import { Field, Toggle } from "./general-tab";
 
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 interface Row {
     id: string;
@@ -81,12 +78,12 @@ export function HolidaysTab({ branches }: { branches: { id: string; name: string
             {!!branches.length && <BranchHolidayForm branches={branches} />}
             <HolidayDialog value={editing} branches={branches} onClose={() => setEditing(null)} />
             <ConfirmationDialog isOpen={!!deleting} onClose={() => setDeleting(null)} title={`Delete ${deleting?.name ?? "holiday"}?`} description="Leave already approved is not recounted." confirmText="Delete" variant="destructive"
-                isLoading={removeCompany.isPending || removeBranch.isPending}
                 onConfirm={() => {
+                    // Optimistic: the row disappears at once and comes back if the API refuses.
                     if (!deleting) return;
-                    const done = { onSuccess: () => { toast({ title: "Holiday deleted" }); setDeleting(null); }, onError: fail("Could not delete") };
-                    if (deleting.source === "company") removeCompany.mutate(deleting.id, done);
-                    else removeBranch.mutate(deleting.id, done);
+                    if (deleting.source === "company") removeCompany.mutate(deleting.id);
+                    else removeBranch.mutate(deleting.id);
+                    setDeleting(null);
                 }} />
         </div>
     );
@@ -105,10 +102,10 @@ function HolidayDialog({ value, branches, onClose }: { value: CompanyHoliday | "
     const pending = create.isPending || update.isPending;
     const ids = f.applies_to_branch_ids ?? [];
     const submit = () => {
-        const done = { onSuccess: () => { toast({ title: "Holiday saved" }); onClose(); }, onError: fail("Could not save the holiday") };
         const dto = { ...f, name: f.name.trim() };
-        if (value === "new") create.mutate(dto, done);
-        else if (value) update.mutate({ id: value.id, ...dto }, done);
+        // Edits are optimistic (the list shows them at once), so the dialog closes right away; creating waits for the id.
+        if (value === "new") create.mutate(dto, { onSuccess: onClose });
+        else if (value) { update.mutate({ id: value.id, ...dto }); onClose(); }
     };
     return (
         <Dialog open={!!value} onOpenChange={(o) => !o && !pending && onClose()}>
@@ -162,7 +159,7 @@ function BranchHolidayForm({ branches }: { branches: { id: string; name: string 
                 <Field label="Date" htmlFor="bh-date"><Input id="bh-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
                 <label className="flex h-9 items-center gap-2 text-[13px] text-foreground"><Checkbox checked={recurring} onCheckedChange={(v) => setRecurring(!!v)} /> Every year</label>
                 <Button disabled={!branchId || !name.trim() || !date} loading={create.isPending}
-                    onClick={() => create.mutate({ branch_id: branchId, name: name.trim(), date, recurring }, { onSuccess: () => { toast({ title: "Branch holiday added" }); setName(""); setDate(""); }, onError: fail("Could not add the holiday") })}>
+                    onClick={() => create.mutate({ branch_id: branchId, name: name.trim(), date, recurring }, { onSuccess: () => { setName(""); setDate(""); } })}>
                     <Plus /> Add
                 </Button>
             </div>

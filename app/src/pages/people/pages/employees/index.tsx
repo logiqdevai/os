@@ -15,8 +15,6 @@ import type { Employee } from "@/features/people/employees/interfaces/employees.
 import { AvailabilityFilterOptions, EmploymentStatusFilterOptions, EmploymentTypeFilterOptions, EmploymentTypeFormOptions } from "@/config/constants/dropdowns/people/employee-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { useSessionData } from "@/features/session/hooks/use-session";
 import { AvailabilityBadge, EmploymentStatusBadge, PersonCell } from "../../components/person";
 import { PeoplePaths } from "../../paths";
@@ -96,7 +94,7 @@ export default function EmployeesPage() {
                         )}
                         <Can permission="employees.employees.export">
                             {view === "table" && (
-                                <Button variant="outline" loading={download.isPending} onClick={() => download.mutate(listParams, { onError: (e) => toast({ variant: "destructive", title: "Export failed", description: getApiErrorMessage(e) }) })}>
+                                <Button variant="outline" loading={download.isPending} onClick={() => download.mutate(listParams)}>
                                     <Download /> Export
                                 </Button>
                             )}

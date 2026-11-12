@@ -17,8 +17,6 @@ import { ChecklistAssigneeFormOptions, ChecklistKindFormOptions, ChecklistRunSta
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { Panel } from "../../../components/person";
 
 /**
@@ -53,7 +51,6 @@ export function ChecklistsTab({ e }: { e: EmployeeDetail }) {
 
 function RunCard({ run, employeeId }: { run: EmployeeChecklistRun; employeeId: string }) {
     const toggle = useSetChecklistItem();
-    const [busy, setBusy] = useState<string | null>(null);
     const open = run.status === "IN_PROGRESS" || run.status === "NOT_STARTED";
     return (
         <Panel
@@ -78,15 +75,10 @@ function RunCard({ run, employeeId }: { run: EmployeeChecklistRun; employeeId: s
                             <Checkbox
                                 className="mt-0.5"
                                 checked={done}
-                                disabled={!i.can_complete || !open || i.status === "SKIPPED" || busy === i.id}
+                                disabled={!i.can_complete || !open || i.status === "SKIPPED"}
                                 aria-label={`${done ? "Reopen" : "Complete"} ${i.checklist_item.title}`}
-                                onCheckedChange={(v) => {
-                                    setBusy(i.id);
-                                    toggle.mutate({ id: employeeId, runId: run.id, itemId: i.id, done: !!v }, {
-                                        onError: (err) => toast({ variant: "destructive", title: "Could not update the item", description: getApiErrorMessage(err) }),
-                                        onSettled: () => setBusy(null),
-                                    });
-                                }}
+                                // Optimistic: the box and the run's progress change at once; a refusal rolls back.
+                                onCheckedChange={(v) => toggle.mutate({ id: employeeId, runId: run.id, itemId: i.id, done: !!v })}
                             />
                             <div className="min-w-0 flex-1">
                                 <div className={cn("text-[13px] text-foreground", done && "text-muted-foreground line-through")}>{i.checklist_item.title}{!i.checklist_item.is_required && <span className="ml-1 text-xs text-muted-foreground">(optional)</span>}</div>
@@ -133,8 +125,7 @@ function StartDialog({ employee, kind, onClose }: { employee: EmployeeDetail; ki
                 <DialogFooter>
                     <Button variant="ghost" onClick={close}>Cancel</Button>
                     <Button disabled={!checklistId} loading={start.isPending} onClick={() => start.mutate({ id: employee.id, checklist_id: checklistId, due_at: due || undefined }, {
-                        onSuccess: () => { toast({ title: "Checklist started" }); close(); },
-                        onError: (err) => toast({ variant: "destructive", title: "Could not start the checklist", description: getApiErrorMessage(err) }),
+                        onSuccess: () => close(),
                     })}>Start</Button>
                 </DialogFooter>
             </DialogContent>

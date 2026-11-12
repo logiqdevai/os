@@ -22,8 +22,6 @@ import {
     AvailabilityFormOptions, DocumentCategoryFormOptions, EquipmentTypeFormOptions, HrNoteCategoryFormOptions, HrNoteVisibilityFormOptions, PayTypeFormOptions,
     TerminationKindFormOptions,
 } from "@/config/constants/dropdowns/people/employee-form.options";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 interface DialogProps {
     open: boolean;
@@ -32,7 +30,6 @@ interface DialogProps {
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 function SimpleSelect<T extends string>({ label, value, onChange, options }: { label: string; value: T; onChange: (v: T) => void; options: { id: T; label: string }[] }) {
     return (
@@ -53,7 +50,7 @@ export function AvailabilityDialog({ open, onOpenChange, employee }: DialogProps
     const [note, setNote] = useState(employee.availability_note ?? "");
     useEffect(() => { if (open) { setStatus(employee.availability_status); setNote(employee.availability_note ?? ""); } }, [open, employee]);
     return (
-        <Dialog open={open} onOpenChange={(o) => !mutation.isPending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader><DialogTitle>Set availability</DialogTitle><DialogDescription>Shown in the directory and to project managers.</DialogDescription></DialogHeader>
                 <div className="space-y-4">
@@ -62,7 +59,8 @@ export function AvailabilityDialog({ open, onOpenChange, employee }: DialogProps
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button loading={mutation.isPending} onClick={() => mutation.mutate({ id: employee.id, status, note: note || undefined }, { onSuccess: () => { toast({ title: "Availability updated" }); onOpenChange(false); }, onError: fail("Could not update availability") })}>Save</Button>
+                    {/* Optimistic: the availability badge changes at once, so the dialog closes right away. */}
+                    <Button onClick={() => { mutation.mutate({ id: employee.id, status, note: note || undefined }); onOpenChange(false); }}>Save</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -74,7 +72,7 @@ export function OffboardingDialog({ open, onOpenChange, employee }: DialogProps)
     const form = useForm<OffboardingFormValues>({ resolver: zodResolver(offboardingFormSchema), defaultValues: { termination_date: today(), termination_kind: "RESIGNATION", termination_reason: "", rehire_eligible: true } });
     useEffect(() => { if (open) form.reset({ termination_date: today(), termination_kind: "RESIGNATION", termination_reason: "", rehire_eligible: true }); }, [open, form]);
     const submit = form.handleSubmit((v) => mutation.mutate({ id: employee.id, ...v, termination_reason: v.termination_reason || undefined }, {
-        onSuccess: () => { toast({ title: "Offboarding started" }); onOpenChange(false); }, onError: fail("Could not start offboarding"),
+        onSuccess: () => onOpenChange(false),
     }));
     return (
         <Dialog open={open} onOpenChange={(o) => !mutation.isPending && onOpenChange(o)}>
@@ -118,7 +116,7 @@ export function CompensationDialog({ open, onOpenChange, employee }: DialogProps
     const submit = form.handleSubmit((v) => mutation.mutate({
         id: employee.id, effective_from: v.effective_from, employment_type: employee.employment_type, pay_type: v.pay_type as PayType, base_amount: Number(v.base_amount), currency: v.currency,
         cost_rate_hourly: v.cost_rate_hourly ? Number(v.cost_rate_hourly) : undefined, contracted_weekly_hours: v.contracted_weekly_hours ? Number(v.contracted_weekly_hours) : undefined, reason: v.reason || undefined,
-    }, { onSuccess: () => { toast({ title: "Compensation recorded" }); onOpenChange(false); }, onError: fail("Could not save compensation") }));
+    }, { onSuccess: () => onOpenChange(false) }));
     return (
         <Dialog open={open} onOpenChange={(o) => !mutation.isPending && onOpenChange(o)}>
             <DialogContent className="sm:max-w-lg">
@@ -167,7 +165,7 @@ export function EquipmentDialog({ open, onOpenChange, employee }: DialogProps) {
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button disabled={!name.trim()} loading={mutation.isPending} onClick={() => mutation.mutate({ id: employee.id, asset_type: type, name: name.trim(), serial_number: serial || undefined, assigned_on: date }, { onSuccess: () => { toast({ title: "Equipment assigned" }); onOpenChange(false); }, onError: fail("Could not assign equipment") })}>Assign</Button>
+                    <Button disabled={!name.trim()} loading={mutation.isPending} onClick={() => mutation.mutate({ id: employee.id, asset_type: type, name: name.trim(), serial_number: serial || undefined, assigned_on: date }, { onSuccess: () => onOpenChange(false) })}>Assign</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -193,7 +191,7 @@ export function DocumentDialog({ open, onOpenChange, employee }: DialogProps) {
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button disabled={!title.trim()} loading={mutation.isPending} onClick={() => mutation.mutate({ id: employee.id, category, title: title.trim(), due_date: due || undefined, employee_visible: visible }, { onSuccess: () => { toast({ title: "Document requested" }); onOpenChange(false); }, onError: fail("Could not add document") })}>Request</Button>
+                    <Button disabled={!title.trim()} loading={mutation.isPending} onClick={() => mutation.mutate({ id: employee.id, category, title: title.trim(), due_date: due || undefined, employee_visible: visible }, { onSuccess: () => onOpenChange(false) })}>Request</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -219,7 +217,7 @@ export function HrNoteDialog({ open, onOpenChange, employee }: DialogProps) {
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button disabled={!body.trim()} loading={mutation.isPending} onClick={() => mutation.mutate({ id: employee.id, category, visibility, title: title || undefined, body: body.trim() }, { onSuccess: () => { toast({ title: "Note added" }); onOpenChange(false); }, onError: fail("Could not add note") })}>Add note</Button>
+                    <Button disabled={!body.trim()} loading={mutation.isPending} onClick={() => mutation.mutate({ id: employee.id, category, visibility, title: title || undefined, body: body.trim() }, { onSuccess: () => onOpenChange(false) })}>Add note</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -243,7 +241,7 @@ export function EmergencyContactDialog({ open, onOpenChange, employee }: DialogP
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button disabled={!name.trim() || phone.trim().length < 3} loading={mutation.isPending} onClick={() => mutation.mutate({ id: employee.id, name: name.trim(), relationship: relationship || undefined, phone: phone.trim(), is_primary: !employee.emergency_contacts?.length }, { onSuccess: () => { toast({ title: "Contact added" }); onOpenChange(false); }, onError: fail("Could not add contact") })}>Add</Button>
+                    <Button disabled={!name.trim() || phone.trim().length < 3} loading={mutation.isPending} onClick={() => mutation.mutate({ id: employee.id, name: name.trim(), relationship: relationship || undefined, phone: phone.trim(), is_primary: !employee.emergency_contacts?.length }, { onSuccess: () => onOpenChange(false) })}>Add</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

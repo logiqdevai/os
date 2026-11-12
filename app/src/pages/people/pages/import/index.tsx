@@ -16,11 +16,9 @@ import { ImportStatusFormOptions, ImportStatusTone } from "@/config/constants/dr
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDateTime } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { Panel } from "../../components/person";
 
 const IGNORE = "__ignore__";
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 /**
  * /people/import — employee CSV import: upload → map columns → preview (dry run) → run in the background.
@@ -48,7 +46,7 @@ function UploadStep({ onUploaded }: { onUploaded: (id: string) => void }) {
         if (!file) return;
         if (file.size > 5 * 1024 * 1024) return toast({ variant: "destructive", title: "The file is larger than 5 MB" });
         const csv = await file.text();
-        upload.mutate({ file_name: file.name, csv }, { onSuccess: (j) => onUploaded(j.id), onError: fail("Could not read the file") });
+        upload.mutate({ file_name: file.name, csv }, { onSuccess: (j) => onUploaded(j.id) });
         if (input.current) input.current.value = "";
     };
     return (
@@ -128,14 +126,14 @@ function JobFlow({ job, onReset }: { job: EmployeeImportDetail; onReset: () => v
                         <Switch checked={updateExisting} disabled={!p.can("employees.employees.update")} onCheckedChange={(v) => { setUpdateExisting(v); setPreview(null); }} />
                         Update employees that already exist
                     </label>
-                    <Button disabled={!emailMapped} loading={previewing.isPending} onClick={() => previewing.mutate({ id: job.id, columns, update_existing: updateExisting }, { onSuccess: setPreview, onError: fail("Could not check the file") })}>Check file</Button>
+                    <Button disabled={!emailMapped} loading={previewing.isPending} onClick={() => previewing.mutate({ id: job.id, columns, update_existing: updateExisting }, { onSuccess: setPreview })}>Check file</Button>
                 </div>
                 {!emailMapped && <p className="mt-2 text-xs text-muted-foreground">Map a column to Work email to continue.</p>}
             </Panel>
 
             {preview && (
                 <Panel title="3 · Preview" actions={
-                    <Button disabled={!preview.counts.create && !preview.counts.update} loading={run.isPending} onClick={() => run.mutate(job.id, { onSuccess: () => toast({ title: "Import started" }), onError: fail("Could not start the import") })}>
+                    <Button disabled={!preview.counts.create && !preview.counts.update} loading={run.isPending} onClick={() => run.mutate(job.id)}>
                         <Play /> Import {preview.counts.create + preview.counts.update} row{preview.counts.create + preview.counts.update === 1 ? "" : "s"}
                     </Button>
                 }>
