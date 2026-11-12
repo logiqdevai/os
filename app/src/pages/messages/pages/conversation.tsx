@@ -11,8 +11,6 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePermissions } from "@/hooks/use-permission";
 import { usePageMetadata } from "@/hooks/use-page-metadata";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -95,7 +93,6 @@ export default function ConversationPage() {
     const muted = !!c.muted_until && new Date(c.muted_until) > new Date();
     const closeThread = () => setSp((p) => { const n = new URLSearchParams(p); n.delete("thread"); return n; }, { replace: true });
     const openThread = (rootId: string) => setSp((p) => { const n = new URLSearchParams(p); n.set("thread", rootId); return n; });
-    const onError = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
     const Icon = c.kind === "PRIVATE" ? Lock : Hash;
     const title = isDm ? c.label : c.name ?? c.label;
 
@@ -132,7 +129,7 @@ export default function ConversationPage() {
                     {c.topic && <div className="truncate text-xs text-muted-foreground">{c.topic}</div>}
                 </div>
                 {c.is_member && (
-                    <Button variant="ghost" size="icon-sm" aria-label={c.is_favorite ? "Remove from favorites" : "Add to favorites"} onClick={() => prefs.mutate({ id: c.id, is_favorite: !c.is_favorite }, { onError: onError("Could not update") })}>
+                    <Button variant="ghost" size="icon-sm" aria-label={c.is_favorite ? "Remove from favorites" : "Add to favorites"} onClick={() => prefs.mutate({ id: c.id, is_favorite: !c.is_favorite })}>
                         <Star className={cn(c.is_favorite && "fill-current text-warning")} />
                     </Button>
                 )}
@@ -160,13 +157,13 @@ export default function ConversationPage() {
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="Conversation settings"><MoreHorizontal /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         {c.is_member && (
-                            <DropdownMenuItem onSelect={() => prefs.mutate({ id: c.id, muted_until: muted ? null : new Date("2999-12-31").toISOString() }, { onSuccess: () => toast({ title: muted ? "Notifications on" : "Muted" }), onError: onError("Could not update") })}>
+                            <DropdownMenuItem onSelect={() => prefs.mutate({ id: c.id, muted_until: muted ? null : new Date("2999-12-31").toISOString() })}>
                                 {muted ? <Volume2 /> : <VolumeX />} {muted ? "Unmute" : "Mute"}
                             </DropdownMenuItem>
                         )}
                         {!isDm && c.can_manage && <DropdownMenuItem onSelect={() => setDetailsOpen(true)}><Info /> Edit topic and description</DropdownMenuItem>}
                         {!isDm && c.can_manage && (
-                            <DropdownMenuItem onSelect={() => archive.mutate({ id: c.id, archived: !archived }, { onSuccess: () => toast({ title: archived ? "Channel restored" : "Channel archived" }), onError: onError("Could not update") })}>
+                            <DropdownMenuItem onSelect={() => archive.mutate({ id: c.id, archived: !archived })}>
                                 {archived ? <ArchiveRestore /> : <Archive />} {archived ? "Unarchive" : "Archive channel"}
                             </DropdownMenuItem>
                         )}
@@ -203,7 +200,7 @@ export default function ConversationPage() {
                 {!c.is_member && !isDm && !archived ? (
                     <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-3 text-center sm:flex-row sm:justify-between sm:text-left">
                         <span className="text-[13px] text-muted-foreground">You are viewing #{c.name}. Join to post and get notified.</span>
-                        <Button size="sm" loading={join.isPending} onClick={() => join.mutate(c.id, { onSuccess: () => toast({ title: `Joined #${c.name}` }), onError: onError("Could not join") })}>Join channel</Button>
+                        <Button size="sm" loading={join.isPending} onClick={() => join.mutate(c.id)}>Join channel</Button>
                     </div>
                 ) : (
                     <Composer
@@ -244,8 +241,7 @@ export default function ConversationPage() {
                 description={c.kind === "PRIVATE" ? "You will need an invitation to come back." : "You can join again from Browse channels."}
                 confirmText="Leave"
                 variant="destructive"
-                isLoading={leave.isPending}
-                onConfirm={() => leave.mutate(c.id, { onSuccess: () => { setConfirmLeave(false); navigate(MessagesPaths.root); }, onError: onError("Could not leave") })}
+                onConfirm={() => { leave.mutate(c.id); setConfirmLeave(false); navigate(MessagesPaths.root); }}
             />
         </div>
     );

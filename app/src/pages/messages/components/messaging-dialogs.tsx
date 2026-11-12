@@ -15,10 +15,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { useAddChannelMembers, useChannelMembers, useCreateChannel, useOpenDm, useRemoveChannelMember, useUpdateChannel } from "@/features/messaging/hooks/use-messaging";
+import { useAddChannelMembers, useAutosaveChannel, useChannelMembers, useCreateChannel, useOpenDm, useRemoveChannelMember } from "@/features/messaging/hooks/use-messaging";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import type { ChannelDetail, ChannelMemberRow } from "@/features/messaging/interfaces/messaging.interfaces";
 import { ChannelMemberRoleOptions, CreatableChannelKindOptions } from "@/config/constants/dropdowns/messaging/messaging.options";
 import { MessagesPaths } from "../messages-paths";
@@ -44,8 +44,7 @@ export function CreateChannelDialog({ open, onOpenChange }: { open: boolean; onO
     }, [open, form]);
     const submit = form.handleSubmit((v) =>
         create.mutate({ name: v.name, kind: v.kind, description: v.description || undefined, membership_ids: members }, {
-            onSuccess: (c) => { toast({ title: `#${c.name ?? c.label} created` }); onOpenChange(false); navigate(MessagesPaths.channel(c.id)); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not create the channel", description: getApiErrorMessage(e) }),
+            onSuccess: (c) => { onOpenChange(false); navigate(MessagesPaths.channel(c.id)); },
         }),
     );
     return (
@@ -111,7 +110,6 @@ export function NewDmDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     const start = () =>
         openDm.mutate(people, {
             onSuccess: (c) => { onOpenChange(false); navigate(MessagesPaths.channel(c.id)); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not start the conversation", description: getApiErrorMessage(e) }),
         });
     return (
         <Dialog open={open} onOpenChange={(o) => !openDm.isPending && onOpenChange(o)}>
@@ -158,7 +156,7 @@ export function ChannelMembersDialog({ channel, open, onOpenChange }: { channel:
                             <Button
                                 loading={add.isPending}
                                 disabled={!adding.length}
-                                onClick={() => add.mutate({ id: channel.id, membership_ids: adding }, { onSuccess: () => { toast({ title: "Members added" }); setAdding(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not add", description: getApiErrorMessage(e) }) })}
+                                onClick={() => add.mutate({ id: channel.id, membership_ids: adding }, { onSuccess: () => setAdding(null) })}
                             >
                                 Add {adding.length || ""}
                             </Button>
@@ -197,8 +195,7 @@ export function ChannelMembersDialog({ channel, open, onOpenChange }: { channel:
                     description="They lose access to this channel's messages."
                     confirmText="Remove"
                     variant="destructive"
-                    isLoading={remove.isPending}
-                    onConfirm={() => removing && remove.mutate({ id: channel.id, member_id: removing.id }, { onSuccess: () => { toast({ title: "Member removed" }); setRemoving(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not remove", description: getApiErrorMessage(e) }) })}
+                    onConfirm={() => { if (!removing) return; remove.mutate({ id: channel.id, member_id: removing.id }); setRemoving(null); }}
                 />
             </DialogContent>
         </Dialog>
@@ -208,23 +205,24 @@ export function ChannelMembersDialog({ channel, open, onOpenChange }: { channel:
 const detailsSchema = z.object({ topic: z.string().trim().max(250).optional(), description: z.string().trim().max(500).optional() });
 type DetailsValues = z.infer<typeof detailsSchema>;
 
-/** Edit topic / description (channel owners and admins). */
+/** Edit topic / description (channel owners and admins). Saves as you type (no Save button); the header updates at once. */
 export function ChannelDetailsDialog({ channel, open, onOpenChange }: { channel: ChannelDetail; open: boolean; onOpenChange: (o: boolean) => void }) {
-    const update = useUpdateChannel();
+    const update = useAutosaveChannel();
     const form = useForm<DetailsValues>({ resolver: zodResolver(detailsSchema), defaultValues: { topic: "", description: "" } });
-    useEffect(() => { if (open) form.reset({ topic: channel.topic ?? "", description: channel.description ?? "" }); }, [open, channel, form]);
-    const submit = form.handleSubmit((v) =>
-        update.mutate({ id: channel.id, topic: v.topic ?? "", description: v.description ?? "" }, {
-            onSuccess: () => { toast({ title: "Channel updated" }); onOpenChange(false); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not update", description: getApiErrorMessage(e) }),
-        }),
-    );
+    useEffect(() => {
+        if (open) form.reset({ topic: channel.topic ?? "", description: channel.description ?? "" });
+        // Only when the dialog opens: the header refresh after each save must not reset typing.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, channel.id, form]);
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: channel.id, topic: v.topic ?? "", description: v.description ?? "" }), { enabled: open });
+    const close = () => { autosave.flush(); onOpenChange(false); };
+    const submit = form.handleSubmit(close);
     return (
-        <Dialog open={open} onOpenChange={(o) => !update.isPending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : close())}>
             <DialogContent className="sm:max-w-md">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
-                        <DialogHeader><DialogTitle>Edit #{channel.name}</DialogTitle><DialogDescription>The topic shows in the channel header.</DialogDescription></DialogHeader>
+                        <DialogHeader><DialogTitle className="flex flex-wrap items-center gap-2">Edit #{channel.name} <SaveStatus state={autosave} className="font-normal" /></DialogTitle><DialogDescription>The topic shows in the channel header.</DialogDescription></DialogHeader>
                         <FormField control={form.control} name="topic" render={({ field }) => (
                             <FormItem><FormLabel>Topic</FormLabel><FormControl><Input placeholder="Sprint 14 · release Friday" {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>
                         )} />
@@ -232,8 +230,7 @@ export function ChannelDetailsDialog({ channel, open, onOpenChange }: { channel:
                             <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>
                         )} />
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={update.isPending}>Cancel</Button>
-                            <Button type="submit" loading={update.isPending}>Save</Button>
+                            <Button type="submit">Done</Button>
                         </DialogFooter>
                     </form>
                 </Form>

@@ -17,8 +17,6 @@ import { MultiPicker } from "@/components/ui/multi-picker";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, formatDateTime, formatNumber, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import {
@@ -32,7 +30,6 @@ import { apiFileUrl } from "../../components/message-attachments";
 import { AdminNav } from "./admin-nav";
 import { useChannelOptions } from "./channel-options";
 
-const onError = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 // ------------------------------------------------------------------------------------------- policies
 
@@ -68,7 +65,7 @@ function PolicyDialog({ policy, open, onOpenChange }: { policy: RetentionPolicy 
             name: name.trim(), scope, channel_kind: scope === "CHANNEL_KIND" ? kind : null, channel_ids: scope === "CHANNEL" ? channelIds : [], action,
             retention_days: action === "UNLIMITED" ? null : Number(days), applies_to_attachments: attachments, applies_to_reactions: reactions,
         };
-        const done = { onSuccess: () => { toast({ title: policy ? "Policy saved" : "Policy created" }); onOpenChange(false); }, onError: onError("Could not save the policy") };
+        const done = { onSuccess: () => onOpenChange(false) };
         if (policy) update.mutate({ id: policy.id, ...dto }, done);
         else create.mutate(dto, done);
     };
@@ -140,7 +137,7 @@ function PoliciesTab() {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [preview, setPreview] = useState<{ policy: RetentionPolicy; result: RetentionRunResult } | null>(null);
     const [deleting, setDeleting] = useState<RetentionPolicy | null>(null);
-    const doPreview = (p: RetentionPolicy) => run.mutate({ id: p.id, dryRun: true }, { onSuccess: (result) => setPreview({ policy: p, result }), onError: onError("Could not preview") });
+    const doPreview = (p: RetentionPolicy) => run.mutate({ id: p.id, dryRun: true }, { onSuccess: (result) => setPreview({ policy: p, result }) });
     const target = (p: RetentionPolicy) =>
         p.scope === "CHANNEL_KIND" ? getDropdownOptionLabel(RetentionChannelKindOptions, p.channel_kind ?? "") : p.scope === "CHANNEL" ? p.channels.map((c) => `#${c.name}`).join(", ") || "No channels" : p.scope === "BRANCH" ? p.branch?.name ?? "Branch" : p.scope === "TEAM" ? p.team?.name ?? "Team" : "Whole organization";
     const columns: DataTableColumn<RetentionPolicy>[] = [
@@ -187,15 +184,15 @@ function PoliciesTab() {
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setPreview(null)}>Close</Button>
                         {totals && (totals.messages > 0 || totals.channels_archived > 0) && (
-                            <Button variant="destructive" loading={run.isPending} onClick={() => preview && run.mutate({ id: preview.policy.id, dryRun: false }, { onSuccess: () => { toast({ title: "Policy applied" }); setPreview(null); }, onError: onError("Could not apply") })}>
+                            <Button variant="destructive" loading={run.isPending} onClick={() => preview && run.mutate({ id: preview.policy.id, dryRun: false }, { onSuccess: () => setPreview(null) })}>
                                 <Play /> Apply now
                             </Button>
                         )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            <ConfirmationDialog isOpen={!!deleting} onClose={() => setDeleting(null)} title={`Delete "${deleting?.name}"?`} description="Messages it covers fall back to the next less specific policy." confirmText="Delete" variant="destructive" isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => { toast({ title: "Policy deleted" }); setDeleting(null); }, onError: onError("Could not delete") })} />
+            <ConfirmationDialog isOpen={!!deleting} onClose={() => setDeleting(null)} title={`Delete "${deleting?.name}"?`} description="Messages it covers fall back to the next less specific policy." confirmText="Delete" variant="destructive"
+                onConfirm={() => { if (!deleting) return; remove.mutate(deleting.id); setDeleting(null); }} />
         </>
     );
 }
@@ -233,7 +230,7 @@ function HoldDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>Cancel</Button>
-                    <Button disabled={!valid} loading={create.isPending} onClick={() => create.mutate({ name: name.trim(), reason: reason.trim(), channel_ids: channelIds, membership_ids: memberIds, date_from: from || null, date_to: to || null }, { onSuccess: () => { toast({ title: "Legal hold created" }); onOpenChange(false); }, onError: onError("Could not create the hold") })}>
+                    <Button disabled={!valid} loading={create.isPending} onClick={() => create.mutate({ name: name.trim(), reason: reason.trim(), channel_ids: channelIds, membership_ids: memberIds, date_from: from || null, date_to: to || null }, { onSuccess: () => onOpenChange(false) })}>
                         <Gavel /> Put on hold
                     </Button>
                 </DialogFooter>
@@ -268,8 +265,8 @@ function HoldsTab() {
             <DataTable columns={columns} data={holds.data?.data} rowKey={(h) => h.id} loading={holds.isFetching} error={holds.error} onRetry={() => holds.refetch()}
                 empty={{ icon: Scale, title: "No legal holds", description: "Hold channels or people to keep their messages during an investigation or dispute." }} />
             <HoldDialog open={open} onOpenChange={setOpen} />
-            <ConfirmationDialog isOpen={!!releasing} onClose={() => setReleasing(null)} title={`Release "${releasing?.name}"?`} description="Retention policies apply to these messages again from the next run." confirmText="Release" isLoading={release.isPending}
-                onConfirm={() => releasing && release.mutate(releasing.id, { onSuccess: () => { toast({ title: "Hold released" }); setReleasing(null); }, onError: onError("Could not release") })} />
+            <ConfirmationDialog isOpen={!!releasing} onClose={() => setReleasing(null)} title={`Release "${releasing?.name}"?`} description="Retention policies apply to these messages again from the next run." confirmText="Release"
+                onConfirm={() => { if (!releasing) return; release.mutate(releasing.id); setReleasing(null); }} />
         </>
     );
 }
@@ -311,7 +308,7 @@ function ExportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={request.isPending}>Cancel</Button>
-                    <Button loading={request.isPending} onClick={() => request.mutate({ format, channel_ids: channelIds, channel_kinds: [], date_from: from || undefined, date_to: to || undefined, include_threads: threads, include_reactions: reactions, include_attachments_metadata: true }, { onSuccess: () => { toast({ title: "Export requested", description: "It is prepared in the background." }); onOpenChange(false); }, onError: onError("Could not request the export") })}>
+                    <Button loading={request.isPending} onClick={() => request.mutate({ format, channel_ids: channelIds, channel_kinds: [], date_from: from || undefined, date_to: to || undefined, include_threads: threads, include_reactions: reactions, include_attachments_metadata: true }, { onSuccess: () => onOpenChange(false) })}>
                         Request export
                     </Button>
                 </DialogFooter>
@@ -332,7 +329,7 @@ function ExportsTab() {
         { key: "exp", header: "Available until", cell: (e) => <span className="text-muted-foreground">{e.expires_at ? formatDateTime(e.expires_at) : "—"}</span>, hideBelow: "lg" },
         {
             key: "dl", header: <span className="sr-only">Download</span>, className: "w-28",
-            cell: (e) => e.status === "COMPLETED" && <Button size="sm" variant="outline" loading={download.isPending && download.variables === e.id} onClick={() => download.mutate(e.id, { onSuccess: (r) => window.open(apiFileUrl(r.path), "_blank", "noopener"), onError: onError("Could not download") })}><Download /> Download</Button>,
+            cell: (e) => e.status === "COMPLETED" && <Button size="sm" variant="outline" loading={download.isPending && download.variables === e.id} onClick={() => download.mutate(e.id, { onSuccess: (r) => window.open(apiFileUrl(r.path), "_blank", "noopener") })}><Download /> Download</Button>,
         },
     ];
     return (

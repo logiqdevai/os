@@ -10,8 +10,6 @@ import { EmptyState, ErrorState } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePageMetadata } from "@/hooks/use-page-metadata";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatNumber, formatRelative } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useBrowseChannels, useJoinChannel, useMarkMentionsRead, useMentions, useMessageSearch, useSavedMessages, useSetSaved, useThreadsInbox } from "@/features/messaging/hooks/use-messaging";
@@ -97,7 +95,7 @@ export function MentionsPage() {
         <InboxShell
             title="Mentions"
             icon={AtSign}
-            actions={unread && <Button variant="ghost" size="sm" loading={markAll.isPending} onClick={() => markAll.mutate(undefined, { onError: (e) => toast({ variant: "destructive", title: "Could not mark as read", description: getApiErrorMessage(e) }) })}><CheckCheck /> Mark all read</Button>}
+            actions={unread && <Button variant="ghost" size="sm" loading={markAll.isPending} onClick={() => markAll.mutate(undefined)}><CheckCheck /> Mark all read</Button>}
         >
             {mentions.isPending ? <ListSkeleton /> : mentions.error ? <ErrorState error={mentions.error} onRetry={() => mentions.refetch()} /> : mentions.data.data.length === 0 ? (
                 <EmptyState icon={AtSign} title="No mentions" description="When someone @mentions you, it shows up here." />
@@ -124,7 +122,7 @@ export function SavedPage() {
                             variant="ghost"
                             size="sm"
                             className="absolute right-3 top-3"
-                            onClick={() => setSaved.mutate({ id: s.message.id, saved: false, channel_id: s.message.channel_id }, { onError: (e) => toast({ variant: "destructive", title: "Could not remove", description: getApiErrorMessage(e) }) })}
+                            onClick={() => setSaved.mutate({ id: s.message.id, saved: false, channel_id: s.message.channel_id })}
                         >
                             Remove
                         </Button>
@@ -196,7 +194,7 @@ export function BrowseChannelsPage({ onCreate }: { onCreate: () => void }) {
                                     </div>
                                 </button>
                                 {!c.is_member && c.status === "ACTIVE" && (
-                                    <Button size="sm" variant="outline" loading={join.isPending && join.variables === c.id} onClick={() => join.mutate(c.id, { onSuccess: () => navigate(MessagesPaths.channel(c.id)), onError: (e) => toast({ variant: "destructive", title: "Could not join", description: getApiErrorMessage(e) }) })}>
+                                    <Button size="sm" variant="outline" loading={join.isPending && join.variables === c.id} onClick={() => join.mutate(c.id, { onSuccess: () => navigate(MessagesPaths.channel(c.id)) })}>
                                         Join
                                     </Button>
                                 )}

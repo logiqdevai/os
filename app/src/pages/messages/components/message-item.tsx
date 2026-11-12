@@ -7,11 +7,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { patchMessageEverywhere, useDeleteMessage, useEditMessage, useSetPinned, useSetSaved, useToggleReaction } from "@/features/messaging/hooks/use-messaging";
+import { patchMessageEverywhere, useDeleteMessage, useEditMessage, usePostMessage, useSetPinned, useSetSaved, useToggleReaction } from "@/features/messaging/hooks/use-messaging";
 import type { Message } from "@/features/messaging/interfaces/messaging.interfaces";
 import { QuickReactionOptions } from "@/config/constants/dropdowns/messaging/messaging.options";
 import { textToTokens, tokensToText } from "../utils/message-body";
@@ -40,6 +38,7 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
     const del = useDeleteMessage();
     const pin = useSetPinned();
     const save = useSetSaved();
+    const post = usePostMessage();
     const [editing, setEditing] = useState<{ text: string; mentions: Record<string, string> } | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [pickerOpen, setPickerOpen] = useState(false);
@@ -47,7 +46,16 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
 
     const mine = !!m.author?.membership_id && m.author.membership_id === myMembershipId;
     const pending = !!m.pending;
-    const onError = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
+    /** Send a refused message again with the same client_message_id (the server dedupes; the row flips back to "sending"). */
+    const retry = () =>
+        post.mutate({
+            channelId: m.channel_id,
+            body: m.body,
+            parent_message_id: m.parent_message_id ?? undefined,
+            client_message_id: m.client_message_id ?? undefined,
+            ...(m.attachments.length && { attachments: m.attachments.map((a) => ({ document_id: a.document_id, file_name: a.file_name, mime_type: a.mime_type, size_bytes: a.size_bytes ?? 0, kind: a.kind })) }),
+            optimistic: m,
+        });
 
     if (m.kind === "SYSTEM") {
         return (
@@ -71,14 +79,16 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
 
     const toggle = (emoji: string) => {
         setPickerOpen(false);
-        react.mutate({ id: m.id, emoji, channel_id: m.channel_id }, { onError: onError("Could not react") });
+        react.mutate({ id: m.id, emoji, channel_id: m.channel_id, me: myMembershipId ?? undefined });
     };
 
     const saveEdit = () => {
         if (!editing) return;
         const body = textToTokens(editing.text.trim(), editing.mentions);
         if (!body) return;
-        edit.mutate({ id: m.id, body }, { onSuccess: () => setEditing(null), onError: onError("Could not edit") });
+        // Optimistic: the new text shows at once and the editor closes; it rolls back if the API refuses.
+        edit.mutate({ id: m.id, body, channel_id: m.channel_id });
+        setEditing(null);
     };
     const onEditKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); }
@@ -114,7 +124,7 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
                     <div className="space-y-1.5 py-1">
                         <Textarea autoFocus value={editing.text} onChange={(e) => setEditing({ ...editing, text: e.target.value })} onKeyDown={onEditKey} rows={2} className="text-[13.5px]" aria-label="Edit message" />
                         <div className="flex gap-2 text-xs text-muted-foreground">
-                            <Button size="sm" onClick={saveEdit} loading={edit.isPending}>Save</Button>
+                            <Button size="sm" onClick={saveEdit}>Save</Button>
                             <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
                             <span className="self-center">Enter to save · Esc to cancel</span>
                         </div>
@@ -126,11 +136,13 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
                     </div>
                 )}
                 {m.pending === "failed" && (
-                    <div className="flex items-center gap-2 text-xs text-danger">
+                    <div role="alert" className="flex items-center gap-2 text-xs text-danger">
                         Not sent.
+                        <button type="button" className="font-medium underline" onClick={retry}>Retry</button>
                         <button type="button" className="underline" onClick={() => patchMessageEverywhere(qc, m.channel_id, m.id, () => null)}>Dismiss</button>
                     </div>
                 )}
+                {m.pending === "sending" && <span role="status" className="sr-only">Sending…</span>}
                 {m.attachments.length > 0 && <MessageAttachments attachments={m.attachments} pending={pending} />}
                 {m.reactions.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
@@ -177,7 +189,7 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
                         </Popover>
                     )}
                     {!inThread && onOpenThread && canPost && <Button variant="ghost" size="icon-sm" aria-label="Reply in thread" onClick={() => onOpenThread(m.id)}><MessageSquareReply /></Button>}
-                    <Button variant="ghost" size="icon-sm" aria-label={m.is_saved ? "Remove from saved" : "Save"} onClick={() => save.mutate({ id: m.id, saved: !m.is_saved, channel_id: m.channel_id }, { onSuccess: (r) => toast({ title: r.is_saved ? "Saved" : "Removed from saved" }), onError: onError("Could not save") })}>
+                    <Button variant="ghost" size="icon-sm" aria-label={m.is_saved ? "Remove from saved" : "Save"} onClick={() => save.mutate({ id: m.id, saved: !m.is_saved, channel_id: m.channel_id })}>
                         {m.is_saved ? <BookmarkCheck className="text-primary" /> : <Bookmark />}
                     </Button>
                     {(mine || canPin || canDelete || canReport) && (
@@ -186,7 +198,7 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
                             <DropdownMenuContent align="end">
                                 {mine && canPost && <DropdownMenuItem onSelect={() => setEditing(tokensToText(m.body))}><Pencil /> Edit</DropdownMenuItem>}
                                 {canPin && !m.parent_message_id && (
-                                    <DropdownMenuItem onSelect={() => pin.mutate({ id: m.id, pinned: !m.pinned_at }, { onSuccess: () => toast({ title: m.pinned_at ? "Unpinned" : "Pinned to the channel" }), onError: onError("Could not pin") })}>
+                                    <DropdownMenuItem onSelect={() => pin.mutate({ id: m.id, pinned: !m.pinned_at, channel_id: m.channel_id })}>
                                         {m.pinned_at ? <PinOff /> : <Pin />} {m.pinned_at ? "Unpin" : "Pin to channel"}
                                     </DropdownMenuItem>
                                 )}
@@ -212,8 +224,7 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
                 description={m.reply_count > 0 ? "The message is removed; its thread replies stay visible." : "This cannot be undone."}
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => del.mutate({ id: m.id, channel_id: m.channel_id }, { onSuccess: () => setDeleting(false), onError: onError("Could not delete") })}
+                onConfirm={() => { del.mutate({ id: m.id, channel_id: m.channel_id }); setDeleting(false); }}
             />
         </div>
     );

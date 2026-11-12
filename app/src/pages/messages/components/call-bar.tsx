@@ -4,8 +4,6 @@ import { Headphones, Mic, MicOff, PhoneOff, Video, VideoOff, AlertTriangle } fro
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { formatRelative, personName } from "@/lib/format";
 import { useCallAction, useCalls, useStartCall } from "@/features/messaging/hooks/use-messaging-admin";
@@ -38,7 +36,7 @@ export function StartHuddleButton({ channelId, disabled }: { channelId: string; 
                         onClick={() =>
                             start.mutate(
                                 { channelId, kind: "HUDDLE" },
-                                { onSuccess: (c) => void media.connect(c.id), onError: (e) => toast({ variant: "destructive", title: "Could not start the huddle", description: getApiErrorMessage(e) }) },
+                                { onSuccess: (c) => void media.connect(c.id) },
                             )
                         }
                     >
@@ -56,21 +54,20 @@ export function useCallControls(call: ChannelCall | undefined) {
     const action = useCallAction();
     const { call: media, myMembershipId } = useMessaging();
     const inCall = !!call && !!myMembershipId && call.active_participant_ids.includes(myMembershipId);
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
     return {
         pending: action.isPending,
         inCall,
         mediaHere: !!call && media.callId === call.id,
-        join: () => call && action.mutate({ id: call.id, action: "join" }, { onSuccess: () => void media.connect(call.id), onError: fail("Could not join the call") }),
+        join: () => call && action.mutate({ id: call.id, action: "join" }, { onSuccess: () => void media.connect(call.id) }),
         leave: () => {
             if (!call) return;
             if (media.callId === call.id) media.disconnect();
-            action.mutate({ id: call.id, action: "leave" }, { onError: fail("Could not leave the call") });
+            action.mutate({ id: call.id, action: "leave" });
         },
         end: () => {
             if (!call) return;
             if (media.callId === call.id) media.disconnect();
-            action.mutate({ id: call.id, action: "end" }, { onError: fail("Could not end the call") });
+            action.mutate({ id: call.id, action: "end" });
         },
         connectAudio: () => call && void media.connect(call.id),
     };

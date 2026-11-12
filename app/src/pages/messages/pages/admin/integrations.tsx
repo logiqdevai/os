@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, KeyRound, MoreHorizontal, Plug, Plus, Power, Send, Unplug } from "lucide-react";
+import { KeyRound, MoreHorizontal, Plug, Plus, Power, Send, Unplug } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/data-table";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
 import { environments } from "@/config/environments";
 import {
@@ -20,10 +18,10 @@ import {
 } from "@/features/messaging/hooks/use-messaging-admin";
 import type { MessagingIntegration } from "@/features/messaging/interfaces/messaging-admin.interfaces";
 import { AdminNav } from "./admin-nav";
+import { CopyButton } from "../../components/copy-button";
 import { useChannelOptions } from "./channel-options";
 
 const hookUrl = (path: string) => `${environments.API_URL.replace(/\/+$/, "")}${path}`;
-const err = (t: string) => (e: unknown) => toast({ variant: "destructive", title: t, description: getApiErrorMessage(e) });
 
 function SecretDialog({ secret, onClose }: { secret: { name: string; path: string } | null; onClose: () => void }) {
     const url = secret ? hookUrl(secret.path) : "";
@@ -36,7 +34,7 @@ function SecretDialog({ secret, onClose }: { secret: { name: string; path: strin
                 </DialogHeader>
                 <div className="flex gap-2">
                     <Input readOnly value={url} className="font-mono text-xs" aria-label="Webhook URL" onFocus={(e) => e.target.select()} />
-                    <Button variant="outline" size="icon" aria-label="Copy" onClick={() => navigator.clipboard.writeText(url).then(() => toast({ title: "Copied" }))}><Copy /></Button>
+                    <CopyButton text={url} />
                 </div>
                 <pre className="overflow-x-auto rounded-md bg-secondary p-3 text-xs text-foreground">{`curl -X POST ${url} \\\n  -H 'content-type: application/json' \\\n  -d '{"text":"Deploy finished ✅"}'`}</pre>
                 <DialogFooter><Button onClick={onClose}>Done</Button></DialogFooter>
@@ -72,7 +70,7 @@ function CreateDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpen
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>Cancel</Button>
-                    <Button disabled={!name.trim() || !channelId} loading={create.isPending} onClick={() => create.mutate({ kind: "INBOUND_WEBHOOK", name: name.trim(), description: description.trim() || null, default_channel_id: channelId, allowed_channel_ids: [] }, { onSuccess: (r) => { onOpenChange(false); onCreated({ name: r.name, path: r.webhook_path }); }, onError: err("Could not create") })}>
+                    <Button disabled={!name.trim() || !channelId} loading={create.isPending} onClick={() => create.mutate({ kind: "INBOUND_WEBHOOK", name: name.trim(), description: description.trim() || null, default_channel_id: channelId, allowed_channel_ids: [] }, { onSuccess: (r) => { onOpenChange(false); onCreated({ name: r.name, path: r.webhook_path }); } })}>
                         Create
                     </Button>
                 </DialogFooter>
@@ -106,9 +104,9 @@ export default function IntegrationsPage() {
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${i.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem disabled={i.status !== "ACTIVE"} onSelect={() => test.mutate(i.id, { onSuccess: () => toast({ title: "Test message posted" }), onError: err("Test failed") })}><Send /> Send a test message</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => rotate.mutate(i.id, { onSuccess: (r) => setSecret({ name: i.name, path: r.webhook_path }), onError: err("Could not rotate") })}><KeyRound /> New webhook URL</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => update.mutate({ id: i.id, status: i.status === "ACTIVE" ? "DISABLED" : "ACTIVE" }, { onSuccess: () => toast({ title: i.status === "ACTIVE" ? "Disabled" : "Enabled" }), onError: err("Could not update") })}>
+                        <DropdownMenuItem disabled={i.status !== "ACTIVE"} onSelect={() => test.mutate(i.id)}><Send /> Send a test message</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => rotate.mutate(i.id, { onSuccess: (r) => setSecret({ name: i.name, path: r.webhook_path }) })}><KeyRound /> New webhook URL</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => update.mutate({ id: i.id, status: i.status === "ACTIVE" ? "DISABLED" : "ACTIVE" })}>
                             <Power /> {i.status === "ACTIVE" ? "Disable" : "Enable"}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
@@ -130,8 +128,8 @@ export default function IntegrationsPage() {
                 empty={{ icon: Plug, title: "No integrations", description: "Create an incoming webhook to post deploys, alerts or form submissions into a channel." }} />
             <CreateDialog open={creating} onOpenChange={setCreating} onCreated={setSecret} />
             <SecretDialog secret={secret} onClose={() => setSecret(null)} />
-            <ConfirmationDialog isOpen={!!removing} onClose={() => setRemoving(null)} title={`Disconnect ${removing?.name}?`} description="The webhook URL stops working at once. Messages it posted stay." confirmText="Disconnect" variant="destructive" isLoading={disconnect.isPending}
-                onConfirm={() => removing && disconnect.mutate(removing.id, { onSuccess: () => { toast({ title: "Disconnected" }); setRemoving(null); }, onError: err("Could not disconnect") })} />
+            <ConfirmationDialog isOpen={!!removing} onClose={() => setRemoving(null)} title={`Disconnect ${removing?.name}?`} description="The webhook URL stops working at once. Messages it posted stay." confirmText="Disconnect" variant="destructive"
+                onConfirm={() => { if (!removing) return; disconnect.mutate(removing.id); setRemoving(null); }} />
         </Page>
     );
 }

@@ -1,7 +1,5 @@
 import { Download, FileArchive, FileImage, FileSpreadsheet, FileText, FileVideo, File as FileIcon, Music } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { environments } from "@/config/environments";
 import { useAttachmentUrl, useOpenAttachment } from "@/features/messaging/hooks/use-messaging-admin";
 import type { MessageAttachment } from "@/features/messaging/interfaces/messaging.interfaces";
@@ -30,10 +28,7 @@ function ImagePreview({ a }: { a: MessageAttachment }) {
 export function MessageAttachments({ attachments, pending }: { attachments: MessageAttachment[]; pending?: boolean }) {
     const open = useOpenAttachment();
     const download = (a: MessageAttachment) =>
-        open.mutate({ id: a.id, disposition: "attachment" }, {
-            onSuccess: (r) => window.open(apiFileUrl(r.path), "_blank", "noopener"),
-            onError: (e) => toast({ variant: "destructive", title: "Could not open the file", description: getApiErrorMessage(e) }),
-        });
+        open.mutate({ id: a.id, disposition: "attachment" }, { onSuccess: (r) => window.open(apiFileUrl(r.path), "_blank", "noopener") });
     const images = attachments.filter((a) => a.kind === "IMAGE" && !pending);
     const others = attachments.filter((a) => a.kind !== "IMAGE" || pending);
     return (

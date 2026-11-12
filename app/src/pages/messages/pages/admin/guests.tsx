@@ -11,8 +11,6 @@ import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { TableToolbar } from "@/components/ui/data-table";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, formatRelative } from "@/lib/format";
 import { useGuests, useRemoveGuest, useRevokeInvitation, useUpdateGuest } from "@/features/messaging/hooks/use-messaging-admin";
 import type { GuestPerson } from "@/features/messaging/interfaces/messaging-admin.interfaces";
@@ -37,7 +35,6 @@ export default function GuestsPage() {
     const [extending, setExtending] = useState<Membership | null>(null);
     const [until, setUntil] = useState("");
     const [removing, setRemoving] = useState<{ person: GuestPerson; m: Membership } | null>(null);
-    const err = (t: string) => (e: unknown) => toast({ variant: "destructive", title: t, description: getApiErrorMessage(e) });
     const g = guests.data;
 
     return (
@@ -97,7 +94,7 @@ export default function GuestsPage() {
                             <li key={i.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-[13px]">
                                 <span className="min-w-0 flex-1 truncate text-foreground">{i.name ? `${i.name} · ` : ""}{i.email}</span>
                                 <span className="text-xs text-muted-foreground">#{i.channel.name} · link expires {formatDate(i.expires_at)}</span>
-                                <Button size="sm" variant="ghost" onClick={() => revoke.mutate(i.id, { onSuccess: () => toast({ title: "Invitation revoked" }), onError: err("Could not revoke") })}><MailX /> Revoke</Button>
+                                <Button size="sm" variant="ghost" onClick={() => revoke.mutate(i.id)}><MailX /> Revoke</Button>
                             </li>
                         ))}
                     </ul>
@@ -109,10 +106,18 @@ export default function GuestsPage() {
                         <DialogTitle>Access expiry</DialogTitle>
                         <DialogDescription>#{extending?.channel.name}. Leave empty for no expiry.</DialogDescription>
                     </DialogHeader>
-                    <Input type="date" value={until} onChange={(e) => setUntil(e.target.value)} aria-label="Access until" />
+                    {/* Saves as soon as a date is picked or cleared (no Save button). */}
+                    <Input
+                        type="date"
+                        value={until}
+                        onChange={(e) => {
+                            setUntil(e.target.value);
+                            if (extending) update.mutate({ memberId: extending.id, access_expires_at: e.target.value ? new Date(`${e.target.value}T23:59:59`).toISOString() : null });
+                        }}
+                        aria-label="Access until"
+                    />
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setExtending(null)}>Cancel</Button>
-                        <Button loading={update.isPending} onClick={() => extending && update.mutate({ memberId: extending.id, access_expires_at: until ? new Date(`${until}T23:59:59`).toISOString() : null }, { onSuccess: () => { toast({ title: "Access updated" }); setExtending(null); }, onError: err("Could not update") })}>Save</Button>
+                        <Button onClick={() => setExtending(null)}>Done</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -123,8 +128,7 @@ export default function GuestsPage() {
                 description="They lose access to the channel at once. Their earlier messages stay."
                 confirmText="Remove"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => removing && remove.mutate(removing.m.id, { onSuccess: () => { toast({ title: "Guest removed" }); setRemoving(null); }, onError: err("Could not remove") })}
+                onConfirm={() => { if (!removing) return; remove.mutate(removing.m.id); setRemoving(null); }}
             />
         </Page>
     );

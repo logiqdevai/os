@@ -13,8 +13,6 @@ import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/d
 import { ErrorState, ListSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatRelative, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { useDecideReport, useLiftRestriction, useReport, useReports, useRestrictions } from "@/features/messaging/hooks/use-messaging-admin";
@@ -49,10 +47,8 @@ function ReviewSheet({ reportId, onClose }: { reportId: string | null; onClose: 
                 resolution_note: note.trim() || undefined,
                 restriction_hours: (action === "mute" || action === "ban") && duration !== "forever" ? Number(duration) : undefined,
             },
-            {
-                onSuccess: () => { toast({ title: status === "DISMISSED" ? "Report dismissed" : status === "UNDER_REVIEW" ? "Marked under review" : "Action applied" }); if (status !== "UNDER_REVIEW") onClose(); },
-                onError: (e) => toast({ variant: "destructive", title: "Could not save the decision", description: getApiErrorMessage(e) }),
-            },
+            // The report shows its new status at once; dismiss / action close the sheet when the server confirms.
+            { onSuccess: () => { if (status !== "UNDER_REVIEW") onClose(); } },
         );
 
     return (
@@ -207,8 +203,7 @@ function RestrictionsTab() {
                 title="Lift this restriction?"
                 description={`${personName(lifting?.membership?.user)} can post again${lifting?.channel ? ` in #${lifting.channel.name}` : ""}. A ban does not re-add them to the channel.`}
                 confirmText="Lift"
-                isLoading={lift.isPending}
-                onConfirm={() => lifting && lift.mutate(lifting.id, { onSuccess: () => { toast({ title: "Restriction lifted" }); setLifting(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not lift", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (!lifting) return; lift.mutate(lifting.id); setLifting(null); }}
             />
         </>
     );

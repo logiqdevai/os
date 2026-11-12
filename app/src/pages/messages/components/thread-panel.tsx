@@ -3,8 +3,6 @@ import { Bell, BellOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { useMarkThreadRead, useSetThreadFollow, useThread } from "@/features/messaging/hooks/use-messaging";
 import { typingKey } from "@/features/messaging/hooks/use-messaging-socket";
 import { Composer } from "./composer";
@@ -43,7 +41,7 @@ export function ThreadPanel({ rootId, channelLabel, canPost, onClose }: { rootId
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => follow.mutate({ id: rootId, follow: !thread.data.following }, { onError: (e) => toast({ variant: "destructive", title: "Could not update", description: getApiErrorMessage(e) }) })}
+                        onClick={() => follow.mutate({ id: rootId, follow: !thread.data.following })}
                     >
                         {thread.data.following ? <BellOff /> : <Bell />} {thread.data.following ? "Unfollow" : "Follow"}
                     </Button>

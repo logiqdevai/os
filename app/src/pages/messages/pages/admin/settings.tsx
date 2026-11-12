@@ -1,13 +1,12 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useAutosave } from "@/hooks/use-autosave";
 import { useMessagingSettings, useUpdateMessagingSettings } from "@/features/messaging/hooks/use-messaging-admin";
 import type { MessagingSettings } from "@/features/messaging/interfaces/messaging-admin.interfaces";
 import { CallProviderOptions, PolicyLevelOptions } from "@/config/constants/dropdowns/messaging/messaging-admin.options";
@@ -29,46 +28,42 @@ const minutes = (v: string) => (v.trim() === "" ? null : Math.max(1, Number(v.re
 
 /**
  * /messages/admin/settings — organization messaging policy (MessagingSettings, one row per organization).
+ * Saves as you edit (<SaveStatus /> in the header, no Save button).
  * @perm edit messaging.settings.manage (sensitive) · read-only with messaging.audit.read
  * @api GET/PATCH /messaging/settings (every change is audited with before / after)
  */
 export default function MessagingSettingsPage() {
     const settings = useMessagingSettings();
-    const save = useUpdateMessagingSettings();
-    const canEdit = usePermission("messaging.settings.manage");
-    const [draft, setDraft] = useState<Partial<MessagingSettings>>({});
-    const [maxMb, setMaxMb] = useState("");
-    const [blocked, setBlocked] = useState("");
-    useEffect(() => {
-        if (!settings.data) return;
-        setDraft(settings.data);
-        setMaxMb(settings.data.file_policy?.max_file_size_bytes ? String(Math.round(settings.data.file_policy.max_file_size_bytes / 1048576)) : "");
-        setBlocked((settings.data.file_policy?.blocked_extensions ?? []).join(", "));
-    }, [settings.data]);
-
     if (settings.isPending) return <PageSkeleton />;
     if (settings.error) return <Page><PageHeader title="Messaging settings" /><AdminNav /><ErrorState error={settings.error} onRetry={() => settings.refetch()} /></Page>;
+    return <SettingsForm s={settings.data} />;
+}
+
+function SettingsForm({ s }: { s: MessagingSettings }) {
+    const save = useUpdateMessagingSettings();
+    const canEdit = usePermission("messaging.settings.manage");
+    const [draft, setDraft] = useState<Partial<MessagingSettings>>(s);
+    const [maxMb, setMaxMb] = useState(s.file_policy?.max_file_size_bytes ? String(Math.round(s.file_policy.max_file_size_bytes / 1048576)) : "");
+    const [blocked, setBlocked] = useState((s.file_policy?.blocked_extensions ?? []).join(", "));
+    const payload = useMemo(() => {
+        const d = draft;
+        return {
+            allow_delete_own_messages: d.allow_delete_own_messages, delete_own_time_limit_minutes: d.delete_own_time_limit_minutes ?? null, allow_admin_delete_messages: d.allow_admin_delete_messages,
+            edit_time_limit_minutes: d.edit_time_limit_minutes ?? null, preserve_edit_history: d.preserve_edit_history, read_receipts_direct: d.read_receipts_direct, read_receipts_group: d.read_receipts_group,
+            external_access_enabled: d.external_access_enabled, guest_access_enabled: d.guest_access_enabled, guest_default_expiry_days: d.guest_default_expiry_days ?? null,
+            broadcast_mention_policy: d.broadcast_mention_policy, announcement_policy: d.announcement_policy, calls_enabled: d.calls_enabled, call_provider: d.call_provider ?? "internal",
+            admin_private_message_access_enabled: d.admin_private_message_access_enabled, notification_previews_include_text: d.notification_previews_include_text,
+            file_policy: { max_file_size_bytes: maxMb ? Number(maxMb) * 1048576 : null, blocked_extensions: blocked.split(/[\s,]+/).map((x) => x.replace(/^\./, "").toLowerCase()).filter(Boolean) },
+        };
+    }, [draft, maxMb, blocked]);
+    const autosave = useAutosave({ value: payload, enabled: canEdit, save: (v) => save.mutateAsync(v) });
 
     const set = <K extends keyof MessagingSettings>(k: K, v: MessagingSettings[K]) => setDraft((d) => ({ ...d, [k]: v }));
     const sw = (k: keyof MessagingSettings, label: string) => <Switch checked={!!draft[k]} onCheckedChange={(v) => set(k, v as never)} disabled={!canEdit} aria-label={label} />;
-    const submit = () => {
-        const d = draft;
-        save.mutate(
-            {
-                allow_delete_own_messages: d.allow_delete_own_messages, delete_own_time_limit_minutes: d.delete_own_time_limit_minutes ?? null, allow_admin_delete_messages: d.allow_admin_delete_messages,
-                edit_time_limit_minutes: d.edit_time_limit_minutes ?? null, preserve_edit_history: d.preserve_edit_history, read_receipts_direct: d.read_receipts_direct, read_receipts_group: d.read_receipts_group,
-                external_access_enabled: d.external_access_enabled, guest_access_enabled: d.guest_access_enabled, guest_default_expiry_days: d.guest_default_expiry_days ?? null,
-                broadcast_mention_policy: d.broadcast_mention_policy, announcement_policy: d.announcement_policy, calls_enabled: d.calls_enabled, call_provider: d.call_provider ?? "internal",
-                admin_private_message_access_enabled: d.admin_private_message_access_enabled, notification_previews_include_text: d.notification_previews_include_text,
-                file_policy: { max_file_size_bytes: maxMb ? Number(maxMb) * 1048576 : null, blocked_extensions: blocked.split(/[\s,]+/).map((x) => x.replace(/^\./, "").toLowerCase()).filter(Boolean) },
-            },
-            { onSuccess: () => toast({ title: "Settings saved" }), onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) },
-        );
-    };
 
     return (
         <Page>
-            <PageHeader title="Messaging settings" description="Rules for the whole organization. Changes are logged." actions={canEdit && <Button onClick={submit} loading={save.isPending}>Save changes</Button>} />
+            <PageHeader title="Messaging settings" description="Rules for the whole organization. Changes are logged." meta={<SaveStatus state={autosave} />} />
             <AdminNav />
             {!canEdit && <p className="mb-4 rounded-lg border border-border bg-secondary p-3 text-[13px] text-muted-foreground">You can view these settings; changing them needs messaging.settings.manage.</p>}
             <div className="space-y-6">

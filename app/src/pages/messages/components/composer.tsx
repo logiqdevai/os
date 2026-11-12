@@ -5,10 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
-import { messagingKeys, upsertChannelMessage, upsertThreadReply, useDraft, usePostMessage, useSaveDraft } from "@/features/messaging/hooks/use-messaging";
+import { messagingKeys, useDraft, usePostMessage, useSaveDraft } from "@/features/messaging/hooks/use-messaging";
 import type { Message, UploadedAttachment } from "@/features/messaging/interfaces/messaging.interfaces";
 import { useUploadAttachment } from "@/features/messaging/hooks/use-messaging-admin";
 import { PendingAttachments, type PendingFile } from "./pending-attachments";
@@ -66,10 +65,8 @@ export function Composer({ channelId, threadRootId, placeholder, disabled, disab
                 { channelId, file, onProgress: (progress) => setFiles((prev) => prev.map((f) => (f.key === key ? { ...f, progress } : f))) },
                 {
                     onSuccess: (uploaded) => setFiles((prev) => prev.map((f) => (f.key === key ? { ...f, state: "done", progress: 100, uploaded } : f))),
-                    onError: (e) => {
-                        setFiles((prev) => prev.map((f) => (f.key === key ? { ...f, state: "failed", error: getApiErrorMessage(e) } : f)));
-                        toast({ variant: "destructive", title: `${file.name} was not uploaded`, description: getApiErrorMessage(e) });
-                    },
+                    // The chip shows the failure inline; the global toast names the error once.
+                    onError: (e) => setFiles((prev) => prev.map((f) => (f.key === key ? { ...f, state: "failed", error: getApiErrorMessage(e) } : f))),
                 },
             );
         }
@@ -173,27 +170,14 @@ export function Composer({ channelId, threadRootId, placeholder, disabled, disab
             mentions_channel: false,
             pending: "sending",
         };
-        if (threadRootId) upsertThreadReply(qc, optimistic);
-        else upsertChannelMessage(qc, optimistic);
         clearTimeout(saveTimer.current);
         setText("");
         setMentions({});
         setQuery(null);
         setFiles([]);
         qc.setQueryData(messagingKeys.draft(channelId, threadRootId), null);
-        post.mutate(
-            { channelId, body, parent_message_id: threadRootId, client_message_id, ...(attachments.length && { attachments }) },
-            {
-                onError: (e) => {
-                    const failed = { ...optimistic, pending: "failed" as const };
-                    if (threadRootId) upsertThreadReply(qc, failed);
-                    else upsertChannelMessage(qc, failed);
-                    setText(trimmed);
-                    setFiles(attachments.map((a) => ({ key: a.document_id, name: a.file_name, size: a.size_bytes, progress: 100, state: "done" as const, uploaded: a })));
-                    toast({ variant: "destructive", title: "Message not sent", description: getApiErrorMessage(e) });
-                },
-            },
-        );
+        // Shows in the channel / thread at once ("sending"); a refused message stays there with Retry (see MessageItem).
+        post.mutate({ channelId, body, parent_message_id: threadRootId, client_message_id, ...(attachments.length && { attachments }), optimistic });
     };
 
     const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
