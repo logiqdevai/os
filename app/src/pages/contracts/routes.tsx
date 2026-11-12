@@ -10,6 +10,7 @@ const SignaturesPage = lazy(() => import("./pages/signatures"));
 const ObligationsPage = lazy(() => import("./pages/obligations"));
 const RenewalsPage = lazy(() => import("./pages/renewals"));
 const LibraryPage = lazy(() => import("./pages/library"));
+const AnalyticsPage = lazy(() => import("./pages/analytics"));
 
 const LIBRARY = ["contracts.templates.manage", "contracts.clauses.manage", "contracts.types.manage", "contracts.approval_rules.manage"];
 
@@ -24,6 +25,7 @@ export default function ContractsRoutes() {
             <Route path="signatures" element={<RequirePermission permission="contracts.signatures.read"><SignaturesPage /></RequirePermission>} />
             <Route path="obligations" element={read(<ObligationsPage />)} />
             <Route path="renewals" element={read(<RenewalsPage />)} />
+            <Route path="analytics" element={read(<AnalyticsPage />)} />
             <Route path="templates" element={<RequirePermission anyOf={LIBRARY}><LibraryPage /></RequirePermission>} />
             <Route path=":id" element={read(<DetailPage />)} />
             <Route path="*" element={read(<ListPage />)} />

@@ -6,6 +6,7 @@ import { CurrentOrg, RequireAnyPermission, RequirePermission } from '@/shared/au
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { ZodValidationPipe } from '@/shared/pipes/zod.validation.pipe';
 import { ContractsService } from './contracts.service';
+import { ContractAnalyticsQuery, ContractAnalyticsQuerySchema, ContractAnalyticsService } from './contract-analytics.service';
 import {
     AmendContractDto, ContractQuery, ContractQuerySchema, CreateContractDto, LinkProjectDto, RenewContractDto, RenewalDecisionDto, RenewalsQuery, RenewalsQuerySchema, SetPartiesDto,
     TerminateContractDto, UpdateContractDto,
@@ -19,10 +20,16 @@ const READ = 'contracts.contracts.read';
 @Controller('contracts')
 @UseGuards(JwtGuard, PermissionsGuard)
 export class ContractsController {
-    constructor(private readonly contracts: ContractsService) { }
+    constructor(
+        private readonly contracts: ContractsService,
+        private readonly analyticsService: ContractAnalyticsService,
+    ) { }
 
     @Get('dashboard') @RequirePermission(READ) @ApiOperation({ summary: 'Dashboard aggregates (status counts, expiring, signatures, obligations, value)' })
     dashboard(@CurrentOrg() ctx: OrgContext) { return this.contracts.dashboard(ctx); }
+
+    @Get('analytics') @RequirePermission(READ) @ApiOperation({ summary: 'Analytics: value by status/type, cycle times, renewal rate, renewals pipeline, risk, slowest in flight (values need contracts.confidential_terms.read)' })
+    analytics(@CurrentOrg() ctx: OrgContext, @Query(new ZodValidationPipe(ContractAnalyticsQuerySchema)) q: ContractAnalyticsQuery) { return this.analyticsService.analytics(ctx, q); }
 
     @Get('renewals') @RequirePermission(READ) @ApiOperation({ summary: 'Contracts with end / renewal / notice dates inside the window' })
     renewals(@CurrentOrg() ctx: OrgContext, @Query(new ZodValidationPipe(RenewalsQuerySchema)) q: RenewalsQuery) { return this.contracts.renewals(ctx, q); }

@@ -1,4 +1,4 @@
-import { BookOpen, CalendarClock, LayoutDashboard, ListChecks, PenLine, Send } from "lucide-react";
+import { BookOpen, CalendarClock, ChartColumn, LayoutDashboard, ListChecks, PenLine, Send } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
 export const contractsApp: AppDefinition = {
@@ -16,6 +16,7 @@ export const contractsApp: AppDefinition = {
             { label: "Signature requests", to: "/contracts/signatures", icon: Send, permissions: ["contracts.signatures.read"] },
             { label: "Obligations", to: "/contracts/obligations", icon: ListChecks },
             { label: "Renewals", to: "/contracts/renewals", icon: CalendarClock },
+            { label: "Analytics", to: "/contracts/analytics", icon: ChartColumn },
         ] },
         { label: "Library", items: [
             { label: "Templates & clauses", to: "/contracts/templates", icon: BookOpen, permissions: ["contracts.templates.manage", "contracts.clauses.manage", "contracts.types.manage", "contracts.approval_rules.manage"] },
