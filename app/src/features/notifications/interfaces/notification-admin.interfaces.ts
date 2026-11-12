@@ -182,6 +182,7 @@ export interface OrgSettings {
     enabled_channels: NotificationChannel[];
     portal_enabled_channels: NotificationChannel[];
     email_sender_identity_id: string | null;
+    sms_sender_identity_id: string | null;
     default_level: NotificationLevel;
     default_digest_frequency: DigestFrequency;
     default_digest_hour: number;
@@ -191,8 +192,13 @@ export interface OrgSettings {
     retry_backoff_seconds: number;
     retention_days: number | null;
     webhook_events_enabled: boolean;
-    providers: { email: { connected: boolean; reason: string | null } };
+    providers: {
+        email: { connected: boolean; reason: string | null };
+        sms: { connected: boolean; reason: string | null };
+        push: { connected: boolean; reason: string | null; active_browsers: number };
+    };
     sender_identities: { id: string; address: string; display_name: string | null; status: string }[];
+    sms_sender_identities: { id: string; address: string; display_name: string | null; status: string }[];
 }
 
 export type EventTypeDto = Partial<Pick<EventTypeRow, "name" | "description" | "category" | "priority" | "default_channels" | "forced_channels" | "mandatory_by_default" | "customer_visible" | "supports_digest" | "is_active">> & { key?: string; module?: string };
@@ -218,7 +224,7 @@ export interface OrgDefaultDto {
     is_mandatory?: boolean;
 }
 export type DeliveryRuleDto = Omit<Partial<DeliveryRule>, "id" | "event_type">;
-export type OrgSettingsDto = Partial<Omit<OrgSettings, "providers" | "sender_identities">>;
+export type OrgSettingsDto = Partial<Omit<OrgSettings, "providers" | "sender_identities" | "sms_sender_identities">>;
 export interface TemplatePreview {
     subject: string;
     title: string;

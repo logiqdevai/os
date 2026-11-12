@@ -7,6 +7,7 @@ export const profileSettingsSchema = z.object({
     profile_photo_url: z.union([z.literal(""), z.string().trim().url("Enter a full URL starting with https://")]),
     timezone: z.string(),
     locale: z.string().trim().max(16),
+    phone: z.union([z.literal(""), z.string().trim().regex(/^\+[1-9]\d{6,14}$/, "Use international format, e.g. +306912345678")]),
 });
 export type ProfileSettingsFormValues = z.infer<typeof profileSettingsSchema>;
 

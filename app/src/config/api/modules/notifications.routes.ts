@@ -15,6 +15,14 @@ export const NotificationsApiRoutes = {
         subscriptions: "/notifications/preferences/subscriptions",
         subscription: (id: string) => `/notifications/preferences/subscriptions/${id}`,
     },
+    /** 14 §5 own push devices · §8 own digest history. */
+    devices: {
+        pushConfig: "/notifications/devices/push-config",
+        list: "/notifications/devices",
+        detail: (id: string) => `/notifications/devices/${id}`,
+        test: (id: string) => `/notifications/devices/${id}/test`,
+    },
+    digests: "/notifications/digests",
     /** 14 administration (event catalog, templates, defaults, rules, delivery log, settings). */
     admin: {
         eventTypes: "/notification-event-types",

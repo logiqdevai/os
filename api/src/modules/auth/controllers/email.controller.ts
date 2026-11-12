@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, Matches, MaxLength, MinLength, ValidateIf } from 'class-validator';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { EmailAuthService } from '../services/email.service';
 import { RegisterEmailDto } from '../dto/register-email.dto';
@@ -25,6 +25,8 @@ class ProfileFieldsDto {
     @ApiProperty() @IsString() @MaxLength(16) locale: string;
     @ApiProperty() @IsString() @MaxLength(16) language: string;
     @ApiProperty() @IsString() @MaxLength(1000) profile_photo_url: string;
+    /** Mobile number in E.164 (used for SMS notifications, 14 §5); null removes it. */
+    @ApiProperty({ nullable: true, example: '+306912345678' }) @ValidateIf((_, v) => v !== null) @Matches(/^\+[1-9]\d{6,14}$/, { message: 'Use international format, e.g. +306912345678' }) phone: string | null;
 }
 class UpdateProfileDto extends PartialType(ProfileFieldsDto) { }
 

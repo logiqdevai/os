@@ -29,7 +29,8 @@ function Row({ title, description, children }: { title: string; description?: Re
 /**
  * /notifications/admin/settings — organization channels, sender, digest defaults, retries, retention (14 §5, §8, §11).
  * @perm notifications.settings.manage · @api GET/PATCH /notification-settings
- * @states loading · error / no-access · email enabled without a connected provider (warning: deliveries skip with "No provider connected")
+ * @states loading · error / no-access · email / SMS enabled without a connected provider (warning: deliveries skip with "No provider connected")
+ * Push uses the platform's Web Push keys (no provider to connect); members turn it on per browser in Notifications → Devices.
  */
 export default function NotificationSettingsPage() {
     const q = useOrgNotificationSettings();
@@ -43,6 +44,14 @@ export default function NotificationSettingsPage() {
     const set = (patch: OrgSettingsDto) => setDraft((d) => ({ ...d, ...patch }));
     const dirty = Object.keys(draft).length > 0;
     const emailOn = s.enabled_channels.includes("EMAIL");
+    const smsOn = s.enabled_channels.includes("SMS");
+    const pushOn = s.enabled_channels.includes("PUSH");
+    /** Toggle one channel; IN_APP is always kept (the API enforces it too). */
+    const toggle = (channel: "EMAIL" | "SMS" | "PUSH", on: boolean) =>
+        set({ enabled_channels: [...new Set(["IN_APP" as const, ...s.enabled_channels.filter((c) => c !== channel), ...(on ? [channel] : [])])] });
+    const providerNote = (connected: boolean, label: string, provider: string) => connected
+        ? <span className="inline-flex items-center gap-1 text-success"><CheckCircle2 className="size-3.5" /> {provider} connected</span>
+        : <span className="inline-flex items-center gap-1 text-warning"><AlertTriangle className="size-3.5" /> Not available: <Link to="/admin/integrations" className="underline">connect {provider} in Integrations</Link>. {label} are skipped until then.</span>;
 
     return (
         <Page width="narrow">
@@ -57,13 +66,8 @@ export default function NotificationSettingsPage() {
                         <Row title="In-app" description="Always on.">
                             <Switch checked disabled aria-label="In-app" />
                         </Row>
-                        <Row
-                            title="Email"
-                            description={q.data.providers.email.connected
-                                ? <span className="inline-flex items-center gap-1 text-success"><CheckCircle2 className="size-3.5" /> Resend connected</span>
-                                : <span className="inline-flex items-center gap-1 text-warning"><AlertTriangle className="size-3.5" /> Not available: <Link to="/admin/integrations" className="underline">connect Resend in Integrations</Link>. Emails are skipped until then.</span>}
-                        >
-                            <Switch checked={emailOn} onCheckedChange={(on) => set({ enabled_channels: on ? ["IN_APP", "EMAIL"] : ["IN_APP"] })} aria-label="Email" />
+                        <Row title="Email" description={providerNote(q.data.providers.email.connected, "Emails", "Resend")}>
+                            <Switch checked={emailOn} onCheckedChange={(on) => toggle("EMAIL", on)} aria-label="Email" />
                         </Row>
                         <Row title="Sender" description="Verified sender identity from Campaigns → Senders; else the connection's default from address.">
                             <Select value={s.email_sender_identity_id ?? NONE} onValueChange={(v) => set({ email_sender_identity_id: v === NONE ? null : v })} disabled={!emailOn}>
@@ -71,6 +75,21 @@ export default function NotificationSettingsPage() {
                                 <SelectContent>
                                     <SelectItem value={NONE}>Connection default</SelectItem>
                                     {q.data.sender_identities.map((i) => <SelectItem key={i.id} value={i.id}>{i.display_name ? `${i.display_name} · ${i.address}` : i.address}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </Row>
+                        <Row title="Push" description={`Browser notifications through Web Push. ${q.data.providers.push.active_browsers} member browser${q.data.providers.push.active_browsers === 1 ? "" : "s"} registered.`}>
+                            <Switch checked={pushOn} onCheckedChange={(on) => toggle("PUSH", on)} aria-label="Push" />
+                        </Row>
+                        <Row title="SMS" description={<>Opt-in per member (mobile number on their profile). {providerNote(q.data.providers.sms.connected, "Texts", "Twilio")}</>}>
+                            <Switch checked={smsOn} onCheckedChange={(on) => toggle("SMS", on)} aria-label="SMS" />
+                        </Row>
+                        <Row title="SMS sender" description="Sender from Campaigns → Senders; else the Twilio connection's number or messaging service.">
+                            <Select value={s.sms_sender_identity_id ?? NONE} onValueChange={(v) => set({ sms_sender_identity_id: v === NONE ? null : v })} disabled={!smsOn}>
+                                <SelectTrigger className="h-8 w-full sm:w-64" aria-label="SMS sender"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={NONE}>Connection default</SelectItem>
+                                    {q.data.sms_sender_identities.map((i) => <SelectItem key={i.id} value={i.id}>{i.display_name ? `${i.display_name} · ${i.address}` : i.address}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </Row>
@@ -107,13 +126,13 @@ export default function NotificationSettingsPage() {
                 </Section>
                 <Section title="Delivery and retention">
                     <div className="rounded-lg border border-border bg-card">
-                        <Row title="Delivery attempts" description="Failed emails are retried with backoff.">
+                        <Row title="Delivery attempts" description="Failed emails, texts and pushes are retried with backoff.">
                             <Input type="number" min={1} max={10} className="h-8 w-24" value={s.max_delivery_attempts} onChange={(e) => set({ max_delivery_attempts: Number(e.target.value) })} aria-label="Max attempts" />
                         </Row>
-                        <Row title="Keep notifications (days)" description="Empty keeps everything.">
+                        <Row title="Keep notifications (days)" description="Read and archived notifications older than this are deleted every night (mandatory ones are kept). Empty keeps everything.">
                             <Input type="number" min={7} max={3650} className="h-8 w-28" placeholder="Forever" value={s.retention_days ?? ""} onChange={(e) => set({ retention_days: e.target.value ? Number(e.target.value) : null })} aria-label="Retention days" />
                         </Row>
-                        <Row title="Webhook events" description="Publish notification events to outbound webhooks (Automation).">
+                        <Row title="Webhook events" description="Publish notification.created, .delivered, .failed and .read to outbound webhooks and automation.">
                             <Switch checked={s.webhook_events_enabled} onCheckedChange={(on) => set({ webhook_events_enabled: on })} aria-label="Webhook events" />
                         </Row>
                     </div>

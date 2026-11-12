@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from "react";
-import { Lock, RotateCcw } from "lucide-react";
+import { Link } from "react-router-dom";
+import { BellRing, Lock, RotateCcw } from "lucide-react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,8 @@ import {
     DigestFrequencyFormOptions, ModuleLabelOptions, NotificationChannelOptions, NotificationLevelFormOptions, PreferenceSourceOptions, WeekdayShortOptions,
 } from "@/config/constants/dropdowns/notifications/notification.options";
 import { useEventPreferences, useRecipientSettings, useResetEventPreference, useSetEventPreference, useUpdateRecipientSettings } from "@/features/notifications/hooks/use-notifications";
+import { useBrowserPush } from "../../components/use-browser-push";
+import { DigestHistory } from "./digest-history";
 import type { DigestFrequency, EventPreferenceRow, NotificationLevel } from "@/features/notifications/interfaces/notifications.interfaces";
 
 function Row({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
@@ -32,6 +35,7 @@ function Row({ title, description, children }: { title: string; description?: st
  * /notifications/preferences — my settings (14 §6): level, channels, quiet hours, digest, and per event type × channel.
  * @perm notifications.preferences.manage_own · mandatory events and organization-disabled channels are locked
  * @api GET/PATCH /notifications/preferences/settings · GET /notifications/preferences/events · PUT/DELETE /notifications/preferences/events/:id
+ *      · GET /notifications/devices/push-config + POST /notifications/devices ("Enable browser notifications") · GET /notifications/digests
  */
 export default function NotificationPreferencesPage() {
     const settings = useRecipientSettings();
@@ -39,6 +43,7 @@ export default function NotificationPreferencesPage() {
     const update = useUpdateRecipientSettings();
     const setPref = useSetEventPreference();
     const reset = useResetEventPreference();
+    const push = useBrowserPush();
 
     const grouped = useMemo(() => {
         const map = new Map<string, EventPreferenceRow[]>();
@@ -70,6 +75,35 @@ export default function NotificationPreferencesPage() {
                         <Row title="Email notifications" description={s.organization.enabled_channels.includes("EMAIL") ? "Sent from your organization's address." : "Email is turned off by your organization."}>
                             <Switch checked={s.email_enabled} disabled={!s.organization.enabled_channels.includes("EMAIL")} onCheckedChange={(v) => save({ email_enabled: v })} aria-label="Email notifications" />
                         </Row>
+                        <Row
+                            title="Browser push notifications"
+                            description={!s.organization.enabled_channels.includes("PUSH")
+                                ? "Push is turned off by your organization."
+                                : s.contact.push_devices
+                                    ? `On ${s.contact.push_devices} browser${s.contact.push_devices === 1 ? "" : "s"}. Shown even when the app is closed.`
+                                    : push.state === "denied" ? "Notifications are blocked for this site in your browser settings." : "Get notifications on this computer even when the app is closed."}
+                        >
+                            {!push.thisDeviceId && (push.state === "default" || push.state === "granted") && (
+                                <Button size="sm" variant="outline" onClick={() => void push.enable()} loading={push.busy} disabled={!push.config.data}>
+                                    <BellRing /> Enable browser notifications
+                                </Button>
+                            )}
+                            <Button size="sm" variant="ghost" asChild><Link to="/notifications/preferences/devices">Devices</Link></Button>
+                            <Switch checked={s.push_enabled} disabled={!s.organization.enabled_channels.includes("PUSH")} onCheckedChange={(v) => save({ push_enabled: v })} aria-label="Push notifications" />
+                        </Row>
+                        {s.organization.enabled_channels.includes("SMS") && (
+                            <Row
+                                title="Text messages (SMS)"
+                                description={!s.organization.sms_available
+                                    ? "SMS is not available yet: your organization has not connected an SMS provider."
+                                    : s.contact.phone_masked
+                                        ? `Sent to ${s.contact.phone_masked} for the events you turn on below. Carrier rates may apply.`
+                                        : "Add a mobile number to your profile to receive texts."}
+                            >
+                                {!s.contact.phone_masked && <Button size="sm" variant="ghost" asChild><Link to="/settings/profile">Add phone</Link></Button>}
+                                <Switch checked={s.sms_enabled} onCheckedChange={(v) => save({ sms_enabled: v })} aria-label="SMS notifications" />
+                            </Row>
+                        )}
                         <Row title="Show message previews" description="Include content in email and push previews.">
                             <Switch checked={s.show_previews} onCheckedChange={(v) => save({ show_previews: v })} aria-label="Show previews" />
                         </Row>
@@ -178,6 +212,8 @@ export default function NotificationPreferencesPage() {
                         )}
                     </div>
                 </Section>
+
+                <DigestHistory />
             </div>
         </Page>
     );

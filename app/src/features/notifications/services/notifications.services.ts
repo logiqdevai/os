@@ -1,8 +1,8 @@
 import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
 import type {
-    ActivityItem, Announcement, AnnouncementAudienceOptions, AnnouncementDetail, AnnouncementDto, EventPreferenceRow, NotificationChannel, NotificationCounts, NotificationItem, Paginated,
-    RecipientSettings, UpdateRecipientSettingsDto,
+    ActivityItem, Announcement, AnnouncementAudienceOptions, AnnouncementDetail, AnnouncementDto, EventPreferenceRow, MyDigest, NotificationChannel, NotificationCounts, NotificationItem, Paginated,
+    PushConfig, PushDevice, PushTestResult, RecipientSettings, RegisterPushDeviceDto, UpdateRecipientSettingsDto,
 } from "../interfaces/notifications.interfaces";
 
 const R = ApiRoutes.notifications;
@@ -26,6 +26,14 @@ export const getEventPreferences = async (): Promise<EventPreferenceRow[]> => (a
 export const setEventPreference = async ({ eventTypeId, channel, enabled }: { eventTypeId: string; channel: NotificationChannel; enabled: boolean }) =>
     (await axiosInstance.put(R.preferences.event(eventTypeId), { channel, enabled })).data;
 export const resetEventPreference = async (eventTypeId: string) => (await axiosInstance.delete(R.preferences.event(eventTypeId))).data;
+
+// Push devices and own digests (14 §5, §8)
+export const getPushConfig = async (): Promise<PushConfig> => (await axiosInstance.get(R.devices.pushConfig)).data;
+export const getPushDevices = async (): Promise<PushDevice[]> => (await axiosInstance.get(R.devices.list)).data;
+export const registerPushDevice = async (dto: RegisterPushDeviceDto): Promise<PushDevice> => (await axiosInstance.post(R.devices.list, dto)).data;
+export const removePushDevice = async (id: string) => (await axiosInstance.delete(R.devices.detail(id))).data;
+export const testPushDevice = async (id: string): Promise<PushTestResult> => (await axiosInstance.post(R.devices.test(id))).data;
+export const getMyDigests = async (params: Params): Promise<Paginated<MyDigest>> => (await axiosInstance.get(R.digests, { params })).data;
 
 export const getActivity = async (params: Params): Promise<Paginated<ActivityItem>> => (await axiosInstance.get(R.activity, { params })).data;
 export const getMyActivity = async (params: Params): Promise<Paginated<ActivityItem>> => (await axiosInstance.get(R.myActivity, { params })).data;

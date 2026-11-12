@@ -58,6 +58,21 @@ export const useUpdateRecipientSettings = () => useInboxMutation(service.updateR
 export const useSetEventPreference = () => useInboxMutation(service.setEventPreference, null, "Could not change this notification");
 export const useResetEventPreference = () => useInboxMutation(service.resetEventPreference, "Reset to default", "Could not reset");
 
+// Push devices (own) and digest history
+const DEVICES_KEY = [...NOTIFICATIONS_KEY, "devices"] as const;
+export const usePushConfig = (enabled = true) => useQuery({ queryKey: [...DEVICES_KEY, "config"], queryFn: service.getPushConfig, enabled, staleTime: 5 * 60_000, retry: false });
+export const usePushDevices = () => useQuery({ queryKey: DEVICES_KEY, queryFn: service.getPushDevices });
+export const useRegisterPushDevice = () => useInboxMutation(service.registerPushDevice, null, "Could not register this browser");
+export const useRemovePushDevice = () => useInboxMutation(service.removePushDevice, "Device removed", "Could not remove the device");
+export const useTestPushDevice = () =>
+    useMutation({
+        mutationFn: service.testPushDevice,
+        onSuccess: (res) => (res.ok ? toast({ title: "Test notification sent" }) : toast({ variant: "destructive", title: "Test failed", description: res.error ?? undefined })),
+        onError: (e) => toast({ variant: "destructive", title: "Test failed", description: getApiErrorMessage(e) }),
+    });
+export const useMyDigests = (params: Params) =>
+    useQuery({ queryKey: [...NOTIFICATIONS_KEY, "my-digests", params], queryFn: () => service.getMyDigests(params), placeholderData: keepPreviousData });
+
 // Activity
 export const useActivity = (params: Params, enabled = true) =>
     useQuery({ queryKey: ["activity", "feed", params], queryFn: () => service.getActivity(params), placeholderData: keepPreviousData, enabled });

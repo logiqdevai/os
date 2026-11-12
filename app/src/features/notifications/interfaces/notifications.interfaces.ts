@@ -77,6 +77,7 @@ export interface RecipientSettings {
     level: NotificationLevel;
     in_app_enabled: boolean;
     email_enabled: boolean;
+    sms_enabled: boolean;
     push_enabled: boolean;
     sound_enabled: boolean;
     show_previews: boolean;
@@ -88,9 +89,56 @@ export interface RecipientSettings {
     timezone: string | null;
     dnd_allow_critical: boolean;
     digest_frequency: DigestFrequency;
-    organization: { enabled_channels: NotificationChannel[] };
+    organization: { enabled_channels: NotificationChannel[]; sms_available: boolean };
+    /** Where channels reach me: email, masked profile phone, active push browsers. */
+    contact: { email: string | null; phone_masked: string | null; push_devices: number };
 }
-export type UpdateRecipientSettingsDto = Partial<Omit<RecipientSettings, "organization">>;
+export type UpdateRecipientSettingsDto = Partial<Omit<RecipientSettings, "organization" | "contact">>;
+
+/** 14 §5 — one of my push targets (tokens and subscription keys are never returned). */
+export interface PushDevice {
+    id: string;
+    platform: "IOS" | "ANDROID" | "WEB" | "DESKTOP";
+    provider: string;
+    device_name: string | null;
+    app_version: string | null;
+    locale: string | null;
+    last_seen_at: string | null;
+    failure_count: number;
+    disabled_at: string | null;
+    created_at: string;
+}
+export interface PushConfig {
+    public_key: string;
+    organization_enabled: boolean;
+}
+export interface RegisterPushDeviceDto {
+    platform: "WEB";
+    subscription: PushSubscriptionJSON;
+    device_name?: string | null;
+    app_version?: string | null;
+    locale?: string | null;
+}
+export interface PushTestResult {
+    ok: boolean;
+    removed?: boolean;
+    error: string | null;
+}
+
+/** 14 §8 — my digest history. */
+export interface MyDigest {
+    id: string;
+    frequency: DigestFrequency;
+    channel: NotificationChannel;
+    module: string | null;
+    status: "OPEN" | "SCHEDULED" | "SENDING" | "SENT" | "EMPTY" | "FAILED";
+    item_count: number;
+    period_start: string;
+    period_end: string;
+    scheduled_for: string;
+    sent_at: string | null;
+    failure_reason: string | null;
+}
 
 export interface EventPreferenceRow {
     event_type: { id: string; key: string; name: string; description: string | null; module: string; category: NotificationCategory; priority: NotificationPriority };

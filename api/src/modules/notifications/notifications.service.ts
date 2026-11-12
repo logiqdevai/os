@@ -143,7 +143,10 @@ export class NotificationsService {
             await this.audit.record(ctx, 'notification.read', { resource_type: 'notification', resource_id: id, metadata: { event_key: before.event_key, mandatory: true } });
         }
         if (dto.read && !before.read_at) {
-            this.events.publish(ctx, { event_key: 'notification.read', module: ModuleKey.NOTIFICATIONS, entity_type: 'NOTIFICATION', entity_id: id, payload: { event_key: before.event_key } });
+            // 14 §14 — only when the organization publishes notification events (Settings → Webhook events).
+            void this.webhooks.enabled(ctx.organization_id).then((on) => {
+                if (on) this.events.publish(ctx, { event_key: 'notification.read', module: ModuleKey.NOTIFICATIONS, entity_type: 'NOTIFICATION', entity_id: id, payload: { notification_id: id, event_key: before.event_key } });
+            }).catch(() => undefined);
         }
         return row;
     }

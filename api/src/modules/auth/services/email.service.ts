@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
+import { Prisma } from 'generated/prisma';
 import { CreateJwtService } from '@/shared/utils/jwt/jwt.service';
 import { CredentialsService, sha256 } from '@/shared/authorization/credentials.service';
 import { AuthorizationService } from '@/shared/authorization/authorization.service';
@@ -342,8 +343,16 @@ export class EmailAuthService {
         return { success: true };
     }
 
-    async updateProfile(userId: string, data: { first_name?: string; last_name?: string; display_name?: string; timezone?: string; locale?: string; language?: string; profile_photo_url?: string }) {
-        const user = await this.prisma.user.update({ where: { id: userId }, data });
+    async updateProfile(userId: string, data: { first_name?: string; last_name?: string; display_name?: string; timezone?: string; locale?: string; language?: string; profile_photo_url?: string; phone?: string | null }) {
+        const before = data.phone !== undefined ? await this.prisma.user.findUnique({ where: { id: userId }, select: { phone: true } }) : null;
+        const phoneChanged = !!before && (before.phone ?? null) !== (data.phone ?? null);
+        const user = await this.prisma.user
+            .update({ where: { id: userId }, data: { ...data, ...(phoneChanged ? { phone_verified_at: null } : {}) } })
+            .catch((e) => {
+                if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') throw new ConflictException({ message: 'This phone number is already used by another account', code: 'phone_taken' });
+                throw e;
+            });
+        if (phoneChanged) await this.audit.record(null, 'user.phone_changed', { resource_type: 'user', resource_id: userId, metadata: { removed: !data.phone } });
         return publicUser(user);
     }
 

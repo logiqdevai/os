@@ -6,6 +6,8 @@ export interface SessionUser {
     last_name: string | null;
     display_name: string | null;
     profile_photo_url: string | null;
+    /** Mobile number (E.164) for SMS notifications. */
+    phone?: string | null;
     timezone: string | null;
     locale: string | null;
     default_organization_id: string | null;
@@ -146,4 +148,5 @@ export interface UpdateProfileDto {
     locale?: string;
     language?: string;
     profile_photo_url?: string;
+    phone?: string | null;
 }

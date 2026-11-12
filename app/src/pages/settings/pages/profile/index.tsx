@@ -24,19 +24,19 @@ const AUTO = "__auto";
 export default function ProfileSettingsPage() {
     const session = useSessionData();
     const update = useUpdateProfile();
-    const form = useForm<ProfileSettingsFormValues>({ resolver: zodResolver(profileSettingsSchema), defaultValues: { first_name: "", last_name: "", display_name: "", profile_photo_url: "", timezone: AUTO, locale: "" } });
+    const form = useForm<ProfileSettingsFormValues>({ resolver: zodResolver(profileSettingsSchema), defaultValues: { first_name: "", last_name: "", display_name: "", profile_photo_url: "", timezone: AUTO, locale: "", phone: "" } });
     const preview = form.watch();
 
     useEffect(() => {
         const u = session?.user;
-        if (u) form.reset({ first_name: u.first_name ?? "", last_name: u.last_name ?? "", display_name: u.display_name ?? "", profile_photo_url: u.profile_photo_url ?? "", timezone: u.timezone ?? AUTO, locale: u.locale ?? "" });
+        if (u) form.reset({ first_name: u.first_name ?? "", last_name: u.last_name ?? "", display_name: u.display_name ?? "", profile_photo_url: u.profile_photo_url ?? "", timezone: u.timezone ?? AUTO, locale: u.locale ?? "", phone: u.phone ?? "" });
     }, [session?.user, form]);
 
     if (!session) return <PageSkeleton />;
 
     const submit = form.handleSubmit((v) =>
         update.mutate(
-            { first_name: v.first_name, last_name: v.last_name, display_name: v.display_name || `${v.first_name} ${v.last_name}`, profile_photo_url: v.profile_photo_url, ...(v.timezone !== AUTO && { timezone: v.timezone }), ...(v.locale && { locale: v.locale }) },
+            { first_name: v.first_name, last_name: v.last_name, display_name: v.display_name || `${v.first_name} ${v.last_name}`, profile_photo_url: v.profile_photo_url, ...(v.timezone !== AUTO && { timezone: v.timezone }), ...(v.locale && { locale: v.locale }), phone: v.phone || null },
             { onSuccess: () => { toast({ title: "Profile saved" }); form.reset(form.getValues()); }, onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) }
         )
     );
@@ -70,6 +70,7 @@ export default function ProfileSettingsPage() {
                                     </SelectContent></Select>
                             </FormItem>
                         )} />
+                        <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Mobile phone</FormLabel><FormControl><Input type="tel" inputMode="tel" autoComplete="tel" placeholder="+306912345678" {...field} /></FormControl><FormDescription>For SMS notifications you turn on in Notifications → Preferences.</FormDescription><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="locale" render={({ field }) => (<FormItem><FormLabel>Locale</FormLabel><FormControl><Input placeholder="en-GB" {...field} /></FormControl><FormDescription>Number and date formatting.</FormDescription><FormMessage /></FormItem>)} />
                     </div>
                     <div className="flex justify-end">
