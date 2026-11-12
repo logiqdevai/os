@@ -32,6 +32,7 @@ export default function SignInPage() {
     const form = useForm<SignInFormValues>({ resolver: zodResolver(signInSchema), defaultValues: { email: "", password: "" } });
     const next = params.get("next");
     const idle = params.get("reason") === "idle";
+    const passwordReset = params.get("reason") === "password-reset";
 
     const enter = (res: AuthResponse) => {
         if (res.recovery_codes_remaining !== null && res.recovery_codes_remaining !== undefined) {
@@ -68,6 +69,11 @@ export default function SignInPage() {
                     <Alert>
                         <Clock className="size-4" />
                         <AlertDescription>You were signed out after a period of inactivity. Sign in again to continue.</AlertDescription>
+                    </Alert>
+                )}
+                {passwordReset && !signIn.isError && (
+                    <Alert>
+                        <AlertDescription>Your password was updated. Sign in with your new password.</AlertDescription>
                     </Alert>
                 )}
                 {signIn.isError && (

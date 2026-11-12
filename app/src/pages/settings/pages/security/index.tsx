@@ -14,7 +14,6 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { MfaRequiredReasonOptions } from "@/config/constants/dropdowns/admin/security-form.options";
-import { toast } from "@/hooks/use-toast";
 import { MfaEnrollment, RecoveryCodesList, cleanTotp } from "../../components/mfa/mfa-enrollment";
 
 /**
@@ -72,7 +71,7 @@ export default function SecuritySettingsPage() {
                             )}
                         </>
                     ) : enrolling ? (
-                        <MfaEnrollment onDone={() => { setEnrolling(false); toast({ title: "Two-step verification is on" }); }} onCancel={() => setEnrolling(false)} />
+                        <MfaEnrollment onDone={() => setEnrolling(false)} onCancel={() => setEnrolling(false)} />
                     ) : (
                         <div className="flex flex-wrap items-center gap-3">
                             <div className="grid size-9 flex-none place-items-center rounded-lg bg-warning-soft text-warning"><ShieldOff className="size-4" /></div>
@@ -114,7 +113,7 @@ function FactorDialog({ mode, onClose }: { mode: "codes" | "disable" | null; onC
         e.preventDefault();
         const dto: MfaFactorDto = useRecovery ? { recovery_code: value.trim() } : { code: value };
         if (mode === "codes") regenerate.mutate(dto, { onSuccess: (r) => setCodes(r.recovery_codes), onError: () => setValue("") });
-        else disable.mutate(dto, { onSuccess: () => { toast({ title: "Two-step verification is off" }); close(); }, onError: () => setValue("") });
+        else disable.mutate(dto, { onSuccess: () => close(), onError: () => setValue("") });
     };
 
     const valid = useRecovery ? value.trim().length >= 10 : value.length === 6;

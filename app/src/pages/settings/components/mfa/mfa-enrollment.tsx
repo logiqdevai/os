@@ -125,8 +125,9 @@ function RecoveryCodesStep({ codes, onDone }: { codes: string[]; onDone: () => v
 /** The plain codes (shown once) with copy and download. */
 export function RecoveryCodesList({ codes }: { codes: string[] }) {
     const text = codes.join("\n");
+    const [copied, setCopied] = useState(false);
     const copy = () => navigator.clipboard.writeText(text).then(
-        () => toast({ title: "Recovery codes copied" }),
+        () => { setCopied(true); setTimeout(() => setCopied(false), 1500); },
         () => toast({ variant: "destructive", title: "Could not copy", description: "Select the codes and copy them manually." })
     );
     const download = () => {
@@ -143,7 +144,7 @@ export function RecoveryCodesList({ codes }: { codes: string[] }) {
                 {codes.map((c) => <li key={c} className="select-all"><KeyRound className="mr-1.5 inline size-3 text-muted-foreground" aria-hidden />{c}</li>)}
             </ul>
             <div className="flex flex-wrap gap-2">
-                <Button type="button" size="sm" variant="outline" onClick={copy}><Copy /> Copy</Button>
+                <Button type="button" size="sm" variant="outline" onClick={copy}>{copied ? <><Check className="text-success" /> Copied</> : <><Copy /> Copy</>}</Button>
                 <Button type="button" size="sm" variant="outline" onClick={download}><Download /> Download</Button>
             </div>
         </div>

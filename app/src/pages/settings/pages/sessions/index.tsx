@@ -8,8 +8,6 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { useMySessions, useRevokeMySession } from "@/features/session/hooks/use-session";
 import type { UserSessionRow } from "@/features/session/interfaces/session.interfaces";
 import { formatDateTime, formatRelative } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 /** Best-effort browser + OS from the user agent (display only). */
 function describe(s: UserSessionRow) {
@@ -29,16 +27,11 @@ export default function SessionsSettingsPage() {
     const [revoking, setRevoking] = useState<UserSessionRow | "others" | null>(null);
     const others = (sessions.data ?? []).filter((s) => !s.current);
 
-    const confirm = async () => {
+    /** Optimistic: the rows disappear as soon as you confirm; a refused revoke puts its row back (error toasted globally). */
+    const confirm = () => {
         if (!revoking) return;
-        try {
-            if (revoking === "others") for (const s of others) await revoke.mutateAsync(s.id);
-            else await revoke.mutateAsync(revoking.id);
-            toast({ title: revoking === "others" ? "Signed out everywhere else" : "Session ended" });
-            setRevoking(null);
-        } catch (e) {
-            toast({ variant: "destructive", title: "Could not end the session", description: getApiErrorMessage(e) });
-        }
+        for (const s of revoking === "others" ? others : [revoking]) revoke.mutate(s.id);
+        setRevoking(null);
     };
 
     return (
@@ -75,7 +68,6 @@ export default function SessionsSettingsPage() {
                 description="That device will need to sign in again."
                 confirmText="Sign out"
                 variant="destructive"
-                isLoading={revoke.isPending}
                 onConfirm={confirm}
             />
         </Section>

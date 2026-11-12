@@ -13,7 +13,8 @@ import { useRemoveProfilePhoto, useSessionData, useUpdateProfile, useUploadProfi
 import { profileSettingsSchema, type ProfileSettingsFormValues } from "@/features/session/validation-schemas/settings.schema";
 import { TimezoneOptions } from "@/config/constants/dropdowns/timezone.options";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useFormAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/format";
 
@@ -29,24 +30,28 @@ export default function ProfileSettingsPage() {
     const form = useForm<ProfileSettingsFormValues>({ resolver: zodResolver(profileSettingsSchema), defaultValues: { first_name: "", last_name: "", display_name: "", timezone: AUTO, locale: "", phone: "" } });
     const preview = form.watch();
 
+    // Load the saved profile once per user; afterwards the form is the source of truth (a background refresh after an
+    // autosave must never overwrite what is being typed).
+    const loadedFor = useRef<string | null>(null);
     useEffect(() => {
         const u = session?.user;
-        if (u) form.reset({ first_name: u.first_name ?? "", last_name: u.last_name ?? "", display_name: u.display_name ?? "", timezone: u.timezone ?? AUTO, locale: u.locale ?? "", phone: u.phone ?? "" });
+        if (!u || loadedFor.current === u.id) return;
+        loadedFor.current = u.id;
+        form.reset({ first_name: u.first_name ?? "", last_name: u.last_name ?? "", display_name: u.display_name ?? "", timezone: u.timezone ?? AUTO, locale: u.locale ?? "", phone: u.phone ?? "" });
     }, [session?.user, form]);
+
+    /** Autosave (no Save button): valid changes are saved after a short pause; failures show in <SaveStatus />. */
+    const autosave = useFormAutosave(form, (v) =>
+        update.mutateAsync({ first_name: v.first_name, last_name: v.last_name, display_name: v.display_name || `${v.first_name} ${v.last_name}`, ...(v.timezone !== AUTO && { timezone: v.timezone }), ...(v.locale && { locale: v.locale }), phone: v.phone || null }),
+        { enabled: !!session }
+    );
 
     if (!session) return <PageSkeleton />;
 
-    const submit = form.handleSubmit((v) =>
-        update.mutate(
-            { first_name: v.first_name, last_name: v.last_name, display_name: v.display_name || `${v.first_name} ${v.last_name}`, ...(v.timezone !== AUTO && { timezone: v.timezone }), ...(v.locale && { locale: v.locale }), phone: v.phone || null },
-            { onSuccess: () => { toast({ title: "Profile saved" }); form.reset(form.getValues()); }, onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) }
-        )
-    );
-
     return (
-        <Section title="Profile" description="How you appear to colleagues and clients.">
+        <Section title="Profile" description="How you appear to colleagues and clients. Changes save automatically." actions={<SaveStatus state={autosave} />}>
             <Form {...form}>
-                <form onSubmit={submit} className="space-y-4 rounded-lg border border-border bg-card p-4">
+                <form onSubmit={(e) => { e.preventDefault(); autosave.flush(); }} className="space-y-4 rounded-lg border border-border bg-card p-4">
                     <ProfilePhoto
                         photoUrl={session.user.profile_photo_url}
                         name={preview.display_name || `${preview.first_name ?? ""} ${preview.last_name ?? ""}`.trim() || session.user.email}
@@ -69,9 +74,6 @@ export default function ProfileSettingsPage() {
                         <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Mobile phone</FormLabel><FormControl><Input type="tel" inputMode="tel" autoComplete="tel" placeholder="+306912345678" {...field} /></FormControl><FormDescription>For SMS notifications you turn on in Notifications → Preferences.</FormDescription><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="locale" render={({ field }) => (<FormItem><FormLabel>Locale</FormLabel><FormControl><Input placeholder="en-GB" {...field} /></FormControl><FormDescription>Number and date formatting.</FormDescription><FormMessage /></FormItem>)} />
                     </div>
-                    <div className="flex justify-end">
-                        <Button type="submit" loading={update.isPending} disabled={!form.formState.isDirty}>Save profile</Button>
-                    </div>
                 </form>
             </Form>
         </Section>
@@ -93,10 +95,7 @@ function ProfilePhoto({ photoUrl, name, email }: { photoUrl: string | null; name
         if (!file) return;
         if (!PHOTO_TYPES.includes(file.type)) return toast({ variant: "destructive", title: "Unsupported file", description: "Use a PNG, JPG, GIF or WebP image." });
         if (file.size > PHOTO_MAX_BYTES) return toast({ variant: "destructive", title: "File too large", description: "The photo must be 5 MB or smaller." });
-        upload.mutate(file, {
-            onSuccess: () => toast({ title: photoUrl ? "Photo changed" : "Photo added" }),
-            onError: (e) => toast({ variant: "destructive", title: "Could not upload the photo", description: getApiErrorMessage(e) }),
-        });
+        upload.mutate(file); // the avatar updates when the session refreshes; failures are toasted globally
     };
 
     return (
@@ -129,15 +128,7 @@ function ProfilePhoto({ photoUrl, name, email }: { photoUrl: string | null; name
             <ConfirmationDialog
                 isOpen={confirmRemove}
                 onClose={() => setConfirmRemove(false)}
-                onConfirm={() =>
-                    remove.mutate(undefined, {
-                        onSuccess: () => {
-                            setConfirmRemove(false);
-                            toast({ title: "Photo removed" });
-                        },
-                        onError: (e) => toast({ variant: "destructive", title: "Could not remove the photo", description: getApiErrorMessage(e) }),
-                    })
-                }
+                onConfirm={() => remove.mutate(undefined, { onSuccess: () => setConfirmRemove(false) })}
                 title="Remove profile photo?"
                 description="Colleagues and clients will see your initials instead."
                 confirmText="Remove photo"

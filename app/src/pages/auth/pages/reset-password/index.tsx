@@ -8,7 +8,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useResetPassword } from "@/features/session/hooks/use-session";
 import { resetPasswordSchema, type ResetPasswordFormValues } from "@/features/session/validation-schemas/session.schema";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { toast } from "@/hooks/use-toast";
 import { usePageMetadata } from "@/hooks/use-page-metadata";
 import { AuthCard, FieldError } from "../../components/auth-card";
 
@@ -35,10 +34,8 @@ export default function ResetPasswordPage() {
                     reset.mutate(
                         { token, password: v.password },
                         {
-                            onSuccess: () => {
-                                toast({ title: "Password updated", description: "Sign in with your new password." });
-                                navigate("/auth/sign-in", { replace: true });
-                            },
+                            // No toast: the sign-in page says the password was updated.
+                            onSuccess: () => navigate("/auth/sign-in?reason=password-reset", { replace: true }),
                         }
                     )
                 )}

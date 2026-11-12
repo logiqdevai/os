@@ -6,7 +6,6 @@ import { useAcceptInvitation, useInvitation, useSessionData } from "@/features/s
 import { isLoggedIn, useAuthStore } from "@/stores/auth";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { usePageMetadata } from "@/hooks/use-page-metadata";
-import { toast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/format";
 import { AuthCard } from "../../components/auth-card";
 
@@ -71,7 +70,6 @@ export default function InvitePage() {
                     onClick={() =>
                         accept.mutate(token, {
                             onSuccess: (res: { organization_id: string }) => {
-                                toast({ title: `You joined ${inv.organization.display_name}` });
                                 // Customer portal invitations (07) give no agency membership: open the portal, not the agency app.
                                 if (inv.audience === "CUSTOMER_PORTAL") {
                                     navigate("/portal", { replace: true });
