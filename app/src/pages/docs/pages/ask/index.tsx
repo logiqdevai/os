@@ -49,7 +49,7 @@ export default function DocsAskPage() {
                 description="Ask a question in plain language. Answers come only from pages you can open, with links to the sources."
                 actions={
                     <Can permission="docs.spaces.manage">
-                        <Button variant="outline" size="sm" loading={reindex.isPending} onClick={() => reindex.mutate()}><RefreshCw /> Rebuild index</Button>
+                        <Button variant="outline" size="sm" loading={reindex.isPending} onClick={() => reindex.mutate(undefined)}><RefreshCw /> Rebuild index</Button>
                     </Can>
                 }
             />

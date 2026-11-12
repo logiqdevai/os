@@ -118,7 +118,7 @@ function RateDialog({ open, rate, defaultKind, onOpenChange }: { open: boolean; 
     const valid = Number(amount) >= 0 && amount !== "" && /^[A-Z]{3}$/.test(currency) && !!from && (!needsProject || projectId) && (!needsMember || memberId) && scope !== "PRODUCT" && (!to || to >= from);
     const pending = create.isPending;
     const editDto = { name: name || undefined, hourly_rate: Number(amount), currency, effective_from: from, effective_to: to || null };
-    const autosave = useAutosave({ value: editDto, enabled: open && !!rate && dirty && valid, save: (v) => update.mutateAsync({ id: rate!.id, ...v }) });
+    const autosave = useAutosave({ value: editDto, enabled: open && !!rate && !!dirty && !!valid, save: (v) => update.mutateAsync({ id: rate!.id, ...v }) });
     const close = () => { if (rate && dirty && valid) autosave.flush(); onOpenChange(false); };
 
     return (

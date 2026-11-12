@@ -75,7 +75,7 @@ export function EntryFormDialog({ open, onOpenChange, entry, defaultDate }: Prop
         ...(start && end && computed ? { start_at: toIso(start), end_at: toIso(end) } : {}),
         ...(reason ? { billable_override_reason: reason } : {}),
     };
-    const autosave = useAutosave({ value: dto, enabled: open && !!entry && !entry.is_locked && dirty && valid, save: (v) => update.mutateAsync({ id: entry!.id, ...v }) });
+    const autosave = useAutosave({ value: dto, enabled: open && !!entry && !entry.is_locked && !!dirty && !!valid, save: (v) => update.mutateAsync({ id: entry!.id, ...v }) });
     const close = () => { if (entry && dirty && valid) autosave.flush(); onOpenChange(false); };
     const save = () => {
         if (entry) return close();

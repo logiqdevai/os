@@ -35,11 +35,12 @@ export default function SignInPage() {
     const passwordReset = params.get("reason") === "password-reset";
 
     const enter = (res: AuthResponse) => {
-        if (res.recovery_codes_remaining !== null && res.recovery_codes_remaining !== undefined) {
+        // Not a success message: only warn when the user is about to run out of recovery codes.
+        if (typeof res.recovery_codes_remaining === "number" && res.recovery_codes_remaining <= 2) {
             toast({
-                title: `Signed in with a recovery code — ${res.recovery_codes_remaining} left`,
-                description: "Create new codes in Settings → Two-step verification if you are running low.",
-                variant: res.recovery_codes_remaining <= 2 ? "destructive" : "default",
+                variant: "destructive",
+                title: `Only ${res.recovery_codes_remaining} recovery code${res.recovery_codes_remaining === 1 ? "" : "s"} left`,
+                description: "Create new codes in Settings → Two-step verification.",
             });
         }
         navigate(res.mfa_enrollment_required ? `/mfa-setup?next=${encodeURIComponent(safeNext(next))}` : safeNext(next), { replace: true });
