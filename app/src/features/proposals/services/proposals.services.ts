@@ -1,8 +1,9 @@
 import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
+import { downloadFile } from "@/features/files/services/file-download.services";
 import type {
     ApprovalRule, ApprovalRuleDto, CompareResult, CreateProposalDto, CreateTemplateDto, LookupOption, MyApproval, Paginated, ProposalActivity, ProposalAnalytics, ProposalComment,
-    ProposalDetail, ProposalListItem, ProposalSummary, ProposalTemplate, PublicDecisionDto, PublicProposal, PublicTotals, ReviewPreview, SaveContentDto, SendPreview,
+    ProposalDetail, ProposalListItem, ProposalSummary, ProposalTracking, AiApplyDto, AiGenerateDto, AiGenerateResult, ProposalTemplate, PublicDecisionDto, PublicProposal, PublicTotals, ReviewPreview, SaveContentDto, SendPreview,
     SendProposalDto, SendResult, UpdateProposalDto,
 } from "../interfaces/proposals.interfaces";
 
@@ -21,6 +22,8 @@ export const archiveProposal = async ({ id, restore }: { id: string; restore?: b
 export const cancelProposal = async (id: string) => (await axiosInstance.post(R().cancel(id))).data;
 export const markProposalLost = async ({ id, lost_reason, note }: { id: string; lost_reason: string; note?: string }) => (await axiosInstance.post(R().mark_lost(id), { lost_reason, note })).data;
 export const getProposalActivity = async (id: string): Promise<ProposalActivity> => (await axiosInstance.get(R().activity(id))).data;
+export const downloadProposalPdf = ({ id, versionId }: { id: string; versionId?: string }) =>
+    downloadFile(R().pdf(id), { params: versionId ? { version_id: versionId } : undefined, fallbackName: "proposal.pdf" });
 
 // --- Versions & content ---------------------------------------------------------------------------
 
@@ -53,6 +56,10 @@ export const convertProposal = async ({ id, ...dto }: { id: string; contract_tem
 
 // --- Analytics & lookups ------------------------------------------------------------------------------
 
+export const getProposalAiStatus = async (): Promise<{ configured: boolean; can_generate: boolean }> => (await axiosInstance.get(R().ai_status)).data;
+export const generateProposalDraft = async ({ id, ...dto }: AiGenerateDto & { id: string }): Promise<AiGenerateResult> => (await axiosInstance.post(R().ai_generate(id), dto)).data;
+export const applyProposalDraft = async ({ id, ...dto }: AiApplyDto & { id: string }): Promise<ProposalDetail> => (await axiosInstance.post(R().ai_apply(id), dto)).data;
+export const getProposalTracking = async (params: Record<string, unknown>): Promise<ProposalTracking> => (await axiosInstance.get(R().tracking, { params })).data;
 export const getProposalAnalytics = async (params: Record<string, unknown>): Promise<ProposalAnalytics> => (await axiosInstance.get(R().analytics, { params })).data;
 export const getProposalLookups = async (params: { kind: string; search?: string; company_id?: string }): Promise<LookupOption[]> => (await axiosInstance.get(R().lookups, { params })).data;
 
@@ -79,4 +86,8 @@ export const decidePublicProposal = async ({ token, access, ...dto }: PublicDeci
 export const commentPublicProposal = async ({ token, access, ...dto }: { token: string; access?: string | null; body: string; author_name: string; section_id?: string }) =>
     (await axiosInstance.post(R().public.comments(token), dto, accessHeader(access))).data;
 export const sendPublicCode = async ({ token, email }: { token: string; email: string }): Promise<{ sent: boolean; dev_code?: string }> => (await axiosInstance.post(R().public.send_code(token), { email })).data;
+export const downloadPublicProposalPdf = ({ token, access }: { token: string; access?: string | null }) =>
+    downloadFile(R().public.pdf(token), { headers: access ? { "X-Proposal-Access": access } : undefined, fallbackName: "proposal.pdf" });
+export const sendPublicEngagement = async ({ token, access, ...dto }: { token: string; access?: string | null; seconds: number; sections: { id: string; seconds: number }[]; session_id: string }) =>
+    (await axiosInstance.post(R().public.engagement(token), dto, accessHeader(access))).data;
 export const verifyPublicCode = async ({ token, code }: { token: string; code: string }): Promise<{ access: string }> => (await axiosInstance.post(R().public.verify(token), { code })).data;

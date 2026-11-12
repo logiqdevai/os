@@ -30,7 +30,7 @@ export class CancelSignatureRequestDto {
 // --- Public signing ---------------------------------------------------------------------
 
 export class SendCodeDto {
-    @ApiProperty({ enum: ['EMAIL'], required: false }) @IsOptional() @IsIn(['EMAIL']) channel?: 'EMAIL';
+    @ApiProperty({ enum: ['EMAIL', 'SMS'], required: false, description: 'Default: SMS when the signer has a phone and the organization has a Twilio connection, else email' }) @IsOptional() @IsIn(['EMAIL', 'SMS']) channel?: 'EMAIL' | 'SMS';
 }
 
 export class VerifyCodeDto {

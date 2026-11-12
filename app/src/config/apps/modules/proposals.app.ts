@@ -1,4 +1,4 @@
-import { ChartColumn, FileText, LayoutTemplate } from "lucide-react";
+import { Activity, ChartColumn, FileText, LayoutTemplate } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
 export const proposalsApp: AppDefinition = {
@@ -12,6 +12,7 @@ export const proposalsApp: AppDefinition = {
     nav: [
         { items: [
             { label: "All proposals", to: "/proposals", icon: FileText, end: true },
+            { label: "Tracking", to: "/proposals/tracking", icon: Activity, permissions: ["proposals.proposals.read"] },
             { label: "Analytics", to: "/proposals/analytics", icon: ChartColumn, permissions: ["proposals.analytics.read"] },
         ] },
         { label: "Setup", items: [

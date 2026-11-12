@@ -36,6 +36,15 @@ export const ProposalEventQuerySchema = BaseListQuerySchema.extend({
 });
 export type ProposalEventQuery = z.infer<typeof ProposalEventQuerySchema>;
 
+/** /proposals/tracking — customer activity feed across proposals (dates are YYYY-MM-DD, default last 30 days). */
+export const ProposalTrackingQuerySchema = BaseListQuerySchema.extend({
+    type: csv(z.nativeEnum(ProposalEventType)),
+    proposal_id: z.string().uuid().optional(),
+    from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+export type ProposalTrackingQuery = z.infer<typeof ProposalTrackingQuerySchema>;
+
 export const LookupQuerySchema = z.object({
     kind: z.enum(['companies', 'contacts', 'deals', 'members', 'projects']),
     search: z.string().trim().optional(),

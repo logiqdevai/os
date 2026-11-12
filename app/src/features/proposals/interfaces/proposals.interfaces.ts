@@ -232,6 +232,51 @@ export interface ProposalDelivery {
     recipient: { id: string; first_name: string; last_name: string | null } | null;
 }
 
+export interface AiDraftSection { type: ProposalSectionType; title: string; body: string }
+export interface AiDraftLine { name: string; description?: string | null; quantity: number; unit?: string | null; unit_price: number; is_optional?: boolean; is_recurring?: boolean; billing_frequency?: "monthly" | "quarterly" | "annual" | null }
+export interface AiGenerateDto { deal_id?: string; notes?: string; include_crm_notes?: boolean; sections?: ProposalSectionType[]; include_line_items?: boolean; tone?: "professional" | "friendly" | "concise" | "formal"; language?: string }
+export type AiGenerateResult =
+    | { available: true; run_id: string; model: string; sources: string[]; draft: { sections: AiDraftSection[]; line_items: AiDraftLine[]; assumptions: string[] }; usage: { input_tokens: number | null; output_tokens: number | null; cost: number | null } }
+    | { available: false; reason: "ai_not_configured" | "ai_provider_error"; message: string };
+export interface AiApplyDto { version_id: string; run_id: string; mode: "append" | "replace"; sections: AiDraftSection[]; line_items: AiDraftLine[] }
+
+export interface ProposalTrackingEvent {
+    id: string;
+    type: string;
+    created_at: string;
+    version_number: number | null;
+    proposal: { id: string; number: string; title: string; company: string | null };
+    actor: "staff" | "customer" | "system";
+    contact: string | null;
+    time_on_page_seconds: number | null;
+    sections_opened: number | null;
+    reminder: boolean;
+    detail: string | null;
+    ip_address: string | null;
+    user_agent: string | null;
+}
+
+export interface ProposalTrackingProposal {
+    id: string;
+    number: string;
+    title: string;
+    status: ProposalStatus | null;
+    company: string | null;
+    valid_until: string | null;
+    views: number;
+    time_on_page_seconds: number;
+    last_viewed_at: string;
+    hot: boolean;
+    sections: { id: string; title: string; seconds: number }[];
+}
+
+export interface ProposalTracking {
+    range: { from: string; to: string };
+    summary: { views_today: number; views_in_range: number; proposals_viewed: number; hot_proposals: number; not_opened: number; delivery_failures: number; avg_time_on_page_seconds: number | null };
+    proposals: ProposalTrackingProposal[];
+    events: Paginated<ProposalTrackingEvent>;
+}
+
 export interface ProposalActivity {
     events: ProposalEvent[];
     deliveries: ProposalDelivery[];

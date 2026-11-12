@@ -1,7 +1,8 @@
 import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
+import { downloadFile } from "@/features/files/services/file-download.services";
 import type {
-    ApprovalPreview, ApprovalRule, Certificate, ContractClause, ContractComment, ContractDashboard, ContractDetail, ContractListItem, ContractTemplate, ContractType,
+    ApprovalPreview, ApprovalRule, Certificate, ContractAiExtractResult, ContractAiFinding, ContractAiReviewResult, ContractAnalytics, ObligationSuggestion, ContractClause, ContractComment, ContractDashboard, ContractDetail, ContractListItem, ContractTemplate, ContractType,
     ContractVersionDetail, CreateContractDto, CreateObligationDto, CreateSignatureResult, HistoryItem, LookupItem, MyApproval, Obligation, Paginated, PartyInput, PublicSigningState,
     RenewalItem, SectionInput, SignatureRequest, SigningLink, TemplateSectionDef, UpdateContractDto, UpdateObligationDto, VersionCompare,
 } from "../interfaces/contracts.interfaces";
@@ -17,6 +18,16 @@ const del = async <T>(url: string): Promise<T> => (await axiosInstance.delete(ur
 export const getContracts = (params: Record<string, unknown>) => get<Paginated<ContractListItem>>(R.contracts.list, params);
 export const getContract = (id: string) => get<ContractDetail>(R.contracts.detail(id));
 export const getContractDashboard = () => get<ContractDashboard>(R.contracts.dashboard);
+export const getContractAnalytics = (params: Record<string, unknown>) => get<ContractAnalytics>(R.contracts.analytics, params);
+// AI review & extraction (organization OpenAI key; humans decide)
+export const getContractAiStatus = () => get<{ configured: boolean }>(R.ai_status);
+export const runContractAiReview = ({ id, versionId }: { id: string; versionId: string }) => post<ContractAiReviewResult>(R.contracts.ai_review(id, versionId));
+export const getContractAiFindings = (id: string, versionId: string) => get<ContractAiFinding[]>(R.contracts.ai_findings(id, versionId));
+export const decideContractAiFinding = ({ id, findingId, ...dto }: { id: string; findingId: string; status: "ACCEPTED" | "DISMISSED"; resolution_note?: string }) => patch<ContractAiFinding>(R.contracts.ai_finding(id, findingId), dto);
+export const extractContractObligations = ({ id, versionId }: { id: string; versionId: string }) => post<ContractAiExtractResult>(R.contracts.ai_extract(id, versionId));
+export const getObligationSuggestions = (id: string) => get<ObligationSuggestion[]>(R.contracts.ai_suggestions(id));
+export const reviewObligationSuggestion = ({ id, obligationId, ...dto }: { id: string; obligationId: string; decision: "CONFIRM" | "REJECT"; title?: string; due_date?: string | null }) =>
+    post<ObligationSuggestion>(R.contracts.ai_suggestion_review(id, obligationId), dto);
 export const getRenewals = (params: Record<string, unknown>) => get<Paginated<RenewalItem>>(R.contracts.renewals, params);
 export const getContractHistory = (id: string) => get<{ data: HistoryItem[] }>(R.contracts.history(id));
 export const lookup = (kind: "members" | "companies" | "contacts" | "projects", params: { search?: string; company_id?: string }) => get<{ data: LookupItem[] }>(R.contracts.lookup(kind), params);
@@ -54,6 +65,8 @@ export const sendForSignature = ({ id, vid, ...dto }: { id: string; vid: string;
 export const getSignatureRequests = (params: Record<string, unknown>) => get<Paginated<SignatureRequest>>(R.signature_requests.list, params);
 export const getSignatureRequest = (id: string) => get<SignatureRequest>(R.signature_requests.detail(id));
 export const getCertificate = (id: string) => get<Certificate>(R.signature_requests.certificate(id));
+export const downloadCertificatePdf = (id: string) => downloadFile(R.signature_requests.certificate_pdf(id), { fallbackName: "certificate.pdf" });
+export const downloadContractVersionPdf = ({ id, versionId }: { id: string; versionId: string }) => downloadFile(R.contracts.version_pdf(id, versionId), { fallbackName: "contract.pdf" });
 export const remindSignature = (id: string) => post<{ links: SigningLink[]; email_sent: boolean; mail_configured: boolean }>(R.signature_requests.remind(id));
 export const reissueLink = ({ id, signerId }: { id: string; signerId: string }) => post<SigningLink & { emailed: boolean; mail_configured: boolean }>(R.signature_requests.link(id, signerId));
 export const cancelSignature = ({ id, reason }: { id: string; reason?: string }) => post<SignatureRequest>(R.signature_requests.cancel(id), { reason });
@@ -89,8 +102,11 @@ export const deleteApprovalRule = (id: string) => del(R.approval_rules.detail(id
 
 // Public signing (no auth header needed; axios adds it only when signed in)
 export const getSigningState = (token: string) => get<PublicSigningState>(R.public_sign.state(token));
-export const sendSigningCode = (token: string) => post<{ sent: boolean; recipient: string; expires_in_seconds: number; dev_code?: string }>(R.public_sign.send_code(token), { channel: "EMAIL" });
+export const sendSigningCode = ({ token, channel }: { token: string; channel: "EMAIL" | "SMS" }) =>
+    post<{ sent: boolean; channel: "EMAIL" | "SMS"; fallback: string | null; recipient: string; expires_in_seconds: number; dev_code?: string }>(R.public_sign.send_code(token), { channel });
 export const verifySigningCode = ({ token, code }: { token: string; code: string }) => post<{ verified: boolean }>(R.public_sign.verify(token), { code });
 export const signDocument = ({ token, ...dto }: { token: string; signature_type: "TYPED" | "DRAWN"; typed_name?: string; signature_data_url?: string; consent_accepted: boolean; consent_text_id: string }) => post<PublicSigningState>(R.public_sign.sign(token), dto);
 export const declineSigning = ({ token, reason }: { token: string; reason: string }) => post<PublicSigningState>(R.public_sign.decline(token), { reason });
 export const getPublicCertificate = (token: string) => get<Certificate>(R.public_sign.certificate(token));
+export const downloadPublicSignedPdf = (token: string) => downloadFile(R.public_sign.signed_pdf(token), { fallbackName: "signed-contract.pdf" });
+export const downloadPublicCertificatePdf = (token: string) => downloadFile(R.public_sign.certificate_pdf(token), { fallbackName: "certificate.pdf" });

@@ -5,7 +5,9 @@ import { McpRegistry } from '@/core/mcp/mcp.registry';
 import { ProposalsService } from './proposals.service';
 import { ProposalFlowService } from './proposal-flow.service';
 import { ContentSchema, CreateProposalSchema, SendProposalSchema } from './dto/proposal.dto';
-import { ProposalAnalyticsQuerySchema, ProposalQuerySchema } from './dto/proposal-query.schema';
+import { ProposalAnalyticsQuerySchema, ProposalQuerySchema, ProposalTrackingQuerySchema } from './dto/proposal-query.schema';
+import { ProposalTrackingService } from './proposal-tracking.service';
+import { AiApplyProposalSchema, AiGenerateProposalSchema, ProposalAiService } from './proposal-ai.service';
 
 const id = z.object({ id: z.string().uuid() });
 
@@ -16,6 +18,8 @@ export class ProposalsMcp implements OnModuleInit {
         private readonly registry: McpRegistry,
         private readonly proposals: ProposalsService,
         private readonly flow: ProposalFlowService,
+        private readonly trackingService: ProposalTrackingService,
+        private readonly ai: ProposalAiService,
     ) { }
 
     onModuleInit() {
@@ -28,6 +32,31 @@ export class ProposalsMcp implements OnModuleInit {
                 permission: 'proposals.proposals.read',
                 input: ProposalQuerySchema,
                 handler: (ctx, args) => this.proposals.findAll(ctx, args),
+            },
+            {
+                ...base,
+                name: 'proposals_ai_generate',
+                description: 'Draft proposal sections and line items from the CRM deal, its notes and the given notes using the organization OpenAI key (BYOK). Returns a draft only; nothing is saved or sent.',
+                permission: 'proposals.ai.generate',
+                input: AiGenerateProposalSchema.extend({ id: z.string().uuid() }),
+                handler: (ctx, { id: pid, ...dto }) => this.ai.generate(ctx, pid, dto),
+            },
+            {
+                ...base,
+                name: 'proposals_ai_apply',
+                description: 'Apply a reviewed AI draft (sections / line items) to a DRAFT version of the proposal. Needs human confirmation.',
+                permission: 'proposals.proposals.update',
+                sensitive: true,
+                input: AiApplyProposalSchema.extend({ id: z.string().uuid() }),
+                handler: (ctx, { id: pid, ...dto }) => this.ai.apply(ctx, pid, dto),
+            },
+            {
+                ...base,
+                name: 'proposals_tracking_read',
+                description: 'Customer activity across proposals the caller can read: views, time on page, opened sections, downloads, comments, decisions, hot (3+ views in 24h) and not-opened proposals. Dates YYYY-MM-DD (default last 30 days).',
+                permission: 'proposals.proposals.read',
+                input: ProposalTrackingQuerySchema,
+                handler: (ctx, args) => this.trackingService.tracking(ctx, args),
             },
             {
                 ...base,

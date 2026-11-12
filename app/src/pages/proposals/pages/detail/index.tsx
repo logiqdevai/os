@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Archive, Copy, Eye, FileSignature, GitBranch, Link2, Lock, MoreHorizontal, Pencil, Send, ThumbsDown, Users, XCircle } from "lucide-react";
+import { Archive, Copy, Download, Eye, FileSignature, GitBranch, Link2, Lock, MoreHorizontal, Pencil, Send, Sparkles, ThumbsDown, Users, XCircle } from "lucide-react";
 import { Page } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,7 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, formatMoney, personName } from "@/lib/format";
 import { renderMarkdown, markdownClass } from "@/lib/markdown";
 import {
-    useArchiveProposal, useCancelProposal, useCreateProposalVersion, useDuplicateProposal, useProposal, useRotateShareLink,
+    useArchiveProposal, useCancelProposal, useCreateProposalVersion, useDownloadProposalPdf, useDuplicateProposal, useProposal, useRotateShareLink,
 } from "@/features/proposals/hooks/use-proposals";
 import type { ProposalDetail } from "@/features/proposals/interfaces/proposals.interfaces";
 import { ProposalStatusBadge, VersionStatusBadge } from "../../components/proposal-badges";
@@ -31,6 +31,7 @@ import { RequestReviewDialog } from "./components/request-review-dialog";
 import { SendDialog } from "./components/send-dialog";
 import { ConvertDialog, DetailsDialog, MarkLostDialog } from "./components/record-dialogs";
 import { TotalsCard } from "./components/totals-card";
+import { AiDraftDialog } from "./components/ai-draft-dialog";
 
 const TABS = ["content", "pricing", "payments", "review", "versions", "activity"] as const;
 const LIVE = ["SENT", "VIEWED", "CHANGES_REQUESTED"];
@@ -51,12 +52,13 @@ export default function ProposalDetailPage() {
     const q = useProposal(id, versionId);
     const p = usePermissions();
     const [dirty, setDirty] = useState<Record<string, boolean>>({});
-    const [dialog, setDialog] = useState<"review" | "send" | "details" | "lost" | "convert" | "cancel" | "archive" | "preview" | null>(null);
+    const [dialog, setDialog] = useState<"review" | "send" | "details" | "lost" | "convert" | "cancel" | "archive" | "preview" | "ai" | null>(null);
     const createVersion = useCreateProposalVersion();
     const duplicate = useDuplicateProposal();
     const cancel = useCancelProposal();
     const archive = useArchiveProposal();
     const rotate = useRotateShareLink();
+    const pdf = useDownloadProposalPdf();
     const markDirty = useCallback((key: string) => (d: boolean) => setDirty((all) => (all[key] === d ? all : { ...all, [key]: d })), []);
     const onContentDirty = useCallback((d: boolean) => markDirty("content")(d), [markDirty]);
     const onPricingDirty = useCallback((d: boolean) => markDirty("pricing")(d), [markDirty]);
@@ -148,11 +150,20 @@ export default function ProposalDetailPage() {
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                        {editable && p.can("proposals.ai.generate") && <Button variant="ghost" disabled={anyDirty} title={anyDirty ? "Save your changes first" : undefined} onClick={() => setDialog("ai")}><Sparkles /> AI draft</Button>}
                         <Button variant="ghost" onClick={() => setDialog("preview")}><Eye /> Preview</Button>
                         {primary}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label="More actions"><MoreHorizontal /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                {v && (
+                                    <DropdownMenuItem
+                                        disabled={pdf.isPending}
+                                        onSelect={() => pdf.mutate({ id: proposal.id, versionId: v.id }, { onSuccess: (name) => toast({ title: "PDF downloaded", description: name }), onError: (e) => toast({ variant: "destructive", title: "Could not create the PDF", description: getApiErrorMessage(e) }) })}
+                                    >
+                                        <Download /> Download PDF (v{v.version_number})
+                                    </DropdownMenuItem>
+                                )}
                                 {p.can("proposals.proposals.update") && !closed && <DropdownMenuItem onSelect={() => setDialog("details")}><Pencil /> Edit details</DropdownMenuItem>}
                                 {p.can("proposals.proposals.create") && (
                                     <DropdownMenuItem onSelect={() => duplicate.mutate(proposal.id, { onSuccess: (n) => { toast({ title: `Duplicated as ${n.number}` }); navigate(`/proposals/${n.id}`); }, onError: (e) => toast({ variant: "destructive", title: "Could not duplicate", description: getApiErrorMessage(e) }) })}>
@@ -212,6 +223,7 @@ export default function ProposalDetailPage() {
             <DetailsDialog proposal={proposal} open={dialog === "details"} onOpenChange={(o) => setDialog(o ? "details" : null)} />
             <MarkLostDialog proposal={proposal} open={dialog === "lost"} onOpenChange={(o) => setDialog(o ? "lost" : null)} />
             <ConvertDialog proposal={proposal} open={dialog === "convert"} onOpenChange={(o) => setDialog(o ? "convert" : null)} />
+            <AiDraftDialog proposal={proposal} open={dialog === "ai"} onOpenChange={(o) => setDialog(o ? "ai" : null)} />
             <PreviewSheet proposal={proposal} open={dialog === "preview"} onOpenChange={(o) => setDialog(o ? "preview" : null)} />
             <ConfirmationDialog
                 isOpen={dialog === "cancel" || dialog === "archive"}

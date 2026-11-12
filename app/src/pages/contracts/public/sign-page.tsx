@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { CheckCircle2, Clock, FileX2, MailCheck, PenLine, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, Download, FileX2, MailCheck, PenLine, ShieldCheck, Smartphone, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,7 @@ import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
 import { formatDateTime } from "@/lib/format";
 import { renderMarkdown, markdownClass } from "@/lib/markdown";
 import { cn } from "@/lib/utils";
-import { useDeclineSigning, usePublicCertificate, useSendSigningCode, useSignDocument, useSigningState, useVerifySigningCode } from "@/features/contracts/hooks/use-contracts";
+import { useDeclineSigning, useDownloadPublicCertificatePdf, useDownloadPublicSignedPdf, usePublicCertificate, useSendSigningCode, useSignDocument, useSigningState, useVerifySigningCode } from "@/features/contracts/hooks/use-contracts";
 import type { PublicSigningState } from "@/features/contracts/interfaces/contracts.interfaces";
 import { CertificateBody } from "../pages/detail/components/signatures-tab";
 
@@ -95,7 +95,12 @@ function Flow({ token, s }: { token: string; s: PublicSigningState }) {
             <div className="space-y-4">
                 <Steps step={3} />
                 <Notice icon={CheckCircle2} title={s.state === "COMPLETED" ? "Everyone has signed" : "You signed this document"} text={s.state === "COMPLETED" ? "The agreement is complete. Everyone receives the completion certificate." : `Signed ${formatDateTime(s.signer.signed_at)}. We'll let you know when everyone has signed.`}>
-                    {s.state === "COMPLETED" && <Button className="mt-4" variant="outline" onClick={() => setShowCert((v) => !v)}><ShieldCheck /> {showCert ? "Hide" : "View"} certificate</Button>}
+                    {s.state === "COMPLETED" && (
+                        <div className="mt-4 flex flex-wrap justify-center gap-2">
+                            <Button variant="outline" onClick={() => setShowCert((v) => !v)}><ShieldCheck /> {showCert ? "Hide" : "View"} certificate</Button>
+                            <SignedDownloads token={token} />
+                        </div>
+                    )}
                 </Notice>
                 {showCert && <Certificate token={token} />}
                 <SignerList s={s} />
@@ -104,6 +109,18 @@ function Flow({ token, s }: { token: string; s: PublicSigningState }) {
     }
     if (!s.signer.identity_verified || !s.sections) return <><Steps step={1} /><Verify token={token} s={s} /></>;
     return <><Steps step={2} /><Review token={token} s={s} /></>;
+}
+
+function SignedDownloads({ token }: { token: string }) {
+    const signed = useDownloadPublicSignedPdf();
+    const cert = useDownloadPublicCertificatePdf();
+    const fail = (e: unknown) => toast({ variant: "destructive", title: "Could not download", description: getApiErrorMessage(e) });
+    return (
+        <>
+            <Button variant="outline" loading={signed.isPending} onClick={() => signed.mutate(token, { onError: fail })}><Download /> Signed PDF</Button>
+            <Button variant="outline" loading={cert.isPending} onClick={() => cert.mutate(token, { onError: fail })}><Download /> Certificate PDF</Button>
+        </>
+    );
 }
 
 function Certificate({ token }: { token: string }) {
@@ -133,23 +150,45 @@ function SignerList({ s }: { s: PublicSigningState }) {
 function Verify({ token, s }: { token: string; s: PublicSigningState }) {
     const send = useSendSigningCode();
     const verify = useVerifySigningCode();
-    const [sent, setSent] = useState(false);
+    const [sent, setSent] = useState<{ channel: "EMAIL" | "SMS"; recipient: string } | null>(null);
     const [code, setCode] = useState("");
+    const request = (channel: "EMAIL" | "SMS", again = false) =>
+        send.mutate({ token, channel }, {
+            onSuccess: (r) => {
+                setSent({ channel: r.channel, recipient: r.recipient });
+                if (r.fallback && channel === "SMS") toast({ title: "Code sent by email instead", description: "The text message could not be sent." });
+                else if (again) toast({ title: "New code sent" });
+                if (r.dev_code) toast({ title: "Development code", description: r.dev_code });
+            },
+            onError: (e) => toast({ variant: "destructive", title: "Could not send the code", description: getApiErrorMessage(e) }),
+        });
+    const target = s.signer.sms_available && s.signer.phone_masked ? `a text message to ${s.signer.phone_masked}` : `a code sent to ${s.signer.email_masked}`;
     return (
         <div className="mx-auto max-w-md space-y-4 rounded-lg border border-border bg-card p-5">
-            <MailCheck className="size-7 text-info" />
+            {s.signer.sms_available ? <Smartphone className="size-7 text-info" /> : <MailCheck className="size-7 text-info" />}
             <div>
                 <h1 className="text-lg font-medium">{s.contract.title}</h1>
-                <p className="mt-1 text-[13px] text-muted-foreground">Hi {s.signer.name}, {s.organization.name} asked you to sign this document. First we confirm it's you with a code sent to {s.signer.email_masked}.</p>
+                <p className="mt-1 text-[13px] text-muted-foreground">Hi {s.signer.name}, {s.organization.name} asked you to sign this document. First we confirm it's you with {target}.</p>
             </div>
             {s.message && <p className="whitespace-pre-wrap rounded-md bg-secondary px-3 py-2 text-[13px]">{s.message}</p>}
             {!sent ? (
-                <Button className="w-full" loading={send.isPending} onClick={() => send.mutate(token, { onSuccess: (r) => { setSent(true); if (r.dev_code) toast({ title: "Development code", description: r.dev_code }); }, onError: (e) => toast({ variant: "destructive", title: "Could not send the code", description: getApiErrorMessage(e) }) })}>Email me a code</Button>
+                <div className="space-y-2">
+                    {s.signer.sms_available ? (
+                        <>
+                            <Button className="w-full" loading={send.isPending && send.variables?.channel === "SMS"} disabled={send.isPending} onClick={() => request("SMS")}><Smartphone /> Text me a code</Button>
+                            <Button className="w-full" variant="ghost" loading={send.isPending && send.variables?.channel === "EMAIL"} disabled={send.isPending} onClick={() => request("EMAIL")}>Email me a code instead</Button>
+                        </>
+                    ) : (
+                        <Button className="w-full" loading={send.isPending} onClick={() => request("EMAIL")}>Email me a code</Button>
+                    )}
+                </div>
             ) : (
                 <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); verify.mutate({ token, code }, { onError: (e2) => toast({ variant: "destructive", title: "Code not accepted", description: getApiErrorMessage(e2) }) }); }}>
+                    <p className="text-[13px] text-muted-foreground">We sent a 6-digit code {sent.channel === "SMS" ? "by text message" : "by email"} to {sent.recipient}. It expires in 10 minutes.</p>
                     <div className="space-y-1.5"><Label htmlFor="sign-code">6-digit code</Label><Input id="sign-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} /></div>
                     <Button type="submit" className="w-full" loading={verify.isPending} disabled={code.length < 6}>Verify</Button>
-                    <Button type="button" variant="ghost" className="w-full" disabled={send.isPending} onClick={() => send.mutate(token, { onSuccess: (r) => { toast({ title: "New code sent" }); if (r.dev_code) toast({ title: "Development code", description: r.dev_code }); }, onError: (e) => toast({ variant: "destructive", title: "Could not send", description: getApiErrorMessage(e) }) })}>Send a new code</Button>
+                    <Button type="button" variant="ghost" className="w-full" disabled={send.isPending} onClick={() => request(sent.channel, true)}>Send a new code</Button>
+                    {sent.channel === "SMS" && <Button type="button" variant="ghost" className="w-full" disabled={send.isPending} onClick={() => request("EMAIL", true)}>Get the code by email</Button>}
                 </form>
             )}
         </div>

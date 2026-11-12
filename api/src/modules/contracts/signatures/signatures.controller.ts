@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Req, StreamableFile, UseGuards } from '@nestjs/common';
+import { streamable } from '@/modules/files/utils/streamable.utils';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtGuard } from '@/shared/guards/jwt.guard';
@@ -30,6 +31,12 @@ export class SignaturesController {
     @Get('signature-requests/:id/certificate') @RequirePermission(READ) @ApiOperation({ summary: 'Completion certificate data' })
     certificate(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string) { return this.signatures.certificate(ctx, id); }
 
+    @Get('signature-requests/:id/certificate/pdf') @RequirePermission(READ) @ApiOperation({ summary: 'Completion certificate as PDF (stored in Files after completion)' })
+    async certificatePdf(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string): Promise<StreamableFile> { return streamable(await this.signatures.certificatePdf(ctx, id)); }
+
+    @Get('contracts/:id/versions/:vid/pdf') @RequirePermission('contracts.contracts.read') @ApiOperation({ summary: 'Version as PDF; a signed version returns the stored signed document with signature blocks' })
+    async versionPdf(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Param('vid', ParseUUIDPipe) vid: string): Promise<StreamableFile> { return streamable(await this.signatures.versionPdf(ctx, id, vid)); }
+
     @Post('signature-requests/:id/remind') @RequirePermission('contracts.signatures.send') @ApiOperation({ summary: 'Remind the signers whose turn it is' })
     remind(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string) { return this.signatures.remind(ctx, id); }
 
@@ -55,8 +62,8 @@ export class PublicSigningController {
     @Get(':token') @Public() @ApiOperation({ summary: 'Signing state (document after identity verification)' })
     state(@Param('token') token: string, @Req() req: Request) { return this.signatures.publicState(token, meta(req)); }
 
-    @Post(':token/send-code') @Public() @ApiOperation({ summary: 'Send a one-time identity code' })
-    sendCode(@Param('token') token: string, @Body() _dto: SendCodeDto, @Req() req: Request) { return this.signatures.sendCode(token, meta(req)); }
+    @Post(':token/send-code') @Public() @ApiOperation({ summary: 'Send a one-time identity code (SMS when the signer has a phone and the organization a Twilio connection; falls back to email)' })
+    sendCode(@Param('token') token: string, @Body() dto: SendCodeDto, @Req() req: Request) { return this.signatures.sendCode(token, meta(req), dto.channel); }
 
     @Post(':token/verify') @Public() @ApiOperation({ summary: 'Verify the one-time code' })
     verify(@Param('token') token: string, @Body() dto: VerifyCodeDto, @Req() req: Request) { return this.signatures.verify(token, dto, meta(req)); }
@@ -66,6 +73,12 @@ export class PublicSigningController {
 
     @Post(':token/decline') @Public() @ApiOperation({ summary: 'Decline to sign' })
     decline(@Param('token') token: string, @Body() dto: DeclineDto, @Req() req: Request) { return this.signatures.decline(token, dto, meta(req)); }
+
+    @Get(':token/document.pdf') @Public() @ApiOperation({ summary: 'Signed document as PDF (after everyone signed)' })
+    async signedPdf(@Param('token') token: string): Promise<StreamableFile> { return streamable(await this.signatures.publicSignedPdf(token)); }
+
+    @Get(':token/certificate.pdf') @Public() @ApiOperation({ summary: 'Completion certificate as PDF (emails of other signers masked)' })
+    async certificatePdf(@Param('token') token: string): Promise<StreamableFile> { return streamable(await this.signatures.publicCertificatePdf(token)); }
 
     @Get(':token/certificate') @Public() @ApiOperation({ summary: 'Completion certificate (after everyone signed)' })
     certificate(@Param('token') token: string) { return this.signatures.publicCertificate(token); }

@@ -13,6 +13,7 @@ function useInvalidating<TVars, TData>(fn: (v: TVars) => Promise<TData>) {
 export const useContracts = (params: Record<string, unknown>) => useQuery({ queryKey: [...KEY, "list", params], queryFn: () => s.getContracts(params), placeholderData: keepPreviousData });
 export const useContract = (id: string | undefined) => useQuery({ queryKey: [...KEY, "detail", id], queryFn: () => s.getContract(id as string), enabled: !!id });
 export const useContractDashboard = () => useQuery({ queryKey: [...KEY, "dashboard"], queryFn: s.getContractDashboard });
+export const useContractAnalytics = (params: Record<string, unknown>) => useQuery({ queryKey: [...KEY, "analytics", params], queryFn: () => s.getContractAnalytics(params), placeholderData: keepPreviousData });
 export const useRenewals = (params: Record<string, unknown>) => useQuery({ queryKey: [...KEY, "renewals", params], queryFn: () => s.getRenewals(params), placeholderData: keepPreviousData });
 export const useContractHistory = (id: string | undefined) => useQuery({ queryKey: [...KEY, "history", id], queryFn: () => s.getContractHistory(id as string), enabled: !!id });
 export const useContractLookup = (kind: "members" | "companies" | "contacts" | "projects", search: string, enabled = true, companyId?: string) =>
@@ -91,3 +92,19 @@ export const useSendSigningCode = () => usePublic(s.sendSigningCode);
 export const useVerifySigningCode = () => usePublic(s.verifySigningCode);
 export const useSignDocument = () => usePublic(s.signDocument);
 export const useDeclineSigning = () => usePublic(s.declineSigning);
+
+// PDF downloads (stored artifacts are created on first download: invalidate so document ids refresh)
+export const useDownloadContractVersionPdf = () => useInvalidating(s.downloadContractVersionPdf);
+export const useDownloadCertificatePdf = () => useInvalidating(s.downloadCertificatePdf);
+export const useDownloadPublicSignedPdf = () => useMutation({ mutationFn: s.downloadPublicSignedPdf });
+export const useDownloadPublicCertificatePdf = () => useMutation({ mutationFn: s.downloadPublicCertificatePdf });
+
+// AI review & obligation extraction
+export const useContractAiStatus = (enabled = true) => useQuery({ queryKey: [...KEY, "ai-status"], queryFn: s.getContractAiStatus, enabled, staleTime: 60_000 });
+export const useContractAiFindings = (id: string | undefined, versionId: string | undefined) =>
+    useQuery({ queryKey: [...KEY, "ai-findings", id, versionId], queryFn: () => s.getContractAiFindings(id as string, versionId as string), enabled: !!id && !!versionId });
+export const useObligationSuggestions = (id: string | undefined) => useQuery({ queryKey: [...KEY, "ai-suggestions", id], queryFn: () => s.getObligationSuggestions(id as string), enabled: !!id });
+export const useRunContractAiReview = () => useInvalidating(s.runContractAiReview);
+export const useDecideContractAiFinding = () => useInvalidating(s.decideContractAiFinding);
+export const useExtractContractObligations = () => useInvalidating(s.extractContractObligations);
+export const useReviewObligationSuggestion = () => useInvalidating(s.reviewObligationSuggestion);

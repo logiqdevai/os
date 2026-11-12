@@ -397,6 +397,31 @@ export class PublicCommentDto {
     section_id?: string;
 }
 
+export class PublicEngagementSectionDto {
+    @ApiProperty()
+    @IsUUID()
+    id: string;
+
+    @ApiProperty({ description: 'Seconds the section was on screen since the last beacon' })
+    @IsInt() @Min(0) @Max(120)
+    seconds: number;
+}
+
+/** Beacon from the public page: deltas since the previous beacon (capped). */
+export class PublicEngagementDto {
+    @ApiProperty({ description: 'Seconds the page was visible since the last beacon' })
+    @IsInt() @Min(0) @Max(120)
+    seconds: number;
+
+    @ApiProperty({ type: [PublicEngagementSectionDto], required: false })
+    @IsOptional() @IsArray() @ArrayMaxSize(60) @ValidateNested({ each: true }) @Type(() => PublicEngagementSectionDto)
+    sections?: PublicEngagementSectionDto[];
+
+    @ApiProperty({ required: false, description: 'Random id of this browser tab session' })
+    @IsOptional() @IsString() @MaxLength(64)
+    session_id?: string;
+}
+
 export class PublicVerifyDto {
     @ApiProperty({ example: '123456' })
     @IsString() @MinLength(4) @MaxLength(10)

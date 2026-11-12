@@ -530,8 +530,79 @@ export interface PublicSigningState {
     parties: { party_type: ContractPartyType; legal_name: string }[];
     message: string | null;
     expires_at: string | null;
-    signer: { name: string; title: string | null; email_masked: string; identity_verified: boolean; signed_at: string | null; signature_type: string | null };
+    signer: { name: string; title: string | null; email_masked: string; phone_masked: string | null; sms_available: boolean; identity_verified: boolean; signed_at: string | null; signature_type: string | null };
     signers: { name: string; status: SignerStatus; order: number; is_you: boolean; signed_at: string | null }[];
     consent_text: { id: string; version: string; locale: string; body: string };
     sections: { key: string; title: string; body: string | null; is_appendix: boolean }[] | null;
 }
+
+export interface ContractAnalytics {
+    range: { from: string; to: string };
+    values_visible: boolean;
+    kpis: {
+        cycle_time_days: number | null;
+        approval_time_days: number | null;
+        signature_turnaround_days: number | null;
+        signed_in_range: number;
+        renewal_rate: number | null;
+        renewed: number;
+        due_for_renewal: number;
+        overdue_obligations: number;
+        active_value: number | null;
+        active_count: number;
+    };
+    cycle_by_stage: { stage: "draft_to_approval" | "approval" | "approval_to_signature" | "signature"; days: number | null }[];
+    by_status: { status: ContractStatus; count: number; value: number | null }[];
+    by_type: { type_id: string | null; type: string; count: number; value: number | null; recurring: number | null }[];
+    signed_per_month: { month: string; signed: number; value: number | null }[];
+    risk: { level: string | null; count: number }[];
+    renewals_pipeline: { key: string; label: string; count: number; value: number | null; recurring: number | null }[];
+    slowest_in_flight: { id: string; number: string; title: string; status: ContractStatus; company: string | null; days_in_stage: number; since: string }[];
+}
+
+export type ContractAiFindingStatus = "OPEN" | "ACCEPTED" | "DISMISSED";
+export type ContractRiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+export interface ContractAiFinding {
+    id: string;
+    version_id: string;
+    kind: string;
+    severity: ContractRiskLevel;
+    message: string;
+    recommendation: string | null;
+    status: ContractAiFindingStatus;
+    model: string | null;
+    review_run_id: string | null;
+    confidence: number | null;
+    reviewed_at: string | null;
+    resolution_note: string | null;
+    created_at: string;
+    section: { id: string; key: string; title: string } | null;
+    reviewed_by: { id: string; user: { display_name: string | null; first_name: string | null; last_name: string | null; email: string | null } | null } | null;
+    disclaimer: string;
+}
+
+export interface ContractRisk {
+    score: number;
+    level: ContractRiskLevel;
+    factors: { factor: string; points: number; note: string }[];
+}
+
+export type AiUnavailable = { available: false; reason: "ai_not_configured" | "ai_provider_error"; message: string };
+
+export type ContractAiReviewResult = { available: true; run_id: string; model: string; disclaimer: string; findings: ContractAiFinding[]; risk: ContractRisk | null } | AiUnavailable;
+
+export interface ObligationSuggestion {
+    id: string;
+    contract_id: string;
+    type: ContractObligationType;
+    title: string;
+    description: string | null;
+    due_date: string | null;
+    frequency: string | null;
+    extraction_confidence: number | null;
+    responsible_party_id: string | null;
+    section: { id: string; key: string; title: string; body: string | null } | null;
+}
+
+export type ContractAiExtractResult = { available: true; run_id: string; model: string; disclaimer: string; suggestions: ObligationSuggestion[] } | AiUnavailable;

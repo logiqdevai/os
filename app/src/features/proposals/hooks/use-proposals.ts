@@ -26,6 +26,8 @@ export const useReviewPreview = (id: string | undefined, versionId: string | und
 export const useSendPreview = (id: string | undefined, versionId?: string, enabled = true) =>
     useQuery({ queryKey: [...KEY, "send-preview", id, versionId], queryFn: () => service.getSendPreview(id as string, versionId), enabled: enabled && !!id });
 export const useMyApprovals = (enabled = true) => useQuery({ queryKey: [...KEY, "my-approvals"], queryFn: service.getMyApprovals, enabled });
+export const useProposalTracking = (params: Record<string, unknown>) =>
+    useQuery({ queryKey: [...KEY, "tracking", params], queryFn: () => service.getProposalTracking(params), placeholderData: keepPreviousData });
 export const useProposalAnalytics = (params: Record<string, unknown>) =>
     useQuery({ queryKey: [...KEY, "analytics", params], queryFn: () => service.getProposalAnalytics(params), placeholderData: keepPreviousData });
 export const useProposalLookups = (kind: string, search: string, opts: { company_id?: string; enabled?: boolean } = {}) =>
@@ -55,6 +57,10 @@ export const useSendProposal = () => useMutation({ mutationFn: service.sendPropo
 export const useRotateShareLink = () => useMutation({ mutationFn: service.rotateShareLink, onSuccess: useInvalidate() });
 export const useAddProposalComment = () => useMutation({ mutationFn: service.addProposalComment, onSuccess: useInvalidate() });
 export const useResolveProposalComment = () => useMutation({ mutationFn: service.resolveProposalComment, onSuccess: useInvalidate() });
+export const useDownloadProposalPdf = () => useMutation({ mutationFn: service.downloadProposalPdf, onSuccess: useInvalidate() });
+export const useProposalAiStatus = (enabled = true) => useQuery({ queryKey: [...KEY, "ai-status"], queryFn: service.getProposalAiStatus, enabled, staleTime: 60_000 });
+export const useGenerateProposalDraft = () => useMutation({ mutationFn: service.generateProposalDraft });
+export const useApplyProposalDraft = () => useMutation({ mutationFn: service.applyProposalDraft, onSuccess: useInvalidate() });
 export const useConvertProposal = () => useMutation({ mutationFn: service.convertProposal, onSuccess: useInvalidate() });
 
 // --- Templates & approval rules ------------------------------------------------------------------
@@ -81,4 +87,5 @@ export const useQuotePublicSelection = () => useMutation({ mutationFn: service.q
 export const useDecidePublicProposal = () => useMutation({ mutationFn: service.decidePublicProposal, onSuccess: useInvalidate(PUBLIC) });
 export const useCommentPublicProposal = () => useMutation({ mutationFn: service.commentPublicProposal, onSuccess: useInvalidate(PUBLIC) });
 export const useSendPublicCode = () => useMutation({ mutationFn: service.sendPublicCode });
+export const useDownloadPublicProposalPdf = () => useMutation({ mutationFn: service.downloadPublicProposalPdf, onSuccess: useInvalidate(PUBLIC) });
 export const useVerifyPublicCode = () => useMutation({ mutationFn: service.verifyPublicCode });

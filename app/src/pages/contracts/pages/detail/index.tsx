@@ -25,9 +25,10 @@ import { DocumentTab } from "./components/document-tab";
 import { PartiesTab } from "./components/parties-tab";
 import { SignaturesTab } from "./components/signatures-tab";
 import { HistoryTab } from "./components/history-tab";
+import { AiTab } from "./components/ai-tab";
 import { AmendDialog, EditContractDialog, RenewDialog, TerminateDialog } from "./components/lifecycle-dialogs";
 
-const TABS = ["document", "parties", "signatures", "obligations", "history"] as const;
+const TABS = ["document", "parties", "signatures", "obligations", "ai", "history"] as const;
 const LIVE = ["ACTIVE", "EXPIRING", "FULLY_SIGNED"];
 const TERMINAL = ["TERMINATED", "EXPIRED", "CANCELLED", "ARCHIVED", "SUPERSEDED"];
 
@@ -135,9 +136,10 @@ export default function ContractDetailPage() {
                         <TabsTrigger value="parties">Parties</TabsTrigger>
                         <TabsTrigger value="signatures">Signatures</TabsTrigger>
                         <TabsTrigger value="obligations">Obligations{obligations.data?.pagination.total ? ` (${obligations.data.pagination.total})` : ""}</TabsTrigger>
+                        <TabsTrigger value="ai">AI review</TabsTrigger>
                         <TabsTrigger value="history">History</TabsTrigger>
                     </TabsList>
-                    {tab === "document" && c.versions.length > 0 && (
+                    {(tab === "document" || tab === "ai") && c.versions.length > 0 && (
                         <div className="flex items-center gap-2">
                             <Select value={versionId} onValueChange={(v) => setParam("version", v === c.current_version_id ? null : v)}>
                                 <SelectTrigger className="h-8 w-auto min-w-32" aria-label="Version"><SelectValue /></SelectTrigger>
@@ -154,6 +156,7 @@ export default function ContractDetailPage() {
                     {p.can("contracts.obligations.manage") && <div className="flex justify-end"><Button size="sm" onClick={() => setDialog("obligation")}><Plus /> Add obligation</Button></div>}
                     <ObligationsTable data={obligations.data?.data} loading={obligations.isFetching} error={obligations.error} onRetry={() => obligations.refetch()} empty={{ title: "No obligations", description: "Track deliverables, payments, reports and notice dates from this contract." }} />
                 </TabsContent>
+                <TabsContent value="ai" className="mt-4"><AiTab contract={c} version={version.data} /></TabsContent>
                 <TabsContent value="history" className="mt-4"><HistoryTab contract={c} onOpenVersion={(vid) => setSp((prev) => { const n = new URLSearchParams(prev); n.delete("tab"); if (vid === c.current_version_id) n.delete("version"); else n.set("version", vid); return n; })} /></TabsContent>
             </Tabs>
 

@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query, StreamableFile, UseGuards } from '@nestjs/common';
+import { streamable } from '@/modules/files/utils/streamable.utils';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { JwtGuard } from '@/shared/guards/jwt.guard';
@@ -9,10 +10,13 @@ import { ZodValidationPipe } from '@/shared/pipes/zod.validation.pipe';
 import { boolish } from '@/shared/utils/pagination/pagination.utils';
 import { ProposalsService } from './proposals.service';
 import { ProposalFlowService } from './proposal-flow.service';
+import { ProposalPdfService } from './proposal-pdf.service';
 import {
     ApprovalDecisionDto, ConvertProposalDto, CreateProposalCommentDto, CreateProposalDto, CreateVersionDto, MarkLostDto, ResolveCommentDto, SaveProposalContentDto, SendProposalDto, SubmitForReviewDto, UpdateProposalDto,
 } from './dto/proposal.dto';
-import { LookupQuery, LookupQuerySchema, ProposalAnalyticsQuery, ProposalAnalyticsQuerySchema, ProposalQuery, ProposalQuerySchema } from './dto/proposal-query.schema';
+import { LookupQuery, LookupQuerySchema, ProposalAnalyticsQuery, ProposalAnalyticsQuerySchema, ProposalQuery, ProposalQuerySchema, ProposalTrackingQuery, ProposalTrackingQuerySchema } from './dto/proposal-query.schema';
+import { ProposalTrackingService } from './proposal-tracking.service';
+import { AiApplyProposalDto, AiApplyProposalSchema, AiGenerateProposalDto, AiGenerateProposalSchema, ProposalAiService } from './proposal-ai.service';
 
 const VersionQuery = z.object({ version_id: z.string().uuid().optional() });
 const CompareQuery = z.object({ from: z.string().uuid(), to: z.string().uuid() });
@@ -26,6 +30,9 @@ export class ProposalsController {
     constructor(
         private readonly proposals: ProposalsService,
         private readonly flow: ProposalFlowService,
+        private readonly pdf: ProposalPdfService,
+        private readonly trackingService: ProposalTrackingService,
+        private readonly ai: ProposalAiService,
     ) { }
 
     // --- Collection ----------------------------------------------------------------------------
@@ -49,6 +56,20 @@ export class ProposalsController {
     @ApiOperation({ summary: 'Funnel, win rate, values, months, owners, lost reasons' })
     analytics(@CurrentOrg() ctx: OrgContext, @Query(new ZodValidationPipe(ProposalAnalyticsQuerySchema)) query: ProposalAnalyticsQuery) {
         return this.flow.analytics(ctx, query);
+    }
+
+    @Get('tracking')
+    @RequirePermission('proposals.proposals.read')
+    @ApiOperation({ summary: 'Customer activity across proposals: views, time on page, opened sections, downloads, decisions, hot / not opened (scoped)' })
+    tracking(@CurrentOrg() ctx: OrgContext, @Query(new ZodValidationPipe(ProposalTrackingQuerySchema)) query: ProposalTrackingQuery) {
+        return this.trackingService.tracking(ctx, query);
+    }
+
+    @Get('ai/status')
+    @RequirePermission('proposals.ai.generate')
+    @ApiOperation({ summary: 'Whether the organization has an active OpenAI connection (BYOK) for proposal drafting' })
+    aiStatus(@CurrentOrg() ctx: OrgContext) {
+        return this.ai.status(ctx);
     }
 
     @Get('approvals/mine')
@@ -126,6 +147,13 @@ export class ProposalsController {
     @ApiOperation({ summary: 'Record a lost proposal with a reason' })
     markLost(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: MarkLostDto) {
         return this.proposals.markLost(ctx, id, dto);
+    }
+
+    @Get(':id/pdf')
+    @RequirePermission('proposals.proposals.read')
+    @ApiOperation({ summary: 'Version as a branded PDF (default current). Sent versions are stored once in Files (ProposalVersion.pdf_document_id)' })
+    async downloadPdf(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Query(new ZodValidationPipe(VersionQuery)) q: { version_id?: string }): Promise<StreamableFile> {
+        return streamable(await this.pdf.download(ctx, id, q.version_id));
     }
 
     @Get(':id/activity')
@@ -230,6 +258,22 @@ export class ProposalsController {
     @RequirePermission('proposals.proposals.update')
     resolveComment(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Param('commentId', ParseUUIDPipe) commentId: string, @Body() dto: ResolveCommentDto) {
         return this.flow.resolveComment(ctx, id, commentId, dto.resolved);
+    }
+
+    // --- AI (drafts only; humans apply) ---------------------------------------------------------------
+
+    @Post(':id/ai/generate')
+    @RequirePermission('proposals.ai.generate')
+    @ApiOperation({ summary: 'Draft sections + line items from the CRM deal, its notes and your notes (organization OpenAI key). Returns a draft; nothing is saved' })
+    aiGenerate(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(AiGenerateProposalSchema)) dto: AiGenerateProposalDto) {
+        return this.ai.generate(ctx, id, dto);
+    }
+
+    @Post(':id/ai/apply')
+    @RequirePermission('proposals.ai.generate', 'proposals.proposals.update')
+    @ApiOperation({ summary: 'Apply a reviewed AI draft to a DRAFT version (append or replace); marks the content as AI generated' })
+    aiApply(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(AiApplyProposalSchema)) dto: AiApplyProposalDto) {
+        return this.ai.apply(ctx, id, dto);
     }
 
     // --- Conversion --------------------------------------------------------------------------------------------

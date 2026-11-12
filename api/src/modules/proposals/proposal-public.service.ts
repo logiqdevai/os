@@ -1,12 +1,13 @@
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ModuleKey, ProposalCustomerDecision, ProposalEventType, ProposalLinkAccessMode, ProposalStatus, VerificationChannel, VerificationPurpose } from 'generated/prisma';
+import { ModuleKey, Prisma, ProposalCustomerDecision, ProposalEventType, ProposalLinkAccessMode, ProposalStatus, VerificationChannel, VerificationPurpose } from 'generated/prisma';
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { AuditService } from '@/shared/audit/audit.service';
 import { EventsService } from '@/shared/events/events.service';
 import { LIVE_STATUSES, ProposalsService } from './proposals.service';
 import { ProposalMailer } from './proposal-mailer.service';
-import { PublicCommentDto, PublicDecisionDto } from './dto/proposal.dto';
+import { ProposalPdfService } from './proposal-pdf.service';
+import { PublicCommentDto, PublicDecisionDto, PublicEngagementDto } from './dto/proposal.dto';
 import { computeTotals, dateOnly, hashToken, maskEmail, newCode, num, renderVariables } from './utils/proposal.utils';
 import { externalContext, RateLimiter } from './utils/system-context.utils';
 
@@ -28,6 +29,7 @@ const CODE_TTL_MS = 10 * 60_000;
 export class ProposalPublicService {
     private readonly limiter = new RateLimiter(60, 60_000);
     private readonly codeLimiter = new RateLimiter(5, 15 * 60_000);
+    private readonly beaconLimiter = new RateLimiter(20, 60_000);
 
     constructor(
         private readonly prisma: PrismaService,
@@ -36,6 +38,7 @@ export class ProposalPublicService {
         private readonly proposals: ProposalsService,
         private readonly mailer: ProposalMailer,
         private readonly config: ConfigService,
+        private readonly pdf: ProposalPdfService,
     ) { }
 
     private throttle(meta: PublicRequestMeta) {
@@ -252,6 +255,46 @@ export class ProposalPublicService {
             payload: { number: p.number, comment_id: c.id, author_name: dto.author_name, owner_membership_id: p.owner_membership_id },
         });
         return { id: c.id, body: c.body, created_at: c.created_at, section_id: c.section_id, author_name: c.author_name, from: 'customer' };
+    }
+
+    /**
+     * Engagement beacon (time on page, sections on screen) merged into the visitor's latest VIEWED event (03 "Proposal
+     * Tracking"). Deltas are capped per beacon; unknown sections are ignored. Never changes proposal state.
+     */
+    async engagement(token: string, dto: PublicEngagementDto, meta: PublicRequestMeta) {
+        if (!this.beaconLimiter.allow(meta.ip ?? 'unknown')) return { recorded: false };
+        const p = await this.load(token);
+        if (p.status === ProposalStatus.CANCELLED || !(await this.assertAccess(p, meta))) return { recorded: false };
+        const versionId = p.sent_version_id as string;
+        const valid = new Set((await this.prisma.proposalSection.findMany({ where: { version_id: versionId, is_internal: false }, select: { id: true } })).map((s) => s.id));
+        const since = new Date(Date.now() - 2 * 3_600_000);
+        const recent = await this.prisma.proposalEvent.findMany({ where: { proposal_id: p.id, type: ProposalEventType.VIEWED, created_at: { gte: since } }, orderBy: { created_at: 'desc' }, take: 20 });
+        const event = recent.find((e) => dto.session_id && (e.metadata as { session_id?: string } | null)?.session_id === dto.session_id)
+            ?? recent.find((e) => e.ip_address === (meta.ip ?? null) && !(e.metadata as { session_id?: string } | null)?.session_id);
+        const m = { ...((event?.metadata as Record<string, unknown> | null) ?? {}) } as { time_on_page_seconds?: number; sections?: Record<string, number>; session_id?: string };
+        m.time_on_page_seconds = Math.min(6 * 3600, (m.time_on_page_seconds ?? 0) + Math.min(120, dto.seconds));
+        const sections = { ...(m.sections ?? {}) };
+        for (const s of dto.sections ?? []) if (valid.has(s.id)) sections[s.id] = Math.min(6 * 3600, (sections[s.id] ?? 0) + Math.min(120, s.seconds));
+        m.sections = sections;
+        if (dto.session_id) m.session_id = dto.session_id;
+        if (event) await this.prisma.proposalEvent.update({ where: { id: event.id }, data: { metadata: m as Prisma.InputJsonValue } });
+        else await this.prisma.proposalEvent.create({ data: { proposal_id: p.id, version_id: versionId, type: ProposalEventType.VIEWED, actor_contact_id: p.contact_id, ip_address: meta.ip ?? null, user_agent: meta.user_agent ?? null, metadata: m as Prisma.InputJsonValue } });
+        return { recorded: true };
+    }
+
+    /** The sent version as PDF (records a DOWNLOADED event). Available while the link works, also after a decision. */
+    async downloadPdf(token: string, meta: PublicRequestMeta) {
+        this.throttle(meta);
+        const p = await this.load(token);
+        if (p.status === ProposalStatus.CANCELLED) throw new NotFoundException({ message: 'This link is not valid', code: 'proposal_link_invalid' });
+        if (!(await this.assertAccess(p, meta))) throw new ForbiddenException({ message: 'Verify your email first', code: 'proposal_verification_required' });
+        const file = await this.pdf.forVersion(null, p.organization_id, p.id, p.sent_version_id as string);
+        await this.prisma.proposalEvent.create({ data: { proposal_id: p.id, version_id: p.sent_version_id, type: ProposalEventType.DOWNLOADED, actor_contact_id: p.contact_id, ip_address: meta.ip ?? null, user_agent: meta.user_agent ?? null, metadata: { format: 'pdf' } } });
+        this.events.publish(externalContext(p.organization_id, meta), {
+            event_key: 'proposals.proposal.downloaded', module: ModuleKey.PROPOSALS, entity_kind: 'proposal', entity_id: p.id,
+            payload: { number: p.number, title: p.title, owner_membership_id: p.owner_membership_id },
+        });
+        return file;
     }
 
     // --- EMAIL_VERIFIED links -------------------------------------------------------------------------

@@ -12,6 +12,8 @@ import { ApprovalDecisionSchema, SubmitApprovalSchema } from './versions/dto/ver
 import { CreateObligationSchema, ObligationQuerySchema } from './obligations/dto/obligation.dto';
 import { SendSignatureSchema, SignatureRequestQuerySchema } from './signatures/dto/signature.dto';
 import { LibraryQuerySchema } from './library/dto/library.dto';
+import { ContractAnalyticsQuerySchema, ContractAnalyticsService } from './contracts/contract-analytics.service';
+import { ContractAiService, DecideFindingSchema, ReviewExtractionSchema } from './ai/contract-ai.service';
 
 const id = z.object({ id: z.string().uuid() });
 const M = ModuleKey.CONTRACTS;
@@ -26,6 +28,8 @@ export class ContractsMcp implements OnModuleInit {
         private readonly obligations: ContractObligationsService,
         private readonly signatures: SignaturesService,
         private readonly library: ContractLibraryService,
+        private readonly analyticsService: ContractAnalyticsService,
+        private readonly ai: ContractAiService,
     ) { }
 
     onModuleInit() {
@@ -33,6 +37,7 @@ export class ContractsMcp implements OnModuleInit {
             { name: 'contracts_contracts_list', description: 'List contracts (filter by status, type, customer, owner, expiring window; search by title/number/customer).', permission: 'contracts.contracts.read', module: M, resource_type: 'contract', input: ContractQuerySchema, handler: (ctx, a) => this.contracts.findAll(ctx, a) },
             { name: 'contracts_contracts_get', description: 'Get one contract with parties, versions, lineage and termination.', permission: 'contracts.contracts.read', module: M, resource_type: 'contract', input: id, handler: (ctx, a) => this.contracts.findOne(ctx, a.id) },
             { name: 'contracts_dashboard_get', description: 'Contract portfolio summary: counts per status, expiring windows, pending signatures, obligations.', permission: 'contracts.contracts.read', module: M, resource_type: 'contract', input: z.object({}), handler: (ctx) => this.contracts.dashboard(ctx) },
+            { name: 'contracts_analytics_read', description: 'Contract analytics: value by status and type (values only with confidential-terms access), cycle / approval / signature times, renewal rate, renewals pipeline, risk, slowest in flight. Dates YYYY-MM-DD (default last 12 months).', permission: 'contracts.contracts.read', module: M, resource_type: 'contract', input: ContractAnalyticsQuerySchema, handler: (ctx, a) => this.analyticsService.analytics(ctx, a) },
             { name: 'contracts_renewals_list', description: 'Contracts with end, renewal or notice dates inside the next N days.', permission: 'contracts.contracts.read', module: M, resource_type: 'contract', input: RenewalsQuerySchema, handler: (ctx, a) => this.contracts.renewals(ctx, a) },
             { name: 'contracts_contracts_create', description: 'Create a draft contract (optionally from a template).', permission: 'contracts.contracts.create', module: M, resource_type: 'contract', input: CreateContractSchema, handler: (ctx, a) => this.contracts.create(ctx, a) },
             { name: 'contracts_contracts_update', description: 'Update contract metadata (dates, renewal, owner, value).', permission: 'contracts.contracts.update', module: M, resource_type: 'contract', input: UpdateContractSchema, handler: (ctx, { id: cid, ...dto }) => this.contracts.update(ctx, cid, dto) },
@@ -44,6 +49,10 @@ export class ContractsMcp implements OnModuleInit {
             { name: 'contracts_signatures_list', description: 'List signature requests and their status.', permission: 'contracts.signatures.read', module: M, resource_type: 'signature_request', input: SignatureRequestQuerySchema, handler: (ctx, a) => this.signatures.findAll(ctx, a) },
             { name: 'contracts_obligations_list', description: 'List contract obligations (overdue, due soon, mine).', permission: 'contracts.contracts.read', module: M, resource_type: 'contract_obligation', input: ObligationQuerySchema, handler: (ctx, a) => this.obligations.findAll(ctx, a) },
             { name: 'contracts_obligations_create', description: 'Create an obligation on a contract.', permission: 'contracts.obligations.manage', module: M, resource_type: 'contract_obligation', input: CreateObligationSchema, handler: (ctx, a) => this.obligations.create(ctx, a) },
+            { name: 'contracts_ai_review', description: 'Run an AI review of a contract version with the organization OpenAI key: returns findings (risky / missing / non-standard clauses) and a risk score. Recommendations only; never edits the text.', permission: 'contracts.contracts.review', module: M, resource_type: 'contract', input: z.object({ contract_id: z.string().uuid(), version_id: z.string().uuid() }), handler: (ctx, a) => this.ai.review(ctx, a.contract_id, a.version_id) },
+            { name: 'contracts_ai_findings_decide', description: 'Accept or dismiss an AI review finding (dismiss needs resolution_note).', permission: 'contracts.contracts.review', module: M, resource_type: 'contract', sensitive: true, input: DecideFindingSchema.extend({ contract_id: z.string().uuid(), finding_id: z.string().uuid() }), handler: (ctx, { contract_id, finding_id, ...dto }) => this.ai.decideFinding(ctx, contract_id, finding_id, dto) },
+            { name: 'contracts_ai_extract_obligations', description: 'Extract obligation suggestions from a contract version (they stay PENDING_REVIEW until a human confirms).', permission: 'contracts.contracts.review', module: M, resource_type: 'contract_obligation', input: z.object({ contract_id: z.string().uuid(), version_id: z.string().uuid() }), handler: (ctx, a) => this.ai.extractObligations(ctx, a.contract_id, a.version_id) },
+            { name: 'contracts_ai_obligations_review', description: 'Confirm (optionally corrected) or reject an AI-extracted obligation suggestion.', permission: 'contracts.obligations.manage', module: M, resource_type: 'contract_obligation', sensitive: true, input: ReviewExtractionSchema.extend({ contract_id: z.string().uuid(), obligation_id: z.string().uuid() }), handler: (ctx, { contract_id, obligation_id, ...dto }) => this.ai.reviewExtraction(ctx, contract_id, obligation_id, dto) },
             { name: 'contracts_clauses_list', description: 'Search the clause library.', permission: 'contracts.contracts.read', module: M, resource_type: 'contract_clause', input: LibraryQuerySchema, handler: (ctx, a) => this.library.listClauses(ctx, a) },
             { name: 'contracts_templates_list', description: 'List contract templates.', permission: 'contracts.contracts.read', module: M, resource_type: 'contract_template', input: LibraryQuerySchema, handler: (ctx, a) => this.library.listTemplates(ctx, a) },
         ]);

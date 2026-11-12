@@ -123,3 +123,9 @@ export function publicContext(organizationId: string, meta: { ip?: string | null
         scopeOf: () => null,
     };
 }
+
+/** +30 69•••••678 style mask for SMS recipients. */
+export const maskPhone = (phone: string) => {
+    const p = phone.replace(/[\s-]/g, '');
+    return p.length <= 6 ? '•••' : `${p.slice(0, 5)}${'•'.repeat(Math.max(3, p.length - 8))}${p.slice(-3)}`;
+};

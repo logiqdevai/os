@@ -1,10 +1,11 @@
 import { BadRequestException, ConflictException, GoneException, HttpException, HttpStatus, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
     AuditOutcome, ContractRelationKind, ContractStatus, ContractVersionStatus, ModuleKey, Prisma, SignatureEventType, SignatureRequestStatus, SignatureSubjectType, SignatureType, SignerStatus, SigningOrder,
-    VerificationChannel, VerificationPurpose, RecordEntityType, DocumentSource,
+    VerificationChannel, VerificationPurpose, RecordEntityType, DocumentSource, CommChannel,
 } from 'generated/prisma';
 import { AuthorizationService } from '@/shared/authorization/authorization.service';
 import { DocumentsService } from '@/modules/files/services/documents.service';
+import { CommProviderService } from '@/modules/communications/delivery/comm-provider.service';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { AuditService } from '@/shared/audit/audit.service';
@@ -14,7 +15,8 @@ import { paginate, skipTake } from '@/shared/utils/pagination/pagination.utils';
 import { ContractsService } from '../contracts/contracts.service';
 import { ContractVersionsService } from '../versions/versions.service';
 import { ContractMailerService } from '../shared/contract-mailer.service';
-import { addDays, assertNoUnresolvedVariables, maskEmail, newCode, newToken, publicContext, sectionsHash, sha256, today } from '../shared/contracts.utils';
+import { ContractPdfService } from '../shared/contract-pdf.service';
+import { addDays, assertNoUnresolvedVariables, maskEmail, maskPhone, newCode, newToken, publicContext, sectionsHash, sha256, today } from '../shared/contracts.utils';
 import { CancelSignatureRequestDto, CreateSignatureRequestDto, DeclineDto, SignDto, SignatureRequestQuery, VerifyCodeDto } from './dto/signature.dto';
 
 const ACTIVE_REQUEST: SignatureRequestStatus[] = [SignatureRequestStatus.NOT_SENT, SignatureRequestStatus.SENT, SignatureRequestStatus.DELIVERED, SignatureRequestStatus.VIEWED, SignatureRequestStatus.PARTIALLY_SIGNED];
@@ -53,6 +55,8 @@ export class SignaturesService {
         private readonly config: ConfigService,
         private readonly authorization: AuthorizationService,
         private readonly documents: DocumentsService,
+        private readonly pdfs: ContractPdfService,
+        private readonly smsProviders: CommProviderService,
     ) { }
 
     /**
@@ -247,6 +251,18 @@ export class SignaturesService {
         return this.buildCertificate(r.id, null);
     }
 
+    /** Completion certificate as PDF (stored in Files once the request is fully signed). */
+    async certificatePdf(ctx: OrgContext, id: string) {
+        const r = await this.findOne(ctx, id);
+        return this.pdfs.certificatePdf(ctx.organization_id, r.id, null, ctx);
+    }
+
+    /** A version as PDF; signed versions stream the stored signed artifact. */
+    async versionPdf(ctx: OrgContext, contractId: string, versionId: string) {
+        await this.contracts.assertContract(ctx, contractId);
+        return this.pdfs.versionPdf(ctx, contractId, versionId);
+    }
+
     // ===================================================================== public signing (token)
 
     /** Resolve a signing token; 404 for unknown / revoked tokens (never says which). Marks expired requests. */
@@ -293,6 +309,7 @@ export class SignaturesService {
         ]);
         const state = this.stateOf(signer, all);
         const verified = this.identityFresh(signer);
+        const smsAvailable = !verified && state === 'ACTIVE' && (await this.smsAvailable(r.organization_id, signer.phone));
         let sections: { key: string; title: string; body: string | null; is_appendix: boolean }[] | null = null;
         if (verified && (state === 'ACTIVE' || state === 'SIGNED' || state === 'COMPLETED')) {
             sections = await this.prisma.contractSection.findMany({ where: { version_id: r.contract_version!.id }, orderBy: { sort_order: 'asc' }, select: { key: true, title: true, body: true, is_appendix: true } });
@@ -314,14 +331,25 @@ export class SignaturesService {
             parties,
             message: r.message,
             expires_at: r.expires_at,
-            signer: { name: signer.name, title: signer.title, email_masked: maskEmail(signer.email), identity_verified: verified, signed_at: signer.signed_at, signature_type: signer.signature_type },
+            signer: { name: signer.name, title: signer.title, email_masked: maskEmail(signer.email), phone_masked: signer.phone ? maskPhone(signer.phone) : null, sms_available: smsAvailable, identity_verified: verified, signed_at: signer.signed_at, signature_type: signer.signature_type },
             signers: all.map((s) => ({ name: s.name, status: s.status, order: s.order, is_you: s.id === signer.id, signed_at: s.signed_at })),
             consent_text: { id: consent.id, version: consent.version, locale: consent.locale, body: consent.body },
             sections,
         };
     }
 
-    async sendCode(token: string, meta: PublicMeta) {
+    /** SMS codes need the signer's phone and the organization's own ACTIVE Twilio connection (04 §36, BYOK). */
+    private async smsAvailable(organizationId: string, phone: string | null) {
+        if (!phone || !/^\+[1-9]\d{6,14}$/.test(phone.replace(/[\s-]/g, ''))) return false;
+        return !!(await this.smsProviders.resolve(organizationId, CommChannel.SMS));
+    }
+
+    /**
+     * One-time identity code. SMS when asked for (or by default) and available; otherwise — or when the SMS fails — email.
+     * Only the code's hash is stored (VerificationCode); the SMS goes straight to the organization's provider so the
+     * code never lands in the message history.
+     */
+    async sendCode(token: string, meta: PublicMeta, requested?: 'EMAIL' | 'SMS') {
         const signer = await this.resolve(token);
         const all = await this.prisma.signer.findMany({ where: { request_id: signer.request_id }, select: { status: true, order: true } });
         const state = this.stateOf(signer, all);
@@ -330,25 +358,51 @@ export class SignaturesService {
         if (recent.some((c) => c.locked_until && c.locked_until.getTime() > Date.now())) throw new HttpException({ message: 'Too many wrong codes. Try again in 15 minutes.', code: 'verification_locked' }, HttpStatus.TOO_MANY_REQUESTS);
         if (recent.length >= MAX_CODES_PER_WINDOW) throw new HttpException({ message: 'Too many codes requested. Try again in 15 minutes.', code: 'verification_rate_limited' }, HttpStatus.TOO_MANY_REQUESTS);
 
+        const orgId = signer.request.organization_id;
+        const title = signer.request.contract!.title;
         const code = newCode();
+        const phone = signer.phone?.replace(/[\s-]/g, '') ?? null;
+        let channel: VerificationChannel = VerificationChannel.EMAIL;
+        let fallback: string | null = null;
+        let delivered = false;
+        if (requested !== 'EMAIL' && phone && (await this.smsAvailable(orgId, phone))) {
+            const provider = await this.smsProviders.resolve(orgId, CommChannel.SMS);
+            try {
+                await this.smsProviders.sendSms(provider!, { to: phone, body: `${code} is your code to sign "${title.slice(0, 60)}". It expires in 10 minutes.` });
+                channel = VerificationChannel.SMS;
+                delivered = true;
+            } catch (error) {
+                fallback = 'sms_failed';
+                this.logger.warn(`signing SMS failed, falling back to email: ${(error as Error).message}`);
+            }
+        } else if (requested === 'SMS') {
+            fallback = phone ? 'sms_not_configured' : 'no_phone';
+        }
         await this.prisma.verificationCode.create({
             data: {
-                organization_id: signer.request.organization_id, purpose: VerificationPurpose.SIGNER_IDENTITY, channel: VerificationChannel.EMAIL, signer_id: signer.id,
-                recipient: signer.email, code_hash: sha256(`${signer.id}:${code}`), expires_at: new Date(Date.now() + CODE_TTL_MS), ip_address: meta.ip ?? null,
+                organization_id: orgId, purpose: VerificationPurpose.SIGNER_IDENTITY, channel, signer_id: signer.id,
+                recipient: channel === VerificationChannel.SMS ? (phone as string) : signer.email, code_hash: sha256(`${signer.id}:${code}`), expires_at: new Date(Date.now() + CODE_TTL_MS), ip_address: meta.ip ?? null,
             },
         });
-        const emailed = await this.mailer.send(signer.email, `Your signing code: ${code}`, [
-            `Hello ${signer.name},`,
-            `Your one-time code to sign "${signer.request.contract!.title}" is ${code}.`,
-            'It expires in 10 minutes. If you did not request it, you can ignore this email.',
-        ]);
-        await this.audit.record(publicContext(signer.request.organization_id, meta), 'contract.signature_code_sent', { resource_type: 'contract', resource_id: signer.request.contract!.id, metadata: { request_id: signer.request_id, signer_id: signer.id, channel: 'EMAIL', emailed } });
-        // Without a mail key outside production the code is returned so the flow can be tested. Never in production:
-        // a code in the response would let anyone holding the link skip identity verification.
-        if (!emailed && this.config.get<string>('NODE_ENV') === 'production') {
-            throw new HttpException({ message: 'The verification email could not be sent. Ask the sender to check the email settings.', code: 'verification_email_failed' }, HttpStatus.SERVICE_UNAVAILABLE);
+        if (channel === VerificationChannel.EMAIL) {
+            delivered = await this.mailer.send(signer.email, `Your signing code: ${code}`, [
+                `Hello ${signer.name},`,
+                `Your one-time code to sign "${title}" is ${code}.`,
+                'It expires in 10 minutes. If you did not request it, you can ignore this email.',
+            ]);
         }
-        return { sent: true, channel: 'EMAIL', recipient: maskEmail(signer.email), expires_in_seconds: CODE_TTL_MS / 1000, ...(emailed ? {} : { dev_code: code }) };
+        await this.audit.record(publicContext(orgId, meta), 'contract.signature_code_sent', { resource_type: 'contract', resource_id: signer.request.contract!.id, metadata: { request_id: signer.request_id, signer_id: signer.id, channel, delivered, fallback } });
+        // Without a delivery channel outside production the code is returned so the flow can be tested. Never in production:
+        // a code in the response would let anyone holding the link skip identity verification.
+        if (!delivered && this.config.get<string>('NODE_ENV') === 'production') {
+            throw new HttpException({ message: 'The verification code could not be sent. Ask the sender to check the email and SMS settings.', code: 'verification_email_failed' }, HttpStatus.SERVICE_UNAVAILABLE);
+        }
+        return {
+            sent: true, channel, fallback,
+            recipient: channel === VerificationChannel.SMS ? maskPhone(phone as string) : maskEmail(signer.email),
+            expires_in_seconds: CODE_TTL_MS / 1000,
+            ...(delivered ? {} : { dev_code: code }),
+        };
     }
 
     async verify(token: string, dto: VerifyCodeDto, meta: PublicMeta) {
@@ -363,11 +417,12 @@ export class SignaturesService {
             throw new BadRequestException({ message: attempts >= code.max_attempts ? 'Too many wrong codes. Try again in 15 minutes.' : `That code is not correct. ${code.max_attempts - attempts} attempt(s) left.`, code: 'verification_invalid' });
         }
         const now = new Date();
+        const method = code.channel === VerificationChannel.SMS ? 'SMS_OTP' : 'EMAIL_OTP';
         await this.prisma.$transaction([
             this.prisma.verificationCode.update({ where: { id: code.id }, data: { verified_at: now, attempts: code.attempts + 1 } }),
-            this.prisma.signer.update({ where: { id: signer.id }, data: { identity_verified_at: now } }),
+            this.prisma.signer.update({ where: { id: signer.id }, data: { identity_verified_at: now, auth_method: method } }),
         ]);
-        await this.audit.record(publicContext(signer.request.organization_id, meta), 'contract.signature_identity_verified', { resource_type: 'contract', resource_id: signer.request.contract!.id, metadata: { request_id: signer.request_id, signer_id: signer.id, method: 'EMAIL_OTP' } });
+        await this.audit.record(publicContext(signer.request.organization_id, meta), 'contract.signature_identity_verified', { resource_type: 'contract', resource_id: signer.request.contract!.id, metadata: { request_id: signer.request_id, signer_id: signer.id, method } });
         return { verified: true };
     }
 
@@ -448,6 +503,19 @@ export class SignaturesService {
         return this.publicState(token, meta);
     }
 
+    /** Signer copy of the signed document (after everyone signed). */
+    async publicSignedPdf(token: string) {
+        const signer = await this.resolve(token);
+        if (signer.request.status !== SignatureRequestStatus.FULLY_SIGNED) throw new ConflictException({ message: 'The signed document is available once everyone has signed', code: 'signed_document_not_ready' });
+        return this.pdfs.signedPdfForSigner(signer.request_id);
+    }
+
+    async publicCertificatePdf(token: string) {
+        const signer = await this.resolve(token);
+        if (signer.request.status !== SignatureRequestStatus.FULLY_SIGNED) throw new ConflictException({ message: 'The certificate is available once everyone has signed', code: 'certificate_not_ready' });
+        return this.pdfs.certificatePdf(signer.request.organization_id, signer.request_id, signer.id);
+    }
+
     async publicCertificate(token: string) {
         const signer = await this.resolve(token);
         if (signer.request.status !== SignatureRequestStatus.FULLY_SIGNED) throw new ConflictException({ message: 'The certificate is available once everyone has signed', code: 'certificate_not_ready' });
@@ -485,6 +553,7 @@ export class SignaturesService {
                 event_key: 'contracts.contract.signed', module: ModuleKey.CONTRACTS, entity_kind: 'contract', entity_id: contract.id, payload,
                 activity: { summary: `Contract ${contract.number} fully signed`, entity_label: contract.title, company_id: contract.primary_company_id, branch_id: contract.branch_id },
             });
+            void this.pdfs.storeSignedArtifacts(requestId);
             for (const s of r.signers) {
                 void this.mailer.send(s.email, `Signed: ${contract.title}`, [`Hello ${s.name},`, `All parties have signed "${contract.title}" (${contract.number}).`, 'The sender keeps the signed document and the completion certificate.']);
             }
@@ -565,5 +634,38 @@ export class SignaturesService {
             })),
             events: r.events.map((e) => ({ type: e.type, occurred_at: e.occurred_at, signer: e.signer?.name ?? null, ip_address: e.ip_address })),
         };
+    }
+
+    /**
+     * 07 Customer portal — a fresh single-use signing link for the signed-in portal user when they are a signer of the contract
+     * (matched by email) and it is their turn. The link is not emailed; the portal redirects into /sign/:token where the usual
+     * identity code, consent and evidence trail apply. The portal guard checked portal.contracts.sign.
+     */
+    async portalSigningLink(input: { organization_id: string; company_id: string; contract_id: string; user_id: string; email: string; ip?: string | null }) {
+        const contract = await this.prisma.contract.findFirst({
+            where: { id: input.contract_id, organization_id: input.organization_id, primary_company_id: input.company_id, customer_visible: true, archived_at: null },
+            select: { id: true, number: true, title: true },
+        });
+        if (!contract) throw new NotFoundException({ message: 'Contract not found', code: 'contract_not_found' });
+        const request = await this.prisma.signatureRequest.findFirst({
+            where: { contract_id: contract.id, organization_id: input.organization_id, status: { in: ACTIVE_REQUEST } },
+            orderBy: { created_at: 'desc' },
+            include: { signers: { select: { id: true, name: true, email: true, order: true, status: true } } },
+        });
+        if (!request) throw new ConflictException({ message: 'This contract is not waiting for signatures', code: 'signature_request_closed' });
+        const mine = request.signers.find((s) => s.email.toLowerCase() === input.email.toLowerCase());
+        if (!mine) throw new ConflictException({ message: 'You are not a signer of this contract. Ask your account manager to add you.', code: 'not_a_signer' });
+        if (mine.status === SignerStatus.SIGNED || mine.status === SignerStatus.DECLINED) throw new ConflictException({ message: 'You already finished signing', code: 'signer_finished' });
+        const pending = request.signers.filter((s) => s.status !== SignerStatus.SIGNED && s.status !== SignerStatus.DECLINED);
+        if (mine.order > Math.min(...pending.map((s) => s.order))) throw new ConflictException({ message: 'Another signer has to sign first', code: 'signing_waiting' });
+        const link = await this.rotate(request.id, mine.id, mine.name, mine.email, contract.title, contract.number, false);
+        await this.prisma.signatureEvent.create({ data: { request_id: request.id, signer_id: mine.id, type: SignatureEventType.SENT, ip_address: input.ip ?? null, payload: { via: 'portal', user_id: input.user_id } } });
+        await this.audit.record(
+            { organization_id: input.organization_id, user_id: input.user_id, membership_id: null, service_account_id: null, api_key_id: null, actor_type: 'USER', channel: 'ui', ip_address: input.ip ?? null, effective: { permissions: {}, modules: [] }, can: () => false, scopeOf: () => null },
+            'contract.signature_link_issued',
+            { resource_type: 'contract', resource_id: contract.id, metadata: { via: 'portal', request_id: request.id, signer_id: mine.id } },
+        );
+        const token = link.url.slice(link.url.lastIndexOf('/sign/') + 6);
+        return { path: `/sign/${token}`, url: link.url };
     }
 }

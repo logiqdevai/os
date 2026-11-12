@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Headers, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Req, StreamableFile } from '@nestjs/common';
+import { streamable } from '@/modules/files/utils/streamable.utils';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Public } from '@/shared/authorization/decorators/require-permission.decorator';
 import { ProposalPublicService, PublicRequestMeta } from './proposal-public.service';
-import { PublicCommentDto, PublicDecisionDto, PublicSelectionDto, PublicSendCodeDto, PublicVerifyDto } from './dto/proposal.dto';
+import { PublicCommentDto, PublicDecisionDto, PublicEngagementDto, PublicSelectionDto, PublicSendCodeDto, PublicVerifyDto } from './dto/proposal.dto';
 
 const meta = (req: Request, access?: string): PublicRequestMeta => ({ ip: req.ip ?? null, user_agent: (req.headers['user-agent'] as string | undefined) ?? null, access: access ?? null });
 
@@ -21,6 +22,18 @@ export class PublicProposalsController {
     @ApiOperation({ summary: 'Sent version for the customer (records a VIEWED event). state: ACTIVE | DECIDED | EXPIRED | CANCELLED | VERIFICATION_REQUIRED' })
     view(@Param('token') token: string, @Req() req: Request, @Headers('x-proposal-access') access?: string) {
         return this.publicProposals.view(token, meta(req, access));
+    }
+
+    @Get(':token/pdf')
+    @ApiOperation({ summary: 'The sent version as a PDF (records a DOWNLOADED event)' })
+    async pdf(@Param('token') token: string, @Req() req: Request, @Headers('x-proposal-access') access?: string): Promise<StreamableFile> {
+        return streamable(await this.publicProposals.downloadPdf(token, meta(req, access)));
+    }
+
+    @Post(':token/engagement')
+    @ApiOperation({ summary: 'Beacon: seconds on page and per section since the last beacon (tracking only)' })
+    engagement(@Param('token') token: string, @Body() dto: PublicEngagementDto, @Req() req: Request, @Headers('x-proposal-access') access?: string) {
+        return this.publicProposals.engagement(token, dto, meta(req, access));
     }
 
     @Post(':token/selection')

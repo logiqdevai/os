@@ -10,6 +10,7 @@ import { ContractsService } from '@/modules/contracts/contracts/contracts.servic
 import { personName } from './utils/person-name.utils';
 import { CLOSED_STATUSES, INTERNAL_COMMENTS, LIVE_STATUSES, MEMBER_SELECT, ProposalsService } from './proposals.service';
 import { ProposalMailer } from './proposal-mailer.service';
+import { ProposalPdfService } from './proposal-pdf.service';
 import { ApprovalDecisionDto, ConvertProposalDto, CreateProposalCommentDto, SendProposalDto, SubmitForReviewDto } from './dto/proposal.dto';
 import { ProposalAnalyticsQuery } from './dto/proposal-query.schema';
 import { addDays, dateOnly, newToken, num, round2, sha256 } from './utils/proposal.utils';
@@ -29,6 +30,7 @@ export class ProposalFlowService {
         private readonly proposals: ProposalsService,
         private readonly contracts: ContractsService,
         private readonly mailer: ProposalMailer,
+        private readonly pdf: ProposalPdfService,
     ) { }
 
     // --- Approval rules ----------------------------------------------------------------------------
@@ -260,7 +262,6 @@ export class ProposalFlowService {
         const versionId = dto.version_id ?? proposal.current_version_id;
         if (!versionId) throw new BadRequestException({ message: 'Nothing to send', code: 'proposal_no_version' });
         if (versionId !== proposal.current_version_id && versionId !== proposal.sent_version_id) throw new ConflictException({ message: 'Only the current version can be sent', code: 'proposal_version_not_current' });
-        if (dto.channels.includes(ProposalDeliveryChannel.PDF)) throw new BadRequestException({ message: 'PDF delivery needs Documents (17); send by email or link', code: 'pdf_delivery_unavailable' });
 
         const preview = await this.sendPreview(ctx, proposalId, versionId);
         const failing = preview.checks.filter((c) => c.blocking && !c.ok);
@@ -324,6 +325,19 @@ export class ProposalFlowService {
         });
 
         const publicUrl = this.mailer.appUrl(`/p/${token}`);
+        if (dto.channels.includes(ProposalDeliveryChannel.PDF)) {
+            // The sent version is locked: render it once and store it in Files (ProposalVersion.pdf_document_id).
+            try {
+                const file = await this.pdf.forVersion(ctx, ctx.organization_id, proposalId, versionId);
+                file.stream.resume();
+                if (!file.document_id) {
+                    const stored = await this.prisma.proposalVersion.findUnique({ where: { id: versionId }, select: { pdf_document_id: true } });
+                    if (!stored?.pdf_document_id) throw new Error('The PDF could not be stored (documents.documents.create needed)');
+                }
+            } catch (error) {
+                await this.prisma.proposalDelivery.updateMany({ where: { id: { in: deliveries.filter((d) => d.channel === ProposalDeliveryChannel.PDF).map((d) => d.id) } }, data: { status: ProposalDeliveryStatus.FAILED, failed_reason: (error as Error).message.slice(0, 500) } });
+            }
+        }
         if (dto.channels.includes(ProposalDeliveryChannel.EMAIL)) {
             const org = await this.prisma.organization.findUnique({ where: { id: ctx.organization_id }, select: { display_name: true } });
             for (const d of deliveries.filter((x) => x.channel === ProposalDeliveryChannel.EMAIL)) {
@@ -578,5 +592,37 @@ export class ProposalFlowService {
             by_owner: byOwner,
             currencies: [...new Set(rows.map((r) => r.currency))],
         };
+    }
+
+    /**
+     * 07 Customer portal — a fresh customer link for a signed-in portal user of the proposal's company. Rotates the public
+     * token (only its sha256 is stored; earlier emailed links stop working) and, for EMAIL_VERIFIED links, pre-verifies access
+     * because the portal login already proved the user's email. The portal guard checked portal.proposals.read / .accept.
+     */
+    async portalLink(input: { organization_id: string; company_id: string; proposal_id: string; user_id: string; email: string; ip?: string | null }) {
+        const p = await this.prisma.proposal.findFirst({
+            where: { id: input.proposal_id, organization_id: input.organization_id, company_id: input.company_id, archived_at: null, sent_version_id: { not: null } },
+            select: { id: true, status: true, number: true, link_access_mode: true, branch_id: true },
+        });
+        if (!p) throw new NotFoundException({ message: 'Proposal not found', code: 'proposal_not_found' });
+        if (!(LIVE_STATUSES.includes(p.status) || p.status === ProposalStatus.ACCEPTED || p.status === ProposalStatus.REJECTED)) {
+            throw new ConflictException({ message: 'This proposal can no longer be opened', code: 'proposal_not_open' });
+        }
+        const token = newToken();
+        await this.prisma.proposal.update({ where: { id: p.id }, data: { public_token_hash: token.hash } });
+        let access: string | null = null;
+        if (p.link_access_mode === 'EMAIL_VERIFIED') {
+            const row = await this.prisma.verificationCode.create({
+                data: { organization_id: input.organization_id, purpose: 'PROPOSAL_ACCESS', channel: 'EMAIL', proposal_id: p.id, recipient: input.email.toLowerCase(), code_hash: sha256(`portal:${p.id}:${token.token}`), expires_at: new Date(), verified_at: new Date(), ip_address: input.ip ?? null },
+                select: { id: true },
+            });
+            access = row.id;
+        }
+        await this.audit.record(
+            { organization_id: input.organization_id, user_id: input.user_id, membership_id: null, service_account_id: null, api_key_id: null, actor_type: 'USER', channel: 'ui', ip_address: input.ip ?? null, effective: { permissions: {}, modules: [] }, can: () => false, scopeOf: () => null },
+            'proposal.portal_link_issued',
+            { resource_type: 'proposal', resource_id: p.id, branch_id: p.branch_id, metadata: { via: 'portal', number: p.number } },
+        );
+        return { path: `/p/${token.token}`, url: this.mailer.appUrl(`/p/${token.token}`), access, token_prefix: token.token.slice(0, 16) };
     }
 }
