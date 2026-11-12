@@ -7,7 +7,6 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { usePortalProjects, useUploadPortalDocument } from "@/features/portal/hooks/use-portal";
 import { usePortal } from "./portal-context";
@@ -41,7 +40,8 @@ export function PortalUploadDialog({ open, onOpenChange }: { open: boolean; onOp
         file &&
         upload.mutate(
             { file, title: title.trim() || undefined, project_id: projectId !== "none" ? projectId : undefined, onProgress: setProgress },
-            { onSuccess: () => { toast({ title: "File shared with the team" }); close(false); }, onError: (e) => { setProgress(0); toast({ variant: "destructive", title: "Upload failed", description: getApiErrorMessage(e) }); } },
+            // The file appears in the documents list; failures are toasted once globally.
+            { onSuccess: () => { onOpenChange(false); reset(); }, onError: () => setProgress(0) },
         );
 
     return (

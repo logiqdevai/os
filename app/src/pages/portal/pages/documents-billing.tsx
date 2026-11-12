@@ -88,14 +88,14 @@ export function PortalAgreementsPage() {
                 if (r.access) { try { sessionStorage.setItem(PROPOSAL_ACCESS_KEY(r.token_prefix), r.access); } catch { /* private mode: the page asks for a code */ } }
                 navigate(r.path);
             },
-            onError: (e) => { setBusyId(null); toast({ variant: "destructive", title: "Could not open the proposal", description: getApiErrorMessage(e) }); },
+            onError: () => setBusyId(null),
         });
     };
     const onSign = (id: string) => {
         setBusyId(id);
         signContract.mutate(id, {
             onSuccess: (r) => navigate(r.path),
-            onError: (e) => { setBusyId(null); toast({ variant: "destructive", title: "Could not open signing", description: getApiErrorMessage(e) }); },
+            onError: () => setBusyId(null),
         });
     };
     const showProposals = can("portal.proposals.read") && feature("proposals");

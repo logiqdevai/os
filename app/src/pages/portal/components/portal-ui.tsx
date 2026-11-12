@@ -9,6 +9,7 @@ import { formatDateTime, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { DeliverableReviewStatusOptions, DeliverableReviewStatusTone, PortalRequestCategoryTone } from "@/config/constants/dropdowns/portal/portal.options";
 import type { PortalFeature, PortalMessage, PortalRequestStatus } from "@/features/portal/interfaces/portal.interfaces";
+import type { OutgoingPortalMessage } from "@/features/portal/hooks/use-portal";
 import { usePortal } from "./portal-context";
 
 /** Route gate for portal pages: the customer role must hold one of `anyOf`, and the feature must be on. */
@@ -63,24 +64,35 @@ export function ProgressBar({ value }: { value: number }) {
     );
 }
 
-/** Public thread for customers: their own messages right, the agency's left. Internal notes never reach the portal. */
-export function PortalThread({ messages, agencyName }: { messages: PortalMessage[]; agencyName: string }) {
+/**
+ * Public thread for customers: their own messages right, the agency's left. Internal notes never reach the portal.
+ * A message just sent shows at once ("Sending…"); a refused one stays with "Not sent · Retry · Discard".
+ */
+export function PortalThread({ messages, agencyName, onRetry, onDiscard }: { messages: (PortalMessage | OutgoingPortalMessage)[]; agencyName: string; onRetry?: (m: OutgoingPortalMessage) => void; onDiscard?: (m: OutgoingPortalMessage) => void }) {
     if (!messages.length) return <p className="py-6 text-center text-[13px] text-muted-foreground">No messages yet.</p>;
     return (
         <ol className="space-y-4">
             {messages.map((m) => {
                 const mine = m.mine;
+                const local = "local_state" in m ? m : null;
                 const fromAgency = m.kind !== "CUSTOMER";
                 const name = fromAgency ? (m.kind === "AI_AGENT" ? `${agencyName} assistant` : personName(m.author?.user) || agencyName) : mine ? "You" : m.author_name || personName(m.author_user);
                 return (
-                    <li key={m.id} className={cn("flex gap-2.5", mine && "flex-row-reverse")}>
+                    <li key={m.id} className={cn("flex gap-2.5", mine && "flex-row-reverse", local?.local_state === "sending" && "opacity-70")}>
                         <MemberAvatar person={fromAgency ? m.author?.user ?? { display_name: agencyName } : m.author_user ?? { display_name: name }} size="sm" />
                         <div className={cn("min-w-0 max-w-[85%] space-y-1", mine && "text-right")}>
                             <div className={cn("flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground", mine && "justify-end")}>
                                 <span className="font-medium text-foreground">{name}</span>
-                                <span>{formatDateTime(m.created_at)}</span>
+                                {local?.local_state === "sending" ? <span role="status">Sending…</span> : local?.local_state === "failed" ? null : <span>{formatDateTime(m.created_at)}</span>}
+                                {local?.local_state === "failed" && (
+                                    <span role="alert" className="inline-flex items-center gap-1.5 text-danger">
+                                        Not sent
+                                        {onRetry && <button type="button" className="font-medium underline underline-offset-2 hover:text-foreground" onClick={() => onRetry(local)}>Retry</button>}
+                                        {onDiscard && <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => onDiscard(local)}>Discard</button>}
+                                    </span>
+                                )}
                             </div>
-                            <div className={cn("whitespace-pre-wrap break-words rounded-lg border px-3 py-2 text-left text-[13px] leading-relaxed text-foreground", mine ? "border-transparent bg-info-soft" : "border-border bg-card")}>{m.body}</div>
+                            <div className={cn("whitespace-pre-wrap break-words rounded-lg border px-3 py-2 text-left text-[13px] leading-relaxed text-foreground", mine ? "border-transparent bg-info-soft" : "border-border bg-card", local?.local_state === "failed" && "border-danger/50")}>{m.body}</div>
                         </div>
                     </li>
                 );

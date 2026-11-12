@@ -4,8 +4,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { PortalDigestFrequencyOptions } from "@/config/constants/dropdowns/portal/portal.options";
 import { usePortalNotificationPreferences, useUpdatePortalNotificationPreferences } from "@/features/portal/hooks/use-portal";
 import type { PortalDigestFrequency, PortalNotificationPreferencesDto } from "@/features/portal/interfaces/portal.interfaces";
@@ -19,8 +17,8 @@ import { PortalCard, PortalHeader } from "../components/portal-ui";
 export default function PortalNotificationsPage() {
     const prefs = usePortalNotificationPreferences();
     const update = useUpdatePortalNotificationPreferences();
-    const save = (dto: PortalNotificationPreferencesDto) =>
-        update.mutate(dto, { onSuccess: () => toast({ title: "Preferences saved" }), onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) });
+    // Each switch saves on change and shows its new state at once (rolled back if the API refuses).
+    const save = (dto: PortalNotificationPreferencesDto) => update.mutate(dto);
 
     return (
         <>
@@ -34,17 +32,17 @@ export default function PortalNotificationsPage() {
                     <PortalCard title="How">
                         <div className="space-y-4">
                             <Row id="pref-email" label="Email" description={prefs.data.email_available ? "Get notifications by email." : "Email notifications are not available yet."}>
-                                <Switch id="pref-email" checked={prefs.data.email_enabled && prefs.data.email_available} disabled={!prefs.data.email_available || update.isPending} onCheckedChange={(v) => save({ email_enabled: v })} />
+                                <Switch id="pref-email" checked={prefs.data.email_enabled && prefs.data.email_available} disabled={!prefs.data.email_available} onCheckedChange={(v) => save({ email_enabled: v })} />
                             </Row>
                             <Row id="pref-inapp" label="In the portal" description="Show notifications when you sign in.">
-                                <Switch id="pref-inapp" checked={prefs.data.in_app_enabled} disabled={update.isPending} onCheckedChange={(v) => save({ in_app_enabled: v })} />
+                                <Switch id="pref-inapp" checked={prefs.data.in_app_enabled} onCheckedChange={(v) => save({ in_app_enabled: v })} />
                             </Row>
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <div className="text-[13px] font-medium text-foreground">Email frequency</div>
                                     <p className="text-xs text-muted-foreground">Get one summary instead of every email.</p>
                                 </div>
-                                <Select value={prefs.data.digest_frequency} onValueChange={(v) => save({ digest_frequency: v as PortalDigestFrequency })} disabled={update.isPending || !prefs.data.email_enabled}>
+                                <Select value={prefs.data.digest_frequency} onValueChange={(v) => save({ digest_frequency: v as PortalDigestFrequency })} disabled={!prefs.data.email_enabled}>
                                     <SelectTrigger className="h-8 w-full sm:w-44" aria-label="Email frequency"><SelectValue /></SelectTrigger>
                                     <SelectContent>{PortalDigestFrequencyOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                                 </Select>
@@ -58,7 +56,7 @@ export default function PortalNotificationsPage() {
                             <div className="space-y-4">
                                 {prefs.data.topics.map((t) => (
                                     <Row key={t.module} id={`topic-${t.module}`} label={t.label} description={t.description}>
-                                        <Switch id={`topic-${t.module}`} checked={t.enabled} disabled={update.isPending} onCheckedChange={(v) => save({ topics: [{ module: t.module, enabled: v }] })} />
+                                        <Switch id={`topic-${t.module}`} checked={t.enabled} onCheckedChange={(v) => save({ topics: [{ module: t.module, enabled: v }] })} />
                                     </Row>
                                 ))}
                             </div>

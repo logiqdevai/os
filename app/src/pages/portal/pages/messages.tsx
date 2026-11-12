@@ -7,10 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState, ErrorState, ListSkeleton, PageSkeleton } from "@/components/ui/states";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
-import { usePortalConversation, usePortalConversations, usePostPortalMessage, useStartPortalConversation } from "@/features/portal/hooks/use-portal";
+import { useDiscardPortalOutgoing, usePortalConversation, usePortalConversations, usePortalOutbox, usePostPortalMessage, useStartPortalConversation } from "@/features/portal/hooks/use-portal";
 import { usePortal } from "../components/portal-context";
 import { PortalCard, PortalHeader, PortalThread } from "../components/portal-ui";
 import { PORTAL_PATHS } from "../portal-paths";
@@ -54,7 +52,7 @@ export function PortalMessagesPage() {
                     <Textarea rows={5} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Your message" aria-label="Message" />
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setOpen(false)} disabled={start.isPending}>Cancel</Button>
-                        <Button loading={start.isPending} disabled={!subject.trim() || !body.trim()} onClick={() => start.mutate({ subject: subject.trim(), body: body.trim() }, { onSuccess: (c) => { setOpen(false); setSubject(""); setBody(""); navigate(PORTAL_PATHS.message(c.id)); }, onError: (e) => toast({ variant: "destructive", title: "Could not send", description: getApiErrorMessage(e) }) })}>Send</Button>
+                        <Button loading={start.isPending} disabled={!subject.trim() || !body.trim()} onClick={() => start.mutate({ subject: subject.trim(), body: body.trim() }, { onSuccess: (c) => { setOpen(false); setSubject(""); setBody(""); navigate(PORTAL_PATHS.message(c.id)); } })}>Send</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -68,19 +66,22 @@ export function PortalConversationPage() {
     const { session } = usePortal();
     const conv = usePortalConversation(id);
     const post = usePostPortalMessage();
+    const outbox = usePortalOutbox(id);
+    const discard = useDiscardPortalOutgoing();
     const [body, setBody] = useState("");
     if (conv.isLoading) return <PageSkeleton />;
     if (conv.error || !conv.data) return <ErrorState error={conv.error} onRetry={() => conv.refetch()} />;
     const c = conv.data;
-    const send = () => post.mutate({ id: c.id, body: body.trim() }, { onSuccess: () => setBody(""), onError: (e) => toast({ variant: "destructive", title: "Could not send", description: getApiErrorMessage(e) }) });
+    // The message shows in the thread at once; the box clears right away (a refused message keeps Retry in the thread).
+    const send = () => { post.mutate({ id: c.id, body: body.trim() }); setBody(""); };
     return (
         <div className="mx-auto max-w-3xl">
             <Link to={PORTAL_PATHS.messages} className="mb-2 inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground"><ChevronLeft className="size-3.5" /> Messages</Link>
             <PortalHeader title={c.subject || "Conversation"} description={c.ticket ? <Link className="text-info hover:underline" to={PORTAL_PATHS.request(c.ticket.reference)}>Request {c.ticket.reference}</Link> : undefined} />
-            <PortalCard className="mb-4"><PortalThread messages={c.messages} agencyName={session.organization?.display_name ?? "The team"} /></PortalCard>
+            <PortalCard className="mb-4"><PortalThread messages={[...c.messages, ...outbox]} agencyName={session.organization?.display_name ?? "The team"} onRetry={(m) => post.mutate({ id: c.id, body: m.body, local_id: m.id })} onDiscard={(m) => discard(c.id, m.id)} /></PortalCard>
             <PortalCard>
                 <Textarea rows={3} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a message…" aria-label="Message" onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && body.trim()) { e.preventDefault(); send(); } }} />
-                <div className="mt-2 flex justify-end"><Button onClick={send} loading={post.isPending} disabled={!body.trim()}>Send</Button></div>
+                <div className="mt-2 flex justify-end"><Button onClick={send} disabled={!body.trim()}>Send</Button></div>
             </PortalCard>
         </div>
     );

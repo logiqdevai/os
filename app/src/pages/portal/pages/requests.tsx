@@ -9,13 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination } from "@/components/ui/pagination";
 import { EmptyState, ErrorState, ListSkeleton, PageSkeleton } from "@/components/ui/states";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { formatDate, formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { PortalPriorityOptions, PortalRequestStateOptions, PortalRequestTypeOptions } from "@/config/constants/dropdowns/portal/portal.options";
-import { useCreatePortalRequest, usePortalProjects, usePortalRequest, usePortalRequests, useRatePortalRequest, useReplyToPortalRequest } from "@/features/portal/hooks/use-portal";
+import { useCreatePortalRequest, useDiscardPortalOutgoing, usePortalOutbox, usePortalProjects, usePortalRequest, usePortalRequests, useRatePortalRequest, useReplyToPortalRequest } from "@/features/portal/hooks/use-portal";
 import { usePortal } from "../components/portal-context";
 import { PortalCard, PortalHeader, PortalThread, RequestStatusBadge } from "../components/portal-ui";
 import { PORTAL_PATHS } from "../portal-paths";
@@ -74,7 +72,7 @@ export function PortalNewRequestPage() {
     const submit = () =>
         create.mutate(
             { subject: f.subject.trim(), description: f.description.trim(), type: f.type, priority: f.priority, project_id: f.project_id !== NONE ? f.project_id : undefined },
-            { onSuccess: (r) => { toast({ title: `Request ${r.reference} sent`, description: "The team has been notified." }); navigate(PORTAL_PATHS.request(r.reference), { replace: true }); }, onError: (e) => toast({ variant: "destructive", title: "Could not send your request", description: getApiErrorMessage(e) }) },
+            { onSuccess: (r) => navigate(PORTAL_PATHS.request(r.reference), { replace: true }) },
         );
     return (
         <div className="mx-auto max-w-2xl">
@@ -111,14 +109,18 @@ export function PortalRequestPage() {
     const req = usePortalRequest(reference);
     const reply = useReplyToPortalRequest();
     const rate = useRatePortalRequest();
+    const discard = useDiscardPortalOutgoing();
+    const outboxAll = usePortalOutbox(req.data?.id);
     const [body, setBody] = useState("");
     const [stars, setStars] = useState(0);
     const [comment, setComment] = useState("");
     if (req.isLoading) return <PageSkeleton />;
     if (req.error || !req.data) return <ErrorState error={req.error} onRetry={() => req.refetch()} />;
     const r = req.data;
+    const outbox = outboxAll;
     const agency = session.organization?.display_name ?? "The team";
-    const send = () => reply.mutate({ id: r.id, body: body.trim() }, { onSuccess: () => { setBody(""); toast({ title: "Reply sent" }); }, onError: (e) => toast({ variant: "destructive", title: "Could not send", description: getApiErrorMessage(e) }) });
+    // The reply shows in the thread at once; the box clears right away (a refused reply keeps Retry in the thread).
+    const send = () => { reply.mutate({ id: r.id, body: body.trim() }); setBody(""); };
     return (
         <div className="mx-auto max-w-3xl">
             <Link to={PORTAL_PATHS.requests} className="mb-2 inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground"><ChevronLeft className="size-3.5" /> Requests</Link>
@@ -129,12 +131,12 @@ export function PortalRequestPage() {
                 </PortalCard>
             )}
             <PortalCard title="Conversation" className="mb-4">
-                <PortalThread messages={r.messages} agencyName={agency} />
+                <PortalThread messages={[...r.messages, ...outbox]} agencyName={agency} onRetry={(m) => reply.mutate({ id: r.id, body: m.body, local_id: m.id })} onDiscard={(m) => discard(r.id, m.id)} />
             </PortalCard>
             {r.can_reply ? (
                 <PortalCard>
                     <Textarea rows={4} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a reply…" aria-label="Reply" onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && body.trim()) { e.preventDefault(); send(); } }} />
-                    <div className="mt-2 flex justify-end"><Button onClick={send} loading={reply.isPending} disabled={!body.trim()}>Send reply</Button></div>
+                    <div className="mt-2 flex justify-end"><Button onClick={send} disabled={!body.trim()}>Send reply</Button></div>
                 </PortalCard>
             ) : (
                 <p className="text-center text-[13px] text-muted-foreground">This request is closed. <Link className="text-info hover:underline" to={PORTAL_PATHS.newRequest}>Open a new request</Link> if you need more help.</p>
@@ -149,7 +151,7 @@ export function PortalRequestPage() {
                         ))}
                     </div>
                     <Textarea className="mt-2" rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Anything to add? (optional)" aria-label="Comment" />
-                    <div className="mt-2 flex justify-end"><Button disabled={!stars} loading={rate.isPending} onClick={() => rate.mutate({ id: r.id, rating: stars, comment: comment || undefined }, { onSuccess: () => toast({ title: "Thanks for your feedback!" }), onError: (e) => toast({ variant: "destructive", title: "Could not send rating", description: getApiErrorMessage(e) }) })}>Send rating</Button></div>
+                    <div className="mt-2 flex justify-end"><Button disabled={!stars} onClick={() => rate.mutate({ id: r.id, rating: stars, comment: comment || undefined })}>Send rating</Button></div>
                 </PortalCard>
             )}
             {r.rating?.submitted && <p className="mt-4 text-center text-xs text-muted-foreground">You rated this {r.rating.rating}/5. Thank you!</p>}

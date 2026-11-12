@@ -10,8 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ErrorState, ListSkeleton } from "@/components/ui/states";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { PortalMembershipStatusOptions, PortalMembershipStatusTone } from "@/config/constants/dropdowns/portal/portal.options";
@@ -63,10 +61,8 @@ function ProfileTab() {
     const submit = () => {
         const changes = Object.fromEntries(COMPANY_FIELDS.filter((f) => (values[f.key] ?? "") !== ((c.company[f.key] as string | null) ?? "")).map((f) => [f.key, values[f.key] || null]));
         if (!Object.keys(changes).length) return setEditing(false);
-        change.mutate({ changes }, {
-            onSuccess: (r) => { toast({ title: r.status === "AUTO_APPLIED" ? "Company details updated" : "Changes sent for review", description: r.status === "AUTO_APPLIED" ? undefined : "The team will confirm them shortly." }); setEditing(false); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }),
-        });
+        // The page shows the result: updated details, or the "waiting for … to confirm" banner when changes need review.
+        change.mutate({ changes }, { onSuccess: () => setEditing(false) });
     };
     return (
         <div className="space-y-4">
@@ -85,7 +81,7 @@ function ProfileTab() {
                     <div className="grid gap-3 sm:grid-cols-2">
                         {COMPANY_FIELDS.map((f) => <div key={f.key} className="space-y-1.5"><Label htmlFor={`cf-${f.key}`}>{f.label}</Label><Input id={`cf-${f.key}`} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} /></div>)}
                     </div>
-                    <DialogFooter><Button variant="ghost" onClick={() => setEditing(false)} disabled={change.isPending}>Cancel</Button><Button onClick={submit} loading={change.isPending}>Save</Button></DialogFooter>
+                    <DialogFooter><Button variant="ghost" onClick={() => setEditing(false)} disabled={change.isPending}>Cancel</Button><Button onClick={submit} loading={change.isPending}>{session.profile_changes_require_approval ? "Send for review" : "Save"}</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
@@ -103,7 +99,6 @@ function TeamTab() {
     if (team.isLoading) return <ListSkeleton />;
     if (team.error || !team.data) return <ErrorState error={team.error} onRetry={() => team.refetch()} />;
     const t = team.data;
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
     const list = emails.split(/[\s,;]+/).filter(Boolean);
     return (
         <div className="space-y-4">
@@ -116,11 +111,11 @@ function TeamTab() {
                             {m.status !== "ACTIVE" && <Badge variant={PortalMembershipStatusTone[m.status as keyof typeof PortalMembershipStatusTone] ?? "neutral"}>{getDropdownOptionLabel(PortalMembershipStatusOptions, m.status)}</Badge>}
                             {t.can_manage && !m.is_me ? (
                                 <>
-                                    <Select value={m.role?.id ?? ""} onValueChange={(v) => update.mutate({ id: m.id, role_id: v }, { onSuccess: () => toast({ title: "Role changed" }), onError: fail("Could not change role") })}>
+                                    <Select value={m.role?.id ?? ""} onValueChange={(v) => update.mutate({ id: m.id, role_id: v, role: t.roles.find((r) => r.id === v) })}>
                                         <SelectTrigger className="h-8 w-44" aria-label={`Role of ${m.user.email}`}><SelectValue placeholder="Role" /></SelectTrigger>
                                         <SelectContent>{t.roles.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
                                     </Select>
-                                    <Button size="sm" variant="ghost" onClick={() => update.mutate({ id: m.id, status: m.status === "ACTIVE" ? "DEACTIVATED" : "ACTIVE" }, { onSuccess: () => toast({ title: m.status === "ACTIVE" ? "Access removed" : "Access restored" }), onError: fail("Could not update access") })}>{m.status === "ACTIVE" ? "Remove access" : "Restore"}</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => update.mutate({ id: m.id, status: m.status === "ACTIVE" ? "DEACTIVATED" : "ACTIVE" })}>{m.status === "ACTIVE" ? "Remove access" : "Restore"}</Button>
                                 </>
                             ) : (
                                 <Badge variant="neutral">{m.role?.name ?? "—"}</Badge>
@@ -131,7 +126,7 @@ function TeamTab() {
             </PortalCard>
             {t.can_manage && t.invitations.length > 0 && (
                 <PortalCard title="Pending invitations">
-                    <ul className="divide-y divide-border-soft">{t.invitations.map((i) => <li key={i.id} className="flex items-center gap-2 py-2 text-[13px]"><span className="min-w-0 flex-1 truncate">{i.email}</span><span className="text-xs text-muted-foreground">{i.role?.name}</span><Button size="icon-sm" variant="ghost" aria-label={`Cancel invitation for ${i.email}`} onClick={() => cancel.mutate(i.id, { onSuccess: () => toast({ title: "Invitation cancelled" }), onError: fail("Could not cancel") })}><X /></Button></li>)}</ul>
+                    <ul className="divide-y divide-border-soft">{t.invitations.map((i) => <li key={i.id} className="flex items-center gap-2 py-2 text-[13px]"><span className="min-w-0 flex-1 truncate">{i.email}</span><span className="text-xs text-muted-foreground">{i.role?.name}</span><Button size="icon-sm" variant="ghost" aria-label={`Cancel invitation for ${i.email}`} onClick={() => cancel.mutate(i.id)}><X /></Button></li>)}</ul>
                 </PortalCard>
             )}
             <Dialog open={open} onOpenChange={(o) => !invite.isPending && setOpen(o)}>
@@ -141,7 +136,7 @@ function TeamTab() {
                     <Select value={roleId} onValueChange={setRoleId}><SelectTrigger aria-label="Role"><SelectValue placeholder="Default role" /></SelectTrigger><SelectContent>{t.roles.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent></Select>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setOpen(false)} disabled={invite.isPending}>Cancel</Button>
-                        <Button loading={invite.isPending} disabled={!list.length} onClick={() => invite.mutate({ emails: list, role_id: roleId || undefined }, { onSuccess: (r) => { const n = r.results.filter((x) => x.status === "invited").length; toast({ title: n ? `${n} invitation${n === 1 ? "" : "s"} sent` : "Everyone is already invited" }); setOpen(false); }, onError: fail("Could not invite") })}>Send invitations</Button>
+                        <Button loading={invite.isPending} disabled={!list.length} onClick={() => invite.mutate({ emails: list, role_id: roleId || undefined }, { onSuccess: () => setOpen(false) })}>Send invitations</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
