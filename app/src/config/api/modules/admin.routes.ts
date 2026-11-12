@@ -97,4 +97,10 @@ export const AdminApiRoutes = {
         detail: (id: string) => `/domains/${id}`,
         verify: (id: string) => `/domains/${id}/verify`,
     },
+    sso: {
+        list: "/sso-configurations",
+        detail: (id: string) => `/sso-configurations/${id}`,
+        mappings: (id: string) => `/sso-configurations/${id}/group-mappings`,
+        mapping: (id: string, mappingId: string) => `/sso-configurations/${id}/group-mappings/${mappingId}`,
+    },
 };

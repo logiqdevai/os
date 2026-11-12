@@ -26,6 +26,7 @@ const BrandingPage = lazy(() => import("./pages/branding"));
 const SessionsPage = lazy(() => import("./pages/sessions"));
 const SecurityPolicyPage = lazy(() => import("./pages/security"));
 const DomainsPage = lazy(() => import("./pages/domains"));
+const SsoPage = lazy(() => import("./pages/sso"));
 
 const gate = (anyOf: string[], element: ReactNode) => <RequirePermission anyOf={anyOf}>{element}</RequirePermission>;
 
@@ -59,6 +60,7 @@ export default function AdminRoutes() {
             <Route path="sessions" element={gate(["users.sessions.read"], <SessionsPage />)} />
             <Route path="security" element={gate(["organizations.security.manage"], <SecurityPolicyPage />)} />
             <Route path="domains" element={gate(["organizations.domains.manage"], <DomainsPage />)} />
+            <Route path="sso" element={gate(["organizations.sso.manage"], <SsoPage />)} />
             <Route path="*" element={gate(["users.members.read", "organizations.audit.read", "organizations.settings.manage"], <OverviewPage />)} />
         </Routes>
     );

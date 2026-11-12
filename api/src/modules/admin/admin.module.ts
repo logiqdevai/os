@@ -14,6 +14,7 @@ import { IntegrationsModule } from './integrations/integrations.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { SecurityPolicyModule } from './security/security-policy.module';
 import { DomainsModule } from './domains/domains.module';
+import { SsoModule } from './sso/sso.module';
 
 /**
  * Module 01 Administration (docs/features/01-users-organizations-permissions.md). Teams is registered on its own
@@ -36,6 +37,7 @@ import { DomainsModule } from './domains/domains.module';
         SessionsModule,
         SecurityPolicyModule,
         DomainsModule,
+        SsoModule,
     ],
 })
 export class AdminModule { }
