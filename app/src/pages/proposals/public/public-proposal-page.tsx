@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle2, Clock, FileX2, MailCheck, MessageSquare, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, Download, FileX2, MailCheck, MessageSquare, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,8 +20,9 @@ import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { cn } from "@/lib/utils";
 import { BillingFrequencyFormOptions, ProposalPaymentTriggerFormOptions } from "@/config/constants/dropdowns/proposals/proposal-content.options";
 import {
-    useCommentPublicProposal, useDecidePublicProposal, usePublicProposal, useQuotePublicSelection, useSendPublicCode, useVerifyPublicCode,
+    useCommentPublicProposal, useDecidePublicProposal, useDownloadPublicProposalPdf, usePublicProposal, useQuotePublicSelection, useSendPublicCode, useVerifyPublicCode,
 } from "@/features/proposals/hooks/use-proposals";
+import { useEngagementBeacon } from "@/features/proposals/hooks/use-engagement-beacon";
 import { publicDecisionSchema, type PublicDecisionFormValues } from "@/features/proposals/validation-schemas/proposals.schema";
 import type { ProposalCustomerDecision, PublicProposal, PublicTotals } from "@/features/proposals/interfaces/proposals.interfaces";
 
@@ -125,6 +126,8 @@ function ProposalBody({ token, access, data }: { token: string; access: string |
     const c = data.proposal.currency;
     const active = data.state === "ACTIVE";
     const quote = useQuotePublicSelection();
+    const pdf = useDownloadPublicProposalPdf();
+    useEngagementBeacon(token, access, v.sections.map((s) => s.id), data.state !== "CANCELLED");
     const initialSelected = data.decision?.selected_optional_item_ids ?? v.line_items.filter((l) => l.is_optional && l.selected_by_customer).map((l) => l.id);
     const [selected, setSelected] = useState<string[]>(initialSelected);
     const [totals, setTotals] = useState<PublicTotals>(v.totals);
@@ -155,7 +158,7 @@ function ProposalBody({ token, access, data }: { token: string; access: string |
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
                 <div className="min-w-0 space-y-6">
                     {v.sections.map((s) => (
-                        <section key={s.id} className="rounded-lg border border-border bg-card p-4 md:p-5">
+                        <section key={s.id} id={`section-${s.id}`} className="rounded-lg border border-border bg-card p-4 md:p-5">
                             <h2 className="mb-2 text-base font-medium">{s.title}</h2>
                             {s.body?.trim() ? <div className={markdownClass} dangerouslySetInnerHTML={{ __html: renderMarkdown(s.body) }} /> : null}
                         </section>
@@ -215,6 +218,14 @@ function ProposalBody({ token, access, data }: { token: string; access: string |
                         {totals.recurring_monthly > 0 && <Row label="Recurring" value={`${formatMoney(totals.recurring_monthly, c)} / month`} />}
                         {totals.optional_total > 0 && <Row label="Optional, not selected" value={formatMoney(totals.optional_total, c)} />}
                     </div>
+                    <Button
+                        variant="outline"
+                        className="w-full"
+                        loading={pdf.isPending}
+                        onClick={() => pdf.mutate({ token, access }, { onError: (e) => toast({ variant: "destructive", title: "Could not download the PDF", description: getApiErrorMessage(e) }) })}
+                    >
+                        <Download /> Download PDF
+                    </Button>
                     {active && <DecisionCard token={token} access={access} data={data} selected={selected} />}
                 </aside>
             </div>

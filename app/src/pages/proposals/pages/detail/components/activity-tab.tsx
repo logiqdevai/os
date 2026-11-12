@@ -10,6 +10,10 @@ import { useProposalActivity } from "@/features/proposals/hooks/use-proposals";
 const meta = (m: Record<string, unknown> | null) => {
     if (!m) return null;
     const parts: string[] = [];
+    if (m.reminder === true) parts.push(`expiry reminder (${String(m.days_before_expiry ?? "")} days left)`);
+    if (typeof m.time_on_page_seconds === "number" && m.time_on_page_seconds > 0) parts.push(`${Math.max(1, Math.round(m.time_on_page_seconds / 60))} min on page`);
+    if (m.sections && typeof m.sections === "object") parts.push(`${Object.keys(m.sections).length} sections read`);
+    if (m.format === "pdf") parts.push("PDF");
     if (typeof m.signer_name === "string") parts.push(m.signer_name);
     if (typeof m.author_name === "string") parts.push(m.author_name);
     if (Array.isArray(m.recipients) && m.recipients.length) parts.push(m.recipients.join(", "));
