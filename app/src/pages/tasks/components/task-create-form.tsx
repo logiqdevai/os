@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
 import { useSessionData } from "@/features/session/hooks/use-session";
 import { useCreateTask, useTaskLabels, useWorkflows } from "@/features/tasks/hooks/use-tasks";
 import { taskFormSchema, type TaskFormValues } from "@/features/tasks/validation-schemas/tasks.schema";
@@ -89,7 +88,6 @@ export function TaskCreateForm({ defaults, onCreated, onCancel, allowCreateMore,
             },
             {
                 onSuccess: (task) => {
-                    toast({ title: `${task.identifier} created`, description: task.title });
                     if (createMore) form.reset({ ...v, title: "", description: "" });
                     else onCreated?.(task);
                 },

@@ -154,7 +154,8 @@ function BulkBar({ ids, onDone }: { ids: string[]; onDone: () => void }) {
     const run = (body: { patch?: Record<string, unknown>; action?: string }) =>
         bulk.mutate({ task_ids: ids, ...body }, {
             onSuccess: (r) => {
-                toast({ title: `${r.updated} tasks updated`, description: r.failed.length ? `${r.failed.length} could not be changed (permission or workflow).` : undefined });
+                // Only partial failures are worth a toast; the list itself shows the successful changes.
+                if (r.failed.length) toast({ variant: "destructive", title: `${r.failed.length} of ${r.failed.length + r.updated} tasks could not be changed`, description: "Permission or workflow rules refused them." });
                 setArchiving(false);
                 onDone();
             },

@@ -15,7 +15,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
 import {
     useAddAttachment,
     useAddChecklistItem,
@@ -44,7 +43,8 @@ import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatDateTime, formatRelative, personName } from "@/lib/format";
 import { useSessionData } from "@/features/session/hooks/use-session";
 import { cn } from "@/lib/utils";
-import { Markdown } from "@/components/ui/markdown";
+import { InlineText } from "@/components/ui/inline-edit";
+import { MarkdownField } from "@/components/ui/markdown-field";
 import { AssigneePicker, LabelsPicker, PriorityPicker, ProjectPicker, StatusPicker } from "./task-pickers";
 import { LabelChip, StatusIcon } from "./task-badges";
 
@@ -82,11 +82,10 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
     const watch = useSetWatching();
     const labels = useTaskLabels();
     const cycles = useCycles({ team_id: t.team_id ?? undefined, status: "PLANNED,ACTIVE", limit: 20 });
-    const [title, setTitle] = useState<string | null>(null);
-    const [desc, setDesc] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
 
-    const patch = (dto: UpdateTaskDto) => update.mutate({ id: t.id, ...dto });
+    // Optimistic: the panel, lists and boards change at once; `optimistic` carries display objects for id fields.
+    const patch = (dto: UpdateTaskDto, optimistic?: Record<string, unknown>) => update.mutate({ id: t.id, ...dto, optimistic });
     const today = new Date().toISOString().slice(0, 10);
     const overdue = t.due_date && t.due_date.slice(0, 10) < today && t.status?.category !== "DONE" && t.status?.category !== "CANCELLED";
 
@@ -100,35 +99,13 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
                         {t.archived_at && <Badge variant="warning">Archived</Badge>}
                         {t.blocked && <Badge variant="danger">Blocked</Badge>}
                     </div>
-                    {title !== null ? (
-                        <Input
-                            autoFocus
-                            value={title}
-                            aria-label="Title"
-                            className="h-auto border-0 bg-transparent px-0 py-0 text-xl font-medium shadow-none focus-visible:ring-0"
-                            onChange={(e) => setTitle(e.target.value)}
-                            onBlur={() => { if (title.trim() && title.trim() !== t.title) patch({ title: title.trim() }); setTitle(null); }}
-                            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") setTitle(null); }}
-                        />
-                    ) : (
-                        <h1 className={cn("text-xl font-medium text-foreground", canEdit && "cursor-text rounded hover:bg-accent/50")} onClick={() => canEdit && setTitle(t.title)}>{t.title}</h1>
-                    )}
+                    <h1 className="text-xl font-medium text-foreground">
+                        <InlineText value={t.title} aria-label="Title" disabled={!canEdit} onSave={(next) => patch({ title: next })} />
+                    </h1>
                 </div>
 
                 <section aria-label="Description">
-                    {desc !== null ? (
-                        <div className="space-y-2">
-                            <Textarea autoFocus rows={8} value={desc} onChange={(e) => setDesc(e.target.value)} aria-label="Description" />
-                            <div className="flex justify-end gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => setDesc(null)}>Cancel</Button>
-                                <Button size="sm" loading={update.isPending} onClick={() => patch({ description: desc })}>Save</Button>
-                            </div>
-                        </div>
-                    ) : t.description ? (
-                        <div className={cn("rounded-md text-[13px] leading-relaxed text-body", canEdit && "cursor-text hover:bg-accent/40")} onClick={(e) => canEdit && !(e.target as HTMLElement).closest("a") && setDesc(t.description ?? "")}><Markdown source={t.description} /></div>
-                    ) : canEdit ? (
-                        <button className="text-[13px] text-muted-foreground hover:text-foreground" onClick={() => setDesc("")}>Add a description…</button>
-                    ) : null}
+                    <MarkdownField value={t.description} canEdit={canEdit} onSave={(next) => update.mutateAsync({ id: t.id, description: next })} />
                 </section>
 
                 <SubtasksSection task={t} canEdit={canEdit} />
@@ -142,7 +119,7 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
             <aside className={cn("space-y-4", !compact && "lg:sticky lg:top-4 lg:self-start")}>
                 <div className="space-y-3 rounded-lg border border-border bg-card p-4">
                     <Prop label="Status">
-                        <StatusPicker statuses={t.workflow_statuses} value={t.status_id} onChange={(v) => v && patch({ status_id: v })} disabled={!canEdit} />
+                        <StatusPicker statuses={t.workflow_statuses} value={t.status_id} onChange={(v) => v && patch({ status_id: v }, { status: t.workflow_statuses.find((x) => x.id === v) })} disabled={!canEdit} />
                     </Prop>
                     <Prop label="Priority"><PriorityPicker value={t.priority} onChange={(priority) => patch({ priority })} disabled={!canEdit} /></Prop>
                     <Prop label="Assignee">
@@ -158,7 +135,7 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
                     <Prop label="Labels">
                         <LabelsPicker
                             value={t.labels.map((l) => l.id)}
-                            onChange={(ids) => patch({ label_ids: ids })}
+                            onChange={(ids) => patch({ label_ids: ids }, { labels: (labels.data ?? []).filter((l) => ids.includes(l.id)) })}
                             disabled={!canEdit}
                             trigger={
                                 <button type="button" className="flex min-h-8 w-full flex-wrap items-center gap-1 rounded-md px-1 text-left hover:bg-accent/50 disabled:hover:bg-transparent" disabled={!canEdit}>
@@ -223,7 +200,7 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="More actions"><MoreHorizontal /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onSelect={() => { void navigator.clipboard?.writeText(`${window.location.origin}/tasks/${t.identifier}`); toast({ title: "Link copied" }); }}><Link2 /> Copy link</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => { void navigator.clipboard?.writeText(`${window.location.origin}/tasks/${t.identifier}`); }}><Link2 /> Copy link</DropdownMenuItem>
                                 {p.can("tasks.tasks.archive") && !t.archived_at && <DropdownMenuItem onSelect={() => archive.mutate(t.id)}><Archive /> Archive</DropdownMenuItem>}
                                 {p.can("tasks.tasks.delete") && (
                                     <>

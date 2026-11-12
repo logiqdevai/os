@@ -1,7 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import * as service from "../services/tasks.services";
+import { useEntityRemove, useEntityUpdate } from "@/lib/query/optimistic";
 import type { BoardData } from "../interfaces/tasks.interfaces";
 
 export const TASKS_KEY = ["tasks"] as const;
@@ -29,22 +28,27 @@ export const useCycle = (id: string | undefined) => useQuery({ queryKey: [...TAS
 export const useReleases = (params: Params) => useQuery({ queryKey: [...TASKS_KEY, "releases", params], queryFn: () => service.getReleases(params), placeholderData: keepPreviousData });
 export const useRelease = (id: string | undefined) => useQuery({ queryKey: [...TASKS_KEY, "release", id], queryFn: () => service.getRelease(id as string), enabled: !!id });
 
-/** Mutation that refreshes tasks (and project rollups) and toasts the outcome. `success: null` = silent success. */
-function useTaskMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, success: string | null, failure: string) {
+/**
+ * Task mutation: refreshes tasks (and project rollups) when it settles. No success toast (the UI shows the result);
+ * a failure is toasted once by the global MutationCache with `failure` as the title.
+ * `_success` is kept in the signature only so call sites read naturally; it is never shown.
+ */
+function useTaskMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, _success: string | null, failure: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: fn,
-        onSuccess: () => {
+        meta: { errorTitle: failure },
+        onSettled: () => {
             qc.invalidateQueries({ queryKey: TASKS_KEY });
             qc.invalidateQueries({ queryKey: ["projects"] });
-            if (success) toast({ title: success });
         },
-        onError: (e) => toast({ variant: "destructive", title: failure, description: getApiErrorMessage(e) }),
     });
 }
 
 export const useCreateTask = () => useTaskMutation(service.createTask, null, "Could not create task");
-export const useUpdateTask = () => useTaskMutation(service.updateTask, null, "Could not update task");
+/** Optimistic: every cached list, board and detail shows the change at once; `optimistic` carries display objects (status, assignee…). */
+export const useUpdateTask = () =>
+    useEntityUpdate({ root: TASKS_KEY, mutationFn: service.updateTask, alsoInvalidate: [["projects"]], meta: { errorTitle: "Could not update task" } });
 type MoveVars = Parameters<typeof service.moveTask>[0];
 
 /** Place the task in its new status and position on every cached board, so a drop shows at once. */
@@ -75,9 +79,9 @@ export const useMoveTask = () => {
             qc.setQueriesData<BoardData>({ queryKey: boardKey }, (d) => moveOnBoard(d, v));
             return { previous };
         },
-        onError: (e, _v, context) => {
+        meta: { errorTitle: "Could not move task" },
+        onError: (_e, _v, context) => {
             for (const [key, data] of context?.previous ?? []) qc.setQueryData(key, data);
-            toast({ variant: "destructive", title: "Could not move task", description: getApiErrorMessage(e) });
         },
         onSettled: () => {
             qc.invalidateQueries({ queryKey: TASKS_KEY });
@@ -85,8 +89,8 @@ export const useMoveTask = () => {
         },
     });
 };
-export const useDeleteTask = () => useTaskMutation(service.deleteTask, "Task deleted", "Could not delete task");
-export const useArchiveTask = () => useTaskMutation(service.archiveTask, "Task archived", "Could not archive task");
+export const useDeleteTask = () => useEntityRemove({ root: TASKS_KEY, mutationFn: service.deleteTask, alsoInvalidate: [["projects"]], meta: { errorTitle: "Could not delete task" } });
+export const useArchiveTask = () => useEntityRemove({ root: TASKS_KEY, mutationFn: service.archiveTask, alsoInvalidate: [["projects"]], meta: { errorTitle: "Could not archive task" } });
 export const useBulkTasks = () => useTaskMutation(service.bulkTasks, null, "Bulk update failed");
 export const useCreateComment = () => useTaskMutation(service.createComment, null, "Could not post comment");
 export const useDeleteComment = () => useTaskMutation(service.deleteComment, "Comment deleted", "Could not delete comment");
