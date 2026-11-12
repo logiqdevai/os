@@ -62,7 +62,6 @@ export default function WorkflowDetailPage() {
     if (rule.isPending) return <PageSkeleton />;
     if (rule.error) return <Page><ErrorState error={rule.error} onRetry={() => rule.refetch()} /></Page>;
     const r = rule.data;
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
     const actionName = (key: string) => actions.data?.find((a) => a.key === key)?.name ?? key;
     const steps = (r.actions ?? []) as RuleStep[];
     const conditions = flatten(r.conditions);
@@ -77,7 +76,7 @@ export default function WorkflowDetailPage() {
             a.click();
             URL.revokeObjectURL(a.href);
         } catch (e) {
-            fail("Could not export")(e);
+            toast({ variant: "destructive", title: "Could not export", description: getApiErrorMessage(e) });
         }
     };
 
@@ -109,8 +108,8 @@ export default function WorkflowDetailPage() {
                             <label className="flex items-center gap-2 rounded-md border border-border px-2.5 py-1.5 text-[13px]">
                                 <Switch
                                     checked={r.enabled}
-                                    disabled={!p.can("automation.rules.enable") || setEnabled.isPending}
-                                    onCheckedChange={(enabled) => setEnabled.mutate({ id: r.id, enabled }, { onSuccess: () => toast({ title: enabled ? "Workflow enabled" : "Workflow disabled" }), onError: fail("Could not change the workflow") })}
+                                    disabled={!p.can("automation.rules.enable")}
+                                    onCheckedChange={(enabled) => setEnabled.mutate({ id: r.id, enabled })}
                                     aria-label="Enabled"
                                 />
                                 {r.enabled ? "On" : "Off"}
@@ -127,8 +126,8 @@ export default function WorkflowDetailPage() {
                                 {p.can("automation.rules.run") && r.status === "PUBLISHED" && <DropdownMenuItem onSelect={() => setConfirm("run")}><Play /> Run now</DropdownMenuItem>}
                                 {p.can("automation.rules.update") && r.draft_definition && <DropdownMenuItem onSelect={() => setConfirm("discard")}><Undo2 /> Discard unpublished changes</DropdownMenuItem>}
                                 <DropdownMenuItem onSelect={doExport}><Download /> Export JSON</DropdownMenuItem>
-                                {p.can("automation.rules.create") && <DropdownMenuItem onSelect={() => duplicate.mutate(r.id, { onSuccess: (c) => { toast({ title: "Duplicated as a draft" }); navigate(`/automation/workflows/${c.id}`); }, onError: fail("Could not duplicate") })}><Copy /> Duplicate</DropdownMenuItem>}
-                                {r.status === "ARCHIVED" && p.can("automation.rules.update") && <DropdownMenuItem onSelect={() => restore.mutate(r.id, { onSuccess: () => toast({ title: "Workflow restored (disabled)" }), onError: fail("Could not restore") })}><ArchiveRestore /> Restore</DropdownMenuItem>}
+                                {p.can("automation.rules.create") && <DropdownMenuItem onSelect={() => duplicate.mutate(r.id, { onSuccess: (c) => navigate(`/automation/workflows/${c.id}`) })}><Copy /> Duplicate</DropdownMenuItem>}
+                                {r.status === "ARCHIVED" && p.can("automation.rules.update") && <DropdownMenuItem onSelect={() => restore.mutate(r.id)}><ArchiveRestore /> Restore</DropdownMenuItem>}
                                 {p.can("automation.rules.delete") && (
                                     <>
                                         <DropdownMenuSeparator />
@@ -271,7 +270,7 @@ export default function WorkflowDetailPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setPublishOpen(false)} disabled={publish.isPending}>Cancel</Button>
-                        <Button loading={publish.isPending} onClick={() => publish.mutate({ id: r.id, change_summary: summary || undefined }, { onSuccess: () => { toast({ title: "Published", description: r.enabled ? undefined : "Enable the workflow to start running it." }); setPublishOpen(false); }, onError: fail("Could not publish") })}>
+                        <Button loading={publish.isPending} onClick={() => publish.mutate({ id: r.id, change_summary: summary || undefined }, { onSuccess: () => setPublishOpen(false) })}>
                             Publish
                         </Button>
                     </DialogFooter>
@@ -283,7 +282,7 @@ export default function WorkflowDetailPage() {
                 onOpenChange={setTestOpen}
                 canTest={p.can("automation.rules.update")}
                 pending={test.isPending}
-                onRun={(mode, payload) => test.mutate({ id: r.id, mode, payload }, { onSuccess: (x) => { setTestOpen(false); toast({ title: mode === "DRY_RUN" ? "Dry run started" : "Test run started" }); if (x) navigate(`/automation/runs/${x.id}`); }, onError: fail("Could not start the test") })}
+                onRun={(mode, payload) => test.mutate({ id: r.id, mode, payload }, { onSuccess: (x) => { setTestOpen(false); if (x) navigate(`/automation/runs/${x.id}`); } })}
             />
 
             <ConfirmationDialog
@@ -297,14 +296,15 @@ export default function WorkflowDetailPage() {
                 }
                 confirmText={confirm === "delete" ? "Delete" : confirm === "archive" ? "Archive" : confirm === "discard" ? "Discard" : confirm === "run" ? "Run now" : "Restore"}
                 variant={confirm === "delete" || confirm === "archive" || confirm === "discard" ? "destructive" : "default"}
-                isLoading={remove.isPending || archive.isPending || discard.isPending || run.isPending || restoreVersion.isPending}
+                isLoading={discard.isPending || run.isPending || restoreVersion.isPending}
                 onConfirm={() => {
-                    const done = (title: string) => () => { toast({ title }); setConfirm(null); };
-                    if (confirm === "delete") remove.mutate(r.id, { onSuccess: () => { toast({ title: "Workflow deleted" }); navigate("/automation/workflows"); }, onError: fail("Could not delete") });
-                    else if (confirm === "archive") archive.mutate(r.id, { onSuccess: done("Workflow archived"), onError: fail("Could not archive") });
-                    else if (confirm === "discard") discard.mutate(r.id, { onSuccess: done("Draft discarded"), onError: fail("Could not discard") });
-                    else if (confirm === "run") run.mutate({ id: r.id }, { onSuccess: (x) => { setConfirm(null); navigate(`/automation/runs/${x.id}`); }, onError: fail("Could not run") });
-                    else if (confirm && typeof confirm === "object") restoreVersion.mutate({ id: r.id, version: confirm.version }, { onSuccess: done("Version restored"), onError: fail("Could not restore") });
+                    const done = { onSuccess: () => setConfirm(null) };
+                    // Delete and archive are optimistic (the workflow leaves the lists at once); the others wait for the API.
+                    if (confirm === "delete") { remove.mutate(r.id); navigate("/automation/workflows"); }
+                    else if (confirm === "archive") { archive.mutate(r.id); setConfirm(null); }
+                    else if (confirm === "discard") discard.mutate(r.id, done);
+                    else if (confirm === "run") run.mutate({ id: r.id }, { onSuccess: (x) => { setConfirm(null); navigate(`/automation/runs/${x.id}`); } });
+                    else if (confirm && typeof confirm === "object") restoreVersion.mutate({ id: r.id, version: confirm.version }, done);
                 }}
             />
         </Page>

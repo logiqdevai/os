@@ -8,7 +8,6 @@ import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDateTime, personName } from "@/lib/format";
 import type { ScheduledJob } from "@/features/automation/interfaces/automation.interfaces";
 import { cn } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
 import { useMembers } from "@/features/admin/members/hooks/use-members";
 import {
     DeliveryStatusOptions, JobRunStatusOptions, JobStatusOptions, OutboundWebhookStatusOptions, RuleStatusFormOptions, RunModeFormOptions, RunStatusFormOptions,
@@ -37,9 +36,21 @@ export function StatusBadge({ status, className }: { status: string | null | und
     );
 }
 
+/** Copy to the clipboard; `copied` is true for 1.5 s so the button itself shows the result (no toast). */
+function useCopy() {
+    const [copied, setCopied] = useState(false);
+    const copy = (text: string) =>
+        void navigator.clipboard.writeText(text).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        });
+    return { copied, copy };
+}
+
 /** Read-only JSON block (payloads, step inputs/outputs). Long payloads scroll inside the block, never the page. */
 export function JsonBlock({ value, className, maxHeight = "max-h-80" }: { value: unknown; className?: string; maxHeight?: string }) {
     const text = useMemo(() => (value === undefined ? "" : JSON.stringify(value, null, 2)), [value]);
+    const { copied, copy } = useCopy();
     if (value === undefined || value === null) return <p className="text-xs text-muted-foreground">Empty</p>;
     return (
         <div className={cn("relative", className)}>
@@ -49,10 +60,10 @@ export function JsonBlock({ value, className, maxHeight = "max-h-80" }: { value:
                 variant="ghost"
                 size="icon-sm"
                 className="absolute right-1.5 top-1.5"
-                aria-label="Copy JSON"
-                onClick={() => navigator.clipboard.writeText(text).then(() => toast({ title: "Copied" }))}
+                aria-label={copied ? "Copied" : "Copy JSON"}
+                onClick={() => copy(text)}
             >
-                <Copy />
+                {copied ? <Check className="text-success" /> : <Copy />}
             </Button>
         </div>
     );
@@ -67,12 +78,13 @@ export const formatDuration = (ms: number | null | undefined) => {
 
 /** Secret shown once (webhook secrets): copy + warning. */
 export function SecretReveal({ secret }: { secret: string }) {
+    const { copied, copy } = useCopy();
     return (
         <div className="space-y-2">
             <div className="flex items-center gap-2 rounded-md border border-warning/40 bg-warning-soft p-2">
                 <code className="min-w-0 flex-1 break-all font-mono text-xs text-foreground">{secret}</code>
-                <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(secret).then(() => toast({ title: "Secret copied" }))}>
-                    <Copy /> Copy
+                <Button size="sm" variant="outline" onClick={() => copy(secret)}>
+                    {copied ? <><Check /> Copied</> : <><Copy /> Copy</>}
                 </Button>
             </div>
             <p className="text-xs text-muted-foreground">Store it now: it is shown only once. Rotate it if it leaks.</p>

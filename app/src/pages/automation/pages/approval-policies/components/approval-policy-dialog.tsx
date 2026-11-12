@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { useCreateApprovalPolicy, useScopeOptions, useUpdateApprovalPolicy } from "@/features/automation/hooks/use-automation";
 import type { ApprovalPolicy } from "@/features/automation/interfaces/automation.interfaces";
 import { approvalPolicySchema, type ApprovalPolicyFormValues } from "@/features/automation/validation-schemas/approval-policy.schema";
@@ -25,13 +25,15 @@ const empty: ApprovalPolicyFormValues = {
     expires_after_hours: "48", escalate_after_hours: "", escalate_to_membership_id: null, delegate_when_out_of_office: true,
 };
 
-/** Create / edit an approval policy. @perm automation.approval_policies.manage @api POST|PATCH /automation/approval-policies */
+/**
+ * Create (explicit "Create policy") / edit (autosaves valid changes; <SaveStatus /> + "Done") an approval policy.
+ * @perm automation.approval_policies.manage @api POST|PATCH /automation/approval-policies */
 export function ApprovalPolicyDialog({ open, onOpenChange, policy }: Props) {
     const create = useCreateApprovalPolicy();
     const update = useUpdateApprovalPolicy();
     const options = useScopeOptions("", open);
     const form = useForm<ApprovalPolicyFormValues>({ resolver: zodResolver(approvalPolicySchema), defaultValues: empty });
-    const pending = create.isPending || update.isPending;
+    const pending = create.isPending;
 
     useEffect(() => {
         if (!open) return;
@@ -49,27 +51,25 @@ export function ApprovalPolicyDialog({ open, onOpenChange, policy }: Props) {
         } : empty);
     }, [open, policy, form]);
 
+    const toDto = (v: ApprovalPolicyFormValues) => ({
+        ...v,
+        description: v.description || null,
+        expires_after_hours: v.expires_after_hours ? Number(v.expires_after_hours) : null,
+        escalate_after_hours: v.escalate_after_hours ? Number(v.escalate_after_hours) : null,
+        escalate_to_membership_id: v.escalate_after_hours ? v.escalate_to_membership_id : null,
+    });
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: (policy as ApprovalPolicy).id, ...toDto(v) }), { enabled: !!policy });
+    const close = () => { if (policy) autosave.flush(); onOpenChange(false); };
     const submit = form.handleSubmit((v) => {
-        const dto = {
-            ...v,
-            description: v.description || null,
-            expires_after_hours: v.expires_after_hours ? Number(v.expires_after_hours) : null,
-            escalate_after_hours: v.escalate_after_hours ? Number(v.escalate_after_hours) : null,
-            escalate_to_membership_id: v.escalate_after_hours ? v.escalate_to_membership_id : null,
-        };
-        const cb = {
-            onSuccess: () => { toast({ title: policy ? "Policy updated" : "Policy created" }); onOpenChange(false); },
-            onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save the policy", description: getApiErrorMessage(e) }),
-        };
-        if (policy) update.mutate({ id: policy.id, ...dto }, cb);
-        else create.mutate(dto, cb);
+        if (policy) return close();
+        create.mutate(toDto(v), { onSuccess: () => onOpenChange(false) });
     });
 
     const teams = (options.data?.teams ?? []).map((t) => ({ id: t.id, name: t.name }));
     const roles = (options.data?.roles ?? []).map((r) => ({ id: r.id, name: r.name, hint: r.is_template ? "template" : undefined }));
 
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : !pending && close())}>
             <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
@@ -120,9 +120,18 @@ export function ApprovalPolicyDialog({ open, onOpenChange, policy }: Props) {
                                 <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} aria-label="Workflow owner may approve" /></FormControl>
                             </FormItem>
                         )} />
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{policy ? "Save" : "Create policy"}</Button>
+                        <DialogFooter className="sm:items-center">
+                            {policy ? (
+                                <>
+                                    <SaveStatus state={autosave} className="mr-auto" />
+                                    <Button type="button" variant="outline" onClick={close}>Done</Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                                    <Button type="submit" loading={pending}>Create policy</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>

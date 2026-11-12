@@ -11,8 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatRelative, personName } from "@/lib/format";
 import { ApprovalDecisionFilterOptions } from "@/config/constants/dropdowns/automation/automation.options";
 import { useApprovals, useDecideApproval } from "@/features/automation/hooks/use-automation";
@@ -102,7 +100,7 @@ export default function ApprovalsPage() {
                 onPageChange={setPage}
                 empty={{ icon: CheckCheck, title: "Nothing waiting for you", description: "Approval requests from workflows show up here." }}
             />
-            <Dialog open={!!deciding} onOpenChange={(o) => !decide.isPending && !o && setDeciding(null)}>
+            <Dialog open={!!deciding} onOpenChange={(o) => !o && setDeciding(null)}>
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>{deciding?.decision === "APPROVED" ? "Approve" : "Reject"} — {deciding?.row.run.rule.name}</DialogTitle>
@@ -114,14 +112,14 @@ export default function ApprovalsPage() {
                         <Textarea id="approval-comment" rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setDeciding(null)} disabled={decide.isPending}>Cancel</Button>
+                        <Button variant="ghost" onClick={() => setDeciding(null)}>Cancel</Button>
                         <Button
                             variant={deciding?.decision === "REJECTED" ? "destructive" : "default"}
-                            loading={decide.isPending}
-                            onClick={() => deciding && decide.mutate({ id: deciding.row.id, decision: deciding.decision, comment: comment || undefined }, {
-                                onSuccess: () => { toast({ title: deciding.decision === "APPROVED" ? "Approved" : "Rejected" }); setDeciding(null); },
-                                onError: (e) => toast({ variant: "destructive", title: "Could not decide", description: getApiErrorMessage(e) }),
-                            })}
+                            onClick={() => {
+                                // Optimistic: the row shows the decision at once (rolled back with an error toast if refused).
+                                if (deciding) decide.mutate({ id: deciding.row.id, decision: deciding.decision, comment: comment || undefined });
+                                setDeciding(null);
+                            }}
                         >
                             {deciding?.decision === "APPROVED" ? "Approve" : "Reject"}
                         </Button>

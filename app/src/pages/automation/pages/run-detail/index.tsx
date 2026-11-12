@@ -10,8 +10,6 @@ import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermissions } from "@/hooks/use-permission";
 import { useSessionData } from "@/features/session/hooks/use-session";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { ConditionOperatorOptions, RunModeFormOptions } from "@/config/constants/dropdowns/automation/automation.options";
@@ -135,7 +133,8 @@ export default function RunDetailPage() {
                 variant={confirm === "cancel" ? "destructive" : "default"}
                 isLoading={retry.isPending || cancel.isPending}
                 onConfirm={() => {
-                    const opts = { onSuccess: () => { toast({ title: confirm === "retry" ? "Retry started" : "Run cancelled" }); setConfirm(null); }, onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not update the run", description: getApiErrorMessage(e) }) };
+                    // Outward actions: the dialog waits for the API, then the run (polled) shows the new state.
+                    const opts = { onSuccess: () => setConfirm(null) };
                     if (confirm === "retry") retry.mutate(r.id, opts);
                     else cancel.mutate(r.id, opts);
                 }}
@@ -201,8 +200,7 @@ function ApprovalBox({ approval }: { approval: NonNullable<RunStep["approval"]> 
                                 key={d}
                                 size="sm"
                                 variant={d === "APPROVED" ? "default" : "outline"}
-                                loading={decide.isPending}
-                                onClick={() => decide.mutate({ id: approval.id, decision: d, comment: comment || undefined }, { onSuccess: () => toast({ title: d === "APPROVED" ? "Approved" : "Rejected" }), onError: (e) => toast({ variant: "destructive", title: "Could not decide", description: getApiErrorMessage(e) }) })}
+                                onClick={() => decide.mutate({ id: approval.id, decision: d, comment: comment || undefined })}
                             >
                                 {d === "APPROVED" ? "Approve" : "Reject"}
                             </Button>

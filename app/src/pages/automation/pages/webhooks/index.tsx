@@ -22,7 +22,8 @@ import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { environments } from "@/config/environments";
@@ -75,7 +76,6 @@ export default function WebhooksPage() {
 }
 
 type SecretSetter = (s: { title: string; secret: string; extra?: string }) => void;
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 function OutboundTab({ onSecret }: { onSecret: SecretSetter }) {
     const { params, setPage, search, setSearch } = useListParams();
@@ -86,15 +86,20 @@ function OutboundTab({ onSecret }: { onSecret: SecretSetter }) {
     const [editing, setEditing] = useState<OutboundWebhook | null>(null);
     const [formOpen, setFormOpen] = useState(false);
     const [deleting, setDeleting] = useState<OutboundWebhook | null>(null);
+    /** Result of the last "Send test" per endpoint, shown in its status cell (no success toast). */
+    const [tested, setTested] = useState<Record<string, { ok: boolean; code: number | null | undefined }>>({});
 
+    // Pause / resume are optimistic; rotate-secret opens the secret dialog; a test shows its result in the row.
     const run = (h: OutboundWebhook, a: "pause" | "resume" | "rotate-secret" | "test") =>
         action.mutate({ id: h.id, action: a }, {
             onSuccess: (res) => {
                 if (a === "rotate-secret" && res.secret) onSecret({ title: `New secret for ${h.name}`, secret: res.secret, extra: "The previous secret keeps working for 24 hours." });
-                else if (a === "test") toast({ title: res.status === "SUCCEEDED" ? `Test delivered (${res.response_status_code})` : "Test delivery failed", description: res.error_message ?? undefined, variant: res.status === "SUCCEEDED" ? "default" : "destructive" });
-                else toast({ title: a === "pause" ? "Endpoint paused" : "Endpoint resumed" });
+                else if (a === "test") {
+                    setTested((t) => ({ ...t, [h.id]: { ok: res.status === "SUCCEEDED", code: res.response_status_code } }));
+                    // The request worked but the receiver refused: an error worth interrupting for.
+                    if (res.status !== "SUCCEEDED") toast({ variant: "destructive", title: "Test delivery failed", description: res.error_message ?? undefined });
+                }
             },
-            onError: fail("Could not update the endpoint"),
         });
 
     const columns: DataTableColumn<OutboundWebhook>[] = [
@@ -109,7 +114,7 @@ function OutboundTab({ onSecret }: { onSecret: SecretSetter }) {
             ),
         },
         { key: "events", header: "Events", cell: (h) => <span className="line-clamp-1 font-mono text-xs">{h.subscribed_events.join(", ") || "—"}</span>, hideBelow: "lg" },
-        { key: "status", header: "Status", cell: (h) => <div className="space-y-0.5"><StatusBadge status={h.status} />{h.consecutive_failures > 0 && <div className="text-xs text-danger">{h.consecutive_failures} failures in a row</div>}</div> },
+        { key: "status", header: "Status", cell: (h) => <div className="space-y-0.5"><StatusBadge status={h.status} />{h.consecutive_failures > 0 && <div className="text-xs text-danger">{h.consecutive_failures} failures in a row</div>}{action.isPending && action.variables?.id === h.id && action.variables.action === "test" ? <div className="text-xs text-muted-foreground">Sending test…</div> : tested[h.id] && <div className={tested[h.id].ok ? "text-xs text-success" : "text-xs text-danger"}>{tested[h.id].ok ? `Test delivered${tested[h.id].code ? ` (${tested[h.id].code})` : ""}` : "Test failed"}</div>}</div> },
         { key: "last", header: "Last delivery", cell: (h) => formatRelative(h.last_delivery_at), hideBelow: "md" },
         { key: "secret", header: "Secret", cell: (h) => <code className="font-mono text-xs text-muted-foreground">{h.secret_hint}</code>, hideBelow: "xl" },
         {
@@ -162,8 +167,10 @@ function OutboundTab({ onSecret }: { onSecret: SecretSetter }) {
                 description="Deliveries stop immediately. Workflows calling this endpoint will fail."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => { toast({ title: "Endpoint deleted" }); setDeleting(null); }, onError: fail("Could not delete") })}
+                onConfirm={() => {
+                    if (deleting) remove.mutate(deleting.id); // optimistic: the row leaves at once
+                    setDeleting(null);
+                }}
             />
         </>
     );
@@ -184,14 +191,17 @@ function OutboundFormDialog({ open, onOpenChange, hook, onSecret }: { open: bool
     useEffect(() => {
         if (open) form.reset({ name: hook?.name ?? "", url: hook?.url ?? "https://", events: hook?.subscribed_events.join(", ") ?? "", description: hook?.description ?? "" });
     }, [open, hook, form]);
-    const pending = create.isPending || update.isPending;
+    const pending = create.isPending;
+    const toDto = (v: OutboundValues) => ({ name: v.name, url: v.url, description: v.description || undefined, subscribed_events: v.events.split(/[\s,]+/).filter(Boolean) });
+    // Editing autosaves valid changes (<SaveStatus /> + "Done"); creating keeps an explicit button (the secret is shown once).
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: (hook as OutboundWebhook).id, ...toDto(v) }), { enabled: !!hook });
+    const close = () => { if (hook) autosave.flush(); onOpenChange(false); };
     const submit = form.handleSubmit((v) => {
-        const dto = { name: v.name, url: v.url, description: v.description || undefined, subscribed_events: v.events.split(/[\s,]+/).filter(Boolean) };
-        if (hook) update.mutate({ id: hook.id, ...dto }, { onSuccess: () => { toast({ title: "Endpoint updated" }); onOpenChange(false); }, onError: fail("Could not save") });
-        else create.mutate(dto, { onSuccess: (h) => { onOpenChange(false); if (h.secret) onSecret({ title: `Signing secret for ${h.name}`, secret: h.secret }); }, onError: fail("Could not save") });
+        if (hook) return close();
+        create.mutate(toDto(v), { onSuccess: (h) => { onOpenChange(false); if (h.secret) onSecret({ title: `Signing secret for ${h.name}`, secret: h.secret }); } });
     });
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : !pending && close())}>
             <DialogContent className="sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
@@ -203,9 +213,18 @@ function OutboundFormDialog({ open, onOpenChange, hook, onSecret }: { open: bool
                         <FormField control={form.control} name="url" render={({ field }) => (<FormItem><FormLabel>URL</FormLabel><FormControl><Input className="font-mono text-xs" {...field} /></FormControl><FormDescription>HTTPS required in production; private network addresses are refused.</FormDescription><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="events" render={({ field }) => (<FormItem><FormLabel>Events</FormLabel><FormControl><Textarea rows={2} className="font-mono text-xs" placeholder="crm.deal.won, tasks.*" {...field} /></FormControl><FormDescription>Comma separated. Use <code>module.*</code> for a whole module or <code>*</code> for everything.</FormDescription><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{hook ? "Save" : "Create endpoint"}</Button>
+                        <DialogFooter className="sm:items-center">
+                            {hook ? (
+                                <>
+                                    <SaveStatus state={autosave} className="mr-auto" />
+                                    <Button type="button" variant="outline" onClick={close}>Done</Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                                    <Button type="submit" loading={pending}>Create endpoint</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>
@@ -258,7 +277,7 @@ function InboundTab({ onSecret }: { onSecret: SecretSetter }) {
                             {canManage && h.status !== "REVOKED" && (
                                 <div className="flex flex-wrap gap-2">
                                     <Button size="sm" variant="outline" onClick={() => { setEditing(h); setOpen(true); }}><Pencil /> Edit</Button>
-                                    <Button size="sm" variant="outline" onClick={() => action.mutate({ id: h.id, action: "rotate-secret" }, { onSuccess: (r) => r.secret && onSecret({ title: `New secret for ${h.name}`, secret: r.secret, extra: "The old secret stops working now." }), onError: fail("Could not rotate") })}><KeyRound /> Rotate secret</Button>
+                                    <Button size="sm" variant="outline" onClick={() => action.mutate({ id: h.id, action: "rotate-secret" }, { onSuccess: (r) => r.secret && onSecret({ title: `New secret for ${h.name}`, secret: r.secret, extra: "The old secret stops working now." }) })}><KeyRound /> Rotate secret</Button>
                                     <Button size="sm" variant="outline" className="text-danger" onClick={() => setRevoking(h)}>Revoke</Button>
                                 </div>
                             )}
@@ -274,8 +293,10 @@ function InboundTab({ onSecret }: { onSecret: SecretSetter }) {
                 description="The URL stops accepting requests permanently."
                 confirmText="Revoke"
                 variant="destructive"
-                isLoading={action.isPending}
-                onConfirm={() => revoking && action.mutate({ id: revoking.id, action: "revoke" }, { onSuccess: () => { toast({ title: "Endpoint revoked" }); setRevoking(null); }, onError: fail("Could not revoke") })}
+                onConfirm={() => {
+                    if (revoking) action.mutate({ id: revoking.id, action: "revoke" }); // optimistic: the card shows "Revoked" at once
+                    setRevoking(null);
+                }}
             />
         </>
     );
@@ -342,7 +363,7 @@ function DeliveryDetail({ id }: { id: string | null }) {
                 {x.response_status_code && <Badge variant="outline">HTTP {x.response_status_code}</Badge>}
                 <Can permission="automation.webhooks.manage">
                     {x.status !== "SUCCEEDED" && (
-                        <Button size="sm" variant="outline" loading={retry.isPending} onClick={() => retry.mutate(x.id, { onSuccess: (r) => toast({ title: r.status === "SUCCEEDED" ? "Delivered" : "Retry failed", variant: r.status === "SUCCEEDED" ? "default" : "destructive" }), onError: fail("Could not retry") })}>
+                        <Button size="sm" variant="outline" loading={retry.isPending} onClick={() => retry.mutate(x.id)}>
                             <RotateCcw /> Retry now
                         </Button>
                     )}

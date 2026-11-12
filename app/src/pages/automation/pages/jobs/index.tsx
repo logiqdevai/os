@@ -16,8 +16,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { JobKindFormOptions, JobStatusFilterOptions, ModuleKeyOptions } from "@/config/constants/dropdowns/automation/automation.options";
@@ -39,9 +37,8 @@ export default function JobsPage() {
     const remove = useDeleteJob();
     const [formOpen, setFormOpen] = useState(false);
     const [deleting, setDeleting] = useState<ScheduledJob | null>(null);
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
-    const act = (j: ScheduledJob, a: "pause" | "resume" | "run-now") =>
-        action.mutate({ id: j.id, action: a }, { onSuccess: () => toast({ title: a === "run-now" ? "Job ran" : a === "pause" ? "Job paused" : "Job resumed" }), onError: fail("Could not update the job") });
+    // Pause / resume are optimistic; "Run now" shows up in the job's runs. Errors are toasted globally.
+    const act = (j: ScheduledJob, a: "pause" | "resume" | "run-now") => action.mutate({ id: j.id, action: a });
 
     const columns: DataTableColumn<ScheduledJob>[] = [
         {
@@ -110,8 +107,10 @@ export default function JobsPage() {
                 description="The job stops and its run history is deleted."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => { toast({ title: "Job deleted" }); setDeleting(null); }, onError: fail("Could not delete") })}
+                onConfirm={() => {
+                    if (deleting) remove.mutate(deleting.id); // optimistic: the row leaves at once
+                    setDeleting(null);
+                }}
             />
         </Page>
     );
@@ -160,7 +159,7 @@ function JobFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
                 run_at: v.kind === "ONCE" && v.run_at ? new Date(v.run_at).toISOString() : undefined,
                 payload: v.event_key ? { event_key: v.event_key } : undefined,
             },
-            { onSuccess: () => { toast({ title: "Job scheduled" }); onOpenChange(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not create the job", description: getApiErrorMessage(e) }) },
+            { onSuccess: () => onOpenChange(false) },
         );
     });
 
@@ -211,7 +210,7 @@ function JobFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
                         <FormField control={form.control} name="timezone" render={({ field }) => (<FormItem><FormLabel>Timezone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                         {kind !== "ONCE" && (
                             <div>
-                                <Button type="button" variant="outline" size="sm" loading={preview.isPending} onClick={() => preview.mutate({ kind, cron_expression: form.getValues("cron_expression"), interval_seconds: Number(form.getValues("interval_seconds")) || undefined, timezone: form.getValues("timezone") }, { onError: (e) => toast({ variant: "destructive", title: "Invalid schedule", description: getApiErrorMessage(e) }) })}>Preview next runs</Button>
+                                <Button type="button" variant="outline" size="sm" loading={preview.isPending} onClick={() => preview.mutate({ kind, cron_expression: form.getValues("cron_expression"), interval_seconds: Number(form.getValues("interval_seconds")) || undefined, timezone: form.getValues("timezone") })}>Preview next runs</Button>
                                 {preview.data && <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">{preview.data.next_runs.map((d) => <li key={d}>{formatDateTime(d)}</li>)}</ul>}
                             </div>
                         )}

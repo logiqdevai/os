@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Check, ChevronsUpDown, Plus, Save } from "lucide-react";
+import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { z } from "zod";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
@@ -14,9 +14,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EntityPicker } from "@/components/ui/entity-picker";
 import { ErrorState, NoAccessState, PageSkeleton } from "@/components/ui/states";
+import { SaveStatus } from "@/components/ui/save-status";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useAutosave } from "@/hooks/use-autosave";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
@@ -65,6 +65,8 @@ const emptyDraft = (): RuleDefinitionFields => ({
  * /automation/workflows/new · /automation/workflows/:id/edit — form-based builder: trigger → conditions → ordered steps → settings.
  * @perm create automation.rules.create · edit automation.rules.update · run-as service account automation.service_accounts.manage · destructive automation.actions.destructive.enable
  * @api POST /automation/rules · PATCH /automation/rules/:id (published workflows save a draft) · GET /automation/triggers · GET /automation/actions
+ * Editing autosaves the DRAFT definition (<SaveStatus /> in the header) whenever it is valid — it never publishes; publishing
+ * stays an explicit button on the workflow page. A new workflow is created with "Create workflow".
  */
 export default function WorkflowBuilderPage() {
     const { id } = useParams<{ id: string }>();
@@ -125,7 +127,39 @@ export default function WorkflowBuilderPage() {
     const trigger = triggers.data?.find((t) => t.key === draft.trigger_key);
     const isPublished = rule.data?.status === "PUBLISHED";
     const canSave = id ? p.can("automation.rules.update") : p.can("automation.rules.create");
-    const pending = create.isPending || update.isPending;
+    const pending = create.isPending;
+
+    /** Problems that keep the draft from being saved (shown live while editing, on "Create" for a new workflow). */
+    const issues = useMemo(() => {
+        const parsed = builderSchema.safeParse(draft);
+        const list = parsed.success ? [] : parsed.error.issues.map((i) => i.message);
+        const keys = draft.actions.map((s) => s.key);
+        if (new Set(keys).size !== keys.length) list.push("Each step needs a unique key");
+        draft.actions.forEach((s, i) => {
+            const a = actionMap.get(s.action_key);
+            a?.fields.filter((f) => f.required && f.type !== "conditions").forEach((f) => {
+                const v = s.inputs[f.key];
+                if (v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length)) list.push(`Step ${i + 1} (${a.name}): ${f.label} is required`);
+            });
+            if (s.action_key === "engine.approval" && !s.inputs.policy_id && !s.inputs.approver_membership_id) list.push(`Step ${i + 1} (${a?.name ?? "Approval"}): choose an approval policy or an approver`);
+        });
+        return list;
+    }, [draft, actionMap]);
+    const body = useMemo(() => {
+        const b: Partial<RuleDefinitionFields> = {
+            ...draft,
+            description: draft.description || null,
+            module: draft.module || null,
+            conditions: draft.conditions ?? { all: [] },
+            ...(templateRef && !id ? { template_id: templateRef } : {}),
+        };
+        if (!p.can("automation.service_accounts.manage")) delete b.run_as_service_account_id;
+        return b;
+    }, [draft, templateRef, id, p]);
+    // One render after loading passes with autosave off, so the loaded definition is the baseline (never re-saved as is).
+    const [ready, setReady] = useState(false);
+    useEffect(() => { if (loaded) setReady(true); }, [loaded]);
+    const autosave = useAutosave({ value: body, enabled: !!id && ready && issues.length === 0, save: (b) => update.mutateAsync({ id: id as string, ...b }) });
 
     if (!canSave) return <Page><NoAccessState /></Page>;
     if ((id && rule.isPending) || triggers.isPending || actions.isPending) return <PageSkeleton />;
@@ -152,40 +186,14 @@ export default function WorkflowBuilderPage() {
         set("actions", next);
     };
 
-    const save = () => {
-        const parsed = builderSchema.safeParse(draft);
-        const issues = parsed.success ? [] : parsed.error.issues.map((i) => i.message);
-        const keys = draft.actions.map((s) => s.key);
-        if (new Set(keys).size !== keys.length) issues.push("Each step needs a unique key");
-        draft.actions.forEach((s, i) => {
-            const a = actionMap.get(s.action_key);
-            a?.fields.filter((f) => f.required && f.type !== "conditions").forEach((f) => {
-                const v = s.inputs[f.key];
-                if (v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length)) issues.push(`Step ${i + 1} (${a.name}): ${f.label} is required`);
-            });
-            if (s.action_key === "engine.approval" && !s.inputs.policy_id && !s.inputs.approver_membership_id) issues.push(`Step ${i + 1} (${a?.name ?? "Approval"}): choose an approval policy or an approver`);
-        });
+    /** New workflow: explicit create (it starts as a draft). */
+    const createWorkflow = () => {
         setErrors(issues);
         if (issues.length) return;
-
-        const body: Partial<RuleDefinitionFields> = {
-            ...draft,
-            description: draft.description || null,
-            module: draft.module || null,
-            conditions: draft.conditions ?? { all: [] },
-            ...(templateRef && !id ? { template_id: templateRef } : {}),
-        };
-        if (!p.can("automation.service_accounts.manage")) delete body.run_as_service_account_id;
-        const onError = (e: unknown) => toast({ variant: "destructive", title: "Could not save the workflow", description: getApiErrorMessage(e) });
-        if (id) {
-            update.mutate({ id, ...body }, {
-                onSuccess: () => { toast({ title: isPublished ? "Draft saved — publish to apply it" : "Workflow saved" }); navigate(`/automation/workflows/${id}`); },
-                onError,
-            });
-        } else {
-            create.mutate(body, { onSuccess: (r) => { toast({ title: "Workflow created as a draft" }); navigate(`/automation/workflows/${r.id}`); }, onError });
-        }
+        create.mutate(body, { onSuccess: (r) => navigate(`/automation/workflows/${r.id}`) });
     };
+    const done = () => { autosave.flush(); navigate(`/automation/workflows/${id}`); };
+    const shownErrors = id ? issues : errors;
 
     const eventTriggers = (triggers.data ?? []).filter((t) => t.kind === "EVENT");
     const dateTriggers = (triggers.data ?? []).filter((t) => t.kind === "DATE_RELATIVE");
@@ -198,7 +206,7 @@ export default function WorkflowBuilderPage() {
                 title={id ? `Edit ${rule.data?.name ?? "workflow"}` : "New workflow"}
                 back={{ to: id ? `/automation/workflows/${id}` : "/automation/workflows", label: id ? "Workflow" : "Workflows" }}
                 description={isPublished ? "This workflow is live. Your changes are saved as a draft and only run after you publish them." : "Workflows start as drafts. Publish and enable them to run."}
-                meta={rule.data && <Badge variant={isPublished ? "success" : "warning"}>{isPublished ? `Live v${rule.data.current_version}` : "Draft"}</Badge>}
+                meta={rule.data && <><Badge variant={isPublished ? "success" : "warning"}>{isPublished ? `Live v${rule.data.current_version}` : "Draft"}</Badge><SaveStatus state={autosave} /></>}
             />
 
             <div className="space-y-8">
@@ -262,7 +270,7 @@ export default function WorkflowBuilderPage() {
                                     <Input id="wf-tz" value={draft.trigger_config?.timezone ?? "UTC"} onChange={(e) => set("trigger_config", { ...draft.trigger_config, timezone: e.target.value })} />
                                 </div>
                                 <div className="sm:col-span-2">
-                                    <Button type="button" variant="outline" size="sm" loading={preview.isPending} onClick={() => preview.mutate({ kind: "CRON", cron_expression: cron, timezone: draft.trigger_config?.timezone ?? "UTC" }, { onError: (e) => toast({ variant: "destructive", title: "Invalid schedule", description: getApiErrorMessage(e) }) })}>
+                                    <Button type="button" variant="outline" size="sm" loading={preview.isPending} onClick={() => preview.mutate({ kind: "CRON", cron_expression: cron, timezone: draft.trigger_config?.timezone ?? "UTC" })}>
                                         Preview next runs
                                     </Button>
                                     {preview.data && <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">{preview.data.next_runs.map((d) => <li key={d}>{formatDateTime(d)}</li>)}</ul>}
@@ -424,15 +432,25 @@ export default function WorkflowBuilderPage() {
                     </div>
                 </Section>
 
-                {errors.length > 0 && (
+                {shownErrors.length > 0 && (
                     <div role="alert" className="rounded-lg border border-danger/40 bg-danger-soft p-3 text-[13px] text-danger">
-                        <ul className="list-inside list-disc space-y-0.5">{errors.map((e) => <li key={e}>{e}</li>)}</ul>
+                        {id && <p className="mb-1 font-medium">Not saved until this is fixed:</p>}
+                        <ul className="list-inside list-disc space-y-0.5">{shownErrors.map((e) => <li key={e}>{e}</li>)}</ul>
                     </div>
                 )}
 
-                <div className="sticky bottom-0 -mx-4 flex flex-col-reverse gap-2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:flex-row sm:justify-end md:-mx-6 md:px-6">
-                    <Button variant="ghost" onClick={() => navigate(id ? `/automation/workflows/${id}` : "/automation/workflows")} disabled={pending}>Cancel</Button>
-                    <Button onClick={save} loading={pending}><Save /> {id ? (isPublished ? "Save draft" : "Save") : "Create workflow"}</Button>
+                <div className="sticky bottom-0 -mx-4 flex flex-col-reverse gap-2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-end md:-mx-6 md:px-6">
+                    {id ? (
+                        <>
+                            <span className="text-xs text-muted-foreground sm:mr-auto">{isPublished ? "Changes are saved as a draft. Publish them from the workflow page." : "Changes are saved automatically. Publish from the workflow page."}</span>
+                            <Button onClick={done}>Done</Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button variant="ghost" onClick={() => navigate("/automation/workflows")} disabled={pending}>Cancel</Button>
+                            <Button onClick={createWorkflow} loading={pending}>Create workflow</Button>
+                        </>
+                    )}
                 </div>
             </div>
         </Page>

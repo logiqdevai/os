@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { ModuleKeyOptions } from "@/config/constants/dropdowns/automation/automation.options";
@@ -31,7 +29,7 @@ export default function JobDetailPage() {
     if (job.error) return <Page><ErrorState error={job.error} onRetry={() => job.refetch()} /></Page>;
     const j = job.data;
     const act = (a: "pause" | "resume" | "run-now") =>
-        action.mutate({ id: j.id, action: a }, { onSuccess: () => toast({ title: a === "run-now" ? "Job ran" : a === "pause" ? "Job paused" : "Job resumed" }), onError: (e) => toast({ variant: "destructive", title: "Could not update the job", description: getApiErrorMessage(e) }) });
+        action.mutate({ id: j.id, action: a }); // pause / resume are optimistic; the run shows up in Runs
 
     const columns: DataTableColumn<JobRun>[] = [
         { key: "status", header: "Status", cell: (r) => <StatusBadge status={r.status} /> },
@@ -52,7 +50,7 @@ export default function JobDetailPage() {
                 actions={
                     <Can permission="automation.jobs.manage">
                         {!j.rule_id && (j.status === "ACTIVE" ? <Button variant="outline" onClick={() => act("pause")}><Pause /> Pause</Button> : <Button variant="outline" onClick={() => act("resume")}><Play /> Resume</Button>)}
-                        <Button onClick={() => act("run-now")} loading={action.isPending}><Play /> Run now</Button>
+                        <Button onClick={() => act("run-now")} loading={action.isPending && action.variables?.action === "run-now"}><Play /> Run now</Button>
                     </Can>
                 }
             />

@@ -1,15 +1,13 @@
-import { useEffect, useState } from "react";
-import { Save } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
-import { Button } from "@/components/ui/button";
+import { SaveStatus } from "@/components/ui/save-status";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { StatCard, StatGrid } from "@/components/ui/stat-card";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useAutosave } from "@/hooks/use-autosave";
 import { formatDateTime, personName } from "@/lib/format";
 import { useAutomationSettings, useAutomationUsage, useUpdateAutomationSettings } from "@/features/automation/hooks/use-automation";
 import type { UpdateAutomationSettingsDto } from "@/features/automation/interfaces/automation.interfaces";
@@ -31,6 +29,7 @@ const NUMBERS: { key: NumKey; label: string; hint: string; min: number; max: num
  * /automation/settings — limits, safety, retention (20 §6, §8, §10) + usage
  * @perm VIEW automation.rules.read · edit automation.settings.manage · destructive switch automation.actions.destructive.enable
  * @api GET/PATCH /automation/settings · GET /automation/usage?days=
+ * Autosaves (no Save button): valid changes are sent after a short pause; an out-of-range number shows its error inline and is not sent.
  */
 export default function AutomationSettingsPage() {
     const p = usePermissions();
@@ -38,10 +37,14 @@ export default function AutomationSettingsPage() {
     const usage = useAutomationUsage(30, p.can("automation.runs.read"));
     const update = useUpdateAutomationSettings();
     const [form, setForm] = useState<Record<string, string | boolean>>({});
+    const [touched, setTouched] = useState(false);
     const canEdit = p.can("automation.settings.manage");
+    const canDestructive = p.can("automation.actions.destructive.enable");
+    const edit = (key: string, value: string | boolean) => { setTouched(true); setForm((f) => ({ ...f, [key]: value })); };
 
+    // Load the form once; later refreshes (after each autosave) must not overwrite what is being typed.
     useEffect(() => {
-        if (!settings.data) return;
+        if (!settings.data || touched) return;
         const s = settings.data;
         setForm({
             ...Object.fromEntries(NUMBERS.map((n) => [n.key, s[n.key] === null ? "" : String(s[n.key])])),
@@ -50,40 +53,49 @@ export default function AutomationSettingsPage() {
             dead_letter_alerts_enabled: s.dead_letter_alerts_enabled,
             dead_letter_alert_notify_rule_owner: s.dead_letter_alert_notify_rule_owner,
         });
-    }, [settings.data]);
+    }, [settings.data, touched]);
+
+    /** The PATCH body, or the inline error of each invalid number. */
+    const { dto, errors } = useMemo(() => {
+        const body: Record<string, unknown> = {};
+        const errs: Partial<Record<NumKey, string>> = {};
+        for (const n of NUMBERS) {
+            const raw = String(form[n.key] ?? "");
+            if (raw === "") {
+                if (n.nullable) body[n.key] = null;
+                else errs[n.key] = "Required";
+                continue;
+            }
+            const v = Number(raw);
+            if (!Number.isInteger(v) || v < n.min || v > n.max) errs[n.key] = `Between ${n.min} and ${n.max}`;
+            else body[n.key] = v;
+        }
+        for (const k of ["destructive_requires_approval", "dead_letter_alerts_enabled", "dead_letter_alert_notify_rule_owner"]) body[k] = !!form[k];
+        // Only people allowed to change the destructive switch send it (the API checks the extra permission when present).
+        if (canDestructive) body.destructive_actions_enabled = !!form.destructive_actions_enabled;
+        return { dto: body as UpdateAutomationSettingsDto, errors: errs };
+    }, [form, canDestructive]);
+    const valid = Object.keys(errors).length === 0;
+    const autosave = useAutosave({ value: dto, enabled: canEdit && touched && valid, save: (v) => update.mutateAsync(v) });
 
     if (settings.isPending) return <PageSkeleton />;
     if (settings.error) return <Page><ErrorState error={settings.error} onRetry={() => settings.refetch()} /></Page>;
     const s = settings.data;
 
-    const save = () => {
-        const dto: Record<string, unknown> = {};
-        for (const n of NUMBERS) {
-            const raw = String(form[n.key] ?? "");
-            if (raw === "") {
-                if (!n.nullable) return toast({ variant: "destructive", title: `${n.label} is required` });
-                dto[n.key] = null;
-                continue;
-            }
-            const v = Number(raw);
-            if (!Number.isInteger(v) || v < n.min || v > n.max) return toast({ variant: "destructive", title: `${n.label} must be between ${n.min} and ${n.max}` });
-            dto[n.key] = v;
-        }
-        for (const k of ["destructive_requires_approval", "dead_letter_alerts_enabled", "dead_letter_alert_notify_rule_owner"]) dto[k] = !!form[k];
-        if (form.destructive_actions_enabled !== s.destructive_actions_enabled) dto.destructive_actions_enabled = !!form.destructive_actions_enabled;
-        update.mutate(dto as UpdateAutomationSettingsDto, { onSuccess: () => toast({ title: "Settings saved" }), onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) });
-    };
-
     const toggle = (key: string, label: string, hint: string, disabled = !canEdit) => (
         <div className="flex items-start justify-between gap-4">
             <div><div className="text-[13px] text-foreground">{label}</div><div className="text-xs text-muted-foreground">{hint}</div></div>
-            <Switch checked={!!form[key]} onCheckedChange={(v) => setForm((f) => ({ ...f, [key]: v }))} disabled={disabled} aria-label={label} />
+            <Switch checked={!!form[key]} onCheckedChange={(v) => edit(key, v)} disabled={disabled} aria-label={label} />
         </div>
     );
 
     return (
         <Page width="narrow">
-            <PageHeader title="Automation settings" description={canEdit ? "Guardrails for every workflow of the organization." : "Read only — you need automation.settings.manage to change these."} />
+            <PageHeader
+                title="Automation settings"
+                description={canEdit ? "Guardrails for every workflow of the organization." : "Read only — you need automation.settings.manage to change these."}
+                actions={canEdit ? <SaveStatus state={autosave} /> : undefined}
+            />
 
             {usage.data && (
                 <Section title="Usage (30 days)" className="mb-8">
@@ -119,8 +131,8 @@ export default function AutomationSettingsPage() {
                         {NUMBERS.map((n) => (
                             <div key={n.key} className="space-y-1.5">
                                 <Label htmlFor={n.key}>{n.label}</Label>
-                                <Input id={n.key} type="number" min={n.min} max={n.max} value={String(form[n.key] ?? "")} disabled={!canEdit} onChange={(e) => setForm((f) => ({ ...f, [n.key]: e.target.value }))} />
-                                <p className="text-xs text-muted-foreground">{n.hint}</p>
+                                <Input id={n.key} type="number" min={n.min} max={n.max} value={String(form[n.key] ?? "")} disabled={!canEdit} aria-invalid={!!errors[n.key]} aria-describedby={`${n.key}-hint`} onChange={(e) => edit(n.key, e.target.value)} />
+                                <p id={`${n.key}-hint`} className={errors[n.key] && touched ? "text-xs text-danger" : "text-xs text-muted-foreground"}>{errors[n.key] && touched ? errors[n.key] : n.hint}</p>
                             </div>
                         ))}
                     </div>
@@ -134,11 +146,6 @@ export default function AutomationSettingsPage() {
                         <div className="text-xs text-muted-foreground">Default service account: {s.default_service_account ? s.default_service_account.name : "none — workflows run as their owner"}</div>
                     </div>
                 </Section>
-                {canEdit && (
-                    <div className="flex justify-end">
-                        <Button onClick={save} loading={update.isPending}><Save /> Save settings</Button>
-                    </div>
-                )}
             </div>
         </Page>
     );

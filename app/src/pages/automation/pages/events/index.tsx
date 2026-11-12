@@ -9,8 +9,6 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { ErrorState, ListSkeleton } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatRelative, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { EventSourceFilterOptions, EventSourceOptions, EventStateFilterOptions, ModuleKeyFilterOptions, ModuleKeyOptions } from "@/config/constants/dropdowns/automation/automation.options";
@@ -121,7 +119,7 @@ function EventDetail({ id }: { id: string | null }) {
                 <div className="flex items-center justify-between">
                     <h3 className="text-[13px] font-medium text-foreground">Runs started</h3>
                     <Can permission="automation.runs.manage">
-                        <Button size="sm" variant="outline" loading={reprocess.isPending} onClick={() => reprocess.mutate(e.id, { onSuccess: (r) => toast({ title: `Reprocessed — ${r.runs_started} new run(s)` }), onError: (err) => toast({ variant: "destructive", title: "Could not reprocess", description: getApiErrorMessage(err) }) })}>
+                        <Button size="sm" variant="outline" loading={reprocess.isPending} onClick={() => reprocess.mutate(e.id)}>
                             <RefreshCw /> Reprocess
                         </Button>
                     </Can>

@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EntityPicker } from "@/components/ui/entity-picker";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { InboundAuthSchemeOptions, InboundEditableStatusOptions } from "@/config/constants/dropdowns/automation/automation.options";
 import { useCreateInboundWebhook, useRules, useUpdateInboundWebhook } from "@/features/automation/hooks/use-automation";
 import type { InboundAuthScheme, InboundWebhook } from "@/features/automation/interfaces/automation.interfaces";
@@ -26,7 +26,8 @@ interface Props {
 const empty: InboundWebhookFormValues = { name: "", description: "", slug: "", auth_scheme: "HMAC_SHA256", signature_header: "", rule_id: null, allowed_ip_ranges: "", rate_limit_per_minute: "", status: "ACTIVE" };
 
 /**
- * Create / edit an inbound webhook endpoint and link it to the workflow it starts (20 §12, §14).
+ * Create (explicit "Create") / edit (autosaves valid changes; <SaveStatus /> + "Done") an inbound webhook endpoint
+ * and link it to the workflow it starts (20 §12, §14).
  * @perm automation.webhooks.manage · linking a workflow also needs automation.rules.update (server-checked)
  * @api POST /automation/webhooks/inbound · PATCH /automation/webhooks/inbound/:id (slug is immutable)
  */
@@ -36,7 +37,7 @@ export function InboundWebhookDialog({ open, onOpenChange, hook, onCreated }: Pr
     const canLink = usePermission("automation.rules.update");
     const rules = useRules({ limit: 200, archived: "false" });
     const form = useForm<InboundWebhookFormValues>({ resolver: zodResolver(inboundWebhookSchema), defaultValues: empty });
-    const pending = create.isPending || update.isPending;
+    const pending = create.isPending;
 
     useEffect(() => {
         if (!open) return;
@@ -53,8 +54,7 @@ export function InboundWebhookDialog({ open, onOpenChange, hook, onCreated }: Pr
         } : empty);
     }, [open, hook, form]);
 
-    const submit = form.handleSubmit((v) => {
-        const dto = {
+    const toDto = (v: InboundWebhookFormValues) => ({
             name: v.name,
             description: v.description || undefined,
             auth_scheme: v.auth_scheme as InboundAuthScheme,
@@ -62,19 +62,18 @@ export function InboundWebhookDialog({ open, onOpenChange, hook, onCreated }: Pr
             allowed_ip_ranges: v.allowed_ip_ranges.split(/[\s,]+/).map((x) => x.trim()).filter(Boolean),
             rate_limit_per_minute: v.rate_limit_per_minute ? Number(v.rate_limit_per_minute) : null,
             ...(canLink ? { rule_id: v.rule_id } : {}),
-        };
-        const onError = (e: unknown) => toast({ variant: "destructive", title: "Could not save the endpoint", description: getApiErrorMessage(e) });
-        if (hook) {
-            update.mutate({ id: hook.id, ...dto, status: v.status }, { onSuccess: () => { toast({ title: "Endpoint updated" }); onOpenChange(false); }, onError });
-        } else {
-            create.mutate({ ...dto, slug: v.slug || undefined }, { onSuccess: (h) => { onOpenChange(false); onCreated(h); }, onError });
-        }
+    });
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: (hook as InboundWebhook).id, ...toDto(v), status: v.status }), { enabled: !!hook });
+    const close = () => { if (hook) autosave.flush(); onOpenChange(false); };
+    const submit = form.handleSubmit((v) => {
+        if (hook) return close();
+        create.mutate({ ...toDto(v), slug: v.slug || undefined }, { onSuccess: (h) => { onOpenChange(false); onCreated(h); } });
     });
 
     const ruleItems = (rules.data?.data ?? []).map((r) => ({ id: r.id, label: r.name, hint: r.status === "PUBLISHED" ? (r.enabled ? "live" : "disabled") : "draft" }));
 
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : !pending && close())}>
             <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
@@ -125,9 +124,18 @@ export function InboundWebhookDialog({ open, onOpenChange, hook, onCreated }: Pr
                         <FormField control={form.control} name="allowed_ip_ranges" render={({ field }) => (
                             <FormItem><FormLabel>Allowed IP addresses</FormLabel><FormControl><Textarea rows={2} className="font-mono text-xs" placeholder={"203.0.113.10\n198.51.100.0/24"} {...field} /></FormControl><FormDescription>One IPv4 address or CIDR per line. Empty = any address.</FormDescription><FormMessage /></FormItem>
                         )} />
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{hook ? "Save" : "Create"}</Button>
+                        <DialogFooter className="sm:items-center">
+                            {hook ? (
+                                <>
+                                    <SaveStatus state={autosave} className="mr-auto" />
+                                    <Button type="button" variant="outline" onClick={close}>Done</Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                                    <Button type="submit" loading={pending}>Create</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>

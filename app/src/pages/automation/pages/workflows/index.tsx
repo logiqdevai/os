@@ -14,7 +14,6 @@ import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { ModuleKeyFilterOptions, RuleStatusFilterOptions, TriggerKindFilterOptions, TriggerKindShortOptions } from "@/config/constants/dropdowns/automation/automation.options";
@@ -43,16 +42,11 @@ export default function WorkflowsPage() {
     const [deleting, setDeleting] = useState<RuleListItem | null>(null);
     const [running, setRunning] = useState<RuleListItem | null>(null);
 
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
-
     const onImport = async (file: File | undefined) => {
         if (!file) return;
         try {
             const json = JSON.parse(await file.text());
-            importRule.mutate(json.rule ?? json, {
-                onSuccess: (r) => { toast({ title: "Workflow imported as a draft" }); navigate(`/automation/workflows/${r.id}/edit`); },
-                onError: fail("Could not import"),
-            });
+            importRule.mutate(json.rule ?? json, { onSuccess: (r) => navigate(`/automation/workflows/${r.id}/edit`) });
         } catch {
             toast({ variant: "destructive", title: "Not a workflow export", description: "Choose a JSON file exported from Logiqdev OS." });
         } finally {
@@ -93,9 +87,9 @@ export default function WorkflowsPage() {
                 const control = (
                     <Switch
                         checked={r.enabled}
-                        disabled={!!reason || setEnabled.isPending}
+                        disabled={!!reason}
                         aria-label={r.enabled ? `Disable ${r.name}` : `Enable ${r.name}`}
-                        onCheckedChange={(enabled) => setEnabled.mutate({ id: r.id, enabled }, { onSuccess: () => toast({ title: enabled ? "Workflow enabled" : "Workflow disabled" }), onError: fail("Could not change the workflow") })}
+                        onCheckedChange={(enabled) => setEnabled.mutate({ id: r.id, enabled })}
                     />
                 );
                 return reason ? <Tooltip><TooltipTrigger asChild><span>{control}</span></TooltipTrigger><TooltipContent>{reason}</TooltipContent></Tooltip> : control;
@@ -114,7 +108,7 @@ export default function WorkflowsPage() {
                         {p.can("automation.rules.update") && <DropdownMenuItem onSelect={() => navigate(`/automation/workflows/${r.id}/edit`)}><Pencil /> Edit</DropdownMenuItem>}
                         {p.can("automation.rules.run") && r.status === "PUBLISHED" && <DropdownMenuItem onSelect={() => setRunning(r)}><Play /> Run now</DropdownMenuItem>}
                         {p.can("automation.rules.create") && (
-                            <DropdownMenuItem onSelect={() => duplicate.mutate(r.id, { onSuccess: (c) => { toast({ title: "Duplicated as a draft" }); navigate(`/automation/workflows/${c.id}/edit`); }, onError: fail("Could not duplicate") })}>
+                            <DropdownMenuItem onSelect={() => duplicate.mutate(r.id, { onSuccess: (c) => navigate(`/automation/workflows/${c.id}/edit`) })}>
                                 <Copy /> Duplicate
                             </DropdownMenuItem>
                         )}
@@ -182,7 +176,7 @@ export default function WorkflowsPage() {
                 description="The published version runs live with an empty sample payload, using the workflow's run-as identity."
                 confirmText="Run now"
                 isLoading={run.isPending}
-                onConfirm={() => running && run.mutate({ id: running.id }, { onSuccess: (r) => { toast({ title: "Run started" }); setRunning(null); navigate(`/automation/runs/${r.id}`); }, onError: fail("Could not run") })}
+                onConfirm={() => running && run.mutate({ id: running.id }, { onSuccess: (r) => { setRunning(null); navigate(`/automation/runs/${r.id}`); } })}
             />
             <ConfirmationDialog
                 isOpen={!!archiving}
@@ -191,8 +185,10 @@ export default function WorkflowsPage() {
                 description="The workflow is disabled and hidden from the list. Its history is kept."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate(archiving.id, { onSuccess: () => { toast({ title: "Workflow archived" }); setArchiving(null); }, onError: fail("Could not archive") })}
+                onConfirm={() => {
+                    if (archiving) archive.mutate(archiving.id); // optimistic: the row leaves at once
+                    setArchiving(null);
+                }}
             />
             <ConfirmationDialog
                 isOpen={!!deleting}
@@ -201,8 +197,10 @@ export default function WorkflowsPage() {
                 description="The workflow, its versions and its run history are deleted permanently. This cannot be undone."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => { toast({ title: "Workflow deleted" }); setDeleting(null); }, onError: fail("Could not delete") })}
+                onConfirm={() => {
+                    if (deleting) remove.mutate(deleting.id); // optimistic: the row leaves at once
+                    setDeleting(null);
+                }}
             />
         </Page>
     );

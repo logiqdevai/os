@@ -3,8 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { usePreviewDateTrigger } from "@/features/automation/hooks/use-automation";
@@ -23,7 +21,7 @@ interface DateTriggerEditorProps {
 /**
  * DATE_RELATIVE trigger (20 §3): watched date + "N days before / after / on the day".
  * @api POST /automation/rules/date-preview — records that would fire today (needs the watched record's read key).
- * @states no date chosen · preview loading · preview empty · preview error (toast)
+ * @states no date chosen · preview loading · preview empty · preview error (global error toast)
  */
 export function DateTriggerEditor({ triggerKey, config, options, onChange }: DateTriggerEditorProps) {
     const preview = usePreviewDateTrigger();
@@ -74,7 +72,7 @@ export function DateTriggerEditor({ triggerKey, config, options, onChange }: Dat
                         variant="outline"
                         size="sm"
                         loading={preview.isPending}
-                        onClick={() => preview.mutate({ trigger_key: triggerKey, trigger_config: { offset_days: offset, direction } }, { onError: (e) => toast({ variant: "destructive", title: "Preview failed", description: getApiErrorMessage(e) }) })}
+                        onClick={() => preview.mutate({ trigger_key: triggerKey, trigger_config: { offset_days: offset, direction } })}
                     >
                         <CalendarClock /> Who would match today
                     </Button>

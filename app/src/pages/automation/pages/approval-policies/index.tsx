@@ -10,8 +10,6 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { personName } from "@/lib/format";
 import { useApprovalPolicies, useSetApprovalPolicyArchived } from "@/features/automation/hooks/use-automation";
 import type { ApprovalPolicy } from "@/features/automation/interfaces/automation.interfaces";
@@ -38,10 +36,7 @@ export default function ApprovalPoliciesPage() {
 
     const openNew = () => { setEditing(null); setFormOpen(true); };
     const restore = (p: ApprovalPolicy) =>
-        setArchived.mutate({ id: p.id, archived: false }, {
-            onSuccess: () => toast({ title: "Policy restored" }),
-            onError: (e) => toast({ variant: "destructive", title: "Could not restore", description: getApiErrorMessage(e) }),
-        });
+        setArchived.mutate({ id: p.id, archived: false });
 
     const columns: DataTableColumn<ApprovalPolicy>[] = [
         {
@@ -138,14 +133,10 @@ export default function ApprovalPoliciesPage() {
                 description="Workflows that use this policy fail their approval step until you choose another policy. Pending requests stay open."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={setArchived.isPending}
-                onConfirm={() =>
-                    archiving &&
-                    setArchived.mutate({ id: archiving.id, archived: true }, {
-                        onSuccess: () => { toast({ title: "Policy archived" }); setArchiving(null); },
-                        onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }),
-                    })
-                }
+                onConfirm={() => {
+                    if (archiving) setArchived.mutate({ id: archiving.id, archived: true }); // optimistic: the row leaves at once
+                    setArchiving(null);
+                }}
             />
         </Page>
     );
