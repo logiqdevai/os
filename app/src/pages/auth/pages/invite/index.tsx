@@ -71,8 +71,13 @@ export default function InvitePage() {
                     onClick={() =>
                         accept.mutate(token, {
                             onSuccess: (res: { organization_id: string }) => {
-                                setOrganization(res.organization_id);
                                 toast({ title: `You joined ${inv.organization.display_name}` });
+                                // Customer portal invitations (07) give no agency membership: open the portal, not the agency app.
+                                if (inv.audience === "CUSTOMER_PORTAL") {
+                                    navigate("/portal", { replace: true });
+                                    return;
+                                }
+                                setOrganization(res.organization_id);
                                 navigate("/home", { replace: true });
                             },
                         })

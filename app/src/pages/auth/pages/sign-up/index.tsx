@@ -31,7 +31,7 @@ export default function SignUpPage() {
         }
         signUp.mutate(
             { ...values, organization_name: invitationToken ? undefined : values.organization_name, invitation_token: invitationToken ?? undefined },
-            { onSuccess: () => navigate("/home", { replace: true }) }
+            { onSuccess: () => navigate(invitation.data?.audience === "CUSTOMER_PORTAL" ? "/portal" : "/home", { replace: true }) }
         );
     });
 
