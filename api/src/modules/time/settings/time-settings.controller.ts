@@ -73,6 +73,13 @@ export class TimeSettingsController {
         return this.settings.archiveActivityType(ctx, id, true);
     }
 
+    @Get('project-settings')
+    @RequirePermission('time.settings.manage')
+    @ApiOperation({ summary: 'Active projects with their time settings and logged hours vs budget' })
+    listProjectSettings(@CurrentOrg() ctx: OrgContext, @Query(new ZodValidationPipe(LookupQuerySchema)) q: LookupQuery) {
+        return this.settings.listProjectSettings(ctx, q.search);
+    }
+
     @Get('project-settings/:projectId')
     @RequireAnyPermission('time.settings.manage', 'projects.projects.read')
     @ApiOperation({ summary: 'Per-project time settings with the resolved default billability' })

@@ -10,4 +10,8 @@ export const TimePaths = {
     reports: "/time/reports",
     unbilled: "/time/unbilled",
     settings: "/time/settings",
+    suggestions: "/time/suggestions",
+    import: "/time/import",
+    schedules: "/time/schedules",
+    projectSettings: "/time/projects",
 } as const;

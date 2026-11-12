@@ -13,6 +13,8 @@ import { StartTimerSchema } from './timers/dto/timer.dto';
 import { DecideTimesheetSchema, RejectTimesheetSchema, SubmitTimesheetSchema, TimesheetQuerySchema } from './timesheets/dto/timesheet.dto';
 import { BillingRateQuerySchema, ResolveRateQuerySchema } from './rates/dto/billing-rate.dto';
 import { TimeReportQuerySchema, UnbilledQuerySchema } from './reports/dto/time-report.dto';
+import { AcceptSuggestionSchema, GenerateSuggestionsSchema, SuggestionQuerySchema, TimeSuggestionsService } from './suggestions/time-suggestions.service';
+import { ScheduleSchema, TimeReportSchedulesService } from './schedules/time-report-schedules.service';
 
 const M = ModuleKey.TIME_TRACKING;
 
@@ -26,6 +28,8 @@ export class TimeMcp implements OnModuleInit {
         private readonly sheets: TimesheetsService,
         private readonly rates: BillingRatesService,
         private readonly reports: TimeReportsService,
+        private readonly suggestions: TimeSuggestionsService,
+        private readonly schedules: TimeReportSchedulesService,
     ) { }
 
     onModuleInit() {
@@ -48,6 +52,12 @@ export class TimeMcp implements OnModuleInit {
             { name: 'time_rates_resolve', description: 'Resolve the billing and cost rate for a member, project and activity on a date.', permission: 'time.rates.read', module: M, resource_type: 'billing_rate', input: ResolveRateQuerySchema, handler: (ctx, a) => this.rates.resolve(ctx, a) },
             { name: 'time_reports_read', description: 'Hours report grouped by project, member, customer, activity, task or day.', permission: 'time.reports.read', module: M, resource_type: 'time_report', input: TimeReportQuerySchema, handler: (ctx, a) => this.reports.summary(ctx, a) },
             { name: 'time_reports_utilization', description: 'Utilization per member (logged vs expected hours).', permission: 'time.reports.read', module: M, resource_type: 'time_report', input: TimeReportQuerySchema, handler: (ctx, a) => this.reports.utilization(ctx, a) },
+            { name: 'time_suggestions_list', description: 'My suggested time entries (from calendar events and task status changes).', permission: 'time.entries.create_own', module: M, resource_type: 'time_suggestion', input: SuggestionQuerySchema, handler: (ctx, a) => this.suggestions.list(ctx, a) },
+            { name: 'time_suggestions_generate', description: 'Scan my calendar and task activity for new suggestions (last 14 days by default).', permission: 'time.entries.create_own', module: M, resource_type: 'time_suggestion', input: GenerateSuggestionsSchema, handler: (ctx, a) => this.suggestions.generate(ctx, a) },
+            { name: 'time_suggestions_accept', description: 'Accept a suggestion (optionally edited); creates a draft time entry.', permission: 'time.entries.create_own', module: M, resource_type: 'time_suggestion', input: AcceptSuggestionSchema.extend({ id: z.string().uuid() }), handler: (ctx, { id, ...dto }) => this.suggestions.accept(ctx, id, dto) },
+            { name: 'time_suggestions_dismiss', description: 'Dismiss a suggestion so it is not proposed again.', permission: 'time.entries.create_own', module: M, resource_type: 'time_suggestion', input: z.object({ id: z.string().uuid() }), handler: (ctx, a) => this.suggestions.dismiss(ctx, a.id) },
+            { name: 'time_report_schedules_list', description: 'Scheduled e-mailed time reports.', permission: 'time.entries.export', module: M, resource_type: 'time_report_schedule', input: z.object({}), handler: (ctx) => this.schedules.list(ctx) },
+            { name: 'time_report_schedules_create', description: 'Schedule an e-mailed time report (runs as you).', permission: 'time.entries.export', module: M, resource_type: 'time_report_schedule', sensitive: true, input: ScheduleSchema, handler: (ctx, a) => this.schedules.create(ctx, a) },
             { name: 'time_unbilled_list', description: 'Approved billable time not yet invoiced, grouped by customer and project.', permission: 'time.entries.read_all', module: M, resource_type: 'time_entry', input: UnbilledQuerySchema, handler: (ctx, a) => this.reports.unbilled(ctx, a) },
         ]);
     }

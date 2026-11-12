@@ -53,5 +53,29 @@ export const TimeApiRoutes = {
         export: "/time/reports/export",
     },
     exports: "/time/exports",
+    exportDownload: (id: string) => `/time/exports/${id}/download`,
+    projectSettings: {
+        list: "/time/project-settings",
+        detail: (projectId: string) => `/time/project-settings/${projectId}`,
+    },
+    suggestions: {
+        list: "/time/suggestions",
+        generate: "/time/suggestions/generate",
+        acceptMany: "/time/suggestions/accept",
+        accept: (id: string) => `/time/suggestions/${id}/accept`,
+        dismiss: (id: string) => `/time/suggestions/${id}/dismiss`,
+    },
+    imports: {
+        list: "/time/imports",
+        detail: (id: string) => `/time/imports/${id}`,
+        mapping: (id: string) => `/time/imports/${id}/mapping`,
+        run: (id: string) => `/time/imports/${id}/run`,
+    },
+    schedules: {
+        list: "/time/report-schedules",
+        reports: "/time/report-schedules/reports",
+        detail: (id: string) => `/time/report-schedules/${id}`,
+        run: (id: string) => `/time/report-schedules/${id}/run`,
+    },
     unbilled: "/time/unbilled",
 };

@@ -15,6 +15,9 @@ export const useTimeTasks = (projectId?: string | null, search?: string) =>
 export const useTimeMembers = (scope: "team" | "all" = "all", enabled = true) =>
     useQuery({ queryKey: [...KEY, "members", scope], queryFn: () => service.getTimeMembers(scope), enabled, staleTime: 60_000 });
 
+export const useProjectTimeSettings = (search?: string) =>
+    useQuery({ queryKey: [...KEY, "project-settings", search ?? ""], queryFn: () => service.getProjectTimeSettings(search) });
+
 function useInvalidate() {
     const qc = useQueryClient();
     return () => qc.invalidateQueries({ queryKey: KEY });
@@ -34,4 +37,8 @@ export const useUpdateActivityType = () => {
 export const useArchiveActivityType = () => {
     const invalidate = useInvalidate();
     return useMutation({ mutationFn: service.archiveActivityType, onSuccess: invalidate });
+};
+export const useUpdateProjectTimeSettings = () => {
+    const invalidate = useInvalidate();
+    return useMutation({ mutationFn: service.updateProjectTimeSettings, onSuccess: invalidate });
 };

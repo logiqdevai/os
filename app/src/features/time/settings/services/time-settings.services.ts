@@ -1,6 +1,8 @@
 import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
-import type { ActivityTypeDto, TimeActivityType, TimeMember, TimeProjectOption, TimeTaskOption, TimeTrackingSettings, UpdateTimeSettingsDto } from "../interfaces/time-settings.interfaces";
+import type {
+    ActivityTypeDto, ProjectTimeSettingsRow, TimeActivityType, TimeMember, TimeProjectOption, TimeTaskOption, TimeTrackingSettings, UpdateProjectTimeSettingsDto, UpdateTimeSettingsDto,
+} from "../interfaces/time-settings.interfaces";
 
 const R = ApiRoutes.time;
 
@@ -20,3 +22,8 @@ export const getTimeProjects = async (search?: string): Promise<TimeProjectOptio
 export const getTimeTasks = async (projectId?: string | null, search?: string): Promise<TimeTaskOption[]> =>
     (await axiosInstance.get(R.lookups.tasks, { params: { ...(projectId && { project_id: projectId }), ...(search && { search }) } })).data;
 export const getTimeMembers = async (scope: "team" | "all" = "all"): Promise<TimeMember[]> => (await axiosInstance.get(R.lookups.members, { params: { scope } })).data;
+
+export const getProjectTimeSettings = async (search?: string): Promise<{ organization_default_billable: boolean; data: ProjectTimeSettingsRow[] }> =>
+    (await axiosInstance.get(R.projectSettings.list, { params: search ? { search } : undefined })).data;
+export const updateProjectTimeSettings = async ({ projectId, ...dto }: UpdateProjectTimeSettingsDto & { projectId: string }) =>
+    (await axiosInstance.patch(R.projectSettings.detail(projectId), dto)).data;

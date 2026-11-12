@@ -94,6 +94,26 @@ export class TimeSettingsService {
         };
     }
 
+    /** Every active project with its time settings (null = organization defaults) and logged hours vs the hour budget. */
+    async listProjectSettings(ctx: OrgContext, search?: string) {
+        const projects = await this.prisma.project.findMany({
+            where: { organization_id: ctx.organization_id, archived_at: null, ...(search && { OR: [{ name: { contains: search, mode: 'insensitive' } }, { code: { contains: search, mode: 'insensitive' } }] }) },
+            select: {
+                id: true, name: true, code: true, color: true, budget_hours: true, company: { select: { id: true, name: true } },
+                time_settings: { include: { default_activity_type: { select: { id: true, name: true } }, approver: { select: { id: true, user: { select: { display_name: true, first_name: true, last_name: true, email: true } } } } } },
+            },
+            orderBy: { name: 'asc' },
+            take: 300,
+        });
+        const logged = await this.prisma.timeEntry.groupBy({ by: ['project_id'], where: { organization_id: ctx.organization_id, deleted_at: null, project_id: { in: projects.map((p) => p.id) } }, _sum: { duration_minutes: true } });
+        const minutes = new Map(logged.map((l) => [l.project_id, l._sum.duration_minutes ?? 0]));
+        const org = await this.access.settings(ctx.organization_id);
+        return {
+            organization_default_billable: org.default_billable,
+            data: projects.map(({ time_settings, ...p }) => ({ ...p, settings: time_settings, logged_minutes: minutes.get(p.id) ?? 0 })),
+        };
+    }
+
     async updateProjectSettings(ctx: OrgContext, projectId: string, dto: UpdateProjectTimeSettingsDto) {
         const { settings: before } = await this.getProjectSettings(ctx, projectId);
         if (dto.approver_membership_id) await this.assertMember(ctx, dto.approver_membership_id);

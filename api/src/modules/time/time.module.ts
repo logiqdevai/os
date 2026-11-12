@@ -15,11 +15,25 @@ import { BillingRatesService } from './rates/billing-rates.service';
 import { TimeReportsController } from './reports/time-reports.controller';
 import { TimeReportsService } from './reports/time-reports.service';
 import { TimeMcp } from './time.mcp';
+import { FilesModule } from '@/modules/files/files.module';
+import { CommunicationsModule } from '@/modules/communications/communications.module';
+import { TimeSuggestionsController } from './suggestions/time-suggestions.controller';
+import { TimeSuggestionsService } from './suggestions/time-suggestions.service';
+import { TimeImportController } from './imports/time-import.controller';
+import { TimeImportService } from './imports/time-import.service';
+import { TimeReportSchedulesController } from './schedules/time-report-schedules.controller';
+import { TimeReportSchedulesService } from './schedules/time-report-schedules.service';
 
 /** 18 Time Tracking — docs/features/18-time-tracking.md. */
 @Module({
-    controllers: [TimeSettingsController, TimersController, TimesheetsController, BillingRatesController, TimeReportsController, TimeEntriesController],
-    providers: [TimeAccessService, TimeLedgerService, TimeLookupsService, TimeSettingsService, TimeEntriesService, TimersService, TimesheetsService, BillingRatesService, TimeReportsService, TimeMcp],
+    imports: [FilesModule, CommunicationsModule],
+    controllers: [
+        TimeSettingsController, TimersController, TimesheetsController, BillingRatesController, TimeReportsController, TimeSuggestionsController, TimeImportController,
+        TimeReportSchedulesController, TimeEntriesController,
+    ],
+    providers: [TimeAccessService, TimeLedgerService, TimeLookupsService, TimeSettingsService, TimeEntriesService, TimersService, TimesheetsService, BillingRatesService, TimeReportsService,
+        TimeSuggestionsService, TimeImportService, TimeReportSchedulesService, TimeMcp,
+    ],
     exports: [TimeAccessService, TimeEntriesService, TimeReportsService],
 })
 export class TimeModule { }

@@ -13,6 +13,10 @@ const RatesPage = lazy(() => import("./pages/rates"));
 const ReportsPage = lazy(() => import("./pages/reports"));
 const UnbilledPage = lazy(() => import("./pages/unbilled"));
 const SettingsPage = lazy(() => import("./pages/settings"));
+const SuggestionsPage = lazy(() => import("./pages/suggestions"));
+const ImportPage = lazy(() => import("./pages/import"));
+const SchedulesPage = lazy(() => import("./pages/schedules"));
+const ProjectSettingsPage = lazy(() => import("./pages/project-settings"));
 
 const READ = ["time.entries.read_own", "time.entries.read_team", "time.entries.read_all"];
 
@@ -41,6 +45,10 @@ export default function TimeRoutes() {
             <Route path="reports" element={<RequirePermission permission="time.reports.read"><ReportsPage /></RequirePermission>} />
             <Route path="unbilled" element={<RequirePermission allOf={["time.entries.read_all", "time.reports.read"]}><UnbilledPage /></RequirePermission>} />
             <Route path="settings" element={<RequirePermission permission="time.settings.manage"><SettingsPage /></RequirePermission>} />
+            <Route path="suggestions" element={<RequirePermission permission="time.entries.create_own"><SuggestionsPage /></RequirePermission>} />
+            <Route path="import" element={<RequirePermission allOf={["time.imports.manage", "time.entries.create_own"]}><ImportPage /></RequirePermission>} />
+            <Route path="schedules" element={<RequirePermission allOf={["time.reports.read", "time.entries.export"]}><SchedulesPage /></RequirePermission>} />
+            <Route path="projects" element={<RequirePermission permission="time.settings.manage"><ProjectSettingsPage /></RequirePermission>} />
             <Route path="*" element={<RequirePermission anyOf={READ}><EntriesPage /></RequirePermission>} />
         </Routes>
     );

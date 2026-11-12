@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ModuleKey, Prisma, TimeEntryStatus, TimesheetActionType, TimesheetStatus } from 'generated/prisma';
+import { ModuleKey, Prisma, TimeEntrySource, TimeEntryStatus, TimesheetActionType, TimesheetStatus } from 'generated/prisma';
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { AuditService } from '@/shared/audit/audit.service';
 import { EventsService } from '@/shared/events/events.service';
@@ -18,6 +18,14 @@ export const ENTRY_INCLUDE = {
     activity_type: { select: { id: true, name: true, color: true } },
     timesheet: { select: { id: true, status: true, period_start: true, period_end: true } },
 } satisfies Prisma.TimeEntryInclude;
+
+/** Where an entry came from when it was not typed in by hand (internal callers only). */
+export interface EntryOrigin {
+    source: TimeEntrySource;
+    calendar_event_id?: string | null;
+    import_job_id?: string | null;
+    external_ref?: string | null;
+}
 
 /** 18 §3 — time entries: scoped reads (own / team / all), validated writes, soft delete, single approvals, unlock. */
 @Injectable()
@@ -77,21 +85,28 @@ export class TimeEntriesService {
         return this.access.stripAmounts(ctx, entry);
     }
 
-    async create(ctx: OrgContext, dto: CreateTimeEntryDto) {
+    /**
+     * `origin` is set by internal callers only (accepted suggestions, imports): the entry source and its link to the
+     * calendar event / import job / source row. REST and MCP never pass it.
+     */
+    async create(ctx: OrgContext, dto: CreateTimeEntryDto, origin?: EntryOrigin) {
         const membershipId = await this.actorFor(ctx, dto.membership_id, 'create');
         const settings = await this.access.settings(ctx.organization_id);
-        const data = await this.ledger.prepare(ctx, { ...dto, membership_id: membershipId }, { settings });
+        const data = await this.ledger.prepare(ctx, { ...dto, membership_id: membershipId, source: origin?.source }, { settings });
         const employeeId = await this.access.employeeIdOf(membershipId);
         const entry = await this.prisma.$transaction(async (tx) => {
             const sheet = await this.ledger.openTimesheet(tx, ctx, membershipId, data.date, settings);
             const row = await tx.timeEntry.create({
-                data: { ...data, organization_id: ctx.organization_id, employee_id: employeeId, timesheet_id: sheet.id, status: TimeEntryStatus.DRAFT, created_by_user_id: ctx.user_id },
+                data: {
+                    ...data, organization_id: ctx.organization_id, employee_id: employeeId, timesheet_id: sheet.id, status: TimeEntryStatus.DRAFT, created_by_user_id: ctx.user_id,
+                    calendar_event_id: origin?.calendar_event_id ?? null, import_job_id: origin?.import_job_id ?? null, external_ref: origin?.external_ref ?? null,
+                },
                 include: ENTRY_INCLUDE,
             });
             await this.ledger.recompute(tx, sheet.id);
             return row;
         });
-        await this.audit.record(ctx, 'time.entry.created', { resource_type: 'time_entry', resource_id: entry.id, branch_id: entry.branch_id, metadata: { after: { ...dto, duration_minutes: entry.duration_minutes, entered_minutes: dto.duration_minutes } } });
+        await this.audit.record(ctx, 'time.entry.created', { resource_type: 'time_entry', resource_id: entry.id, branch_id: entry.branch_id, metadata: { after: { ...dto, duration_minutes: entry.duration_minutes, entered_minutes: dto.duration_minutes }, ...(origin && { source: origin.source, import_job_id: origin.import_job_id, suggestion: origin.calendar_event_id }) } });
         this.events.publish(ctx, {
             event_key: 'time.entry.created', module: ModuleKey.TIME_TRACKING, entity_type: 'TIME_ENTRY', entity_id: entry.id,
             payload: { owner_membership_id: membershipId, project_id: entry.project_id, task_id: entry.task_id, date: isoDate(entry.date), duration_minutes: entry.duration_minutes, is_billable: entry.is_billable },

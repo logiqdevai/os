@@ -4,6 +4,9 @@ import type { TimesheetStatus } from "@/features/time/timesheets/interfaces/time
 import type { BillingRateScope, RateStatusFilter, TimeRateKind } from "@/features/time/rates/interfaces/rates.interfaces";
 import type { ReportGroupBy } from "@/features/time/reports/interfaces/reports.interfaces";
 import type { TimeNonBillableCategory, TimeRoundingMode, TimesheetApproverPolicy } from "@/features/time/settings/interfaces/time-settings.interfaces";
+import type { TimeSuggestionSource } from "@/features/time/suggestions/interfaces/suggestions.interfaces";
+import type { TimeImportStatus } from "@/features/time/imports/interfaces/imports.interfaces";
+import type { TimeReportFrequency } from "@/features/time/schedules/interfaces/schedules.interfaces";
 import type { DropdownOption } from "@/lib/dropdown-option-label.utils";
 
 /** Canonical labels for 18 Time Tracking enums (schema: TimeEntry, Timesheet, BillingRate, TimeTrackingSettings). */
@@ -90,4 +93,39 @@ export const ApproverPolicyFormOptions: DropdownOption<TimesheetApproverPolicy>[
     { id: "TEAM_LEAD", label: "Team lead" },
     { id: "PROJECT_OWNER", label: "Project owner" },
     { id: "SPECIFIC_MEMBER", label: "A specific member" },
+];
+
+export const SuggestionSourceFormOptions: DropdownOption<TimeSuggestionSource>[] = [
+    { id: "CALENDAR", label: "Calendar" },
+    { id: "TASK_ACTIVITY", label: "Task activity" },
+    { id: "COMMIT", label: "Commit" },
+    { id: "ATTENDANCE", label: "Attendance" },
+    { id: "AI", label: "AI" },
+];
+export const TimeImportStatusFormOptions: DropdownOption<TimeImportStatus>[] = [
+    { id: "PENDING", label: "Waiting for mapping" },
+    { id: "PROCESSING", label: "Importing" },
+    { id: "COMPLETED", label: "Completed" },
+    { id: "FAILED", label: "Failed" },
+    { id: "CANCELLED", label: "Cancelled" },
+];
+export const TimeImportStatusTone: Record<TimeImportStatus, BadgeVariant> = { PENDING: "neutral", PROCESSING: "warning", COMPLETED: "success", FAILED: "danger", CANCELLED: "neutral" };
+export const ReportFrequencyFormOptions: DropdownOption<TimeReportFrequency>[] = [
+    { id: "DAILY", label: "Daily (yesterday)" },
+    { id: "WEEKLY", label: "Weekly (last week)" },
+    { id: "MONTHLY", label: "Monthly (last month)" },
+];
+export const IsoWeekdayOptions: DropdownOption<string>[] = [
+    { id: "1", label: "Monday" },
+    { id: "2", label: "Tuesday" },
+    { id: "3", label: "Wednesday" },
+    { id: "4", label: "Thursday" },
+    { id: "5", label: "Friday" },
+    { id: "6", label: "Saturday" },
+    { id: "7", label: "Sunday" },
+];
+export const ProjectBillableDefaultOptions: DropdownOption<"inherit" | "billable" | "non_billable">[] = [
+    { id: "inherit", label: "Organization default" },
+    { id: "billable", label: "Billable" },
+    { id: "non_billable", label: "Non-billable" },
 ];

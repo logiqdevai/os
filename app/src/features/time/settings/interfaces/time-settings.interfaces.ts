@@ -88,3 +88,30 @@ export interface TimeTaskOption {
     completed_at: string | null;
     team: { task_key: string | null } | null;
 }
+
+export interface TimeProjectSettings {
+    project_id: string;
+    default_billable: boolean | null;
+    default_non_billable_category: TimeNonBillableCategory | null;
+    default_activity_type_id: string | null;
+    approver_membership_id: string | null;
+    time_tracking_enabled: boolean;
+    members_only: boolean;
+    require_task: boolean;
+    hours_alert_percent: number | null;
+    default_activity_type: { id: string; name: string } | null;
+    approver: { id: string; user: { display_name: string | null; first_name: string | null; last_name: string | null; email: string } } | null;
+}
+
+export interface ProjectTimeSettingsRow {
+    id: string;
+    name: string;
+    code: string | null;
+    color: string | null;
+    budget_hours: string | null;
+    company: { id: string; name: string } | null;
+    settings: TimeProjectSettings | null;
+    logged_minutes: number;
+}
+
+export type UpdateProjectTimeSettingsDto = Partial<Pick<TimeProjectSettings, "default_billable" | "default_non_billable_category" | "default_activity_type_id" | "approver_membership_id" | "time_tracking_enabled" | "members_only" | "require_task" | "hours_alert_percent">>;
