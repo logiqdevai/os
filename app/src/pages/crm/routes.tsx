@@ -19,6 +19,8 @@ const ForecastPage = lazy(() => import("./pages/forecast"));
 const PipelinesPage = lazy(() => import("./pages/pipelines"));
 const CrmSettingsPage = lazy(() => import("./pages/settings"));
 const CustomFieldsPage = lazy(() => import("./pages/custom-fields"));
+const TargetsPage = lazy(() => import("./pages/targets"));
+const LeadRulesPage = lazy(() => import("./pages/lead-rules"));
 
 function NotFound() {
     return <Page><EmptyState icon={SearchX} title="Page not found" description="This CRM page does not exist." /></Page>;
@@ -44,6 +46,8 @@ export default function CrmRoutes() {
             <Route path="pipelines" element={<RequirePermission permission="crm.pipelines.manage"><PipelinesPage /></RequirePermission>} />
             <Route path="settings" element={<RequirePermission permission="crm.settings.manage"><CrmSettingsPage /></RequirePermission>} />
             <Route path="custom-fields" element={<RequirePermission permission="platform.custom_fields.manage"><CustomFieldsPage /></RequirePermission>} />
+            <Route path="targets" element={<RequirePermission permission="crm.targets.read"><TargetsPage /></RequirePermission>} />
+            <Route path="lead-rules" element={<RequirePermission anyOf={["crm.settings.manage", "crm.scoring_rules.manage"]}><LeadRulesPage /></RequirePermission>} />
             <Route path="*" element={<NotFound />} />
         </Routes>
     );

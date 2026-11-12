@@ -34,18 +34,14 @@ import { CrmCustomFieldValuesService } from './custom-fields/custom-field-values
 import { CrmCustomFieldsService } from './custom-fields/custom-fields.service';
 import { CrmCustomFieldsController } from './custom-fields/custom-fields.controller';
 import { CrmCustomFieldsMcp } from './custom-fields/custom-fields.mcp';
+import { CrmLeadRulesService } from './rules/lead-rules.service';
+import { CrmTargetsService } from './rules/targets.service';
+import { CrmRulesController } from './rules/rules.controller';
+import { CrmRulesMcp } from './rules/rules.mcp';
 
 /** Extensions (02 §22–33): custom fields, rules & targets, import, merge & duplicates, bulk actions, reports. */
-const FEATURE_CONTROLLERS = [CrmCustomFieldsController];
-const FEATURE_PROVIDERS = [CrmCustomFieldValuesService, CrmCustomFieldsService, CrmCustomFieldsMcp];
-
-
-
-
-
-
-
-
+const FEATURE_CONTROLLERS = [CrmCustomFieldsController, CrmRulesController];
+const FEATURE_PROVIDERS = [CrmCustomFieldValuesService, CrmCustomFieldsService, CrmCustomFieldsMcp, CrmLeadRulesService, CrmTargetsService, CrmRulesMcp];
 
 /**
  * 02 CRM & Sales (docs/features/02-crm-sales-management.md) plus the platform tags and saved views it owns.

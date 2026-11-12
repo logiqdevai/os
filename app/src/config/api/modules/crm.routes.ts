@@ -63,4 +63,13 @@ export const CrmApiRoutes = {
         groups: "/custom-field-groups",
         group: (id: string) => `/custom-field-groups/${id}`,
     },
+    rules: {
+        fields: "/crm/rules/fields",
+        assignment: "/crm/assignment-rules",
+        assignment_detail: (id: string) => `/crm/assignment-rules/${id}`,
+        scoring: "/crm/scoring-rules",
+        scoring_detail: (id: string) => `/crm/scoring-rules/${id}`,
+        recalculate: "/crm/scoring-rules/recalculate",
+    },
+    targets: { list: "/crm/targets", attainment: "/crm/targets/attainment", detail: (id: string) => `/crm/targets/${id}` },
 };

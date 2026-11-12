@@ -14,6 +14,7 @@ import { CrmCompaniesService } from '../companies/companies.service';
 import { CrmContactsService } from '../contacts/contacts.service';
 import { CrmPipelinesService } from '../pipelines/pipelines.service';
 import { CrmCustomFieldValuesService } from '../custom-fields/custom-field-values.service';
+import { CrmLeadRulesService } from '../rules/lead-rules.service';
 import { ConvertLeadDto, CreateLeadDto, LeadQuery, LeadStatusDto, UpdateLeadDto } from './dto/lead.dto';
 
 const READ = 'crm.leads.read';
@@ -44,6 +45,7 @@ export class CrmLeadsService {
         private readonly contacts: CrmContactsService,
         private readonly pipelines: CrmPipelinesService,
         private readonly cf: CrmCustomFieldValuesService,
+        private readonly leadRules: CrmLeadRulesService,
     ) { }
 
     private where(ctx: OrgContext, query: LeadQuery, ids?: string[]): Prisma.CrmLeadWhereInput {
@@ -143,8 +145,10 @@ export class CrmLeadsService {
                 },
             });
             await this.cf.write(tx, RecordEntityType.CRM_LEAD, l.id, customValues);
-            await this.audit.record(ctx, 'crm.lead.created', { resource_type: 'crm_lead', resource_id: l.id, branch_id: l.branch_id, metadata: { after: { name: l.name, email: l.email } } }, tx);
-            return l;
+            // 02 §5–6: assignment rules pick the owner when none was chosen; scoring rules set lead_score.
+            const applied = await this.leadRules.applyOnCreate(tx, ctx, l.id, { assign: !data.owner_membership_id, fallbackOwner: ctx.membership_id });
+            await this.audit.record(ctx, 'crm.lead.created', { resource_type: 'crm_lead', resource_id: l.id, branch_id: l.branch_id, metadata: { after: { name: l.name, email: l.email, owner_membership_id: applied.lead.owner_membership_id, assignment_rule: applied.rule?.name, lead_score: applied.score } } }, tx);
+            return applied.lead;
         });
         this.events.publish(ctx, {
             event_key: 'crm.lead.created', module: ModuleKey.CRM, entity_type: RecordEntityType.CRM_LEAD, entity_id: lead.id,
@@ -178,6 +182,7 @@ export class CrmLeadsService {
                 },
             });
             await this.cf.write(tx, RecordEntityType.CRM_LEAD, id, customValues);
+            await this.leadRules.rescore(tx, ctx.organization_id, id);
             await this.audit.record(ctx, 'crm.lead.updated', { resource_type: 'crm_lead', resource_id: id, branch_id: l.branch_id, metadata: { before: pick(before, Object.keys(data)), after: { ...data, ...(custom_fields && { custom_fields }) } } }, tx);
             return l;
         });

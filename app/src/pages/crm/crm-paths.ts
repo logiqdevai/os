@@ -15,4 +15,6 @@ export const CrmPaths = {
     pipelines: "/crm/pipelines",
     settings: "/crm/settings",
     custom_fields: "/crm/custom-fields",
+    targets: "/crm/targets",
+    lead_rules: "/crm/lead-rules",
 };

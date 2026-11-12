@@ -16,6 +16,7 @@ import { usePipelines } from "@/features/crm/pipelines/hooks/use-pipelines";
 import { CrmPaths } from "../../crm-paths";
 import { MemberAvatar, Money, Panel, ToneBadge } from "../../components/crm-ui";
 import { ACTIVITY_ICON } from "../../components/activity-items";
+import { TargetsPanel } from "../../components/target-progress";
 
 const monthLabel = (m: string) => formatDate(`${m}-01`, "MMM");
 
@@ -71,6 +72,7 @@ export default function CrmDashboardPage() {
             </StatGrid>
 
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                <Can permission="crm.targets.read"><TargetsPanel owner={filters.owner} /></Can>
                 <Panel title={`Open pipeline by stage${d.financials_hidden ? " (deals)" : ""}`} actions={<Button variant="ghost" size="sm" asChild><Link to={CrmPaths.deals}>Board</Link></Button>}>
                     {!d.pipeline.stages.some((s) => s.count) ? (
                         <EmptyState compact icon={Handshake} title="No open deals" description="Open deals appear here by stage." />
