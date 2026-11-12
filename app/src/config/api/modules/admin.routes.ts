@@ -86,4 +86,9 @@ export const AdminApiRoutes = {
         enable: (id: string) => `/integrations/${id}/enable`,
         disable: (id: string) => `/integrations/${id}/disable`,
     },
+    sessions: {
+        list: "/sessions",
+        revoke: (id: string) => `/sessions/${id}/revoke`,
+        revokeAll: "/sessions/revoke-all",
+    },
 };

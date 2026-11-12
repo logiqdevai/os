@@ -23,6 +23,7 @@ const IntegrationsPage = lazy(() => import("./pages/integrations"));
 const IntegrationDetailPage = lazy(() => import("./pages/integration-detail"));
 const ProfilePage = lazy(() => import("./pages/profile"));
 const BrandingPage = lazy(() => import("./pages/branding"));
+const SessionsPage = lazy(() => import("./pages/sessions"));
 
 const gate = (anyOf: string[], element: ReactNode) => <RequirePermission anyOf={anyOf}>{element}</RequirePermission>;
 
@@ -53,6 +54,7 @@ export default function AdminRoutes() {
             <Route path="integrations/:id" element={gate(["organizations.integrations.read"], <IntegrationDetailPage />)} />
             <Route path="profile" element={gate(["organizations.settings.manage"], <ProfilePage />)} />
             <Route path="branding" element={gate(["organizations.branding.manage"], <BrandingPage />)} />
+            <Route path="sessions" element={gate(["users.sessions.read"], <SessionsPage />)} />
             <Route path="*" element={gate(["users.members.read", "organizations.audit.read", "organizations.settings.manage"], <OverviewPage />)} />
         </Routes>
     );
