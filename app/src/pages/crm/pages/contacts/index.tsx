@@ -18,6 +18,7 @@ import { CrmPaths } from "../../crm-paths";
 import { MemberChip, RecordLink, TagList } from "../../components/crm-ui";
 import { ExportButton } from "../../components/crm-actions";
 import { ContactFormDialog } from "../../components/contact-form-dialog";
+import { SavedViewsMenu, useHiddenColumns } from "../../components/saved-views-menu";
 
 /**
  * Contacts (mockup `contacts`).
@@ -27,6 +28,7 @@ import { ContactFormDialog } from "../../components/contact-form-dialog";
  */
 export default function ContactsPage() {
     const { params, setPage, search, setSearch, filters, setFilter } = useListParams({ limit: 25 });
+    const hidden = useHiddenColumns();
     const contacts = useContacts(params);
     const exportContacts = useExportContacts();
     const canCreate = usePermission("crm.contacts.create");
@@ -51,6 +53,8 @@ export default function ContactsPage() {
         { key: "tags", header: "Tags", cell: (c) => <TagList tags={c.tags} />, hideBelow: "xl" },
     ];
 
+    const visibleColumns = columns.filter((c) => !hidden.has(c.key));
+
     return (
         <Page>
             <PageHeader
@@ -64,6 +68,7 @@ export default function ContactsPage() {
                 }
             />
             <TableToolbar search={search} onSearch={setSearch} placeholder="Search name, email, company…">
+                <SavedViewsMenu entityType="CRM_CONTACT" columns={columns.filter((c) => c.key !== "name").map((c) => ({ key: c.key, label: String(c.header) }))} onSearch={setSearch} />
                 <Select value={filters.role ?? "all"} onValueChange={(v) => setFilter("role", v)}>
                     <SelectTrigger className="h-8 w-full sm:w-40" aria-label="Filter by role"><SelectValue /></SelectTrigger>
                     <SelectContent>{ContactRoleFilterOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
@@ -78,7 +83,7 @@ export default function ContactsPage() {
                 </Select>
             </TableToolbar>
             <DataTable
-                columns={columns}
+                columns={visibleColumns}
                 data={contacts.data?.data}
                 rowKey={(c) => c.id}
                 loading={contacts.isFetching}

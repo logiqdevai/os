@@ -19,6 +19,7 @@ import { CrmPaths } from "../../crm-paths";
 import { MemberChip, Money, TagList } from "../../components/crm-ui";
 import { ExportButton } from "../../components/crm-actions";
 import { CompanyFormDialog } from "../../components/company-form-dialog";
+import { SavedViewsMenu, useHiddenColumns } from "../../components/saved-views-menu";
 
 /**
  * Companies (mockup `companies`).
@@ -28,6 +29,7 @@ import { CompanyFormDialog } from "../../components/company-form-dialog";
  */
 export default function CompaniesPage() {
     const { params, setPage, search, setSearch, filters, setFilter } = useListParams({ limit: 25 });
+    const hidden = useHiddenColumns();
     const companies = useCompanies(params);
     const settings = useCrmSettings();
     const exportCompanies = useExportCompanies();
@@ -54,6 +56,8 @@ export default function CompaniesPage() {
         { key: "tags", header: "Tags", cell: (c) => <TagList tags={c.tags} />, hideBelow: "xl" },
     ];
 
+    const visibleColumns = columns.filter((c) => !hidden.has(c.key));
+
     return (
         <Page>
             <PageHeader
@@ -67,6 +71,7 @@ export default function CompaniesPage() {
                 }
             />
             <TableToolbar search={search} onSearch={setSearch} placeholder="Search name, website, email…">
+                <SavedViewsMenu entityType="CRM_COMPANY" columns={columns.filter((c) => c.key !== "name").map((c) => ({ key: c.key, label: String(c.header) }))} onSearch={setSearch} />
                 <Select value={filters.type ?? "all"} onValueChange={(v) => setFilter("type", v)}>
                     <SelectTrigger className="h-8 w-full sm:w-36" aria-label="Filter by type"><SelectValue /></SelectTrigger>
                     <SelectContent>{CompanyTypeFilterOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
@@ -88,7 +93,7 @@ export default function CompaniesPage() {
                 </Select>
             </TableToolbar>
             <DataTable
-                columns={columns}
+                columns={visibleColumns}
                 data={companies.data?.data}
                 rowKey={(c) => c.id}
                 loading={companies.isFetching}

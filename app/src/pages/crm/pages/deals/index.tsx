@@ -20,6 +20,7 @@ import { DealStatusBadge, MemberChip, Money, RecordLink, TagList, ToneBadge } fr
 import { ExportButton } from "../../components/crm-actions";
 import { DealFormDialog, type DealFormDefaults } from "../../components/deal-form-dialog";
 import { DealBoard } from "./components/deal-board";
+import { SavedViewsMenu, useHiddenColumns } from "../../components/saved-views-menu";
 
 /**
  * Deals — board and list (mockup `deals`, `deals-list`).
@@ -31,6 +32,7 @@ export default function DealsPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const { params, setPage, search, setSearch, filters, setFilter } = useListParams({ limit: 50 });
+    const hidden = useHiddenColumns();
     const view = filters.view === "list" ? "list" : "board";
     const pipelines = usePipelines();
     const pipelineId = filters.pipeline_id ?? pipelines.data?.find((p) => p.is_default)?.id ?? pipelines.data?.[0]?.id;
@@ -73,6 +75,8 @@ export default function DealsPage() {
         { key: "tags", header: "Tags", cell: (d) => <TagList tags={d.tags} />, hideBelow: "xl" },
     ];
 
+    const visibleColumns = columns.filter((c) => !hidden.has(c.key));
+
     return (
         <Page>
             <PageHeader
@@ -88,6 +92,7 @@ export default function DealsPage() {
                 }
             />
             <TableToolbar search={search} onSearch={setSearch} placeholder="Search deals or companies…">
+                <SavedViewsMenu entityType="CRM_DEAL" columns={columns.filter((c) => c.key !== "name").map((c) => ({ key: c.key, label: String(c.header) }))} onSearch={setSearch} />
                 {(pipelines.data?.length ?? 0) > 1 && (
                     <Select value={pipelineId ?? ""} onValueChange={(v) => setFilter("pipeline_id", v)}>
                         <SelectTrigger className="h-8 w-full sm:w-44" aria-label="Pipeline"><SelectValue placeholder="Pipeline" /></SelectTrigger>
@@ -131,7 +136,7 @@ export default function DealsPage() {
                         </div>
                     )}
                     <DataTable
-                        columns={columns}
+                        columns={visibleColumns}
                         data={list.data?.data}
                         rowKey={(d) => d.id}
                         loading={list.isFetching || pipelines.isPending}

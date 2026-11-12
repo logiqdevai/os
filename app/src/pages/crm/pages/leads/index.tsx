@@ -17,6 +17,7 @@ import { CrmPaths } from "../../crm-paths";
 import { MemberChip, Money, TagList, ToneBadge } from "../../components/crm-ui";
 import { ExportButton } from "../../components/crm-actions";
 import { LeadFormDialog } from "../../components/lead-form-dialog";
+import { SavedViewsMenu, useHiddenColumns } from "../../components/saved-views-menu";
 
 /**
  * Leads (mockup `leads`).
@@ -26,6 +27,7 @@ import { LeadFormDialog } from "../../components/lead-form-dialog";
  */
 export default function LeadsPage() {
     const { params, setPage, search, setSearch, filters, setFilter } = useListParams({ limit: 25 });
+    const hidden = useHiddenColumns();
     const leads = useLeads(params);
     const settings = useCrmSettings();
     const exportLeads = useExportLeads();
@@ -53,6 +55,8 @@ export default function LeadsPage() {
         { key: "tags", header: "Tags", cell: (l) => <TagList tags={l.tags} />, hideBelow: "xl" },
     ];
 
+    const visibleColumns = columns.filter((c) => !hidden.has(c.key));
+
     return (
         <Page>
             <PageHeader
@@ -69,6 +73,7 @@ export default function LeadsPage() {
                 <TabsList>{LeadStateFilterOptions.map((o) => <TabsTrigger key={o.id} value={o.id}>{o.label}</TabsTrigger>)}</TabsList>
             </Tabs>
             <TableToolbar search={search} onSearch={setSearch} placeholder="Search leads…">
+                <SavedViewsMenu entityType="CRM_LEAD" columns={columns.filter((c) => c.key !== "name").map((c) => ({ key: c.key, label: String(c.header) }))} onSearch={setSearch} />
                 <Select value={filters.status_id ?? "all"} onValueChange={(v) => setFilter("status_id", v)}>
                     <SelectTrigger className="h-8 w-full sm:w-40" aria-label="Filter by status"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -89,7 +94,7 @@ export default function LeadsPage() {
                 </Select>
             </TableToolbar>
             <DataTable
-                columns={columns}
+                columns={visibleColumns}
                 data={leads.data?.data}
                 rowKey={(l) => l.id}
                 loading={leads.isFetching}
