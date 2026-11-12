@@ -133,7 +133,7 @@ export default function RecordDetailPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            <ConfirmationDialog isOpen={dialog === "delete"} onClose={() => setDialog(null)} title="Delete this draft?" description="The draft is removed; its history stays in the audit log." confirmText="Delete" variant="destructive" isLoading={remove.isPending} onConfirm={() => remove.mutate(r.id, { onSuccess: () => navigate("/expenses/ledger") })} />
+            <ConfirmationDialog isOpen={dialog === "delete"} onClose={() => setDialog(null)} title="Delete this draft?" description="The draft is removed; its history stays in the audit log." confirmText="Delete" variant="destructive" onConfirm={() => { remove.mutate(r.id); navigate("/expenses/ledger"); }} />
         </Page>
     );
 }

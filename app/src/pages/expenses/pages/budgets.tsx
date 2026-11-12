@@ -80,7 +80,7 @@ export default function BudgetsPage() {
                 </div>
             )}
             <BudgetDialog open={open} onOpenChange={setOpen} year={year} onCreated={(id) => set("budget", id)} />
-            <ConfirmationDialog isOpen={deleting} onClose={() => setDeleting(false)} title="Delete this budget?" description="Planned amounts are removed; ledger records are not affected." confirmText="Delete" variant="destructive" isLoading={remove.isPending} onConfirm={() => detail.data && remove.mutate(detail.data.id, { onSuccess: () => { setDeleting(false); setSp((p) => { const n = new URLSearchParams(p); n.delete("budget"); return n; }); } })} />
+            <ConfirmationDialog isOpen={deleting} onClose={() => setDeleting(false)} title="Delete this budget?" description="Planned amounts are removed; ledger records are not affected." confirmText="Delete" variant="destructive" onConfirm={() => { if (detail.data) remove.mutate(detail.data.id); setDeleting(false); setSp((p) => { const n = new URLSearchParams(p); n.delete("budget"); return n; }); }} />
         </Page>
     );
 }

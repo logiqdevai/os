@@ -1,21 +1,21 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { patchEntity, removeEntity, useEntityRemove, useEntityUpdate, useOptimisticMutation } from "@/lib/query/optimistic";
 import * as s from "../services/expenses.services";
+import type { FinancialPeriodStatus, LedgerApprovals, LedgerCategory, LedgerSettings, RecurringExpenseStatus } from "../interfaces/expenses.interfaces";
 
-/** 09 Income & expense hooks. Mutations invalidate the whole ledger cache. */
+/**
+ * 09 Income & expense hooks. Mutations refresh the whole ledger cache when they settle. No success toasts (the UI shows
+ * the result); failures are toasted once by the global MutationCache with the given title.
+ */
 const KEY = ["expenses"] as const;
 type P = Record<string, unknown>;
 
-function useLedgerMutation<TVars, TData = unknown>(fn: (v: TVars) => Promise<TData>, success?: string, errorTitle = "Something went wrong") {
+function useLedgerMutation<TVars, TData = unknown>(fn: (v: TVars) => Promise<TData>, errorTitle = "Something went wrong", errorToast = true) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: fn,
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: KEY });
-            if (success) toast({ title: success });
-        },
-        onError: (e) => toast({ variant: "destructive", title: errorTitle, description: getApiErrorMessage(e) }),
+        meta: { errorTitle, errorToast },
+        onSettled: () => qc.invalidateQueries({ queryKey: KEY }),
     });
 }
 
@@ -41,30 +41,113 @@ export const useVatReport = (params: P) => useQuery({ queryKey: [...KEY, "vat", 
 export const useProfitability = (params: P) => useQuery({ queryKey: [...KEY, "profitability", params], queryFn: () => s.getProfitability(params), placeholderData: keepPreviousData });
 export const useInsights = (params: P, enabled = true) => useQuery({ queryKey: [...KEY, "insights", params], queryFn: () => s.getInsights(params), enabled });
 
-export const useCreateRecord = () => useLedgerMutation(s.createRecord, "Record saved", "Could not save the record");
-export const useUpdateRecord = () => useLedgerMutation(s.updateRecord, "Record updated", "Could not update the record");
-export const useDeleteRecord = () => useLedgerMutation(s.deleteRecord, "Draft deleted", "Could not delete");
-export const useRecordAction = () => useLedgerMutation(s.recordAction, undefined, "Could not update the record");
-export const useAddSettlement = () => useLedgerMutation(s.addSettlement, "Payment recorded", "Could not record the payment");
-export const useUpdateLedgerSettings = () => useLedgerMutation(s.updateLedgerSettings, "Settings saved", "Could not save settings");
-export const useCreateCategory = () => useLedgerMutation(s.createCategory, "Category created", "Could not create the category");
-export const useUpdateCategory = () => useLedgerMutation(s.updateCategory, "Category saved", "Could not save the category");
-export const useCategoryAction = () => useLedgerMutation(s.categoryAction, "Category updated", "Could not update the category");
-export const useCreatePaymentMethod = () => useLedgerMutation(s.createPaymentMethod, "Payment method created", "Could not create the payment method");
-export const useArchivePaymentMethod = () => useLedgerMutation(s.archivePaymentMethod, "Payment method archived", "Could not archive");
-export const useSaveSupplierProfile = () => useLedgerMutation(s.saveSupplierProfile, "Supplier defaults saved", "Could not save");
-export const useCreateRecurring = () => useLedgerMutation(s.createRecurring, "Recurring expense created", "Could not create");
-export const useUpdateRecurring = () => useLedgerMutation(s.updateRecurring, "Recurring expense saved", "Could not save");
-export const useRecurringAction = () => useLedgerMutation(s.recurringAction, "Recurring expense updated", "Could not update");
-export const useCreateClaim = () => useLedgerMutation(s.createClaim, "Expense claim saved", "Could not save the claim");
-export const useUpdateClaim = () => useLedgerMutation(s.updateClaim, "Expense claim saved", "Could not save the claim");
-export const useClaimAction = () => useLedgerMutation(s.claimAction, "Expense claim updated", "Could not update the claim");
-export const useCreateBudget = () => useLedgerMutation(s.createBudget, "Budget created", "Could not create the budget");
-export const useUpdateBudget = () => useLedgerMutation(s.updateBudget, "Budget saved", "Could not save the budget");
-export const useDeleteBudget = () => useLedgerMutation(s.deleteBudget, "Budget deleted", "Could not delete the budget");
-export const useGeneratePeriods = () => useLedgerMutation(s.generatePeriods, "Periods created", "Could not create periods");
-export const usePeriodAction = () => useLedgerMutation(s.periodAction, "Period updated", "Could not update the period");
-export const useCreateVatReturn = () => useLedgerMutation(s.createVatReturn, "VAT return prepared", "Could not prepare the VAT return");
-export const useVatReturnAction = () => useLedgerMutation(s.vatReturnAction, "VAT return updated", "Could not update the VAT return");
-export const useDetectInsights = () => useLedgerMutation(s.detectInsights, "Ledger checked", "Could not check the ledger");
-export const useInsightAction = () => useLedgerMutation(s.insightAction, "Insight updated", "Could not update");
+export const useCreateRecord = () => useLedgerMutation(s.createRecord, "Could not save the record");
+/** Explicit save of a posted record (an audited amendment). */
+export const useUpdateRecord = () => useLedgerMutation(s.updateRecord, "Could not update the record");
+/** Autosave of a draft record: failures show in the editor's <SaveStatus />, not as a toast. */
+export const useAutosaveRecord = () => useLedgerMutation(s.updateRecord, "Could not save the draft", false);
+export const useDeleteRecord = () => useEntityRemove({ root: KEY, mutationFn: s.deleteRecord, meta: { errorTitle: "Could not delete" } });
+/** Post / approve / reject / void. Approving or rejecting removes the record from the approvals inbox at once. */
+export const useRecordAction = () =>
+    useOptimisticMutation({
+        roots: [[...KEY, "approvals"]],
+        alsoInvalidate: [KEY],
+        meta: { errorTitle: "Could not update the record" },
+        mutationFn: s.recordAction,
+        apply: (qc, v) => {
+            if (v.action === "approve" || v.action === "reject")
+                qc.setQueriesData<LedgerApprovals>({ queryKey: [...KEY, "approvals"] }, (d) => (d ? { ...d, records: d.records.filter((r) => r.id !== v.id) } : d));
+        },
+    });
+export const useAddSettlement = () => useLedgerMutation(s.addSettlement, "Could not record the payment");
+/** Optimistic: switches and selects show the new value at once. */
+export const useUpdateLedgerSettings = () =>
+    useOptimisticMutation({
+        roots: [[...KEY, "settings"]],
+        alsoInvalidate: [KEY],
+        meta: { errorTitle: "Could not save settings" },
+        mutationFn: s.updateLedgerSettings,
+        apply: (qc, dto) => qc.setQueriesData<LedgerSettings>({ queryKey: [...KEY, "settings"] }, (d) => (d ? ({ ...d, ...dto } as LedgerSettings) : d)),
+    });
+export const useCreateCategory = () => useLedgerMutation(s.createCategory, "Could not create the category");
+export const useUpdateCategory = () => useEntityUpdate({ root: KEY, mutationFn: s.updateCategory, meta: { errorTitle: "Could not save the category" } });
+/** Archive removes the category (and its subcategories) from the tree at once; restore refreshes. */
+export const useCategoryAction = () =>
+    useOptimisticMutation({
+        roots: [[...KEY, "categories"]],
+        alsoInvalidate: [KEY],
+        meta: { errorTitle: "Could not update the category" },
+        mutationFn: s.categoryAction,
+        apply: (qc, v) => {
+            if (v.action !== "archive") return;
+            qc.setQueriesData<LedgerCategory[]>({ queryKey: [...KEY, "categories"] }, (d) => d?.filter((c) => c.id !== v.id && c.parent_category_id !== v.id));
+        },
+    });
+export const useCreatePaymentMethod = () => useLedgerMutation(s.createPaymentMethod, "Could not create the payment method");
+export const useArchivePaymentMethod = () => useEntityRemove({ root: [...KEY, "payment-methods"], mutationFn: s.archivePaymentMethod, alsoInvalidate: [KEY], meta: { errorTitle: "Could not archive" } });
+/** Supplier ledger defaults autosave: failures show in the section's <SaveStatus />. */
+export const useSaveSupplierProfile = () => useLedgerMutation(s.saveSupplierProfile, "Could not save", false);
+export const useCreateRecurring = () => useLedgerMutation(s.createRecurring, "Could not create");
+export const useUpdateRecurring = () => useEntityUpdate({ root: KEY, mutationFn: s.updateRecurring, meta: { errorTitle: "Could not save" } });
+const RECURRING_STATUS: Partial<Record<string, RecurringExpenseStatus>> = { pause: "PAUSED", resume: "ACTIVE", end: "ENDED" };
+/** Pause / resume / end show the new status at once; "generate now" refreshes when done. */
+export const useRecurringAction = () =>
+    useOptimisticMutation({
+        roots: [KEY],
+        meta: { errorTitle: "Could not update" },
+        mutationFn: s.recurringAction,
+        apply: (qc, v) => {
+            const status = RECURRING_STATUS[v.action];
+            if (status) patchEntity(qc, [...KEY, "recurring"], v.id, { status });
+        },
+    });
+export const useCreateClaim = () => useLedgerMutation(s.createClaim, "Could not save the claim");
+export const useUpdateClaim = () => useLedgerMutation(s.updateClaim, "Could not save the claim");
+/** Submit / approve / reject / pay. Approving or rejecting removes the claim from the approvals inbox at once. */
+export const useClaimAction = () =>
+    useOptimisticMutation({
+        roots: [[...KEY, "approvals"]],
+        alsoInvalidate: [KEY],
+        meta: { errorTitle: "Could not update the claim" },
+        mutationFn: s.claimAction,
+        apply: (qc, v) => {
+            if (v.action === "approve" || v.action === "reject")
+                qc.setQueriesData<LedgerApprovals>({ queryKey: [...KEY, "approvals"] }, (d) => (d ? { ...d, claims: d.claims.filter((c) => c.id !== v.id) } : d));
+        },
+    });
+export const useCreateBudget = () => useLedgerMutation(s.createBudget, "Could not create the budget");
+export const useUpdateBudget = () => useEntityUpdate({ root: KEY, mutationFn: s.updateBudget, meta: { errorTitle: "Could not save the budget" } });
+export const useDeleteBudget = () => useEntityRemove({ root: KEY, mutationFn: s.deleteBudget, meta: { errorTitle: "Could not delete the budget" } });
+export const useGeneratePeriods = () => useLedgerMutation(s.generatePeriods, "Could not create periods");
+const PERIOD_STATUS: Record<string, FinancialPeriodStatus> = { close: "CLOSED", reopen: "OPEN", lock: "LOCKED" };
+/** Close / reopen / lock show the new status at once. */
+export const usePeriodAction = () =>
+    useOptimisticMutation({
+        roots: [[...KEY, "periods"]],
+        alsoInvalidate: [KEY],
+        meta: { errorTitle: "Could not update the period" },
+        mutationFn: s.periodAction,
+        apply: (qc, v) => patchEntity(qc, [...KEY, "periods"], v.id, { status: PERIOD_STATUS[v.action] }),
+    });
+export const useCreateVatReturn = () => useLedgerMutation(s.createVatReturn, "Could not prepare the VAT return");
+/** "Mark paid" shows at once; filing refreshes. */
+export const useVatReturnAction = () =>
+    useOptimisticMutation({
+        roots: [[...KEY, "vat"]],
+        alsoInvalidate: [KEY],
+        meta: { errorTitle: "Could not update the VAT return" },
+        mutationFn: s.vatReturnAction,
+        apply: (qc, v) => {
+            if (v.action === "paid") patchEntity(qc, [...KEY, "vat"], v.id, { status: "PAID" });
+        },
+    });
+export const useDetectInsights = () => useLedgerMutation(s.detectInsights, "Could not check the ledger");
+/** Accept / dismiss: the insight leaves the list at once. */
+export const useInsightAction = () =>
+    useOptimisticMutation({
+        roots: [[...KEY, "insights"]],
+        alsoInvalidate: [KEY],
+        meta: { errorTitle: "Could not update" },
+        mutationFn: s.insightAction,
+        apply: (qc, v) => removeEntity(qc, [...KEY, "insights"], v.id),
+    });

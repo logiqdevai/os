@@ -176,7 +176,17 @@ function SettingsPanel() {
     const save = useUpdateLedgerSettings();
     const rates = useTaxRates().data;
     const [threshold, setThreshold] = useState("");
-    useEffect(() => { if (s.data) setThreshold(s.data.approval_threshold_amount ? String(Number(s.data.approval_threshold_amount)) : ""); }, [s.data]);
+    const [editingThreshold, setEditingThreshold] = useState(false);
+    const savedThreshold = s.data?.approval_threshold_amount ? String(Number(s.data.approval_threshold_amount)) : "";
+    useEffect(() => { if (!editingThreshold) setThreshold(savedThreshold); }, [savedThreshold, editingThreshold]);
+    // Saved on blur / Enter (optimistic, no Save button); invalid input reverts.
+    const commitThreshold = () => {
+        setEditingThreshold(false);
+        const next = threshold.trim();
+        if (next === savedThreshold) return;
+        if (next && !(Number(next) >= 0)) { setThreshold(savedThreshold); return; }
+        save.mutate({ approval_threshold_amount: next || null });
+    };
     if (s.isPending) return <ListSkeleton />;
     if (s.error || !s.data) return <ErrorState error={s.error} />;
     const d = s.data;
@@ -191,7 +201,8 @@ function SettingsPanel() {
             <div className="grid gap-4 rounded-lg border border-border bg-card p-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                     <Label htmlFor="threshold">Approval threshold ({d.effective_reporting_currency})</Label>
-                    <div className="flex gap-2"><Input id="threshold" inputMode="decimal" placeholder="No approval" value={threshold} onChange={(e) => setThreshold(e.target.value)} /><Button variant="outline" loading={save.isPending} onClick={() => save.mutate({ approval_threshold_amount: threshold ? threshold : null })}>Save</Button></div>
+                    <Input id="threshold" inputMode="decimal" placeholder="No approval" value={threshold} onFocus={() => setEditingThreshold(true)} onChange={(e) => setThreshold(e.target.value)} onBlur={commitThreshold}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } if (e.key === "Escape") { setThreshold(savedThreshold); setEditingThreshold(false); } }} />
                     <p className="text-xs text-muted-foreground">Manual records above this gross amount need a second member to approve them.</p>
                 </div>
                 <div className="space-y-1.5">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,11 +10,13 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ErrorState, NoAccessState, PageSkeleton } from "@/components/ui/states";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { usePermissions } from "@/hooks/use-permission";
 import { useSessionData } from "@/features/session/hooks/use-session";
 import { useTaxRates } from "@/features/billing/hooks/use-billing";
 import type { TaxRate } from "@/features/billing/interfaces/billing.interfaces";
-import { useCreateRecord, usePaymentMethods, useRecord, useUpdateRecord } from "@/features/expenses/hooks/use-expenses";
+import { useAutosaveRecord, useCreateRecord, usePaymentMethods, useRecord, useUpdateRecord } from "@/features/expenses/hooks/use-expenses";
 import type { LedgerRecordInput, LedgerVatTreatment } from "@/features/expenses/interfaces/expenses.interfaces";
 import { recordFormSchema, type RecordFormValues } from "@/features/expenses/validation-schemas/expenses.schema";
 import { PricingModeOptions, RecordTypeOptions, VatTreatmentOptions } from "@/config/constants/dropdowns/expenses/expenses.options";
@@ -27,6 +29,8 @@ const NO_RATES: TaxRate[] = [];
 
 /**
  * /expenses/new (?type=INCOME|EXPENSE) and /expenses/records/:id/edit — manual income / expense entry with automatic VAT.
+ * New: explicit "Save as draft" / "Save and post". Edit: drafts autosave (<SaveStatus />, no Save button); posted records
+ * keep "Save changes" because every change to them is an audited amendment.
  * @perm finance.expenses.create / finance.income.create (new) · .update (edit) · amounts above the approval threshold go to review
  * @api POST /ledger/records · PATCH /ledger/records/:id
  */
@@ -41,6 +45,7 @@ export default function RecordFormPage() {
     const methods = usePaymentMethods();
     const create = useCreateRecord();
     const update = useUpdateRecord();
+    const autosaveRecord = useAutosaveRecord();
     const initialType = (sp.get("type") === "INCOME" ? "INCOME" : "EXPENSE") as "INCOME" | "EXPENSE";
     const form = useForm<RecordFormValues>({
         resolver: zodResolver(recordFormSchema),
@@ -52,9 +57,12 @@ export default function RecordFormPage() {
     });
     const v = useWatch({ control: form.control });
 
+    // Load the record once per id: refetches after an autosave must not overwrite what is being typed.
+    const loadedId = useRef<string | null>(null);
     useEffect(() => {
         const r = existing.data;
-        if (!r) return;
+        if (!r || loadedId.current === r.id) return;
+        loadedId.current = r.id;
         form.reset({
             type: r.type, description: r.description, category_id: r.subcategory_id ?? r.category_id ?? undefined, reference_number: r.reference_number ?? "", transaction_date: r.transaction_date.slice(0, 10),
             due_date: r.due_date?.slice(0, 10) ?? "", amount: String(r.pricing_mode === "INCLUSIVE" ? r.gross_amount : r.net_amount), pricing_mode: r.pricing_mode, tax_rate_id: r.tax_rate_id ?? NONE,
@@ -88,10 +96,6 @@ export default function RecordFormPage() {
     const synced = existing.data && !existing.data.can_edit_amounts;
     const type = v.type ?? "EXPENSE";
     const key = type === "INCOME" ? "finance.income" : "finance.expenses";
-    if (id && existing.isPending) return <PageSkeleton />;
-    if (id && existing.error) return <Page><ErrorState error={existing.error} onRetry={() => existing.refetch()} /></Page>;
-    if (!p.can(`${key}.${id ? "update" : "create"}`) && p.loaded) return <Page><NoAccessState /></Page>;
-
     const pending = create.isPending || update.isPending;
     const toDto = (vals: RecordFormValues, status: "DRAFT" | "POSTED"): LedgerRecordInput => {
         const amountField = vals.pricing_mode === "INCLUSIVE" && !vals.override_vat ? { gross_amount: vals.amount } : { net_amount: vals.override_vat && vals.pricing_mode === "INCLUSIVE" ? String(Math.round((Number(vals.amount) - Number(vals.vat_amount || 0)) * 100) / 100) : vals.amount };
@@ -103,19 +107,29 @@ export default function RecordFormPage() {
             notes: vals.notes || null, status, mark_paid: vals.mark_paid, payment_date: vals.mark_paid ? vals.payment_date || vals.transaction_date : null,
         };
     };
+    /** PATCH body of an existing record (synced records only change their descriptive fields). */
+    const toPatch = (vals: RecordFormValues) => {
+        const { type: _t, status: _s, mark_paid: _m, ...rest } = toDto(vals, "DRAFT");
+        return synced ? { description: rest.description, category_id: rest.category_id, subcategory_id: null, project_id: rest.project_id, notes: rest.notes, payment_method_id: rest.payment_method_id, reference_number: rest.reference_number } : rest;
+    };
+    // Drafts autosave (no Save button); posted records keep an explicit "Save changes" (an audited amendment).
+    const isDraft = existing.data?.status === "DRAFT";
+    const autosave = useFormAutosave(form, (vals) => autosaveRecord.mutateAsync({ id: id as string, ...toPatch(vals) }), { enabled: !!id && isDraft });
     const save = (status: "DRAFT" | "POSTED") =>
         form.handleSubmit((vals) => {
-            const dto = toDto(vals, status);
             if (id) {
-                const { type: _t, status: _s, mark_paid: _m, ...rest } = dto;
-                const patchDto = synced ? { description: rest.description, category_id: rest.category_id, subcategory_id: null, project_id: rest.project_id, notes: rest.notes, payment_method_id: rest.payment_method_id, reference_number: rest.reference_number } : rest;
-                update.mutate({ id, ...patchDto }, { onSuccess: () => navigate(`/expenses/records/${id}`) });
-            } else create.mutate(dto, { onSuccess: (r) => navigate(`/expenses/records/${r.id}`) });
+                if (isDraft) { autosave.flush(); navigate(`/expenses/records/${id}`); return; }
+                update.mutate({ id, ...toPatch(vals) }, { onSuccess: () => navigate(`/expenses/records/${id}`) });
+            } else create.mutate(toDto(vals, status), { onSuccess: (r) => navigate(`/expenses/records/${r.id}`) });
         })();
+
+    if (id && existing.isPending) return <PageSkeleton />;
+    if (id && existing.error) return <Page><ErrorState error={existing.error} onRetry={() => existing.refetch()} /></Page>;
+    if (!p.can(`${key}.${id ? "update" : "create"}`) && p.loaded) return <Page><NoAccessState /></Page>;
 
     return (
         <Page width="wide">
-            <PageHeader title={id ? `Edit ${existing.data?.number}` : type === "INCOME" ? "New income" : "New expense"} back={{ to: id ? `/expenses/records/${id}` : "/expenses/ledger", label: id ? "Record" : "Ledger" }} description={synced ? "This record comes from Billing: amounts and dates are changed on the invoice." : "VAT is calculated from the amount and the rate."} />
+            <PageHeader title={id ? `Edit ${existing.data?.number}` : type === "INCOME" ? "New income" : "New expense"} back={{ to: id ? `/expenses/records/${id}` : "/expenses/ledger", label: id ? "Record" : "Ledger" }} description={synced ? "This record comes from Billing: amounts and dates are changed on the invoice." : "VAT is calculated from the amount and the rate."} meta={id && isDraft ? <SaveStatus state={autosave} /> : undefined} />
             <Form {...form}>
                 <form onSubmit={(e) => { e.preventDefault(); save("POSTED"); }} className="space-y-6">
                     <Section title="Record">
@@ -172,9 +186,15 @@ export default function RecordFormPage() {
                     </Section>
 
                     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                        <Button type="button" variant="ghost" onClick={() => navigate(-1)} disabled={pending}>Cancel</Button>
-                        {!id && <Button type="button" variant="outline" disabled={pending} onClick={() => save("DRAFT")}>Save as draft</Button>}
-                        <Button type="submit" loading={pending}>{id ? "Save" : "Save and post"}</Button>
+                        {id && isDraft ? (
+                            <Button type="submit" variant="outline">Done</Button>
+                        ) : (
+                            <>
+                                <Button type="button" variant="ghost" onClick={() => navigate(-1)} disabled={pending}>Cancel</Button>
+                                {!id && <Button type="button" variant="outline" disabled={pending} onClick={() => save("DRAFT")}>Save as draft</Button>}
+                                <Button type="submit" loading={pending}>{id ? "Save changes" : "Save and post"}</Button>
+                            </>
+                        )}
                     </div>
                 </form>
             </Form>
