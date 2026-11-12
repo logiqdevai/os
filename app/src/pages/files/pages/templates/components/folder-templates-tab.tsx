@@ -13,8 +13,8 @@ import { EntityPicker } from "@/components/ui/entity-picker";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useAutosave } from "@/hooks/use-autosave";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { FolderTemplateTargetOptions } from "@/config/constants/dropdowns/files/files.options";
 import { useApplyFolderTemplate, useArchiveFolderTemplate, useCreateFolderTemplate, useFolderTemplates, useFolderTree, useUpdateFolderTemplate } from "@/features/files/hooks/use-files";
@@ -79,8 +79,7 @@ export function FolderTemplatesTab() {
                 description="Folders already created from it stay as they are."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate(archiving.id, { onSuccess: () => { toast({ title: "Template archived" }); setArchiving(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (archiving) archive.mutate(archiving.id); setArchiving(null); }}
             />
         </>
     );
@@ -88,46 +87,43 @@ export function FolderTemplatesTab() {
 
 const SAMPLE = "01 Contracts\n02 Briefs & research\n03 Design\n  Drafts\n  Approved (customer)\n04 Deliverables (customer)\n05 Invoices";
 
+/** New template: explicit "Create template". Edit: valid changes autosave (optimistic, <SaveStatus />); "Done" closes. */
 function FolderTemplateDialog({ open, onOpenChange, template }: { open: boolean; onOpenChange: (o: boolean) => void; template: FolderTemplate | null }) {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+                {open && <FolderTemplateForm key={template?.id ?? "new"} template={template} onClose={() => onOpenChange(false)} />}
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+/** Mounted fresh for each opened template, so its first values are the autosave baseline (nothing is re-saved on open). */
+function FolderTemplateForm({ template, onClose }: { template: FolderTemplate | null; onClose: () => void }) {
     const create = useCreateFolderTemplate();
     const update = useUpdateFolderTemplate();
-    const pending = create.isPending || update.isPending;
-    const [name, setName] = useState("");
-    const [description, setDescription] = useState("");
-    const [target, setTarget] = useState<FolderTemplateTarget>("PROJECT_TYPE");
-    const [outline, setOutline] = useState(SAMPLE);
+    const [name, setName] = useState(template?.name ?? "");
+    const [description, setDescription] = useState(template?.description ?? "");
+    const [target, setTarget] = useState<FolderTemplateTarget>(template?.target ?? "PROJECT_TYPE");
+    const [outline, setOutline] = useState(() => (template ? treeToOutline(template.structure) : SAMPLE));
     const [touched, setTouched] = useState(false);
 
-    useEffect(() => {
-        if (!open) return;
-        setName(template?.name ?? "");
-        setDescription(template?.description ?? "");
-        setTarget(template?.target ?? "PROJECT_TYPE");
-        setOutline(template ? treeToOutline(template.structure) : SAMPLE);
-        setTouched(false);
-    }, [open, template]);
-
     const parsed = useMemo(() => outlineToTree(outline), [outline]);
-    const nameError = touched && !name.trim() ? "Give the template a name" : null;
+    const nameError = (touched || !!template) && !name.trim() ? "Give the template a name" : null;
+    const dto = useMemo(() => ({ name: name.trim(), description: description || null, target, structure: parsed.tree as FolderTemplateNode[] }), [name, description, target, parsed.tree]);
+    const autosave = useAutosave({ value: dto, enabled: !!template && !!name.trim() && !parsed.error, save: (v) => update.mutateAsync({ id: template!.id, ...v }) });
 
     const submit = () => {
         setTouched(true);
         if (!name.trim() || parsed.error) return;
-        const dto = { name: name.trim(), description: description || null, target, structure: parsed.tree as FolderTemplateNode[] };
-        const cb = {
-            onSuccess: () => { toast({ title: template ? "Template updated" : "Template created" }); onOpenChange(false); },
-            onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save the template", description: getApiErrorMessage(e) }),
-        };
-        if (template) update.mutate({ id: template.id, ...dto }, cb);
-        else create.mutate(dto, cb);
+        create.mutate(dto, { onSuccess: onClose });
     };
 
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
-            <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+        <>
                 <DialogHeader>
                     <DialogTitle>{template ? "Edit folder template" : "New folder template"}</DialogTitle>
-                    <DialogDescription>One folder per line; indent sub-folders with two spaces. Add “(customer)” to show a folder in the Customer Portal.</DialogDescription>
+                    <DialogDescription>One folder per line; indent sub-folders with two spaces. Add “(customer)” to show a folder in the Customer Portal.{template ? " Changes save automatically." : ""}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                     <div className="space-y-1.5">
@@ -162,12 +158,18 @@ function FolderTemplateDialog({ open, onOpenChange, template }: { open: boolean;
                         {parsed.error ? <p className="text-xs text-danger">{parsed.error}</p> : <p className="text-xs text-muted-foreground">{countNodes(parsed.tree)} folders</p>}
                     </div>
                 </div>
-                <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                    <Button onClick={submit} loading={pending} disabled={!!parsed.error}>{template ? "Save" : "Create template"}</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                {template ? (
+                    <DialogFooter className="items-center sm:justify-between">
+                        <SaveStatus state={autosave} />
+                        <Button variant="outline" onClick={() => { autosave.flush(); onClose(); }}>Done</Button>
+                    </DialogFooter>
+                ) : (
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={onClose} disabled={create.isPending}>Cancel</Button>
+                        <Button onClick={submit} loading={create.isPending} disabled={!!parsed.error}>Create template</Button>
+                    </DialogFooter>
+                )}
+        </>
     );
 }
 
@@ -184,12 +186,10 @@ function ApplyFolderTemplateDialog({ template, onClose }: { template: FolderTemp
     const folders = useMemo(() => (tree.data ?? []).map((f) => ({ id: f.id, label: `${"— ".repeat(f.depth)}${f.name}`, keywords: f.name })), [tree.data]);
     const submit = () => template && apply.mutate({ id: template.id, parent_folder_id: parent ?? undefined, root_name: rootName.trim() || undefined }, {
         onSuccess: (r) => {
-            toast({ title: `${r.created.length} folders created` });
             onClose();
             const target = r.root_folder_id ?? parent;
             navigate(target ? `/files?folder=${target}` : "/files");
         },
-        onError: (e) => toast({ variant: "destructive", title: "Could not create the folders", description: getApiErrorMessage(e) }),
     });
 
     return (

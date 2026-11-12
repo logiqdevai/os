@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Copy, Eye, EyeOff, KeyRound, MoreHorizontal, Plus, Trash2, Users } from "lucide-react";
+import { Eye, EyeOff, KeyRound, MoreHorizontal, Plus, Trash2, Users } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -17,8 +17,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { VaultEntryTypeFilterOptions, VaultEntryTypeOptions } from "@/config/constants/dropdowns/files/files.options";
@@ -26,6 +24,7 @@ import * as service from "@/features/files/services/files.services";
 import { useCreateVaultEntry, useDeleteVaultEntry, useRevealVaultEntry, useVaultEntries } from "@/features/files/hooks/use-files";
 import type { VaultEntry, VaultEntryType } from "@/features/files/interfaces/files.interfaces";
 import { VaultGrantsDialog } from "./components/vault-grants-dialog";
+import { CopyButton } from "../../components/files-ui";
 
 /**
  * /files/vault — encrypted credentials (17 §12). Secrets are never in lists; reveal is confirmed, audited (VaultAccessLog) and auto-hidden.
@@ -101,13 +100,13 @@ export default function VaultPage() {
                 isLoading={reveal.isPending}
                 onConfirm={() => confirmReveal && reveal.mutate({ id: confirmReveal.id }, {
                     onSuccess: (r) => { setRevealed({ entry: confirmReveal, secret: r.secret, hideAt: Date.now() + (r.hide_after_seconds || 30) * 1000 }); setConfirmReveal(null); },
-                    onError: (e) => { toast({ variant: "destructive", title: "Could not reveal", description: getApiErrorMessage(e) }); setConfirmReveal(null); },
+                    onError: () => setConfirmReveal(null),
                 })}
             />
             <RevealDialog revealed={revealed} onClose={() => setRevealed(null)} />
             <VaultFormDialog open={formOpen} onOpenChange={setFormOpen} />
             <VaultGrantsDialog entry={granting} onClose={() => setGranting(null)} />
-            <ConfirmationDialog isOpen={!!deleting} onClose={() => setDeleting(null)} title={`Delete “${deleting?.name}”?`} description="The encrypted secret is destroyed. The access log is kept." confirmText="Delete" variant="destructive" isLoading={remove.isPending} onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => { toast({ title: "Credential deleted" }); setDeleting(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not delete", description: getApiErrorMessage(e) }) })} />
+            <ConfirmationDialog isOpen={!!deleting} onClose={() => setDeleting(null)} title={`Delete “${deleting?.name}”?`} description="The encrypted secret is destroyed. The access log is kept." confirmText="Delete" variant="destructive" onConfirm={() => { if (deleting) remove.mutate(deleting.id); setDeleting(null); }} />
         </Page>
     );
 }
@@ -141,14 +140,9 @@ function RevealDialog({ revealed, onClose }: { revealed: { entry: VaultEntry; se
                 <div className="flex items-center gap-2 rounded-md border border-border bg-secondary p-2">
                     <code className="min-w-0 flex-1 break-all font-mono text-sm text-foreground">{visible ? revealed.secret : "•".repeat(Math.min(24, revealed.secret.length))}</code>
                     <Button size="icon-sm" variant="ghost" aria-label={visible ? "Hide" : "Show"} onClick={() => setVisible((v) => !v)}>{visible ? <EyeOff /> : <Eye />}</Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => navigator.clipboard.writeText(revealed.secret).then(() => { toast({ title: "Copied — clear your clipboard after use" }); service.logVaultCopy(revealed.entry.id).catch(() => undefined); })}
-                    >
-                        <Copy /> Copy
-                    </Button>
+                    <CopyButton size="sm" variant="outline" text={revealed.secret} onCopied={() => service.logVaultCopy(revealed.entry.id).catch(() => undefined)} />
                 </div>
+                <p className="text-xs text-muted-foreground">Copies are logged. Clear your clipboard after use.</p>
                 {revealed.entry.url && <p className="break-all text-xs text-muted-foreground">{revealed.entry.url}</p>}
                 <DialogFooter><Button onClick={onClose}>Hide now</Button></DialogFooter>
             </DialogContent>
@@ -173,7 +167,7 @@ function VaultFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
     useEffect(() => { if (open) form.reset(); }, [open, form]);
     const submit = form.handleSubmit((v) => create.mutate(
         { name: v.name, type: v.type as VaultEntryType, username: v.username || undefined, secret: v.secret, url: v.url || undefined, notes: v.notes || undefined, expires_at: v.expires_at ? new Date(`${v.expires_at}T23:59:59`).toISOString() : undefined },
-        { onSuccess: () => { toast({ title: "Credential saved" }); onOpenChange(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) },
+        { onSuccess: () => onOpenChange(false) },
     ));
     return (
         <Dialog open={open} onOpenChange={(o) => !create.isPending && onOpenChange(o)}>

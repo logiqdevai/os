@@ -8,8 +8,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, formatRelative, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { SharePermissionOptions, ShareSubjectTypeOptions } from "@/config/constants/dropdowns/files/files.options";
@@ -63,7 +61,7 @@ export default function SharedFilesPage() {
             </Tabs>
             <TableToolbar />
             <DataTable columns={columns} data={shares.data?.data} rowKey={(s) => s.id} loading={shares.isFetching} error={shares.error} onRetry={() => shares.refetch()} pagination={shares.data?.pagination} onPageChange={setPage} empty={{ icon: Link2, title: tab === "with_me" ? "Nothing shared with you" : "No shares", description: "Share files from their detail page." }} />
-            <ConfirmationDialog isOpen={!!revoking} onClose={() => setRevoking(null)} title="Revoke this share?" description="The person or link loses access immediately." confirmText="Revoke" variant="destructive" isLoading={revoke.isPending} onConfirm={() => revoking && revoke.mutate(revoking.id, { onSuccess: () => { toast({ title: "Share revoked" }); setRevoking(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not revoke", description: getApiErrorMessage(e) }) })} />
+            <ConfirmationDialog isOpen={!!revoking} onClose={() => setRevoking(null)} title="Revoke this share?" description="The person or link loses access immediately." confirmText="Revoke" variant="destructive" onConfirm={() => { if (revoking) revoke.mutate(revoking.id); setRevoking(null); }} />
         </Page>
     );
 }

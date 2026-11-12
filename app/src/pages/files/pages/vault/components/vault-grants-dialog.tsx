@@ -9,8 +9,6 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EntityPicker } from "@/components/ui/entity-picker";
 import { ErrorState, ListSkeleton } from "@/components/ui/states";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { VaultGrantSubjectOptions } from "@/config/constants/dropdowns/files/files.options";
@@ -59,10 +57,14 @@ export function VaultGrantsDialog({ entry, onClose }: { entry: VaultEntry | null
             can_reveal: canReveal,
             can_manage: type === "PORTAL_USER" ? false : canManage,
             ...(expires ? { expires_at: new Date(`${expires}T23:59:59`).toISOString() } : {}),
-        }, {
-            onSuccess: () => { toast({ title: "Access granted" }); setSubjectId(null); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not grant access", description: getApiErrorMessage(e) }),
+            // Display-only (never sent): the grant shows in the list at once.
+            display: {
+                membership: type === "MEMBERSHIP" ? directory.data?.members.find((m) => m.id === subjectId) ?? null : null,
+                team: type === "TEAM" ? directory.data?.teams.find((t) => t.id === subjectId) ?? null : null,
+                portal_user: type === "PORTAL_USER" ? portalUsers.data?.find((u) => u.id === subjectId) ?? null : null,
+            },
         });
+        setSubjectId(null);
     };
 
     const types = VaultGrantSubjectOptions.filter((o) => o.id !== "PORTAL_USER" || isCustomer);
@@ -90,10 +92,7 @@ export function VaultGrantsDialog({ entry, onClose }: { entry: VaultEntry | null
                                         </div>
                                         {g.can_reveal && <Badge variant="warning">Can reveal</Badge>}
                                         {g.can_manage && <Badge variant="violet">Can manage</Badge>}
-                                        <Button variant="ghost" size="icon-sm" aria-label={`Revoke access for ${grantLabel(g)}`} disabled={revoke.isPending} onClick={() => entry && revoke.mutate({ id: entry.id, grantId: g.id }, {
-                                            onSuccess: () => toast({ title: "Access revoked" }),
-                                            onError: (e) => toast({ variant: "destructive", title: "Could not revoke", description: getApiErrorMessage(e) }),
-                                        })}><Trash2 /></Button>
+                                        <Button variant="ghost" size="icon-sm" aria-label={`Revoke access for ${grantLabel(g)}`} disabled={g.id.startsWith("temp-")} onClick={() => entry && revoke.mutate({ id: entry.id, grantId: g.id })}><Trash2 /></Button>
                                     </li>
                                 ))}
                             </ul>
@@ -128,7 +127,7 @@ export function VaultGrantsDialog({ entry, onClose }: { entry: VaultEntry | null
                     </div>
                     {type === "PORTAL_USER" && <p className="text-xs text-muted-foreground">Portal users only ever get read / reveal access to their own company's credentials.</p>}
                     <div className="flex justify-end">
-                        <Button onClick={submit} loading={add.isPending} disabled={!subjectId}><UserPlus /> Grant access</Button>
+                        <Button onClick={submit} disabled={!subjectId}><UserPlus /> Grant access</Button>
                     </div>
                 </div>
             </DialogContent>

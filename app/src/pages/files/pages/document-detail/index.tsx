@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { CheckCheck, ChevronRight, Copy, Download, ExternalLink, Link2, Lock, RotateCcw, Share2, Star, Trash2, Unlock, Upload } from "lucide-react";
+import { CheckCheck, ChevronRight, Download, ExternalLink, Link2, Lock, RotateCcw, Share2, Star, Trash2, Unlock, Upload } from "lucide-react";
 import { Page, PageHeader, KeyValueList, Section } from "@/components/ui/page";
 import { Markdown } from "@/components/ui/markdown";
+import { InlineText } from "@/components/ui/inline-edit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,17 +16,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { EmptyState, ErrorState, ListSkeleton, PageSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, formatDateTime, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { SharePermissionOptions, ShareSubjectTypeOptions } from "@/config/constants/dropdowns/files/files.options";
 import * as service from "@/features/files/services/files.services";
 import {
-    useCreateShare, useDeleteDocument, useDocument, useDocumentVersions, useFileApprovals, useRequestApproval, useRestoreDocumentVersion, useRevokeShare, useSetDocumentFavorite, useSetLegalHold, useShares,
+    useCreateShare, useDeleteDocument, useDocument, useUpdateDocument, useDocumentVersions, useFileApprovals, useRequestApproval, useRestoreDocumentVersion, useRevokeShare, useSetDocumentFavorite, useSetLegalHold, useShares,
 } from "@/features/files/hooks/use-files";
 import type { DocumentDetail, ShareSubjectType } from "@/features/files/interfaces/files.interfaces";
-import { FileIcon, FilesMemberPicker, FilesStatusBadge, UploadDialog, apiUrl, formatBytes, openDocument } from "../../components/files-ui";
+import { CopyButton, FileIcon, FilesMemberPicker, FilesStatusBadge, UploadDialog, apiUrl, formatBytes, openDocument } from "../../components/files-ui";
 
 /**
  * /files/documents/:id?tab=versions|shares|approvals — preview, metadata, versions, shares, approvals, legal hold (17 §4–10)
@@ -40,6 +39,7 @@ export default function DocumentDetailPage() {
     const favorite = useSetDocumentFavorite();
     const hold = useSetLegalHold();
     const trash = useDeleteDocument();
+    const update = useUpdateDocument();
     const [tab, setTab] = useState("versions");
     const [uploadOpen, setUploadOpen] = useState(false);
     const [trashing, setTrashing] = useState(false);
@@ -49,7 +49,7 @@ export default function DocumentDetailPage() {
     if (doc.isPending) return <PageSkeleton />;
     if (doc.error) return <Page><ErrorState error={doc.error} onRetry={() => doc.refetch()} /></Page>;
     const d = doc.data;
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
+    const canRename = p.can("documents.documents.update") && !d.deleted_at;
 
     return (
         <Page width="wide">
@@ -58,12 +58,12 @@ export default function DocumentDetailPage() {
                 {d.breadcrumbs.map((b) => <span key={b.id} className="flex items-center gap-1"><ChevronRight className="size-3" /><Link to={`/files?folder=${b.id}`} className="hover:text-foreground">{b.name}</Link></span>)}
             </nav>
             <PageHeader
-                title={<span className="flex min-w-0 items-center gap-2"><FileIcon type={d.type_group} className="size-5" /><span className="truncate">{d.title}</span></span>}
+                title={<span className="flex min-w-0 items-center gap-2"><FileIcon type={d.type_group} className="size-5" />{canRename ? <InlineText value={d.title} aria-label="File title" maxLength={255} onSave={(title) => update.mutate({ id, title })} /> : <span className="truncate">{d.title}</span>}</span>}
                 documentTitle={d.title}
                 meta={<>{d.status !== "ACTIVE" && <FilesStatusBadge status={d.deleted_at ? "DELETED" : d.status} />}{d.effective_legal_hold && <Badge variant="danger"><Lock className="size-3" /> Legal hold</Badge>}{d.is_sensitive && <Badge variant="warning">Sensitive</Badge>}</>}
                 actions={
                     <>
-                        <Button variant="outline" size="icon" aria-label={d.is_favorite ? "Remove from favorites" : "Add to favorites"} onClick={() => favorite.mutate({ id, on: !d.is_favorite }, { onError: fail("Could not update favorites") })}><Star className={d.is_favorite ? "fill-warning text-warning" : ""} /></Button>
+                        <Button variant="outline" size="icon" aria-label={d.is_favorite ? "Remove from favorites" : "Add to favorites"} aria-pressed={d.is_favorite} onClick={() => favorite.mutate({ id, on: !d.is_favorite })}><Star className={d.is_favorite ? "fill-warning text-warning" : ""} /></Button>
                         <Button variant="outline" onClick={() => openDocument(id, "inline")}><ExternalLink /> Open</Button>
                         <Button onClick={() => openDocument(id, "attachment")}><Download /> Download</Button>
                     </>
@@ -102,7 +102,7 @@ export default function DocumentDetailPage() {
                         />
                         <div className="flex flex-wrap gap-2 border-t border-border pt-3">
                             {p.can("documents.legal_hold.manage") && (d.legal_hold
-                                ? <Button size="sm" variant="outline" onClick={() => hold.mutate({ id, on: false }, { onSuccess: () => toast({ title: "Legal hold released" }), onError: fail("Could not release the hold") })}><Unlock /> Release hold</Button>
+                                ? <Button size="sm" variant="outline" onClick={() => hold.mutate({ id, on: false })}><Unlock /> Release hold</Button>
                                 : <Button size="sm" variant="outline" onClick={() => { setHoldReason(""); setHoldOpen(true); }}><Lock /> Legal hold</Button>)}
                             {p.can("documents.documents.delete") && !d.deleted_at && <Button size="sm" variant="outline" className="text-danger" disabled={d.effective_legal_hold} onClick={() => setTrashing(true)}><Trash2 /> Move to trash</Button>}
                         </div>
@@ -111,12 +111,12 @@ export default function DocumentDetailPage() {
             </div>
 
             <UploadDialog open={uploadOpen} onOpenChange={setUploadOpen} documentId={id} />
-            <ConfirmationDialog isOpen={trashing} onClose={() => setTrashing(false)} title={`Move “${d.title}” to trash?`} description="Shares stop working while it is in the trash." confirmText="Move to trash" variant="destructive" isLoading={trash.isPending} onConfirm={() => trash.mutate(id, { onSuccess: () => { toast({ title: "Moved to trash" }); navigate(d.folder ? `/files?folder=${d.folder.id}` : "/files"); }, onError: fail("Could not delete") })} />
-            <Dialog open={holdOpen} onOpenChange={(o) => !hold.isPending && setHoldOpen(o)}>
+            <ConfirmationDialog isOpen={trashing} onClose={() => setTrashing(false)} title={`Move “${d.title}” to trash?`} description="Shares stop working while it is in the trash." confirmText="Move to trash" variant="destructive" onConfirm={() => { trash.mutate(id); navigate(d.folder ? `/files?folder=${d.folder.id}` : "/files"); }} />
+            <Dialog open={holdOpen} onOpenChange={setHoldOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader><DialogTitle>Place a legal hold</DialogTitle><DialogDescription>The file cannot be deleted or changed by retention while the hold is active.</DialogDescription></DialogHeader>
                     <div className="space-y-1.5"><Label htmlFor="hold-reason">Reason</Label><Textarea id="hold-reason" rows={3} value={holdReason} onChange={(e) => setHoldReason(e.target.value)} placeholder="Dispute with client, case #2026-14" /></div>
-                    <DialogFooter><Button variant="ghost" onClick={() => setHoldOpen(false)} disabled={hold.isPending}>Cancel</Button><Button disabled={!holdReason.trim()} loading={hold.isPending} onClick={() => hold.mutate({ id, on: true, reason: holdReason.trim() }, { onSuccess: () => { toast({ title: "Legal hold placed" }); setHoldOpen(false); }, onError: fail("Could not place the hold") })}>Place hold</Button></DialogFooter>
+                    <DialogFooter><Button variant="ghost" onClick={() => setHoldOpen(false)}>Cancel</Button><Button disabled={!holdReason.trim()} onClick={() => { hold.mutate({ id, on: true, reason: holdReason.trim() }); setHoldOpen(false); }}>Place hold</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
         </Page>
@@ -186,7 +186,7 @@ function VersionsTab({ doc, onUpload }: { doc: DocumentDetail; onUpload: () => v
                             </div>
                             <div className="flex gap-1.5">
                                 <Button size="sm" variant="ghost" onClick={() => openDocument(doc.id, "attachment", v.id)}><Download /> Download</Button>
-                                {canUpdate && doc.current_version?.id !== v.id && <Button size="sm" variant="outline" loading={restore.isPending} onClick={() => restore.mutate({ id: doc.id, versionId: v.id }, { onSuccess: () => toast({ title: `Version ${v.version_number} restored as the current version` }), onError: (e) => toast({ variant: "destructive", title: "Could not restore", description: getApiErrorMessage(e) }) })}><RotateCcw /> Restore</Button>}
+                                {canUpdate && doc.current_version?.id !== v.id && <Button size="sm" variant="outline" loading={restore.isPending && restore.variables?.versionId === v.id} onClick={() => restore.mutate({ id: doc.id, versionId: v.id })}><RotateCcw /> Restore</Button>}
                             </div>
                         </li>
                     ))}
@@ -210,16 +210,18 @@ function SharesTab({ doc }: { doc: DocumentDetail }) {
     const [password, setPassword] = useState("");
     const [allowDownload, setAllowDownload] = useState(true);
     const [created, setCreated] = useState<string | null>(null);
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
-    const reset = () => { setSubject("PUBLIC_LINK"); setMember([]); setEmail(""); setPermission("VIEW"); setExpires(""); setPassword(""); setAllowDownload(true); setCreated(null); };
+    const [formError, setFormError] = useState<string | null>(null);
+    const reset = () => { setSubject("PUBLIC_LINK"); setMember([]); setEmail(""); setPermission("VIEW"); setExpires(""); setPassword(""); setAllowDownload(true); setCreated(null); setFormError(null); };
 
     const submit = () => {
-        if (subject === "MEMBERSHIP" && !member.length) return toast({ variant: "destructive", title: "Choose a member" });
-        if (subject === "EXTERNAL_EMAIL" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast({ variant: "destructive", title: "Enter a valid email" });
-        if (password && password.length < 6) return toast({ variant: "destructive", title: "The password needs at least 6 characters" });
+        // Client checks show inline under the form (no toast).
+        if (subject === "MEMBERSHIP" && !member.length) return setFormError("Choose a member");
+        if (subject === "EXTERNAL_EMAIL" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setFormError("Enter a valid email");
+        if (password && password.length < 6) return setFormError("The password needs at least 6 characters");
+        setFormError(null);
         create.mutate(
             { document_id: doc.id, subject_type: subject, membership_id: subject === "MEMBERSHIP" ? member[0] : undefined, external_email: subject === "EXTERNAL_EMAIL" ? email : undefined, permission: permission as "VIEW", allow_download: allowDownload, expires_at: expires ? new Date(`${expires}T23:59:59`).toISOString() : undefined, password: password || undefined },
-            { onSuccess: (s) => { toast({ title: "Shared" }); if (s.share_url) setCreated(s.share_url); else setOpen(false); }, onError: fail("Could not share") },
+            { onSuccess: (s) => { if (s.share_url) setCreated(s.share_url); else setOpen(false); } },
         );
     };
 
@@ -235,7 +237,7 @@ function SharesTab({ doc }: { doc: DocumentDetail }) {
                                 <div className="text-xs text-muted-foreground">{getDropdownOptionLabel(SharePermissionOptions, s.permission)} · {s.access_count} opens{s.expires_at ? ` · expires ${formatDate(s.expires_at)}` : ""}</div>
                             </div>
                             <FilesStatusBadge status={s.status} />
-                            {canShare && s.status === "ACTIVE" && <Button size="sm" variant="ghost" className="text-danger" onClick={() => revoke.mutate(s.id, { onSuccess: () => toast({ title: "Share revoked" }), onError: fail("Could not revoke") })}>Revoke</Button>}
+                            {canShare && s.status === "ACTIVE" && <Button size="sm" variant="ghost" className="text-danger" onClick={() => revoke.mutate(s.id)}>Revoke</Button>}
                         </li>
                     ))}
                 </ul>
@@ -246,7 +248,7 @@ function SharesTab({ doc }: { doc: DocumentDetail }) {
                     {created ? (
                         <div className="space-y-2">
                             <p className="text-[13px] text-foreground">Copy the link now — it is shown only once.</p>
-                            <div className="flex items-center gap-2 rounded-md border border-border bg-secondary p-2"><code className="min-w-0 flex-1 break-all font-mono text-xs">{created}</code><Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(created).then(() => toast({ title: "Link copied" }))}><Copy /> Copy</Button></div>
+                            <div className="flex items-center gap-2 rounded-md border border-border bg-secondary p-2"><code className="min-w-0 flex-1 break-all font-mono text-xs">{created}</code><CopyButton text={created} size="sm" variant="outline" label="Copy link" /></div>
                             <DialogFooter><Button onClick={() => setOpen(false)}>Done</Button></DialogFooter>
                         </div>
                     ) : (
@@ -271,6 +273,7 @@ function SharesTab({ doc }: { doc: DocumentDetail }) {
                                 </div>
                                 {(subject === "PUBLIC_LINK" || subject === "EXTERNAL_EMAIL") && <div className="space-y-1.5"><Label htmlFor="share-pw">Password (optional)</Label><Input id="share-pw" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>}
                                 <label className="flex items-center justify-between gap-3 text-[13px]">Allow download<Switch checked={allowDownload} onCheckedChange={setAllowDownload} aria-label="Allow download" /></label>
+                                {formError && <p role="alert" className="text-xs text-danger">{formError}</p>}
                             </div>
                             <DialogFooter><Button variant="ghost" onClick={() => setOpen(false)} disabled={create.isPending}>Cancel</Button><Button onClick={submit} loading={create.isPending}>Share</Button></DialogFooter>
                         </>
@@ -309,7 +312,7 @@ function ApprovalsTab({ doc }: { doc: DocumentDetail }) {
                         <div className="space-y-1.5"><Label>Approvers</Label><FilesMemberPicker multiple value={approvers} onChange={setApprovers} placeholder="Choose approvers" /></div>
                         <div className="space-y-1.5"><Label htmlFor="appr-msg">Message</Label><Textarea id="appr-msg" rows={3} value={message} onChange={(e) => setMessage(e.target.value)} /></div>
                     </div>
-                    <DialogFooter><Button variant="ghost" onClick={() => setOpen(false)} disabled={request.isPending}>Cancel</Button><Button disabled={!approvers.length} loading={request.isPending} onClick={() => request.mutate({ document_id: doc.id, approver_membership_ids: approvers, message: message || undefined }, { onSuccess: () => { toast({ title: "Approval requested" }); setOpen(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not request", description: getApiErrorMessage(e) }) })}>Request</Button></DialogFooter>
+                    <DialogFooter><Button variant="ghost" onClick={() => setOpen(false)} disabled={request.isPending}>Cancel</Button><Button disabled={!approvers.length} loading={request.isPending} onClick={() => request.mutate({ document_id: doc.id, approver_membership_ids: approvers, message: message || undefined }, { onSuccess: () => setOpen(false) })}>Request</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>

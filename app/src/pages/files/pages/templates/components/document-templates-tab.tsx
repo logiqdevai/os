@@ -13,8 +13,6 @@ import { EntityPicker } from "@/components/ui/entity-picker";
 import { ErrorState, ListSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
 import {
     useArchiveDocumentTemplate, useCreateDocumentTemplate, useDocuments, useDocumentTemplate, useDocumentTemplates, useFolderTree, useGenerateFromTemplate,
@@ -98,8 +96,7 @@ export function DocumentTemplatesTab() {
                 description="Documents generated from it are kept. The template cannot generate new documents."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate(archiving.id, { onSuccess: () => { toast({ title: "Template archived" }); setArchiving(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (archiving) archive.mutate(archiving.id); setArchiving(null); }}
             />
         </>
     );
@@ -120,8 +117,7 @@ function CreateTemplateDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     const folderItems = useMemo(() => (folders.data ?? []).map((f) => ({ id: f.id, label: `${"— ".repeat(f.depth)}${f.name}`, keywords: f.name })), [folders.data]);
 
     const submit = () => documentId && name.trim() && create.mutate({ document_id: documentId, name: name.trim(), description: description || null, folder_id: folderId }, {
-        onSuccess: (t) => { toast({ title: "Template created", description: `${t.variables?.length ?? 0} fields found` }); onOpenChange(false); },
-        onError: (e) => toast({ variant: "destructive", title: "Could not create the template", description: getApiErrorMessage(e) }),
+        onSuccess: () => onOpenChange(false),
     });
 
     return (
@@ -167,8 +163,7 @@ function GenerateDialog({ template, onClose }: { template: DocumentTemplate | nu
     const missing = vars.filter((v) => v.required && !values[v.key]?.trim() && !v.default).map((v) => v.label || v.key);
 
     const submit = () => template && generate.mutate({ id: template.id, values, title: title.trim() || undefined, folder_id: folderId ?? undefined }, {
-        onSuccess: (r) => { toast({ title: "Document created", description: r.filename }); onClose(); navigate(`/files/documents/${r.document_id}`); },
-        onError: (e) => toast({ variant: "destructive", title: "Could not generate the document", description: getApiErrorMessage(e) }),
+        onSuccess: (r) => { onClose(); navigate(`/files/documents/${r.document_id}`); },
     });
 
     return (

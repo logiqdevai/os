@@ -14,8 +14,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { DocumentScopeOptions, RetentionActionOptions, RetentionAnchorOptions } from "@/config/constants/dropdowns/files/files.options";
 import { useArchiveRetentionPolicy, useCreateRetentionPolicy, useFileCategories, useRetentionPolicies, useUpdateRetentionPolicy } from "@/features/files/hooks/use-files";
@@ -98,11 +98,7 @@ export default function RetentionPage() {
                 description="The policy stops applying. Documents it already archived or trashed stay where they are."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate(archiving.id, {
-                    onSuccess: () => { toast({ title: "Policy archived" }); setArchiving(null); },
-                    onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }),
-                })}
+                onConfirm={() => { if (archiving) archive.mutate(archiving.id); setArchiving(null); }}
             />
         </Page>
     );
@@ -110,23 +106,26 @@ export default function RetentionPage() {
 
 const empty: RetentionPolicyFormValues = { name: "", description: "", category_id: ANY, scope: ANY, keep_forever: false, retain_days: "2555", anchor: "CREATED", action: "ARCHIVE", is_active: true };
 
+/** New policy: explicit "Create policy". Edit: every valid change autosaves (optimistic, <SaveStatus />); "Done" closes. */
 function RetentionPolicyDialog({ open, onOpenChange, policy }: { open: boolean; onOpenChange: (o: boolean) => void; policy: RetentionPolicy | null }) {
     const create = useCreateRetentionPolicy();
     const update = useUpdateRetentionPolicy();
     const categories = useFileCategories(open);
-    const pending = create.isPending || update.isPending;
+    const pending = create.isPending;
     const form = useForm<RetentionPolicyFormValues>({ resolver: zodResolver(retentionPolicySchema), defaultValues: empty });
 
+    // Reset when the dialog opens or another policy is opened — not when the (optimistically patched) policy changes.
+    const policyId = policy?.id ?? null;
     useEffect(() => {
         if (!open) return;
         form.reset(policy ? {
             name: policy.name, description: policy.description ?? "", category_id: policy.category_id ?? ANY, scope: policy.scope ?? ANY,
             keep_forever: policy.retain_days === null, retain_days: policy.retain_days ? String(policy.retain_days) : "", anchor: policy.anchor, action: policy.action, is_active: policy.is_active,
         } : empty);
-    }, [open, policy, form]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, policyId, form]);
 
-    const submit = form.handleSubmit((v) => {
-        const dto = {
+    const toDto = (v: RetentionPolicyFormValues) => ({
             name: v.name,
             description: v.description || undefined,
             category_id: v.category_id === ANY ? null : v.category_id,
@@ -135,13 +134,11 @@ function RetentionPolicyDialog({ open, onOpenChange, policy }: { open: boolean; 
             anchor: v.anchor as RetentionAnchor,
             action: v.action as RetentionAction,
             is_active: v.is_active,
-        };
-        const cb = {
-            onSuccess: () => { toast({ title: policy ? "Policy updated" : "Policy created" }); onOpenChange(false); },
-            onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save the policy", description: getApiErrorMessage(e) }),
-        };
-        if (policy) update.mutate({ id: policy.id, ...dto }, cb);
-        else create.mutate(dto, cb);
+    });
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: policyId as string, ...toDto(v) }), { enabled: open && !!policyId });
+    const submit = form.handleSubmit((v) => {
+        if (policy) { autosave.flush(); onOpenChange(false); return; }
+        create.mutate(toDto(v), { onSuccess: () => onOpenChange(false) });
     });
     const keepForever = form.watch("keep_forever");
 
@@ -152,7 +149,7 @@ function RetentionPolicyDialog({ open, onOpenChange, policy }: { open: boolean; 
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
                             <DialogTitle>{policy ? "Edit retention policy" : "New retention policy"}</DialogTitle>
-                            <DialogDescription>Applies to new and existing documents that match the category and scope.</DialogDescription>
+                            <DialogDescription>Applies to new and existing documents that match the category and scope.{policy ? " Changes save automatically." : ""}</DialogDescription>
                         </DialogHeader>
                         <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="Invoices — 7 years" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>)} />
@@ -215,10 +212,17 @@ function RetentionPolicyDialog({ open, onOpenChange, policy }: { open: boolean; 
                         <FormField control={form.control} name="is_active" render={({ field }) => (
                             <FormItem className="flex items-center justify-between gap-4"><FormLabel>Active</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} aria-label="Active" /></FormControl></FormItem>
                         )} />
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{policy ? "Save" : "Create policy"}</Button>
-                        </DialogFooter>
+                        {policy ? (
+                            <DialogFooter className="items-center sm:justify-between">
+                                <SaveStatus state={autosave} />
+                                <Button type="submit" variant="outline">Done</Button>
+                            </DialogFooter>
+                        ) : (
+                            <DialogFooter>
+                                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                                <Button type="submit" loading={pending}>Create policy</Button>
+                            </DialogFooter>
+                        )}
                     </form>
                 </Form>
             </DialogContent>

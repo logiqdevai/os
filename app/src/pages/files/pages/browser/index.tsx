@@ -17,8 +17,6 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
 import { DocumentTypeFilterOptions } from "@/config/constants/dropdowns/files/files.options";
 import { useCreateFolder, useDeleteDocument, useDeleteFolder, useDocuments, useFolder, useSetDocumentFavorite } from "@/features/files/hooks/use-files";
@@ -58,7 +56,6 @@ export default function FileBrowserPage() {
     useEffect(() => { try { localStorage.setItem(VIEW_KEY, view); } catch { /* private mode */ } }, [view]);
     useEffect(() => { if (sp.get("upload") === "1") { setUploadOpen(true); setSp((prev) => { const n = new URLSearchParams(prev); n.delete("upload"); return n; }, { replace: true }); } }, [sp, setSp]);
 
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
     const subfolders = folderId ? folder.data?.children ?? [] : [];
 
     const rowMenu = (d: DocumentRow) => (
@@ -67,7 +64,7 @@ export default function FileBrowserPage() {
             <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={() => openDocument(d.id, "inline")}><Eye /> Open</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => openDocument(d.id, "attachment")}><Download /> Download</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => favorite.mutate({ id: d.id, on: !d.is_favorite }, { onError: fail("Could not update favorites") })}><Star /> {d.is_favorite ? "Remove from favorites" : "Add to favorites"}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => favorite.mutate({ id: d.id, on: !d.is_favorite })}><Star /> {d.is_favorite ? "Remove from favorites" : "Add to favorites"}</DropdownMenuItem>
                 {p.can("documents.documents.delete") && <><DropdownMenuSeparator /><DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setTrashing(d)}><Trash2 /> Move to trash</DropdownMenuItem></>}
             </DropdownMenuContent>
         </DropdownMenu>
@@ -184,15 +181,15 @@ export default function FileBrowserPage() {
             <UploadDialog open={uploadOpen} onOpenChange={setUploadOpen} folderId={folderId} title={folderId && folder.data ? `Upload to ${folder.data.name}` : undefined} />
             <Dialog open={folderOpen} onOpenChange={(o) => !createFolder.isPending && setFolderOpen(o)}>
                 <DialogContent className="sm:max-w-sm">
-                    <form onSubmit={(e) => { e.preventDefault(); if (!folderName.trim()) return; createFolder.mutate({ name: folderName.trim(), parent_folder_id: folderId ?? undefined }, { onSuccess: (f) => { toast({ title: "Folder created" }); setFolderOpen(false); navigate(`/files?folder=${f.id}`); }, onError: fail("Could not create the folder") }); }} className="space-y-4">
+                    <form onSubmit={(e) => { e.preventDefault(); if (!folderName.trim()) return; createFolder.mutate({ name: folderName.trim(), parent_folder_id: folderId ?? undefined }, { onSuccess: (f) => { setFolderOpen(false); navigate(`/files?folder=${f.id}`); } }); }} className="space-y-4">
                         <DialogHeader><DialogTitle>New folder</DialogTitle><DialogDescription>{folderId && folder.data ? `Inside ${folder.data.name}` : "At the top level"}</DialogDescription></DialogHeader>
                         <div className="space-y-1.5"><Label htmlFor="folder-name">Name</Label><Input id="folder-name" autoFocus value={folderName} onChange={(e) => setFolderName(e.target.value)} maxLength={120} /></div>
                         <DialogFooter><Button type="button" variant="ghost" onClick={() => setFolderOpen(false)} disabled={createFolder.isPending}>Cancel</Button><Button type="submit" loading={createFolder.isPending} disabled={!folderName.trim()}>Create</Button></DialogFooter>
                     </form>
                 </DialogContent>
             </Dialog>
-            <ConfirmationDialog isOpen={!!trashing} onClose={() => setTrashing(null)} title={`Move “${trashing?.title}” to trash?`} description="You can restore it from Trash until it is deleted for good." confirmText="Move to trash" variant="destructive" isLoading={trash.isPending} onConfirm={() => trashing && trash.mutate(trashing.id, { onSuccess: () => { toast({ title: "Moved to trash" }); setTrashing(null); }, onError: fail("Could not delete") })} />
-            <ConfirmationDialog isOpen={deletingFolder} onClose={() => setDeletingFolder(false)} title={`Delete folder “${folder.data?.name}”?`} description="The folder must be empty. Files under a legal hold block deletion." confirmText="Delete folder" variant="destructive" isLoading={deleteFolder.isPending} onConfirm={() => folderId && deleteFolder.mutate(folderId, { onSuccess: () => { toast({ title: "Folder deleted" }); setDeletingFolder(false); navigate(folder.data?.parent_folder_id ? `/files?folder=${folder.data.parent_folder_id}` : "/files"); }, onError: fail("Could not delete the folder") })} />
+            <ConfirmationDialog isOpen={!!trashing} onClose={() => setTrashing(null)} title={`Move “${trashing?.title}” to trash?`} description="You can restore it from Trash until it is deleted for good." confirmText="Move to trash" variant="destructive" onConfirm={() => { if (trashing) trash.mutate(trashing.id); setTrashing(null); }} />
+            <ConfirmationDialog isOpen={deletingFolder} onClose={() => setDeletingFolder(false)} title={`Delete folder “${folder.data?.name}”?`} description="The folder must be empty. Files under a legal hold block deletion." confirmText="Delete folder" variant="destructive" onConfirm={() => { if (folderId) deleteFolder.mutate(folderId); setDeletingFolder(false); navigate(folder.data?.parent_folder_id ? `/files?folder=${folder.data.parent_folder_id}` : "/files"); }} />
         </div>
     );
 }

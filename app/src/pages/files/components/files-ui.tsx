@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ButtonProps } from "@/components/ui/button";
 import { NavLink } from "react-router-dom";
-import { Archive, Check, ChevronsUpDown, CheckCircle2, ChevronRight, CircleAlert, File, FileImage, FileSpreadsheet, FileText, FileVideo, Folder, FolderOpen, Music, Presentation, Upload, X } from "lucide-react";
+import { Archive, Check, ChevronsUpDown, Copy, CheckCircle2, ChevronRight, CircleAlert, File, FileImage, FileSpreadsheet, FileText, FileVideo, Folder, FolderOpen, Music, Presentation, Upload, X } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -54,6 +55,27 @@ export async function openDocument(id: string, disposition: "inline" | "attachme
     } catch (e) {
         toast({ variant: "destructive", title: "Could not open the file", description: getApiErrorMessage(e) });
     }
+}
+
+/** Copy `text` to the clipboard; the button shows "Copied" for a moment instead of a toast. */
+export function CopyButton({ text, label = "Copy", iconOnly, onCopied, ...props }: { text: string; label?: string; iconOnly?: boolean; onCopied?: () => void } & Omit<ButtonProps, "onClick" | "children">) {
+    const [copied, setCopied] = useState(false);
+    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+    const copy = () => {
+        void navigator.clipboard?.writeText(text).then(() => {
+            setCopied(true);
+            onCopied?.();
+            if (timer.current) clearTimeout(timer.current);
+            timer.current = setTimeout(() => setCopied(false), 1600);
+        });
+    };
+    return (
+        <Button type="button" {...props} aria-label={copied ? "Copied" : (props["aria-label"] ?? label)} onClick={copy}>
+            {copied ? <Check /> : <Copy />}
+            {!iconOnly && (copied ? "Copied" : label)}
+        </Button>
+    );
 }
 
 export const apiUrl = (path: string) => `${environments.API_URL.replace(/\/$/, "")}${path}`;
@@ -135,7 +157,8 @@ function FolderTreeNode({ node, depth, activeId, activePath, onNavigate }: { nod
 interface QueueItem { id: string; file: File; progress: number; status: "queued" | "uploading" | "done" | "error"; error?: string }
 
 /**
- * Upload dialog: drag & drop or pick several files; uploads one by one with a progress bar each.
+ * Upload dialog: drag & drop or pick several files; uploads one by one with a progress bar each (errors show on the
+ * file's row). When every file is uploaded the dialog closes by itself: the files appear in the list (no toast).
  * `documentId` uploads a new version of that document instead.
  */
 export function UploadDialog({ open, onOpenChange, folderId, documentId, title }: { open: boolean; onOpenChange: (o: boolean) => void; folderId?: string | null; documentId?: string; title?: string }) {
@@ -151,15 +174,18 @@ export function UploadDialog({ open, onOpenChange, folderId, documentId, title }
     }, [documentId]);
 
     const start = async () => {
+        let failed = 0;
         for (const item of queue.filter((q) => q.status === "queued" || q.status === "error")) {
             setQueue((q) => q.map((x) => (x.id === item.id ? { ...x, status: "uploading", progress: 0, error: undefined } : x)));
             try {
                 await upload.mutateAsync({ file: item.file, folder_id: folderId ?? undefined, document_id: documentId, onProgress: (pct) => setQueue((q) => q.map((x) => (x.id === item.id ? { ...x, progress: pct } : x))) });
                 setQueue((q) => q.map((x) => (x.id === item.id ? { ...x, status: "done", progress: 100 } : x)));
             } catch (e) {
+                failed++;
                 setQueue((q) => q.map((x) => (x.id === item.id ? { ...x, status: "error", error: getApiErrorMessage(e) } : x)));
             }
         }
+        if (!failed) { onOpenChange(false); setQueue([]); }
     };
     const pending = queue.filter((q) => q.status === "queued" || q.status === "error").length;
     const done = queue.filter((q) => q.status === "done").length;
@@ -203,7 +229,7 @@ export function UploadDialog({ open, onOpenChange, folderId, documentId, title }
                 )}
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={running}>{done && !pending ? "Close" : "Cancel"}</Button>
-                    <Button onClick={() => start().then(() => { if (!documentId) toast({ title: "Upload finished" }); })} disabled={!pending} loading={running}>
+                    <Button onClick={() => void start()} disabled={!pending} loading={running}>
                         <Upload /> Upload{pending > 1 ? ` ${pending} files` : ""}
                     </Button>
                 </DialogFooter>

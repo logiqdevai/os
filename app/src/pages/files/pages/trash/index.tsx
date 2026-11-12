@@ -7,8 +7,6 @@ import { Button } from "@/components/ui/button";
 import { StatCard, StatGrid } from "@/components/ui/stat-card";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
 import { useDeletionRequestAction, useDeletionRequests, useDocuments, useRequestDeletion, useRestoreDocument, useStorageUsage } from "@/features/files/hooks/use-files";
 import type { DocumentRow } from "@/features/files/interfaces/files.interfaces";
@@ -31,7 +29,6 @@ export default function FilesTrashPage() {
     const canApproveDeletion = p.can("documents.deletions.approve");
     const pendingDeletions = useDeletionRequests({ status: "PENDING", limit: 50 }, canApproveDeletion || p.can("documents.documents.delete"));
     const [deleting, setDeleting] = useState<DocumentRow | null>(null);
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
     const requested = new Set((pendingDeletions.data?.data ?? []).map((r) => r.document_id));
 
     const columns: DataTableColumn<DocumentRow>[] = [
@@ -46,11 +43,11 @@ export default function FilesTrashPage() {
                 const req = pendingDeletions.data?.data.find((r) => r.document_id === d.id);
                 return (
                     <div className="flex flex-wrap justify-end gap-1.5">
-                        {p.can("documents.documents.restore") && <Button size="sm" variant="outline" loading={restore.isPending} onClick={() => restore.mutate(d.id, { onSuccess: () => toast({ title: "File restored" }), onError: fail("Could not restore") })}><ArchiveRestore /> Restore</Button>}
+                        {p.can("documents.documents.restore") && <Button size="sm" variant="outline" onClick={() => restore.mutate(d.id)}><ArchiveRestore /> Restore</Button>}
                         {req && canApproveDeletion ? (
                             <>
-                                <Button size="sm" variant="destructive" loading={deletionAction.isPending} onClick={() => deletionAction.mutate({ id: req.id, action: "approve" }, { onSuccess: () => toast({ title: "Deleted permanently" }), onError: fail("Could not approve") })}>Approve deletion</Button>
-                                <Button size="sm" variant="ghost" onClick={() => deletionAction.mutate({ id: req.id, action: "reject" }, { onSuccess: () => toast({ title: "Deletion rejected" }), onError: fail("Could not reject") })}>Reject</Button>
+                                <Button size="sm" variant="destructive" onClick={() => deletionAction.mutate({ id: req.id, action: "approve", document_id: d.id })}>Approve deletion</Button>
+                                <Button size="sm" variant="ghost" onClick={() => deletionAction.mutate({ id: req.id, action: "reject" })}>Reject</Button>
                             </>
                         ) : requested.has(d.id) ? <span className="self-center text-xs text-muted-foreground">Deletion requested</span> : p.can("documents.documents.delete") && <Button size="sm" variant="ghost" className="text-danger" onClick={() => setDeleting(d)}><Trash2 /> Delete forever</Button>}
                     </div>
@@ -80,7 +77,7 @@ export default function FilesTrashPage() {
                 confirmText="Request deletion"
                 variant="destructive"
                 isLoading={requestDeletion.isPending}
-                onConfirm={() => deleting && requestDeletion.mutate({ document_id: deleting.id }, { onSuccess: () => { toast({ title: "Deletion requested", description: "An approver must confirm it." }); setDeleting(null); }, onError: fail("Could not request deletion") })}
+                onConfirm={() => deleting && requestDeletion.mutate({ document_id: deleting.id }, { onSuccess: () => setDeleting(null) })}
             />
         </Page>
     );
