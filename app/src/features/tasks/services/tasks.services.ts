@@ -15,6 +15,7 @@ import type {
     TaskLabel,
     TaskStatus,
     TaskType,
+    TaskReport,
     TaskWorkload,
     UpdateTaskDto,
 } from "../interfaces/tasks.interfaces";
@@ -30,6 +31,8 @@ export const lookupTasks = async (params: Params): Promise<{ id: string; identif
 export const getTaskActivity = async (id: string): Promise<TaskActivity> => (await axiosInstance.get(R.activity(id))).data;
 export const getTaskComments = async (id: string): Promise<TaskComment[]> => (await axiosInstance.get(R.comments(id))).data;
 export const getTaskWorkload = async (params: Params): Promise<TaskWorkload> => (await axiosInstance.get(R.workload, { params })).data;
+
+export const getTaskReport = async (params: Params): Promise<TaskReport> => (await axiosInstance.get(R.reports, { params })).data;
 
 export const createTask = async (dto: CreateTaskDto): Promise<TaskDetail> => (await axiosInstance.post(R.list, dto)).data;
 export const updateTask = async ({ id, ...dto }: UpdateTaskDto & { id: string }): Promise<TaskDetail> => (await axiosInstance.patch(R.detail(id), dto)).data;

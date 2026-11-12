@@ -83,3 +83,10 @@ export const CarryOverOptions: DropdownOption<"next" | "backlog">[] = [
     { id: "backlog", label: "Move back to the backlog" },
 ];
 
+/** Report ranges (weeks back from today). */
+export const TaskReportRangeOptions: DropdownOption<"4" | "8" | "12" | "26">[] = [
+    { id: "4", label: "Last 4 weeks" },
+    { id: "8", label: "Last 8 weeks" },
+    { id: "12", label: "Last 12 weeks" },
+    { id: "26", label: "Last 6 months" },
+];

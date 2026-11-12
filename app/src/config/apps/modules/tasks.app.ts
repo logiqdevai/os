@@ -1,4 +1,4 @@
-import { Columns3, List, ListTodo, RefreshCw, Rocket, Settings, SquareCheckBig, Users } from "lucide-react";
+import { ChartColumn, Columns3, List, ListTodo, RefreshCw, Rocket, Settings, SquareCheckBig, Users } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
 export const tasksApp: AppDefinition = {
@@ -17,6 +17,7 @@ export const tasksApp: AppDefinition = {
             { label: "Cycles", to: "/tasks/cycles", icon: RefreshCw },
             { label: "Releases", to: "/tasks/releases", icon: Rocket },
             { label: "Workload", to: "/tasks/workload", icon: Users, permissions: ["tasks.workload.read"] },
+            { label: "Reports", to: "/tasks/reports", icon: ChartColumn, permissions: ["tasks.tasks.read"] },
         ] },
         { items: [
             { label: "Setup", to: "/tasks/settings", icon: Settings, permissions: ["tasks.workflows.manage"] },

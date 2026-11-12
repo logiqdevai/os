@@ -6,6 +6,8 @@ import { TasksService } from './services/tasks.service';
 import { TaskDetailsService } from './services/task-details.service';
 import { CyclesService } from './services/cycles.service';
 import { TaskConfigService } from './services/task-config.service';
+import { TaskReportsService } from './services/task-reports.service';
+import { TaskReportQuerySchema } from './dto/task-reports.schema';
 import { AssignTaskSchema, BulkTaskSchema, CommentTaskSchema, CreateTaskSchema, UpdateTaskSchema } from './dto/create-task.dto';
 import { CycleQuerySchema, TaskLookupSchema, TaskQuerySchema, TaskWorkloadSchema } from './dto/task-query.schema';
 
@@ -20,6 +22,7 @@ export class TasksMcp implements OnModuleInit {
         private readonly details: TaskDetailsService,
         private readonly cycles: CyclesService,
         private readonly config: TaskConfigService,
+        private readonly reports: TaskReportsService,
     ) { }
 
     onModuleInit() {
@@ -41,6 +44,7 @@ export class TasksMcp implements OnModuleInit {
             { ...base, name: 'tasks_tasks_delete', description: 'Delete a task permanently.', permission: 'tasks.tasks.delete', sensitive: true, input: key, handler: (ctx, a) => this.tasks.remove(ctx, a.id) },
             { ...base, name: 'tasks_bulk_execute', description: 'Bulk change status/priority/assignee/cycle/project/due date, add or remove labels, archive or delete up to 200 tasks.', permission: 'tasks.bulk.execute', sensitive: true, input: BulkTaskSchema, handler: (ctx, a) => this.tasks.bulk(ctx, a) },
             { ...base, name: 'tasks_workload_read', description: 'Open tasks per person: in progress, overdue, blocked, points, due this week.', permission: 'tasks.workload.read', input: TaskWorkloadSchema, handler: (ctx, a) => this.tasks.workload(ctx, a) },
+            { ...base, name: 'tasks_reports_read', description: 'Task flow report for a team/project and date range: throughput per week, created vs completed, median lead and cycle time, open/overdue/blocked, by assignee/label/priority, and a cycle burn-up (cycle_id).', permission: 'tasks.tasks.read', input: TaskReportQuerySchema, handler: (ctx, a) => this.reports.report(ctx, a) },
             { ...base, resource_type: 'cycle', name: 'tasks_cycles_list', description: 'List cycles (sprints) with progress.', permission: 'tasks.tasks.read', input: CycleQuerySchema, handler: (ctx, a) => this.cycles.list(ctx, a) },
             { ...base, resource_type: 'task_status', name: 'tasks_workflows_read', description: 'Statuses of every team workflow (use the ids for status_id).', permission: 'tasks.tasks.read', input: z.object({}), handler: (ctx) => this.config.workflows(ctx) },
         ]);

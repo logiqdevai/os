@@ -241,3 +241,28 @@ export interface UpdateTaskDto extends Partial<Omit<CreateTaskDto, "checklist" |
     blocked_reason?: string;
 }
 
+/** GET /tasks/reports (06 §11). Days are decimals; medians are null when there is no data. */
+export interface TaskReport {
+    range: { from: string; to: string };
+    truncated: boolean;
+    totals: {
+        created: number;
+        completed: number;
+        open: number;
+        overdue: number;
+        blocked: number;
+        median_lead_days: number | null;
+        median_cycle_days: number | null;
+        avg_cycle_days: number | null;
+        throughput_per_week: number;
+    };
+    weekly: { week_start: string; created: number; completed: number; median_cycle_days: number | null; median_lead_days: number | null }[];
+    by_assignee: { membership: MemberRef | null; completed: number; open: number; median_cycle_days: number | null }[];
+    by_priority: { priority: TaskPriority; completed: number; open: number }[];
+    by_label: { label: { id: string; name: string; color: string | null }; completed: number; open: number }[];
+    burnup: {
+        cycle: { id: string; number: number; name: string | null; status: CycleStatus; starts_at: string; ends_at: string; team_id: string | null };
+        days: { date: string; scope: number; completed: number; scope_points: number; completed_points: number }[];
+    } | null;
+}
+

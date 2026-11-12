@@ -16,6 +16,8 @@ export const useTaskPeople = (search: string, enabled = true) =>
 export const useTaskActivity = (id: string | undefined) => useQuery({ queryKey: [...TASKS_KEY, "activity", id], queryFn: () => service.getTaskActivity(id as string), enabled: !!id });
 export const useTaskComments = (id: string | undefined) => useQuery({ queryKey: [...TASKS_KEY, "comments", id], queryFn: () => service.getTaskComments(id as string), enabled: !!id });
 export const useTaskWorkload = (params: Params) => useQuery({ queryKey: [...TASKS_KEY, "workload", params], queryFn: () => service.getTaskWorkload(params) });
+export const useTaskReport = (params: Params) =>
+    useQuery({ queryKey: [...TASKS_KEY, "report", params], queryFn: () => service.getTaskReport(params), placeholderData: keepPreviousData });
 export const useTaskStatuses = (teamId: string | null | undefined, enabled = true) =>
     useQuery({ queryKey: [...TASKS_KEY, "statuses", teamId ?? "none"], queryFn: () => service.getTaskStatuses({ team_id: teamId ?? "none" }), enabled, staleTime: 60_000 });
 export const useWorkflows = (enabled = true) => useQuery({ queryKey: [...TASKS_KEY, "workflows"], queryFn: service.getWorkflows, staleTime: 60_000, enabled });

@@ -7,13 +7,15 @@ import { TaskConfigService } from './services/task-config.service';
 import { CyclesService } from './services/cycles.service';
 import { ReleasesService } from './services/releases.service';
 import { TasksMcp } from './tasks.mcp';
+import { TaskReportsController } from './controllers/task-reports.controller';
+import { TaskReportsService } from './services/task-reports.service';
 
 /**
  * 06 Task Management. Other modules import this module and use `TasksService.lookup / assertAccess / scopeWhere / create`.
  */
 @Module({
-    controllers: [TaskConfigController, CyclesController, ReleasesController, TasksController],
-    providers: [TasksService, TaskDetailsService, TaskConfigService, CyclesService, ReleasesService, TasksMcp],
+    controllers: [TaskConfigController, CyclesController, ReleasesController, TaskReportsController, TasksController],
+    providers: [TasksService, TaskDetailsService, TaskConfigService, CyclesService, ReleasesService, TaskReportsService, TasksMcp],
     exports: [TasksService, TaskDetailsService, TaskConfigService],
 })
 export class TasksModule { }

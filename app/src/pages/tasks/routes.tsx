@@ -14,6 +14,7 @@ const ReleasesPage = lazy(() => import("./pages/releases"));
 const ReleasePage = lazy(() => import("./pages/release"));
 const WorkloadPage = lazy(() => import("./pages/workload"));
 const SettingsPage = lazy(() => import("./pages/settings"));
+const ReportsPage = lazy(() => import("./pages/reports"));
 
 const read = (el: ReactElement) => <RequirePermission permission="tasks.tasks.read">{el}</RequirePermission>;
 
@@ -31,6 +32,7 @@ export default function TasksRoutes() {
                 <Route path="releases" element={read(<ReleasesPage />)} />
                 <Route path="releases/:releaseId" element={read(<ReleasePage />)} />
                 <Route path="workload" element={<RequirePermission permission="tasks.workload.read"><WorkloadPage /></RequirePermission>} />
+                <Route path="reports" element={read(<ReportsPage />)} />
                 <Route path="settings" element={<RequirePermission permission="tasks.workflows.manage"><SettingsPage /></RequirePermission>} />
                 <Route path=":identifier" element={read(<DetailPage />)} />
             </Routes>

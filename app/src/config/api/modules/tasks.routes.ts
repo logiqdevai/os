@@ -5,6 +5,7 @@ export const TasksApiRoutes = {
     board: "/tasks/board",
     people: "/tasks/people",
     workload: "/tasks/workload",
+    reports: "/tasks/reports",
     bulk: "/tasks/bulk",
     detail: (id: string) => `/tasks/${id}`,
     archive: (id: string) => `/tasks/${id}/archive`,
