@@ -56,6 +56,16 @@ export class SupportWidgetService {
         if (!limiter.allow(key)) throw new HttpException({ message: 'Too many requests. Try again in a minute.', code: 'rate_limited' }, HttpStatus.TOO_MANY_REQUESTS);
     }
 
+    /** Page URLs can carry tokens or personal data in the query string or fragment: keep only origin + path. */
+    private cleanPageUrl(url: string) {
+        try {
+            const u = new URL(url);
+            return `${u.origin}${u.pathname}`.slice(0, 300);
+        } catch {
+            return url.split(/[?#]/)[0].slice(0, 300);
+        }
+    }
+
     /** Active widget channel by embed key, with the origin check. 404 for unknown / inactive keys. */
     async channelByKey(key: string, origin?: string | null) {
         if (!key || key.length > 80) throw new NotFoundException({ message: 'Chat is not available', code: 'widget_not_found' });
@@ -151,7 +161,7 @@ export class SupportWidgetService {
                     company_id: contact?.company_id ?? null,
                 },
             });
-            await this.conversations.addMessage(tx, c.id, { kind: 'CUSTOMER', body: dto.page_url ? `${body}\n\n— sent from ${dto.page_url.slice(0, 300)}` : body, author_name: name, author_email: email, channel_type: channel.type });
+            await this.conversations.addMessage(tx, c.id, { kind: 'CUSTOMER', body: dto.page_url ? `${body}\n\n— sent from ${this.cleanPageUrl(dto.page_url)}` : body, author_name: name, author_email: email, channel_type: channel.type });
             return c;
         });
         const ctx = externalContext(channel.organization_id, meta);

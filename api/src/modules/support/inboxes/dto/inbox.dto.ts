@@ -90,7 +90,7 @@ export class CreateChannelDto {
     @ApiProperty({ required: false, type: [String], description: 'Allowed https origins for the widget / API' })
     @IsOptional()
     @IsArray()
-    @Matches(/^https:\/\/[^\s/]+$/, { each: true, message: 'Each origin must look like https://example.com' })
+    @Matches(/^(https:\/\/[^\s/]+|http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?)$/, { each: true, message: 'Each origin must look like https://example.com (http is only accepted for localhost)' })
     allowed_origins?: string[];
 
     @ApiProperty({ required: false, description: 'Widget colours, welcome text, form fields. The `ai` and `office_hours` keys are kept; change them with PUT /support/channels/:id/ai-agent and /office-hours.' })

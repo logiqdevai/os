@@ -16,7 +16,10 @@ export function buildWidgetScript(apiBase: string, key: string): string {
   window.__lqWidgetLoaded = window.__lqWidgetLoaded || {};
   window.__lqWidgetLoaded[CFG.key] = true;
 
-  var BASE = CFG.api + "/support/widget/" + encodeURIComponent(CFG.key);
+  // Use the origin this script was loaded from (works behind any proxy prefix and locally); fall back to the configured API URL.
+  var SRC = document.currentScript && document.currentScript.src ? document.currentScript.src : "";
+  var API = SRC.indexOf("/support/widget/") > 0 ? SRC.slice(0, SRC.indexOf("/support/widget/")) : CFG.api;
+  var BASE = API + "/support/widget/" + encodeURIComponent(CFG.key);
   var STORE = "lq_widget_" + CFG.key;
   var state = { open: false, config: null, token: null, messages: [], status: "OPEN", sending: false, error: "", socket: null, poll: null, unread: 0, typing: null, typingTimer: null, lastTyping: 0, replyByEmail: false };
   try { state.token = localStorage.getItem(STORE); } catch (e) {}
@@ -27,7 +30,7 @@ export function buildWidgetScript(apiBase: string, key: string): string {
     return fetch(BASE + path, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined, credentials: "omit" })
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (data) {
-          if (!r.ok) { var err = new Error((data && data.message) || "Something went wrong"); err.status = r.status; throw err; }
+          if (!r.ok) { var err = new Error((data && data.message) || "Something went wrong"); err.status = r.status; err.code = data && data.code; throw err; }
           return data;
         });
       });
@@ -161,7 +164,7 @@ export function buildWidgetScript(apiBase: string, key: string): string {
     state.sending = true; state.error = ""; render();
     var req = state.token
       ? api("POST", "/conversation/messages", { body: text })
-      : api("POST", "/conversations", { body: text, name: form.name && form.name.value || undefined, email: form.email && form.email.value || undefined, page_url: location.href });
+      : api("POST", "/conversations", { body: text, name: form.name && form.name.value || undefined, email: form.email && form.email.value || undefined, page_url: location.origin + location.pathname });
     req.then(function (data) {
       if (data.token) { state.token = data.token; state.replyByEmail = !!data.reply_by_email; try { localStorage.setItem(STORE, data.token); } catch (e) {} connect(); }
       state.messages = data.messages || state.messages;
@@ -198,7 +201,7 @@ export function buildWidgetScript(apiBase: string, key: string): string {
 
   function connect() {
     if (!state.token || state.socket || typeof window.io !== "function") return;
-    state.socket = window.io(CFG.api + "/support", { auth: { widget_key: CFG.key, widget_token: state.token }, transports: ["websocket", "polling"] });
+    state.socket = window.io(API + "/support", { auth: { widget_key: CFG.key, widget_token: state.token }, transports: ["websocket", "polling"] });
     state.socket.on("message.new", refresh);
     state.socket.on("conversation.updated", refresh);
     state.socket.on("typing", function (t) {
@@ -229,7 +232,11 @@ export function buildWidgetScript(apiBase: string, key: string): string {
     loadSocketClient();
     startPolling();
     setInterval(refresh, 30000);
-  }).catch(function () { host.remove(); });
+  }).catch(function (e) {
+    host.remove();
+    // Tell the site developer why nothing appeared (wrong key, inactive channel, or this site is not on the allowed list).
+    if (window.console && console.warn) console.warn("[Logiqdev chat] The widget could not start: " + ((e && e.message) || "request failed") + (e && e.code ? " (" + e.code + ")" : ""));
+  });
 })();
 `;
 }
