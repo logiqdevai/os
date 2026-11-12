@@ -70,6 +70,23 @@ DB facts: staging DB was wiped and rebuilt from the repo migrations on 2026-11-1
 - **Responsive**: rail hidden < md (sheet nav), context panel → sheet < lg. Pages must work at 375px: stack toolbars, `hideBelow` on table columns, no horizontal page scroll.
 - **REFERENCE PAGE**: `pages/admin/pages/teams/*` + `features/admin/teams/*` (list with URL filters, form dialog, row actions, confirm dialog, toasts).
 
+### Mutations, autosave and feedback (Linear-style — every screen)
+- **No success toasts, ever.** The UI itself shows the result. Every failed mutation is toasted ONCE by the global
+  `MutationCache` in `components/providers/query-provider.tsx`; components must not toast errors themselves. Give the
+  title with `meta: { errorTitle: "Could not update deal" }`; use `meta: { errorToast: false }` when the error is shown
+  inline (form field errors, `<SaveStatus />`). Partial failures of bulk actions may toast as destructive.
+- **Optimistic updates** (`lib/query/optimistic.ts`): `useEntityUpdate({ root, mutationFn })` patches the entity by id
+  in every cached list/detail under `root` at once (`mutate({ id, ...body, optimistic: { status: pickedStatus } })` —
+  `optimistic` holds display objects for id fields and is never sent), rolls back on failure and refreshes on settle.
+  `useEntityRemove` for archive/delete, `useOptimisticMutation({ roots, apply })` + `patchEntity` / `insertEntity` /
+  `removeEntity` for anything else (reorder, toggles, nested items).
+- **Autosave** (`hooks/use-autosave.ts`): detail pages and settings save as you edit — no Save buttons. Titles/names:
+  `<InlineText>` (blur/Enter saves, Esc reverts); descriptions/notes: `<MarkdownField>` or `<InlineTextarea>`;
+  selects/switches/date pickers: save on change through an optimistic mutation; settings forms (react-hook-form):
+  `useFormAutosave(form, (v) => mutation.mutateAsync(v))` + `<SaveStatus state={…} />` in the header (invalid fields
+  keep inline errors and are not sent). Creation flows (new X dialogs/pages) keep an explicit Create button.
+- Reference implementation: Tasks (`features/tasks/hooks/use-tasks.ts`, `pages/tasks/components/task-detail-view.tsx`).
+
 ### Notifications payload contract (14 fan-out)
 
 Any module gets in-app notifications for free by publishing an event with these payload fields (`api/src/modules/notifications/notifications.fanout.ts`).
