@@ -15,12 +15,12 @@ export interface DatesDialogTarget {
 
 /**
  * Keyboard / touch alternative to dragging on the Gantt: pick the dates in a form.
- * `onSave` receives `YYYY-MM-DD` values; for single-date items start === end.
+ * `onSave` receives `YYYY-MM-DD` values; for single-date items start === end. The change is optimistic: the dialog
+ * closes at once and a refused save rolls back with one global error toast.
  */
 export function DatesDialog({ target, onOpenChange, onSave }: { target: DatesDialogTarget | null; onOpenChange: (open: boolean) => void; onSave: (start: string, end: string) => Promise<unknown> }) {
     const [start, setStart] = useState("");
     const [end, setEnd] = useState("");
-    const [saving, setSaving] = useState(false);
     useEffect(() => {
         if (target) {
             setStart((target.start ?? target.end ?? "").slice(0, 10));
@@ -28,26 +28,19 @@ export function DatesDialog({ target, onOpenChange, onSave }: { target: DatesDia
         }
     }, [target]);
     const invalid = target ? (target.single ? !start : !start || !end || end < start) : true;
-    const save = async () => {
+    const save = () => {
         if (!target || invalid) return;
-        setSaving(true);
-        try {
-            await onSave(start, target.single ? start : end);
-            onOpenChange(false);
-        } catch {
-            /* the mutation toasts the error; keep the dialog open */
-        } finally {
-            setSaving(false);
-        }
+        void onSave(start, target.single ? start : end).catch(() => undefined);
+        onOpenChange(false);
     };
     return (
-        <Dialog open={!!target} onOpenChange={(o) => !saving && onOpenChange(o)}>
+        <Dialog open={!!target} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-sm">
                 <DialogHeader>
                     <DialogTitle>Change dates</DialogTitle>
                     <DialogDescription className="line-clamp-2">{target?.label}</DialogDescription>
                 </DialogHeader>
-                <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void save(); }}>
+                <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save(); }}>
                     {target?.single ? (
                         <div className="space-y-1.5">
                             <Label htmlFor="gantt-date">Date</Label>
@@ -67,8 +60,8 @@ export function DatesDialog({ target, onOpenChange, onSave }: { target: DatesDia
                     )}
                     {!target?.single && start && end && end < start && <p className="text-xs text-danger">The end date must be on or after the start date.</p>}
                     <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
-                        <Button type="submit" loading={saving} disabled={invalid}>Save dates</Button>
+                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                        <Button type="submit" disabled={invalid}>Set dates</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>

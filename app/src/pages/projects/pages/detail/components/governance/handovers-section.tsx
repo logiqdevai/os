@@ -33,8 +33,8 @@ const statusVariant: Record<ProjectHandover["status"], BadgeVariant> = { PLANNED
 export function HandoversSection({ projectId, readOnly }: { projectId: string; readOnly: boolean }) {
     const p = usePermissions();
     const handovers = useGovernance<ProjectHandover[]>(projectId, "handovers");
-    const patch = useGovernancePatch("Handover updated");
-    const remove = useGovernanceDelete("Handover deleted");
+    const patch = useGovernancePatch("Could not update the handover");
+    const remove = useGovernanceDelete("Could not delete the handover");
     const canEdit = p.can("projects.projects.update") && !readOnly;
     const [planning, setPlanning] = useState(false);
     const [accepting, setAccepting] = useState<ProjectHandover | null>(null);
@@ -68,8 +68,8 @@ export function HandoversSection({ projectId, readOnly }: { projectId: string; r
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="Handover actions"><MoreHorizontal /></Button></DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    {h.status === "PLANNED" && <DropdownMenuItem onSelect={() => patch.mutate({ id: projectId, path: `handovers/${h.id}`, dto: { status: "IN_PROGRESS" } })}><Play /> Start</DropdownMenuItem>}
-                                                    {open && <DropdownMenuItem onSelect={() => patch.mutate({ id: projectId, path: `handovers/${h.id}`, dto: { status: "CANCELLED" } })}><XCircle /> Cancel handover</DropdownMenuItem>}
+                                                    {h.status === "PLANNED" && <DropdownMenuItem onSelect={() => patch.mutate({ id: projectId, path: `handovers/${h.id}`, dto: { status: "IN_PROGRESS" }, patch: { id: h.id, value: { status: "IN_PROGRESS" } } })}><Play /> Start</DropdownMenuItem>}
+                                                    {open && <DropdownMenuItem onSelect={() => patch.mutate({ id: projectId, path: `handovers/${h.id}`, dto: { status: "CANCELLED" }, patch: { id: h.id, value: { status: "CANCELLED" } } })}><XCircle /> Cancel handover</DropdownMenuItem>}
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setDeleting(h)}><Trash2 /> Delete</DropdownMenuItem>
                                                 </DropdownMenuContent>
@@ -103,15 +103,14 @@ export function HandoversSection({ projectId, readOnly }: { projectId: string; r
                 description="The handover and its checklist are removed. The deletion is audited."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate({ id: projectId, path: `handovers/${deleting.id}` }, { onSuccess: () => setDeleting(null) })}
+                onConfirm={() => { if (deleting) remove.mutate({ id: projectId, path: `handovers/${deleting.id}`, removeId: deleting.id }); setDeleting(null); }}
             />
         </Section>
     );
 }
 
 function PlanHandoverDialog({ projectId, open, onOpenChange }: { projectId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
-    const create = useGovernancePost("Handover planned");
+    const create = useGovernancePost("Could not plan the handover");
     const workflows = useWorkflows(open);
     const teams = (workflows.data ?? []).map((w) => w.team).filter((t): t is NonNullable<typeof t> => !!t);
     const [type, setType] = useState<HandoverType>("delivery_to_support");
@@ -198,7 +197,8 @@ function PlanHandoverDialog({ projectId, open, onOpenChange }: { projectId: stri
 }
 
 function AcceptDialog({ projectId, handover, onClose, canTransfer }: { projectId: string; handover: ProjectHandover | null; onClose: () => void; canTransfer: boolean }) {
-    const accept = useGovernancePost("Handover accepted");
+    // Accepting is an explicit, audited action; the handover shows as completed at once and the dialog closes.
+    const accept = useGovernancePost("Could not accept the handover");
     const [comment, setComment] = useState("");
     const [transfer, setTransfer] = useState(false);
     useEffect(() => {
@@ -208,9 +208,9 @@ function AcceptDialog({ projectId, handover, onClose, canTransfer }: { projectId
         }
     }, [handover]);
     return (
-        <Dialog open={!!handover} onOpenChange={(o) => !o && !accept.isPending && onClose()}>
+        <Dialog open={!!handover} onOpenChange={(o) => !o && onClose()}>
             <DialogContent className="sm:max-w-md">
-                <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (handover) accept.mutate({ id: projectId, path: `handovers/${handover.id}/accept`, dto: { comment: comment.trim() || undefined, transfer_ownership: transfer || undefined } }, { onSuccess: onClose }); }}>
+                <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (handover) { accept.mutate({ id: projectId, path: `handovers/${handover.id}/accept`, dto: { comment: comment.trim() || undefined, transfer_ownership: transfer || undefined }, patch: { id: handover.id, value: { status: "COMPLETED", accepted_at: new Date().toISOString() } } }); onClose(); } }}>
                     <DialogHeader>
                         <DialogTitle>Accept handover</DialogTitle>
                         <DialogDescription>Confirm that you received everything you need. This is recorded in the audit log.</DialogDescription>
@@ -226,8 +226,8 @@ function AcceptDialog({ projectId, handover, onClose, canTransfer }: { projectId
                         </div>
                     )}
                     <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={onClose} disabled={accept.isPending}>Cancel</Button>
-                        <Button type="submit" loading={accept.isPending}>Accept handover</Button>
+                        <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+                        <Button type="submit">Accept handover</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>

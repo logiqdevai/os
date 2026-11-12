@@ -15,6 +15,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermissions } from "@/hooks/use-permission";
+import { useAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { useGovernance, useGovernanceDelete, useGovernancePatch, useGovernancePost, useProjectChildren } from "@/features/projects/hooks/use-projects";
 import type { Milestone, ProjectGate, ProjectGateKind } from "@/features/projects/interfaces/projects.interfaces";
 import { GateDecisionOptions, GateKindFormOptions, GateStatusFormOptions } from "@/config/constants/dropdowns/projects/project-form.options";
@@ -32,8 +34,8 @@ const statusVariant: Record<ProjectGate["status"], BadgeVariant> = { PENDING: "w
 export function GatesSection({ projectId, readOnly }: { projectId: string; readOnly: boolean }) {
     const p = usePermissions();
     const gates = useGovernance<ProjectGate[]>(projectId, "gates");
-    const remove = useGovernanceDelete("Gate deleted");
-    const reopen = useGovernancePost("Gate reopened");
+    const remove = useGovernanceDelete("Could not delete the gate");
+    const reopen = useGovernancePost("Could not reopen the gate");
     const canEdit = p.can("projects.projects.update") && !readOnly;
     const canDecide = p.can("projects.gates.decide") && !readOnly;
     const [editing, setEditing] = useState<ProjectGate | "new" | null>(null);
@@ -71,7 +73,7 @@ export function GatesSection({ projectId, readOnly }: { projectId: string; readO
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${g.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            {canDecide && g.status !== "PENDING" && <DropdownMenuItem onSelect={() => reopen.mutate({ id: projectId, path: `gates/${g.id}/reopen` })}><RotateCcw /> Reopen</DropdownMenuItem>}
+                                            {canDecide && g.status !== "PENDING" && <DropdownMenuItem onSelect={() => reopen.mutate({ id: projectId, path: `gates/${g.id}/reopen`, patch: { id: g.id, value: { status: "PENDING", decided_at: null, decision_comment: null } } })}><RotateCcw /> Reopen</DropdownMenuItem>}
                                             {canEdit && <DropdownMenuItem onSelect={() => setEditing(g)}><Pencil /> Edit</DropdownMenuItem>}
                                             {canEdit && (
                                                 <>
@@ -96,16 +98,18 @@ export function GatesSection({ projectId, readOnly }: { projectId: string; readO
                 description="The gate and its decision are removed. The deletion is recorded in the audit log."
                 confirmText="Delete gate"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate({ id: projectId, path: `gates/${deleting.id}` }, { onSuccess: () => setDeleting(null) })}
+                onConfirm={() => { if (deleting) remove.mutate({ id: projectId, path: `gates/${deleting.id}`, removeId: deleting.id }); setDeleting(null); }}
             />
         </Section>
     );
 }
 
+/** Add a gate (explicit "Add gate") or edit one (autosaves; "Done" closes). */
 function GateDialog({ projectId, gate, onClose }: { projectId: string; gate: ProjectGate | "new" | null; onClose: () => void }) {
-    const create = useGovernancePost("Gate added");
-    const update = useGovernancePatch("Gate updated");
+    const create = useGovernancePost("Could not add the gate");
+    const update = useGovernancePatch("Could not update the gate", false);
+    const [dirty, setDirty] = useState(false);
+    const touch = <T,>(set: (v: T) => void) => (v: T) => { setDirty(true); set(v); };
     const milestones = useProjectChildren<Milestone>(gate ? projectId : undefined, "milestones");
     const [name, setName] = useState("");
     const [kind, setKind] = useState<ProjectGateKind>("APPROVAL");
@@ -122,36 +126,44 @@ function GateDialog({ projectId, gate, onClose }: { projectId: string; gate: Pro
         setMilestoneId(existing?.milestone_id ?? "none");
         setApprover(existing?.approver_membership_id ?? null);
         setBlocks(existing?.blocks_completion ?? true);
+        setDirty(false);
     }, [gate, existing]);
-    const pending = create.isPending || update.isPending;
+    const pending = create.isPending;
+    const dto = { name: name.trim(), kind, description: description.trim() || undefined, milestone_id: milestoneId === "none" ? null : milestoneId, approver_membership_id: approver, blocks_completion: blocks };
+    const autosave = useAutosave({
+        value: dto,
+        enabled: !!existing && dirty && !!dto.name,
+        save: (v) => update.mutateAsync({ id: projectId, path: `gates/${existing!.id}`, dto: v, patch: { id: existing!.id, value: { ...v, description: v.description ?? null } } }),
+    });
+    const close = () => { if (existing && dto.name) autosave.flush(); onClose(); };
     const submit = () => {
-        const dto = { name: name.trim(), kind, description: description.trim() || undefined, milestone_id: milestoneId === "none" ? null : milestoneId, approver_membership_id: approver, blocks_completion: blocks };
-        if (existing) update.mutate({ id: projectId, path: `gates/${existing.id}`, dto }, { onSuccess: onClose });
-        else create.mutate({ id: projectId, path: "gates", dto }, { onSuccess: onClose });
+        if (existing) return close();
+        create.mutate({ id: projectId, path: "gates", dto }, { onSuccess: onClose });
     };
     return (
-        <Dialog open={!!gate} onOpenChange={(o) => !o && !pending && onClose()}>
+        <Dialog open={!!gate} onOpenChange={(o) => !o && !pending && close()}>
             <DialogContent className="sm:max-w-lg">
                 <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (name.trim()) submit(); }}>
                     <DialogHeader>
                         <DialogTitle>{existing ? "Edit gate" : "Add gate"}</DialogTitle>
                         <DialogDescription>The approver is notified and decides in this tab.</DialogDescription>
+                        {existing && <SaveStatus state={autosave} />}
                     </DialogHeader>
                     <div className="space-y-1.5">
                         <Label htmlFor="gate-name">Name</Label>
-                        <Input id="gate-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="QA sign-off" maxLength={200} />
+                        <Input id="gate-name" autoFocus value={name} onChange={(e) => touch(setName)(e.target.value)} placeholder="QA sign-off" maxLength={200} />
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-1.5">
                             <Label>Kind</Label>
-                            <Select value={kind} onValueChange={(v) => setKind(v as ProjectGateKind)}>
+                            <Select value={kind} onValueChange={(v) => touch(setKind)(v as ProjectGateKind)}>
                                 <SelectTrigger aria-label="Kind"><SelectValue /></SelectTrigger>
                                 <SelectContent>{GateKindFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-1.5">
                             <Label>Milestone</Label>
-                            <Select value={milestoneId} onValueChange={setMilestoneId}>
+                            <Select value={milestoneId} onValueChange={touch(setMilestoneId)}>
                                 <SelectTrigger aria-label="Milestone"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="none">No milestone</SelectItem>
@@ -162,19 +174,25 @@ function GateDialog({ projectId, gate, onClose }: { projectId: string; gate: Pro
                     </div>
                     <div className="space-y-1.5">
                         <Label>Approver</Label>
-                        <PersonPicker value={approver} onChange={setApprover} placeholder="Choose an approver" noneLabel="No approver" selected={existing?.approver} />
+                        <PersonPicker value={approver} onChange={touch(setApprover)} placeholder="Choose an approver" noneLabel="No approver" selected={existing?.approver} />
                     </div>
                     <div className="space-y-1.5">
                         <Label htmlFor="gate-desc">What must be true</Label>
-                        <Textarea id="gate-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="All P1 bugs closed, regression suite green." />
+                        <Textarea id="gate-desc" rows={2} value={description} onChange={(e) => touch(setDescription)(e.target.value)} placeholder="All P1 bugs closed, regression suite green." />
                     </div>
                     <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
                         <Label htmlFor="gate-blocks" className="font-normal">Blocks project completion</Label>
-                        <Switch id="gate-blocks" checked={blocks} onCheckedChange={setBlocks} />
+                        <Switch id="gate-blocks" checked={blocks} onCheckedChange={touch(setBlocks)} />
                     </div>
                     <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>Cancel</Button>
-                        <Button type="submit" loading={pending} disabled={!name.trim()}>{existing ? "Save" : "Add gate"}</Button>
+                        {existing ? (
+                            <Button type="button" onClick={close}>Done</Button>
+                        ) : (
+                            <>
+                                <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>Cancel</Button>
+                                <Button type="submit" loading={pending} disabled={!name.trim()}>Add gate</Button>
+                            </>
+                        )}
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -183,7 +201,8 @@ function GateDialog({ projectId, gate, onClose }: { projectId: string; gate: Pro
 }
 
 function DecideDialog({ projectId, gate, onClose }: { projectId: string; gate: ProjectGate | null; onClose: () => void }) {
-    const decide = useGovernancePost("Decision recorded");
+    // Approval decision: an explicit, recorded action. The gate shows the decision at once and the dialog closes.
+    const decide = useGovernancePost("Could not record the decision");
     const [decision, setDecision] = useState<"PASSED" | "FAILED" | "WAIVED">("PASSED");
     const [comment, setComment] = useState("");
     useEffect(() => {
@@ -194,11 +213,14 @@ function DecideDialog({ projectId, gate, onClose }: { projectId: string; gate: P
     }, [gate]);
     const needsComment = decision !== "PASSED";
     return (
-        <Dialog open={!!gate} onOpenChange={(o) => !o && !decide.isPending && onClose()}>
+        <Dialog open={!!gate} onOpenChange={(o) => !o && onClose()}>
             <DialogContent className="sm:max-w-md">
                 <form className="space-y-4" onSubmit={(e) => {
                     e.preventDefault();
-                    if (gate && (!needsComment || comment.trim())) decide.mutate({ id: projectId, path: `gates/${gate.id}/decide`, dto: { decision, comment: comment.trim() || undefined } }, { onSuccess: onClose });
+                    if (gate && (!needsComment || comment.trim())) {
+                        decide.mutate({ id: projectId, path: `gates/${gate.id}/decide`, dto: { decision, comment: comment.trim() || undefined }, patch: { id: gate.id, value: { status: decision, decided_at: new Date().toISOString(), decision_comment: comment.trim() || null } } });
+                        onClose();
+                    }
                 }}>
                     <DialogHeader>
                         <DialogTitle>Decide “{gate?.name}”</DialogTitle>
@@ -217,8 +239,8 @@ function DecideDialog({ projectId, gate, onClose }: { projectId: string; gate: P
                         <Textarea id="decide-comment" rows={3} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={needsComment ? "Why does it fail / why is it waived?" : "Optional"} />
                     </div>
                     <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={onClose} disabled={decide.isPending}>Cancel</Button>
-                        <Button type="submit" loading={decide.isPending} variant={decision === "FAILED" ? "destructive" : "default"} disabled={needsComment && !comment.trim()}>
+                        <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+                        <Button type="submit" variant={decision === "FAILED" ? "destructive" : "default"} disabled={needsComment && !comment.trim()}>
                             {getDropdownOptionLabel(GateDecisionOptions, decision)} gate
                         </Button>
                     </DialogFooter>

@@ -1,10 +1,10 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { insertEntity, patchEntity, removeEntity, useEntityUpdate, useOptimisticMutation } from "@/lib/query/optimistic";
 import * as service from "../services/projects.services";
-import type { ProjectChildKind } from "../interfaces/projects.interfaces";
+import type { ProjectChildKind, ProjectDetail } from "../interfaces/projects.interfaces";
 
 export const PROJECTS_KEY = ["projects"] as const;
+const TASKS_ROOT = ["tasks"] as const;
 type Params = Record<string, unknown>;
 
 export const useProjects = (params: Params) =>
@@ -33,47 +33,134 @@ export const useProjectTypes = () => useQuery({ queryKey: [...PROJECTS_KEY, "typ
 export const useProjectStatuses = () => useQuery({ queryKey: [...PROJECTS_KEY, "statuses"], queryFn: () => service.getProjectStatuses(), staleTime: 60_000 });
 export const useProjectTemplates = () => useQuery({ queryKey: [...PROJECTS_KEY, "templates"], queryFn: () => service.getProjectTemplates(), staleTime: 60_000 });
 
-/** Mutation that refreshes every projects query and toasts the outcome. Pass `success: null` to toast at the call site. */
-function useProjectMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, success: string | null, failure: string) {
+/**
+ * Non-optimistic project mutation (creations, server-computed transitions): refreshes projects and tasks when it
+ * settles. No success toast (the UI shows the result); a failure is toasted once globally with `errorTitle`.
+ */
+function useProjectMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, errorTitle: string, errorToast = true) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: fn,
-        onSuccess: () => {
+        meta: { errorTitle, errorToast },
+        onSettled: () => {
             qc.invalidateQueries({ queryKey: PROJECTS_KEY });
-            qc.invalidateQueries({ queryKey: ["tasks"] });
-            if (success) toast({ title: success });
+            qc.invalidateQueries({ queryKey: TASKS_ROOT });
         },
-        onError: (e) => toast({ variant: "destructive", title: failure, description: getApiErrorMessage(e) }),
     });
 }
 
-export const useCreateProject = () => useProjectMutation(service.createProject, "Project created", "Could not create project");
-export const useUpdateProject = () => useProjectMutation(service.updateProject, "Project updated", "Could not update project");
-export const useDeleteProject = () => useProjectMutation(service.deleteProject, "Project deleted", "Could not delete project");
-export const useArchiveProject = () => useProjectMutation(service.archiveProject, "Project archived", "Could not archive project");
-export const useRestoreProject = () => useProjectMutation(service.restoreProject, "Project restored", "Could not restore project");
-export const useCompleteProject = () => useProjectMutation(service.completeProject, "Project completed", "Could not complete project");
-export const useReopenProject = () => useProjectMutation(service.reopenProject, "Project reopened", "Could not reopen project");
-export const useSetProjectFavorite = () => useProjectMutation(service.setProjectFavorite, null, "Could not update favorites");
-export const useAddProjectMember = () => useProjectMutation(service.addProjectMember, "Member added", "Could not add member");
-export const useRemoveProjectMember = () => useProjectMutation(service.removeProjectMember, "Member removed", "Could not remove member");
-export const useCreateProjectChild = (label: string) => useProjectMutation(service.createProjectChild, `${label} added`, `Could not add ${label.toLowerCase()}`);
-export const useUpdateProjectChild = (label: string) => useProjectMutation(service.updateProjectChild, `${label} updated`, `Could not update ${label.toLowerCase()}`);
-export const useDeleteProjectChild = (label: string) => useProjectMutation(service.deleteProjectChild, `${label} deleted`, `Could not delete ${label.toLowerCase()}`);
-export const useProjectChildAction = (success: string) => useProjectMutation(service.projectChildAction, success, "Could not complete the action");
-export const useCreateProjectType = () => useProjectMutation(service.createProjectType, "Type created", "Could not create type");
-export const useUpdateProjectType = () => useProjectMutation(service.updateProjectType, "Type updated", "Could not update type");
-export const useArchiveProjectType = () => useProjectMutation(service.archiveProjectType, "Type updated", "Could not archive type");
-export const useCreateProjectStatus = () => useProjectMutation(service.createProjectStatus, "Status created", "Could not create status");
-export const useUpdateProjectStatus = () => useProjectMutation(service.updateProjectStatus, "Status updated", "Could not update status");
-export const useArchiveProjectStatus = () => useProjectMutation(service.archiveProjectStatus, "Status updated", "Could not archive status");
-export const useCreateProjectTemplate = () => useProjectMutation(service.createProjectTemplate, "Template created", "Could not create template");
-export const useUpdateProjectTemplate = () => useProjectMutation(service.updateProjectTemplate, "Template updated", "Could not update template");
+/** Optimistic project mutation over the whole projects cache (ids are unique, so patches find every copy). */
+function useProjectOptimistic<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, errorTitle: string, apply: (qc: QueryClient, vars: TVars) => void, errorToast = true) {
+    return useOptimisticMutation<TResult, TVars>({ roots: [PROJECTS_KEY], alsoInvalidate: [TASKS_ROOT], meta: { errorTitle, errorToast }, mutationFn: fn, apply });
+}
 
-/** Governance & closeout writes; `success: null` = toast at the call site. */
-export const useGovernancePost = (success: string | null, failure = "Could not save") => useProjectMutation(service.postGovernance, success, failure);
-export const useGovernancePatch = (success: string | null, failure = "Could not save") => useProjectMutation(service.patchGovernance, success, failure);
-export const useGovernancePut = (success: string | null, failure = "Could not save") => useProjectMutation(service.putGovernance, success, failure);
-export const useGovernanceDelete = (success: string | null, failure = "Could not delete") => useProjectMutation(service.deleteGovernance, success, failure);
-/** AI status-update draft: no success toast (the caller opens the draft or shows why AI is unavailable). */
-export const useDraftStatusUpdate = () => useProjectMutation(service.draftStatusUpdate, null, "Could not draft the update");
+const patchDetail = (qc: QueryClient, id: string, fn: (p: ProjectDetail) => ProjectDetail) =>
+    patchEntity<ProjectDetail>(qc, PROJECTS_KEY, id, (p) => ("members" in p ? fn(p) : p));
+
+/** Creation: the new page opens on success. */
+export const useCreateProject = () => useProjectMutation(service.createProject, "Could not create project");
+/**
+ * Optimistic: header, lists and pickers change at once; pass display objects (status, owner…) in `optimistic`.
+ * `inline: true` for autosaving forms that show the error in <SaveStatus /> instead of a toast.
+ */
+export const useUpdateProject = ({ inline = false }: { inline?: boolean } = {}) =>
+    useEntityUpdate({ root: PROJECTS_KEY, mutationFn: service.updateProject, alsoInvalidate: [TASKS_ROOT], meta: { errorTitle: "Could not update project", errorToast: !inline } });
+export const useDeleteProject = () => useProjectOptimistic(service.deleteProject, "Could not delete project", (qc, id) => removeEntity(qc, PROJECTS_KEY, id));
+/** Archive: gone from lists at once; the open detail page shows "Archived". */
+export const useArchiveProject = () =>
+    useProjectOptimistic(service.archiveProject, "Could not archive project", (qc, id) => {
+        removeEntity(qc, PROJECTS_KEY, id);
+        patchEntity(qc, PROJECTS_KEY, id, { archived_at: new Date().toISOString() });
+    });
+export const useRestoreProject = () => useProjectOptimistic(service.restoreProject, "Could not restore project", (qc, id) => patchEntity(qc, PROJECTS_KEY, id, { archived_at: null }));
+/** Completing is checked by the server (gates, checklists): not optimistic, the confirmation shows the outcome. */
+export const useCompleteProject = () => useProjectMutation(service.completeProject, "Could not complete project");
+export const useReopenProject = () =>
+    useProjectOptimistic(service.reopenProject, "Could not reopen project", (qc, { id }) => patchEntity(qc, PROJECTS_KEY, id, { completed_at: null }));
+export const useSetProjectFavorite = () =>
+    useProjectOptimistic(service.setProjectFavorite, "Could not update favorites", (qc, { id, favorite }) => {
+        patchEntity(qc, PROJECTS_KEY, id, { is_favorite: favorite });
+        if (!favorite) qc.setQueryData<{ id: string }[]>([...PROJECTS_KEY, "favorites"], (d) => d?.filter((f) => f.id !== id));
+    });
+/** Adding needs the server's member row (role, joined date): not optimistic; the dialog closes on success. */
+export const useAddProjectMember = () => useProjectMutation(service.addProjectMember, "Could not add member");
+export const useRemoveProjectMember = () =>
+    useProjectOptimistic(service.removeProjectMember, "Could not remove member", (qc, { id, membership_id }) =>
+        patchDetail(qc, id, (p) => ({ ...p, members: p.members.filter((m) => m.membership_id !== membership_id) })),
+    );
+
+/** Child records (milestones, deliverables, RAID, updates…). Creation is not optimistic; dialogs close on success. */
+export const useCreateProjectChild = (label: string) => useProjectMutation(service.createProjectChild, `Could not add ${label.toLowerCase()}`);
+type ChildUpdateVars = Parameters<typeof service.updateProjectChild>[0] & { optimistic?: Params };
+/**
+ * Optimistic: the row (in every list, timeline and detail) shows `dto` + `optimistic` display objects at once.
+ * `inline: true` for autosaving edit dialogs that show failures in <SaveStatus /> instead of a toast.
+ */
+export const useUpdateProjectChild = (label: string, { inline = false }: { inline?: boolean } = {}) =>
+    useProjectOptimistic((v: ChildUpdateVars) => service.updateProjectChild(v), `Could not update ${label.toLowerCase()}`, (qc, { itemId, dto, optimistic }) =>
+        patchEntity(qc, PROJECTS_KEY, itemId, { ...dto, ...(optimistic ?? {}) }), !inline,
+    );
+export const useDeleteProjectChild = (label: string) =>
+    useProjectOptimistic(service.deleteProjectChild, `Could not delete ${label.toLowerCase()}`, (qc, { itemId }) => removeEntity(qc, PROJECTS_KEY, itemId));
+type ChildActionVars = Parameters<typeof service.projectChildAction>[0] & { optimistic?: Params };
+/** Workflow actions (complete, submit, review, publish…). Pass `optimistic` (e.g. `{ status: "COMPLETED" }`) to show the result at once. */
+export const useProjectChildAction = (errorTitle = "Could not complete the action") =>
+    useProjectOptimistic((v: ChildActionVars) => service.projectChildAction(v), errorTitle, (qc, { itemId, optimistic }) => {
+        if (optimistic) patchEntity(qc, PROJECTS_KEY, itemId, optimistic);
+    });
+
+export const useCreateProjectType = () => useProjectMutation(service.createProjectType, "Could not create type");
+export const useUpdateProjectType = ({ inline = false }: { inline?: boolean } = {}) =>
+    useProjectOptimistic(service.updateProjectType, "Could not update type", (qc, { id, ...dto }) => patchEntity(qc, PROJECTS_KEY, id, dto), !inline);
+/** Archive / restore toggle: the row flips at once. */
+export const useArchiveProjectType = () =>
+    useProjectOptimistic(service.archiveProjectType, "Could not archive type", (qc, id) =>
+        patchEntity<{ archived_at: string | null }>(qc, PROJECTS_KEY, id, (e) => ({ ...e, archived_at: e.archived_at ? null : new Date().toISOString() })),
+    );
+export const useCreateProjectStatus = () => useProjectMutation(service.createProjectStatus, "Could not create status");
+export const useUpdateProjectStatus = ({ inline = false }: { inline?: boolean } = {}) =>
+    useProjectOptimistic(service.updateProjectStatus, "Could not update status", (qc, { id, ...dto }) => patchEntity(qc, PROJECTS_KEY, id, dto), !inline);
+export const useArchiveProjectStatus = () =>
+    useProjectOptimistic(service.archiveProjectStatus, "Could not archive status", (qc, id) => removeEntity(qc, PROJECTS_KEY, id));
+export const useCreateProjectTemplate = () => useProjectMutation(service.createProjectTemplate, "Could not create template");
+/** Deactivating (`is_active: false`) removes the template from the list at once. */
+export const useUpdateProjectTemplate = () =>
+    useProjectOptimistic(service.updateProjectTemplate, "Could not update template", (qc, { id, ...dto }) =>
+        dto.is_active === false ? removeEntity(qc, PROJECTS_KEY, id) : patchEntity(qc, PROJECTS_KEY, id, dto),
+    );
+
+/**
+ * Governance & closeout writes. Optional optimistic hints on the variables (never sent):
+ *   - `patch: { id, value }` merges `value` (or applies a function) into the entity `id` anywhere in the projects cache;
+ *   - `removeId` removes that entity from cached lists;
+ *   - `insert: { root, entity }` prepends a temporary entity to a cached list.
+ */
+type GovernanceHints = {
+    patch?: { id: string; value: Params | ((e: never) => unknown) };
+    removeId?: string;
+    insert?: { root: readonly unknown[]; entity: { id: string } };
+};
+function applyGovernance(qc: QueryClient, h: GovernanceHints) {
+    if (h.patch) patchEntity(qc, PROJECTS_KEY, h.patch.id, h.patch.value as Params);
+    if (h.removeId) removeEntity(qc, PROJECTS_KEY, h.removeId);
+    if (h.insert) insertEntity(qc, h.insert.root, h.insert.entity);
+}
+type GovVars<T> = T & GovernanceHints;
+export const useGovernancePost = (errorTitle = "Could not save", errorToast = true) =>
+    useOptimisticMutation<unknown, GovVars<Parameters<typeof service.postGovernance>[0]>>({
+        roots: [PROJECTS_KEY], alsoInvalidate: [TASKS_ROOT], meta: { errorTitle, errorToast }, mutationFn: (v) => service.postGovernance(v), apply: applyGovernance,
+    });
+export const useGovernancePatch = (errorTitle = "Could not save", errorToast = true) =>
+    useOptimisticMutation<unknown, GovVars<Parameters<typeof service.patchGovernance>[0]>>({
+        roots: [PROJECTS_KEY], alsoInvalidate: [TASKS_ROOT], meta: { errorTitle, errorToast }, mutationFn: (v) => service.patchGovernance(v), apply: applyGovernance,
+    });
+export const useGovernancePut = (errorTitle = "Could not save", errorToast = true) =>
+    useOptimisticMutation<unknown, GovVars<Parameters<typeof service.putGovernance>[0]>>({
+        roots: [PROJECTS_KEY], alsoInvalidate: [TASKS_ROOT], meta: { errorTitle, errorToast }, mutationFn: (v) => service.putGovernance(v), apply: applyGovernance,
+    });
+export const useGovernanceDelete = (errorTitle = "Could not delete") =>
+    useOptimisticMutation<unknown, GovVars<Parameters<typeof service.deleteGovernance>[0]>>({
+        roots: [PROJECTS_KEY], alsoInvalidate: [TASKS_ROOT], meta: { errorTitle }, mutationFn: (v) => service.deleteGovernance(v), apply: applyGovernance,
+    });
+/** AI status-update draft: the caller opens the draft or shows why AI is unavailable. */
+export const useDraftStatusUpdate = () => useProjectMutation(service.draftStatusUpdate, "Could not draft the update");

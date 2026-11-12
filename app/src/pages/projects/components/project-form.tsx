@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { useFormAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -18,12 +20,18 @@ const NONE = "__none";
 
 interface ProjectFormProps {
     defaults?: Partial<ProjectFormValues>;
+    /**
+     * Edit mode (project Settings): every valid change saves automatically, no Save / Cancel buttons; a quiet
+     * "Saving… / Saved" status shows above the fields. `resetKey` (the project id) reloads the form only when it changes,
+     * so refreshed data never overwrites what the user is typing.
+     */
+    autosave?: { onSave: (dto: CreateProjectDto) => Promise<unknown>; resetKey: string };
     /** Current customer name / owner so the pickers render before their lists load. */
     customerName?: string | null;
     owner?: MemberRef | null;
     pending?: boolean;
-    submitLabel: string;
-    onSubmit: (dto: CreateProjectDto) => void;
+    submitLabel?: string;
+    onSubmit?: (dto: CreateProjectDto) => void;
     onCancel?: () => void;
     /** Template id chosen outside the form (new project page). */
     templateId?: string | null;
@@ -35,7 +43,7 @@ const empty: ProjectFormValues = {
 };
 
 /** Project fields shared by "New project" and the project Settings tab. Budget fields need projects.projects.manage_budgets. */
-export function ProjectForm({ defaults, customerName, owner, pending, submitLabel, onSubmit, onCancel, templateId }: ProjectFormProps) {
+export function ProjectForm({ defaults, autosave, customerName, owner, pending, submitLabel = "Save", onSubmit, onCancel, templateId }: ProjectFormProps) {
     const canBudget = usePermission("projects.projects.manage_budgets");
     const canSeeMoney = usePermission("projects.finance.read");
     const canTeams = usePermission("tasks.tasks.read");
@@ -46,9 +54,9 @@ export function ProjectForm({ defaults, customerName, owner, pending, submitLabe
     useEffect(() => {
         form.reset({ ...empty, ...defaults });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [JSON.stringify(defaults)]);
+    }, [autosave ? autosave.resetKey : JSON.stringify(defaults)]);
 
-    const submit = form.handleSubmit((v) => {
+    const toDto = (v: ProjectFormValues): CreateProjectDto => {
         const num = (s?: string) => (s ? Number(s) : undefined);
         const dto: CreateProjectDto = {
             name: v.name,
@@ -71,19 +79,22 @@ export function ProjectForm({ defaults, customerName, owner, pending, submitLabe
                 dto.currency = v.currency ? v.currency.toUpperCase() : undefined;
             }
         }
-        onSubmit(dto);
-    });
+        return dto;
+    };
+    const submit = form.handleSubmit((v) => onSubmit?.(toDto(v)));
+    const saveState = useFormAutosave(form, (v) => autosave!.onSave(toDto(v)), { enabled: !!autosave });
 
     const teams = (workflows.data ?? []).filter((w) => w.team).map((w) => w.team!);
 
     return (
         <Form {...form}>
-            <form onSubmit={submit} className="space-y-5">
+            <form onSubmit={autosave ? (e) => e.preventDefault() : submit} className="space-y-5">
+                {autosave && <div className="flex min-h-4 justify-end"><SaveStatus state={saveState} /></div>}
                 <div className="grid gap-4 sm:grid-cols-[1fr_10rem]">
                     <FormField control={form.control} name="name" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Project name</FormLabel>
-                            <FormControl><Input autoFocus placeholder="Acme website relaunch" {...field} /></FormControl>
+                            <FormControl><Input autoFocus={!autosave} placeholder="Acme website relaunch" {...field} /></FormControl>
                             <FormMessage />
                         </FormItem>
                     )} />
@@ -212,10 +223,12 @@ export function ProjectForm({ defaults, customerName, owner, pending, submitLabe
                     </FormItem>
                 )} />
 
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                    {onCancel && <Button type="button" variant="ghost" onClick={onCancel} disabled={pending}>Cancel</Button>}
-                    <Button type="submit" loading={pending}>{submitLabel}</Button>
-                </div>
+                {!autosave && (
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        {onCancel && <Button type="button" variant="ghost" onClick={onCancel} disabled={pending}>Cancel</Button>}
+                        <Button type="submit" loading={pending}>{submitLabel}</Button>
+                    </div>
+                )}
             </form>
         </Form>
     );

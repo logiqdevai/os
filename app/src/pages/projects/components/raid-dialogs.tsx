@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useFormAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { useCreateProjectChild, useUpdateProjectChild } from "@/features/projects/hooks/use-projects";
 import {
     decisionFormSchema,
@@ -29,10 +31,15 @@ interface DialogProps<T> {
 
 const SCALE = ["1", "2", "3", "4", "5"];
 
+/*
+ * RAID dialogs: creating keeps an explicit "Log …" button; editing autosaves every valid change (no Save button,
+ * "Done" closes and saves the last keystrokes right away). Failures show in the header <SaveStatus />.
+ */
+
 /** Risk: probability × impact (1–5) derives the severity on the API. @perm projects.risks.manage */
 export function RiskDialog({ open, onOpenChange, projectId, item }: DialogProps<Risk>) {
     const create = useCreateProjectChild("Risk");
-    const update = useUpdateProjectChild("Risk");
+    const update = useUpdateProjectChild("Risk", { inline: true });
     const form = useForm<RiskFormValues>({ resolver: zodResolver(riskFormSchema) });
     useEffect(() => {
         if (open) form.reset({
@@ -40,24 +47,32 @@ export function RiskDialog({ open, onOpenChange, projectId, item }: DialogProps<
             status: item?.status ?? "OPEN", owner_membership_id: item?.owner_membership_id ?? "", mitigation: item?.mitigation ?? "", due_date: item?.due_date?.slice(0, 10) ?? "",
         });
     }, [open, item, form]);
-    const pending = create.isPending || update.isPending;
-    const submit = form.handleSubmit((v) => {
+    const pending = create.isPending;
+    const toDto = (v: RiskFormValues) => {
         const dto = {
             title: v.title, description: v.description || undefined, probability: Number(v.probability), impact: Number(v.impact), status: v.status,
             owner_membership_id: v.owner_membership_id || undefined, mitigation: v.mitigation || undefined, due_date: v.due_date || undefined,
         };
-        const done = { onSuccess: () => onOpenChange(false) };
-        if (item) update.mutate({ id: projectId, kind: "risks", itemId: item.id, dto }, done);
-        else create.mutate({ id: projectId, kind: "risks", dto }, done);
+        return dto;
+    };
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: projectId, kind: "risks", itemId: item!.id, dto: toDto(v) }), { enabled: open && !!item });
+    const close = () => {
+        if (item) void form.trigger().then((ok) => ok && autosave.flush());
+        onOpenChange(false);
+    };
+    const submit = form.handleSubmit((v) => {
+        if (item) return close();
+        create.mutate({ id: projectId, kind: "risks", dto: toDto(v) }, { onSuccess: () => onOpenChange(false) });
     });
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !pending && close())}>
             <DialogContent className="sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
                             <DialogTitle>{item ? "Edit risk" : "Log a risk"}</DialogTitle>
                             <DialogDescription>Something that may happen and would hurt delivery.</DialogDescription>
+                            {item && <SaveStatus state={autosave} />}
                         </DialogHeader>
                         <FormField control={form.control} name="title" render={({ field }) => (
                             <FormItem><FormLabel>Risk</FormLabel><FormControl><Input autoFocus placeholder="Content from the customer arrives late" {...field} /></FormControl><FormMessage /></FormItem>
@@ -96,8 +111,14 @@ export function RiskDialog({ open, onOpenChange, projectId, item }: DialogProps<
                             <FormItem><FormLabel>Mitigation</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>
                         )} />
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{item ? "Save" : "Log risk"}</Button>
+                            {item ? (
+                                <Button type="button" onClick={close}>Done</Button>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                                    <Button type="submit" loading={pending}>Log risk</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>
@@ -109,7 +130,7 @@ export function RiskDialog({ open, onOpenChange, projectId, item }: DialogProps<
 /** Issue or blocker. @perm projects.issues.manage */
 export function IssueDialog({ open, onOpenChange, projectId, item }: DialogProps<Issue>) {
     const create = useCreateProjectChild("Issue");
-    const update = useUpdateProjectChild("Issue");
+    const update = useUpdateProjectChild("Issue", { inline: true });
     const form = useForm<IssueFormValues>({ resolver: zodResolver(issueFormSchema) });
     useEffect(() => {
         if (open) form.reset({
@@ -117,21 +138,29 @@ export function IssueDialog({ open, onOpenChange, projectId, item }: DialogProps
             owner_membership_id: item?.owner_membership_id ?? "", target_resolution: item?.target_resolution?.slice(0, 10) ?? "", resolution: item?.resolution ?? "",
         });
     }, [open, item, form]);
-    const pending = create.isPending || update.isPending;
-    const submit = form.handleSubmit((v) => {
+    const pending = create.isPending;
+    const toDto = (v: IssueFormValues) => {
         const dto = { ...v, description: v.description || undefined, owner_membership_id: v.owner_membership_id || undefined, target_resolution: v.target_resolution || undefined, resolution: v.resolution || undefined };
-        const done = { onSuccess: () => onOpenChange(false) };
-        if (item) update.mutate({ id: projectId, kind: "issues", itemId: item.id, dto }, done);
-        else create.mutate({ id: projectId, kind: "issues", dto }, done);
+        return dto;
+    };
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: projectId, kind: "issues", itemId: item!.id, dto: toDto(v) }), { enabled: open && !!item });
+    const close = () => {
+        if (item) void form.trigger().then((ok) => ok && autosave.flush());
+        onOpenChange(false);
+    };
+    const submit = form.handleSubmit((v) => {
+        if (item) return close();
+        create.mutate({ id: projectId, kind: "issues", dto: toDto(v) }, { onSuccess: () => onOpenChange(false) });
     });
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !pending && close())}>
             <DialogContent className="sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
                             <DialogTitle>{item ? "Edit issue" : "Log an issue"}</DialogTitle>
                             <DialogDescription>A problem happening now. Blockers stop progress.</DialogDescription>
+                            {item && <SaveStatus state={autosave} />}
                         </DialogHeader>
                         <FormField control={form.control} name="title" render={({ field }) => (
                             <FormItem><FormLabel>Issue</FormLabel><FormControl><Input autoFocus placeholder="Staging server unavailable" {...field} /></FormControl><FormMessage /></FormItem>
@@ -179,8 +208,14 @@ export function IssueDialog({ open, onOpenChange, projectId, item }: DialogProps
                             )} />
                         )}
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{item ? "Save" : "Log issue"}</Button>
+                            {item ? (
+                                <Button type="button" onClick={close}>Done</Button>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                                    <Button type="submit" loading={pending}>Log issue</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>
@@ -192,26 +227,34 @@ export function IssueDialog({ open, onOpenChange, projectId, item }: DialogProps
 /** Decision record. @perm projects.issues.manage */
 export function DecisionDialog({ open, onOpenChange, projectId, item }: DialogProps<Decision>) {
     const create = useCreateProjectChild("Decision");
-    const update = useUpdateProjectChild("Decision");
+    const update = useUpdateProjectChild("Decision", { inline: true });
     const form = useForm<DecisionFormValues>({ resolver: zodResolver(decisionFormSchema) });
     useEffect(() => {
         if (open) form.reset({ title: item?.title ?? "", description: item?.description ?? "", selected_option: item?.selected_option ?? "", reason: item?.reason ?? "", decided_at: item?.decided_at?.slice(0, 10) ?? "" });
     }, [open, item, form]);
-    const pending = create.isPending || update.isPending;
-    const submit = form.handleSubmit((v) => {
+    const pending = create.isPending;
+    const toDto = (v: DecisionFormValues) => {
         const dto = { title: v.title, description: v.description || undefined, selected_option: v.selected_option || undefined, reason: v.reason || undefined, decided_at: v.decided_at || undefined };
-        const done = { onSuccess: () => onOpenChange(false) };
-        if (item) update.mutate({ id: projectId, kind: "decisions", itemId: item.id, dto }, done);
-        else create.mutate({ id: projectId, kind: "decisions", dto }, done);
+        return dto;
+    };
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: projectId, kind: "decisions", itemId: item!.id, dto: toDto(v) }), { enabled: open && !!item });
+    const close = () => {
+        if (item) void form.trigger().then((ok) => ok && autosave.flush());
+        onOpenChange(false);
+    };
+    const submit = form.handleSubmit((v) => {
+        if (item) return close();
+        create.mutate({ id: projectId, kind: "decisions", dto: toDto(v) }, { onSuccess: () => onOpenChange(false) });
     });
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !pending && close())}>
             <DialogContent className="sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
                             <DialogTitle>{item ? "Edit decision" : "Record a decision"}</DialogTitle>
                             <DialogDescription>Keep the why next to the what.</DialogDescription>
+                            {item && <SaveStatus state={autosave} />}
                         </DialogHeader>
                         <FormField control={form.control} name="title" render={({ field }) => (
                             <FormItem><FormLabel>Decision</FormLabel><FormControl><Input autoFocus placeholder="Use Next.js for the marketing site" {...field} /></FormControl><FormMessage /></FormItem>
@@ -228,8 +271,14 @@ export function DecisionDialog({ open, onOpenChange, projectId, item }: DialogPr
                             <FormItem><FormLabel>Reason</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
                         )} />
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{item ? "Save" : "Record decision"}</Button>
+                            {item ? (
+                                <Button type="button" onClick={close}>Done</Button>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                                    <Button type="submit" loading={pending}>Record decision</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>

@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useAutosave } from "@/hooks/use-autosave";
 import {
     useArchiveProjectStatus,
     useArchiveProjectType,
@@ -84,51 +86,58 @@ function StatusesSection() {
     );
 }
 
+/** New status (explicit "Add status") or edit one (autosaves; "Done" closes). */
 function StatusDialog({ open, onOpenChange, status, all }: { open: boolean; onOpenChange: (o: boolean) => void; status: ProjectStatus | null; all: ProjectStatus[] }) {
     const create = useCreateProjectStatus();
-    const update = useUpdateProjectStatus();
+    const update = useUpdateProjectStatus({ inline: true });
     const [name, setName] = useState("");
     const [category, setCategory] = useState<ProjectStatusCategory>("IN_PROGRESS");
     const [color, setColor] = useState("info");
     const [isDefault, setIsDefault] = useState(false);
     const [transitions, setTransitions] = useState<string[]>([]);
     const [key, setKey] = useState<string | null>(null);
+    const [dirty, setDirty] = useState(false);
+    const touch = <T,>(set: (v: T) => void) => (v: T) => { setDirty(true); set(v); };
     const current = `${open}-${status?.id ?? "new"}`;
     if (key !== current) {
         setKey(current);
+        setDirty(false);
         setName(status?.name ?? "");
         setCategory(status?.category ?? "IN_PROGRESS");
         setColor(status?.color ?? "info");
         setIsDefault(status?.is_default ?? false);
         setTransitions(status?.allowed_transitions ?? []);
     }
-    const pending = create.isPending || update.isPending;
+    const pending = create.isPending;
+    const dto = { name: name.trim(), category, color, is_default: isDefault, allowed_transitions: transitions };
+    // While the dialog loads a status the values equal the server's, so only real edits are saved.
+    const autosave = useAutosave({ value: dto, enabled: open && !!status && !!dto.name && dirty, save: (v) => update.mutateAsync({ id: status!.id, ...v }) });
+    const close = () => { if (status && dto.name) autosave.flush(); onOpenChange(false); };
     const save = () => {
-        const dto = { name: name.trim(), category, color, is_default: isDefault, allowed_transitions: transitions };
-        const done = { onSuccess: () => onOpenChange(false) };
-        if (status) update.mutate({ id: status.id, ...dto }, done);
-        else create.mutate(dto, done);
+        if (status) return close();
+        create.mutate(dto, { onSuccess: () => onOpenChange(false) });
     };
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !pending && close())}>
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>{status ? "Edit status" : "New status"}</DialogTitle>
                     <DialogDescription>The category drives reports and automation; the name is yours.</DialogDescription>
+                    {status && <SaveStatus state={autosave} />}
                 </DialogHeader>
                 <div className="space-y-4">
-                    <div className="space-y-1.5"><Label htmlFor="ps-name">Name</Label><Input id="ps-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="In delivery" /></div>
+                    <div className="space-y-1.5"><Label htmlFor="ps-name">Name</Label><Input id="ps-name" autoFocus value={name} onChange={(e) => touch(setName)(e.target.value)} placeholder="In delivery" /></div>
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-1.5">
                             <Label>Category</Label>
-                            <Select value={category} onValueChange={(v) => setCategory(v as ProjectStatusCategory)}>
+                            <Select value={category} onValueChange={(v) => touch(setCategory)(v as ProjectStatusCategory)}>
                                 <SelectTrigger aria-label="Category"><SelectValue /></SelectTrigger>
                                 <SelectContent>{ProjectStatusCategoryFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-1.5">
                             <Label>Color</Label>
-                            <Select value={color} onValueChange={setColor}>
+                            <Select value={color} onValueChange={touch(setColor)}>
                                 <SelectTrigger aria-label="Color"><SelectValue /></SelectTrigger>
                                 <SelectContent>{ColorTokenFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                             </Select>
@@ -140,18 +149,24 @@ function StatusDialog({ open, onOpenChange, status, all }: { open: boolean; onOp
                             {all.filter((s) => s.id !== status?.id).map((s) => {
                                 const on = transitions.includes(s.slug);
                                 return (
-                                    <button key={s.id} type="button" aria-pressed={on} onClick={() => setTransitions(on ? transitions.filter((t) => t !== s.slug) : [...transitions, s.slug])}>
+                                    <button key={s.id} type="button" aria-pressed={on} onClick={() => touch(setTransitions)(on ? transitions.filter((t) => t !== s.slug) : [...transitions, s.slug])}>
                                         <Badge variant={on ? "info" : "outline"}>{s.name}</Badge>
                                     </button>
                                 );
                             })}
                         </div>
                     </div>
-                    <div className="flex items-center justify-between rounded-md border border-border p-3"><span className="text-[13px]">Default for new projects</span><Switch checked={isDefault} onCheckedChange={setIsDefault} aria-label="Default status" /></div>
+                    <div className="flex items-center justify-between rounded-md border border-border p-3"><span className="text-[13px]">Default for new projects</span><Switch checked={isDefault} onCheckedChange={touch(setIsDefault)} aria-label="Default status" /></div>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                    <Button onClick={save} disabled={!name.trim()} loading={pending}>{status ? "Save" : "Add status"}</Button>
+                    {status ? (
+                        <Button onClick={close}>Done</Button>
+                    ) : (
+                        <>
+                            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                            <Button onClick={save} disabled={!name.trim()} loading={pending}>Add status</Button>
+                        </>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -162,12 +177,13 @@ function TypesSection() {
     const types = useProjectTypes();
     const archive = useArchiveProjectType();
     const create = useCreateProjectType();
-    const update = useUpdateProjectType();
+    const update = useUpdateProjectType({ inline: true });
     const [editing, setEditing] = useState<ProjectType | null>(null);
     const [open, setOpen] = useState(false);
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
-    const openDialog = (t: ProjectType | null) => { setEditing(t); setName(t?.name ?? ""); setDescription(t?.description ?? ""); setOpen(true); };
+    const [dirty, setDirty] = useState(false);
+    const openDialog = (t: ProjectType | null) => { setEditing(t); setName(t?.name ?? ""); setDescription(t?.description ?? ""); setDirty(false); setOpen(true); };
     const columns: DataTableColumn<ProjectType>[] = [
         { key: "name", header: "Type", cell: (t) => <div className="min-w-0"><div className="font-medium text-foreground">{t.name} {t.is_default && <span className="text-xs font-normal text-muted-foreground">· Default</span>}</div>{t.description && <div className="truncate text-xs text-muted-foreground">{t.description}</div>}</div> },
         { key: "count", header: "Projects", className: "tabular text-right", headerClassName: "text-right", cell: (t) => t._count?.projects ?? 0 },
@@ -181,31 +197,39 @@ function TypesSection() {
             ),
         },
     ];
-    const pending = create.isPending || update.isPending;
+    const pending = create.isPending;
+    // Editing a type autosaves (no Save button); creating keeps "Add type".
+    const typeDto = { name: name.trim(), description: description || undefined };
+    const autosave = useAutosave({
+        value: typeDto,
+        enabled: open && !!editing && !!typeDto.name && dirty,
+        save: (v) => update.mutateAsync({ id: editing!.id, ...v }),
+    });
+    const close = () => { if (editing && typeDto.name) autosave.flush(); setOpen(false); };
     return (
         <div className="space-y-3">
             <div className="flex justify-end"><Button size="sm" onClick={() => openDialog(null)}><Plus /> Add type</Button></div>
             <DataTable columns={columns} data={types.data} rowKey={(t) => t.id} loading={types.isFetching} error={types.error} onRetry={() => types.refetch()} empty={{ icon: Tags, title: "No project types" }} />
-            <Dialog open={open} onOpenChange={(o) => !pending && setOpen(o)}>
+            <Dialog open={open} onOpenChange={(o) => (o ? setOpen(o) : !pending && close())}>
                 <DialogContent className="sm:max-w-md">
-                    <DialogHeader><DialogTitle>{editing ? "Edit type" : "New project type"}</DialogTitle><DialogDescription>Types group projects and pick a default template.</DialogDescription></DialogHeader>
+                    <DialogHeader>
+                        <DialogTitle>{editing ? "Edit type" : "New project type"}</DialogTitle>
+                        <DialogDescription>Types group projects and pick a default template.</DialogDescription>
+                        {editing && <SaveStatus state={autosave} />}
+                    </DialogHeader>
                     <div className="space-y-4">
-                        <div className="space-y-1.5"><Label htmlFor="pt-name">Name</Label><Input id="pt-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} /></div>
-                        <div className="space-y-1.5"><Label htmlFor="pt-desc">Description</Label><Textarea id="pt-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+                        <div className="space-y-1.5"><Label htmlFor="pt-name">Name</Label><Input id="pt-name" autoFocus value={name} onChange={(e) => { setDirty(true); setName(e.target.value); }} /></div>
+                        <div className="space-y-1.5"><Label htmlFor="pt-desc">Description</Label><Textarea id="pt-desc" rows={2} value={description} onChange={(e) => { setDirty(true); setDescription(e.target.value); }} /></div>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
-                        <Button
-                            disabled={!name.trim()}
-                            loading={pending}
-                            onClick={() => {
-                                const dto = { name: name.trim(), description: description || undefined };
-                                if (editing) update.mutate({ id: editing.id, ...dto }, { onSuccess: () => setOpen(false) });
-                                else create.mutate(dto, { onSuccess: () => setOpen(false) });
-                            }}
-                        >
-                            Save
-                        </Button>
+                        {editing ? (
+                            <Button onClick={close}>Done</Button>
+                        ) : (
+                            <>
+                                <Button variant="ghost" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
+                                <Button disabled={!name.trim()} loading={pending} onClick={() => create.mutate(typeDto, { onSuccess: () => setOpen(false) })}>Add type</Button>
+                            </>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

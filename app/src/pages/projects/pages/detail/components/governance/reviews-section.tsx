@@ -13,8 +13,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
-import { toast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/use-permission";
+import { useAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { useGovernance, useGovernanceDelete, useGovernancePatch, useGovernancePost } from "@/features/projects/hooks/use-projects";
 import type { ProjectReview, ProjectReviewType, ReviewActionItem } from "@/features/projects/interfaces/projects.interfaces";
 import { ReviewTypeFormOptions } from "@/config/constants/dropdowns/projects/project-form.options";
@@ -32,8 +33,9 @@ const RETRO: ProjectReviewType[] = ["RETROSPECTIVE", "POST_PROJECT"];
 export function ReviewsSection({ projectId, readOnly }: { projectId: string; readOnly: boolean }) {
     const p = usePermissions();
     const reviews = useGovernance<ProjectReview[]>(projectId, "reviews");
-    const remove = useGovernanceDelete("Review deleted");
-    const makeTask = useGovernancePost(null, "Could not create the task");
+    const remove = useGovernanceDelete("Could not delete the review");
+    // The task link replaces the button once the task exists (no toast).
+    const makeTask = useGovernancePost("Could not create the task");
     const canEdit = p.can("projects.projects.update") && !readOnly;
     const canTask = p.can("tasks.tasks.create") && !readOnly;
     const [editing, setEditing] = useState<ProjectReview | "new" | null>(null);
@@ -90,7 +92,7 @@ export function ReviewsSection({ projectId, readOnly }: { projectId: string; rea
                                                     <Link to={`/tasks/${a.task.identifier}`} className="font-mono text-xs text-info hover:underline">{a.task.identifier}</Link>
                                                 ) : canTask && (
                                                     <Button size="sm" variant="ghost" loading={makeTask.isPending && makeTask.variables?.path === `reviews/${r.id}/actions/${i}/task`}
-                                                        onClick={() => makeTask.mutate({ id: projectId, path: `reviews/${r.id}/actions/${i}/task` }, { onSuccess: (res) => toast({ title: `Task ${(res as { identifier: string }).identifier} created` }) })}>
+                                                        onClick={() => makeTask.mutate({ id: projectId, path: `reviews/${r.id}/actions/${i}/task` })}>
                                                         <SquarePlus /> Create task
                                                     </Button>
                                                 )}
@@ -111,8 +113,7 @@ export function ReviewsSection({ projectId, readOnly }: { projectId: string; rea
                 description="The review is removed. Tasks created from its actions are kept."
                 confirmText="Delete review"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate({ id: projectId, path: `reviews/${deleting.id}` }, { onSuccess: () => setDeleting(null) })}
+                onConfirm={() => { if (deleting) remove.mutate({ id: projectId, path: `reviews/${deleting.id}`, removeId: deleting.id }); setDeleting(null); }}
             />
         </Section>
     );
@@ -121,9 +122,12 @@ export function ReviewsSection({ projectId, readOnly }: { projectId: string; rea
 type Fields = { findings: string; decisions: string; went_well: string; went_wrong: string; root_causes: string; lessons: string };
 const EMPTY: Fields = { findings: "", decisions: "", went_well: "", went_wrong: "", root_causes: "", lessons: "" };
 
+/** Record a review (explicit button) or edit one (autosaves; "Done" closes). */
 function ReviewDialog({ projectId, review, onClose }: { projectId: string; review: ProjectReview | "new" | null; onClose: () => void }) {
-    const create = useGovernancePost("Review recorded");
-    const update = useGovernancePatch("Review updated");
+    const create = useGovernancePost("Could not record the review");
+    const update = useGovernancePatch("Could not update the review", false);
+    const [dirty, setDirty] = useState(false);
+    const touch = <T,>(set: (v: T) => void) => (v: T) => { setDirty(true); set(v); };
     const existing = review && review !== "new" ? review : null;
     const [type, setType] = useState<ProjectReviewType>("MILESTONE");
     const [title, setTitle] = useState("");
@@ -139,52 +143,61 @@ function ReviewDialog({ projectId, review, onClose }: { projectId: string; revie
         setFacilitator(existing?.facilitator_membership_id ?? null);
         setFields(existing ? { findings: existing.findings ?? "", decisions: existing.decisions ?? "", went_well: existing.went_well ?? "", went_wrong: existing.went_wrong ?? "", root_causes: existing.root_causes ?? "", lessons: existing.lessons ?? "" } : EMPTY);
         setActions(existing?.actions.map(({ title, owner_membership_id, due_date, task_id, done }) => ({ title, owner_membership_id, due_date, task_id, done })) ?? []);
+        setDirty(false);
     }, [review, existing]);
     const retro = RETRO.includes(type);
-    const pending = create.isPending || update.isPending;
+    const pending = create.isPending;
     const field = (key: keyof Fields, label: string) => (
         <div className="space-y-1.5">
             <Label htmlFor={`rv-${key}`}>{label}</Label>
-            <Textarea id={`rv-${key}`} rows={2} value={fields[key]} onChange={(e) => setFields((f) => ({ ...f, [key]: e.target.value }))} />
+            <Textarea id={`rv-${key}`} rows={2} value={fields[key]} onChange={(e) => { setDirty(true); setFields((f) => ({ ...f, [key]: e.target.value })); }} />
         </div>
     );
+    const text = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.trim() || null]));
+    const dto = {
+        type, title: title.trim(), held_at: heldAt || null, facilitator_membership_id: facilitator, ...text,
+        actions: actions.filter((a) => a.title.trim()).map((a) => ({ title: a.title.trim(), owner_membership_id: a.owner_membership_id ?? null, due_date: a.due_date || null, task_id: a.task_id ?? null, done: !!a.done })),
+    };
+    const autosave = useAutosave({
+        value: dto,
+        enabled: !!existing && dirty && !!dto.title,
+        // Text fields show at once; the action rows (with owners and task links) come back with the refresh.
+        save: (v) => update.mutateAsync({ id: projectId, path: `reviews/${existing!.id}`, dto: v, patch: { id: existing!.id, value: { ...text, type: v.type, title: v.title, held_at: v.held_at } } }),
+    });
+    const close = () => { if (existing && dto.title) autosave.flush(); onClose(); };
     const submit = () => {
-        const text = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.trim() || null]));
-        const dto = {
-            type, title: title.trim(), held_at: heldAt || null, facilitator_membership_id: facilitator, ...text,
-            actions: actions.filter((a) => a.title.trim()).map((a) => ({ title: a.title.trim(), owner_membership_id: a.owner_membership_id ?? null, due_date: a.due_date || null, task_id: a.task_id ?? null, done: !!a.done })),
-        };
-        if (existing) update.mutate({ id: projectId, path: `reviews/${existing.id}`, dto }, { onSuccess: onClose });
-        else create.mutate({ id: projectId, path: "reviews", dto }, { onSuccess: onClose });
+        if (existing) return close();
+        create.mutate({ id: projectId, path: "reviews", dto }, { onSuccess: onClose });
     };
     return (
-        <Dialog open={!!review} onOpenChange={(o) => !o && !pending && onClose()}>
+        <Dialog open={!!review} onOpenChange={(o) => !o && !pending && close()}>
             <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
                 <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (title.trim()) submit(); }}>
                     <DialogHeader>
                         <DialogTitle>{existing ? "Edit review" : "Record review"}</DialogTitle>
                         <DialogDescription>Participants and action owners are notified.</DialogDescription>
+                        {existing && <SaveStatus state={autosave} />}
                     </DialogHeader>
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-1.5">
                             <Label>Type</Label>
-                            <Select value={type} onValueChange={(v) => setType(v as ProjectReviewType)}>
+                            <Select value={type} onValueChange={(v) => touch(setType)(v as ProjectReviewType)}>
                                 <SelectTrigger aria-label="Type"><SelectValue /></SelectTrigger>
                                 <SelectContent>{ReviewTypeFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-1.5">
                             <Label htmlFor="rv-date">Held on</Label>
-                            <Input id="rv-date" type="date" value={heldAt} onChange={(e) => setHeldAt(e.target.value)} />
+                            <Input id="rv-date" type="date" value={heldAt} onChange={(e) => touch(setHeldAt)(e.target.value)} />
                         </div>
                     </div>
                     <div className="space-y-1.5">
                         <Label htmlFor="rv-title">Title</Label>
-                        <Input id="rv-title" autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Beta milestone review" maxLength={200} />
+                        <Input id="rv-title" autoFocus value={title} onChange={(e) => touch(setTitle)(e.target.value)} placeholder="Beta milestone review" maxLength={200} />
                     </div>
                     <div className="space-y-1.5">
                         <Label>Facilitator</Label>
-                        <PersonPicker value={facilitator} onChange={setFacilitator} placeholder="Choose a facilitator" noneLabel="Nobody" selected={existing?.facilitator} />
+                        <PersonPicker value={facilitator} onChange={touch(setFacilitator)} placeholder="Choose a facilitator" noneLabel="Nobody" selected={existing?.facilitator} />
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
                         {retro ? (
@@ -204,20 +217,26 @@ function ReviewDialog({ projectId, review, onClose }: { projectId: string; revie
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
                             <Label>Actions</Label>
-                            <Button type="button" size="sm" variant="ghost" onClick={() => setActions((a) => [...a, { title: "" }])}><Plus /> Add action</Button>
+                            <Button type="button" size="sm" variant="ghost" onClick={() => touch(setActions)([...actions, { title: "" }])}><Plus /> Add action</Button>
                         </div>
                         {actions.map((a, i) => (
                             <div key={i} className="grid gap-2 rounded-md border border-border p-2 sm:grid-cols-[1fr_11rem_9.5rem_auto]">
-                                <Input aria-label={`Action ${i + 1}`} placeholder="What needs doing" value={a.title} onChange={(e) => setActions((all) => all.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))} />
-                                <PersonPicker value={a.owner_membership_id ?? null} onChange={(v) => setActions((all) => all.map((x, j) => (j === i ? { ...x, owner_membership_id: v } : x)))} placeholder="Owner" noneLabel="No owner" selected={a.owner} />
-                                <Input aria-label={`Due date of action ${i + 1}`} type="date" value={a.due_date?.slice(0, 10) ?? ""} onChange={(e) => setActions((all) => all.map((x, j) => (j === i ? { ...x, due_date: e.target.value || null } : x)))} />
-                                <Button type="button" variant="ghost" size="icon" aria-label={`Remove action ${i + 1}`} onClick={() => setActions((all) => all.filter((_, j) => j !== i))} disabled={!!a.task_id}><X /></Button>
+                                <Input aria-label={`Action ${i + 1}`} placeholder="What needs doing" value={a.title} onChange={(e) => touch(setActions)(actions.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))} />
+                                <PersonPicker value={a.owner_membership_id ?? null} onChange={(v) => touch(setActions)(actions.map((x, j) => (j === i ? { ...x, owner_membership_id: v } : x)))} placeholder="Owner" noneLabel="No owner" selected={a.owner} />
+                                <Input aria-label={`Due date of action ${i + 1}`} type="date" value={a.due_date?.slice(0, 10) ?? ""} onChange={(e) => touch(setActions)(actions.map((x, j) => (j === i ? { ...x, due_date: e.target.value || null } : x)))} />
+                                <Button type="button" variant="ghost" size="icon" aria-label={`Remove action ${i + 1}`} onClick={() => touch(setActions)(actions.filter((_, j) => j !== i))} disabled={!!a.task_id}><X /></Button>
                             </div>
                         ))}
                     </div>
                     <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>Cancel</Button>
-                        <Button type="submit" loading={pending} disabled={!title.trim()}>{existing ? "Save" : "Record review"}</Button>
+                        {existing ? (
+                            <Button type="button" onClick={close}>Done</Button>
+                        ) : (
+                            <>
+                                <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>Cancel</Button>
+                                <Button type="submit" loading={pending} disabled={!title.trim()}>Record review</Button>
+                            </>
+                        )}
                     </DialogFooter>
                 </form>
             </DialogContent>

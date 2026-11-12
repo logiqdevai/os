@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Circle, CircleAlert, Flag, Save } from "lucide-react";
+import { CheckCircle2, Circle, CircleAlert, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Section } from "@/components/ui/page";
@@ -9,6 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermissions } from "@/hooks/use-permission";
+import { useAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { useGovernance, useGovernancePost, useGovernancePut } from "@/features/projects/hooks/use-projects";
 import type { ProjectCloseoutData, ProjectDetail } from "@/features/projects/interfaces/projects.interfaces";
 import { formatDate, personName } from "@/lib/format";
@@ -18,8 +20,9 @@ import { HandoversSection } from "./governance/handovers-section";
 type Fields = { final_status_summary: string; outstanding_items: string; lessons_learned: string; customer_outcome: string };
 
 /**
- * Closeout (05 §71–74, §103): completion requirements (required ones block completion), the closeout record, handovers,
- * and "Close project" which saves the record and completes the project.
+ * Closeout (05 §71–74, §103): completion requirements (required ones block completion), the closeout record (autosaves
+ * as you type — no Save button), handovers, and "Close project" (kept as an explicit, confirmed action) which saves the
+ * record and completes the project.
  * @perm VIEW projects.projects.read · save projects.projects.update · customer acceptance projects.deliverables.accept_on_behalf* ·
  *       close projects.projects.complete
  * @api GET/PUT /projects/:id/closeout · POST /projects/:id/closeout/close · /projects/:id/handovers
@@ -27,13 +30,28 @@ type Fields = { final_status_summary: string; outstanding_items: string; lessons
 export function CloseoutTab({ project }: { project: ProjectDetail }) {
     const p = usePermissions();
     const data = useGovernance<ProjectCloseoutData>(project.id, "closeout");
-    const save = useGovernancePut("Closeout saved");
-    const close = useGovernancePost("Project closed", "Could not close the project");
+    const save = useGovernancePut("Could not save the closeout record", false);
+    const close = useGovernancePost("Could not close the project");
     const [fields, setFields] = useState<Fields>({ final_status_summary: "", outstanding_items: "", lessons_learned: "", customer_outcome: "" });
     const [acceptance, setAcceptance] = useState(false);
     const [confirm, setConfirm] = useState(false);
+    /** Becomes true on the first edit; until then the form follows the server record. */
+    const [touched, setTouched] = useState(false);
     const record = data.data?.closeout;
+    const readOnly = !!project.archived_at;
+    const canSave = p.can("projects.projects.update") && !readOnly;
+    const canAccept = p.can("projects.deliverables.accept_on_behalf") && canSave;
+    const dto = () => ({
+        ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.trim() || null])),
+        ...(canAccept && acceptance !== !!record?.customer_acceptance_recorded_at && { customer_acceptance_recorded: acceptance }),
+    });
+    const autosave = useAutosave({
+        value: { fields, acceptance },
+        enabled: canSave && touched && !!data.data,
+        save: () => save.mutateAsync({ id: project.id, path: "closeout", dto: dto() }),
+    });
     useEffect(() => {
+        if (touched) return;
         setFields({
             final_status_summary: record?.final_status_summary ?? "",
             outstanding_items: record?.outstanding_items ?? "",
@@ -41,26 +59,19 @@ export function CloseoutTab({ project }: { project: ProjectDetail }) {
             customer_outcome: record?.customer_outcome ?? "",
         });
         setAcceptance(!!record?.customer_acceptance_recorded_at);
-    }, [record]);
+    }, [record, touched]);
 
     if (data.isPending) return <ListSkeleton rows={6} />;
     if (data.error) return <ErrorState error={data.error} onRetry={() => data.refetch()} />;
     const d = data.data;
     const completed = !!d.project.completed_at;
-    const readOnly = !!project.archived_at;
-    const canSave = p.can("projects.projects.update") && !readOnly;
-    const canAccept = p.can("projects.deliverables.accept_on_behalf") && canSave;
     const canClose = p.can("projects.projects.complete") && !completed && !readOnly;
     const blocking = d.requirements.filter((r) => r.required && !r.satisfied);
-    const dto = () => ({
-        ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.trim() || null])),
-        ...(canAccept && acceptance !== !!record?.customer_acceptance_recorded_at && { customer_acceptance_recorded: acceptance }),
-    });
 
     const textarea = (key: keyof Fields, label: string, placeholder: string) => (
         <div className="space-y-1.5">
             <Label htmlFor={`co-${key}`}>{label}</Label>
-            <Textarea id={`co-${key}`} rows={3} value={fields[key]} disabled={!canSave} placeholder={placeholder} onChange={(e) => setFields((f) => ({ ...f, [key]: e.target.value }))} />
+            <Textarea id={`co-${key}`} rows={3} value={fields[key]} disabled={!canSave} placeholder={placeholder} onChange={(e) => { setTouched(true); setFields((f) => ({ ...f, [key]: e.target.value })); }} onBlur={autosave.flush} />
         </div>
     );
 
@@ -100,7 +111,7 @@ export function CloseoutTab({ project }: { project: ProjectDetail }) {
                 description={record?.updated_at ? `Last saved ${formatDate(record.updated_at)}` : "Final summary, outstanding items and lessons learned."}
                 actions={
                     <div className="flex flex-wrap gap-2">
-                        {canSave && <Button size="sm" variant="outline" loading={save.isPending} onClick={() => save.mutate({ id: project.id, path: "closeout", dto: dto() })}><Save /> Save</Button>}
+                        {canSave && <SaveStatus state={autosave} className="self-center" />}
                         {canClose && <Button size="sm" disabled={!d.can_complete} title={d.can_complete ? undefined : "Resolve the required items first"} onClick={() => setConfirm(true)}><Flag /> Close project</Button>}
                     </div>
                 }
@@ -119,7 +130,7 @@ export function CloseoutTab({ project }: { project: ProjectDetail }) {
                                 {record?.customer_acceptance_recorded_at ? `Recorded ${formatDate(record.customer_acceptance_recorded_at)}` : canAccept ? "Record that the customer accepted the delivery." : "Needs permission to accept on behalf of the customer."}
                             </p>
                         </div>
-                        <Switch id="co-accept" checked={acceptance} onCheckedChange={setAcceptance} disabled={!canAccept} />
+                        <Switch id="co-accept" checked={acceptance} onCheckedChange={(v) => { setTouched(true); setAcceptance(v); }} disabled={!canAccept} />
                     </div>
                 </div>
             </Section>

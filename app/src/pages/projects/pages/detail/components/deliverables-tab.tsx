@@ -16,6 +16,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermissions } from "@/hooks/use-permission";
+import { useFormAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { useCreateProjectChild, useDeleteProjectChild, useProjectChildAction, useProjectChildren, useUpdateProjectChild } from "@/features/projects/hooks/use-projects";
 import { deliverableFormSchema, type DeliverableFormValues } from "@/features/projects/validation-schemas/projects.schema";
 import type { Deliverable, Milestone } from "@/features/projects/interfaces/projects.interfaces";
@@ -36,8 +38,8 @@ export function DeliverablesTab({ projectId }: { projectId: string }) {
     const milestones = useProjectChildren<Milestone>(projectId, "milestones");
     const p = usePermissions();
     const canManage = p.can("projects.deliverables.manage");
-    const submit = useProjectChildAction("Submitted for review");
-    const review = useProjectChildAction("Decision recorded");
+    const submit = useProjectChildAction("Could not submit for review");
+    const review = useProjectChildAction("Could not record the decision");
     const remove = useDeleteProjectChild("Deliverable");
     const [editing, setEditing] = useState<Deliverable | null>(null);
     const [open, setOpen] = useState(false);
@@ -71,7 +73,7 @@ export function DeliverablesTab({ projectId }: { projectId: string }) {
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${d.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         {!["SUBMITTED", "ACCEPTED"].includes(d.status) && (
-                            <DropdownMenuItem onSelect={() => submit.mutate({ id: projectId, kind: "deliverables", itemId: d.id, action: "submit" })}><Send /> Submit for review</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => submit.mutate({ id: projectId, kind: "deliverables", itemId: d.id, action: "submit", optimistic: { status: "SUBMITTED" } })}><Send /> Submit for review</DropdownMenuItem>
                         )}
                         {d.status === "SUBMITTED" && (
                             <>
@@ -107,7 +109,7 @@ export function DeliverablesTab({ projectId }: { projectId: string }) {
                 empty={{ icon: Package, title: "No deliverables yet", description: "List designs, builds and documents the customer signs off." }}
             />
             <DeliverableDialog open={open} onOpenChange={setOpen} projectId={projectId} item={editing} milestones={milestones.data ?? []} />
-            <Dialog open={!!reviewing} onOpenChange={(o) => !review.isPending && !o && setReviewing(null)}>
+            <Dialog open={!!reviewing} onOpenChange={(o) => !o && setReviewing(null)}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>{reviewTitle}</DialogTitle>
@@ -117,13 +119,15 @@ export function DeliverablesTab({ projectId }: { projectId: string }) {
                     </DialogHeader>
                     <Textarea rows={3} placeholder="Comment" value={comment} onChange={(e) => setComment(e.target.value)} aria-label="Comment" />
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setReviewing(null)} disabled={review.isPending}>Cancel</Button>
+                        <Button variant="ghost" onClick={() => setReviewing(null)}>Cancel</Button>
                         <Button
-                            loading={review.isPending}
-                            onClick={() => reviewing && review.mutate(
-                                { id: projectId, kind: "deliverables", itemId: reviewing.item.id, action: "review", dto: { decision: reviewing.decision, comment: comment || undefined } },
-                                { onSuccess: () => setReviewing(null) },
-                            )}
+                            onClick={() => {
+                                if (reviewing) review.mutate({
+                                    id: projectId, kind: "deliverables", itemId: reviewing.item.id, action: "review",
+                                    dto: { decision: reviewing.decision, comment: comment || undefined }, optimistic: { status: reviewing.decision },
+                                });
+                                setReviewing(null);
+                            }}
                         >
                             Save decision
                         </Button>
@@ -137,8 +141,7 @@ export function DeliverablesTab({ projectId }: { projectId: string }) {
                 description="Its review history is deleted too."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate({ id: projectId, kind: "deliverables", itemId: deleting.id }, { onSuccess: () => setDeleting(null) })}
+                onConfirm={() => { if (deleting) remove.mutate({ id: projectId, kind: "deliverables", itemId: deleting.id }); setDeleting(null); }}
             />
         </Section>
     );
@@ -146,7 +149,7 @@ export function DeliverablesTab({ projectId }: { projectId: string }) {
 
 function DeliverableDialog({ open, onOpenChange, projectId, item, milestones }: { open: boolean; onOpenChange: (o: boolean) => void; projectId: string; item: Deliverable | null; milestones: Milestone[] }) {
     const create = useCreateProjectChild("Deliverable");
-    const update = useUpdateProjectChild("Deliverable");
+    const update = useUpdateProjectChild("Deliverable", { inline: true });
     const form = useForm<DeliverableFormValues>({ resolver: zodResolver(deliverableFormSchema) });
     useEffect(() => {
         if (open) form.reset({
@@ -155,25 +158,33 @@ function DeliverableDialog({ open, onOpenChange, projectId, item, milestones }: 
             milestone_id: item?.milestone_id ?? NONE, owner_membership_id: item?.owner_membership_id ?? "", customer_visible: item?.customer_visible ?? false,
         });
     }, [open, item, form]);
-    const pending = create.isPending || update.isPending;
-    const submit = form.handleSubmit((v) => {
+    const pending = create.isPending;
+    const toDto = (v: DeliverableFormValues) => {
         const keepStatus = item && !["PLANNED", "IN_PROGRESS", "READY_FOR_REVIEW", "CANCELLED"].includes(item.status);
-        const dto = {
+        return {
             name: v.name, description: v.description || undefined, due_date: v.due_date || undefined, ...(keepStatus ? {} : { status: v.status }),
             milestone_id: v.milestone_id && v.milestone_id !== NONE ? v.milestone_id : undefined, owner_membership_id: v.owner_membership_id || undefined, customer_visible: v.customer_visible,
         };
-        const done = { onSuccess: () => onOpenChange(false) };
-        if (item) update.mutate({ id: projectId, kind: "deliverables", itemId: item.id, dto }, done);
-        else create.mutate({ id: projectId, kind: "deliverables", dto }, done);
+    };
+    // Editing autosaves (no Save button; "Done" closes). Creating keeps the explicit "Add deliverable" button.
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: projectId, kind: "deliverables", itemId: item!.id, dto: toDto(v) }), { enabled: open && !!item });
+    const close = () => {
+        if (item) void form.trigger().then((ok) => ok && autosave.flush());
+        onOpenChange(false);
+    };
+    const submit = form.handleSubmit((v) => {
+        if (item) return close();
+        create.mutate({ id: projectId, kind: "deliverables", dto: toDto(v) }, { onSuccess: () => onOpenChange(false) });
     });
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !pending && close())}>
             <DialogContent className="sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
                             <DialogTitle>{item ? "Edit deliverable" : "New deliverable"}</DialogTitle>
                             <DialogDescription>Files are attached in Documents; this tracks status and approval.</DialogDescription>
+                            {item && <SaveStatus state={autosave} />}
                         </DialogHeader>
                         <FormField control={form.control} name="name" render={({ field }) => (
                             <FormItem><FormLabel>Name</FormLabel><FormControl><Input autoFocus placeholder="Homepage design" {...field} /></FormControl><FormMessage /></FormItem>
@@ -215,8 +226,14 @@ function DeliverableDialog({ open, onOpenChange, projectId, item, milestones }: 
                             </FormItem>
                         )} />
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{item ? "Save" : "Add deliverable"}</Button>
+                            {item ? (
+                                <Button type="button" onClick={close}>Done</Button>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                                    <Button type="submit" loading={pending}>Add deliverable</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>

@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useFormAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { useCreateProjectChild, useUpdateProjectChild } from "@/features/projects/hooks/use-projects";
 import { milestoneFormSchema, type MilestoneFormValues } from "@/features/projects/validation-schemas/projects.schema";
 import type { Milestone } from "@/features/projects/interfaces/projects.interfaces";
@@ -21,10 +23,13 @@ interface MilestoneDialogProps {
     milestone?: Milestone | null;
 }
 
-/** Create / edit a milestone. @perm projects.milestones.manage · @api POST|PATCH /projects/:id/milestones */
+/**
+ * Create / edit a milestone. Editing autosaves every valid change (no Save button; "Done" closes); creating keeps
+ * the explicit "Add milestone" button. @perm projects.milestones.manage · @api POST|PATCH /projects/:id/milestones
+ */
 export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: MilestoneDialogProps) {
     const create = useCreateProjectChild("Milestone");
-    const update = useUpdateProjectChild("Milestone");
+    const update = useUpdateProjectChild("Milestone", { inline: true });
     const form = useForm<MilestoneFormValues>({ resolver: zodResolver(milestoneFormSchema) });
     useEffect(() => {
         if (open) {
@@ -39,21 +44,27 @@ export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: Mi
             });
         }
     }, [open, milestone, form]);
-    const pending = create.isPending || update.isPending;
+    const pending = create.isPending;
+    const toDto = (v: MilestoneFormValues) => ({ ...v, description: v.description || undefined, planned_date: v.planned_date || undefined, owner_membership_id: v.owner_membership_id || undefined });
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: projectId, kind: "milestones", itemId: milestone!.id, dto: toDto(v) }), { enabled: open && !!milestone });
+    /** Closing an edit saves the last valid keystrokes right away. */
+    const close = () => {
+        if (milestone) void form.trigger().then((ok) => ok && autosave.flush());
+        onOpenChange(false);
+    };
     const submit = form.handleSubmit((v) => {
-        const dto = { ...v, description: v.description || undefined, planned_date: v.planned_date || undefined, owner_membership_id: v.owner_membership_id || undefined };
-        const done = { onSuccess: () => onOpenChange(false) };
-        if (milestone) update.mutate({ id: projectId, kind: "milestones", itemId: milestone.id, dto }, done);
-        else create.mutate({ id: projectId, kind: "milestones", dto }, done);
+        if (milestone) return close();
+        create.mutate({ id: projectId, kind: "milestones", dto: toDto(v) }, { onSuccess: () => onOpenChange(false) });
     });
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !pending && close())}>
             <DialogContent className="sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
                             <DialogTitle>{milestone ? "Edit milestone" : "New milestone"}</DialogTitle>
                             <DialogDescription>Checkpoints the team and, when visible, the customer track.</DialogDescription>
+                            {milestone && <SaveStatus state={autosave} />}
                         </DialogHeader>
                         <FormField control={form.control} name="name" render={({ field }) => (
                             <FormItem><FormLabel>Name</FormLabel><FormControl><Input autoFocus placeholder="Design sign-off" {...field} /></FormControl><FormMessage /></FormItem>
@@ -93,8 +104,14 @@ export function MilestoneDialog({ open, onOpenChange, projectId, milestone }: Mi
                             )} />
                         </div>
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{milestone ? "Save" : "Add milestone"}</Button>
+                            {milestone ? (
+                                <Button type="button" onClick={close}>Done</Button>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                                    <Button type="submit" loading={pending}>Add milestone</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>

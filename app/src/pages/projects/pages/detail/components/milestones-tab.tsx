@@ -19,7 +19,7 @@ import { MilestoneDialog } from "../../../components/milestone-dialog";
 export function MilestonesTab({ projectId }: { projectId: string }) {
     const milestones = useProjectChildren<Milestone>(projectId, "milestones");
     const canManage = usePermission("projects.milestones.manage");
-    const complete = useProjectChildAction("Milestone completed");
+    const complete = useProjectChildAction("Could not complete the milestone");
     const remove = useDeleteProjectChild("Milestone");
     const [editing, setEditing] = useState<Milestone | null>(null);
     const [open, setOpen] = useState(false);
@@ -84,8 +84,10 @@ export function MilestonesTab({ projectId }: { projectId: string }) {
                 title={`Complete "${completing?.name}"?`}
                 description={completing?.is_billing_milestone ? "This is a billing milestone: Billing is notified so the invoice can be raised." : "The milestone is marked completed today."}
                 confirmText="Complete"
-                isLoading={complete.isPending}
-                onConfirm={() => completing && complete.mutate({ id: projectId, kind: "milestones", itemId: completing.id, action: "complete" }, { onSuccess: () => setCompleting(null) })}
+                onConfirm={() => {
+                    if (completing) complete.mutate({ id: projectId, kind: "milestones", itemId: completing.id, action: "complete", optimistic: { status: "COMPLETED", overdue: false } });
+                    setCompleting(null);
+                }}
             />
             <ConfirmationDialog
                 isOpen={!!deleting}
@@ -94,8 +96,7 @@ export function MilestonesTab({ projectId }: { projectId: string }) {
                 description="Tasks and deliverables linked to it are kept without a milestone."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate({ id: projectId, kind: "milestones", itemId: deleting.id }, { onSuccess: () => setDeleting(null) })}
+                onConfirm={() => { if (deleting) remove.mutate({ id: projectId, kind: "milestones", itemId: deleting.id }); setDeleting(null); }}
             />
         </Section>
     );

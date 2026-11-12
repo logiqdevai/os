@@ -30,6 +30,9 @@ export function RaidTab({ projectId }: { projectId: string }) {
     const remove = useDeleteProjectChild(kind === "risks" ? "Risk" : kind === "issues" ? "Issue" : "Decision");
     const [editing, setEditing] = useState<Row | null>(null);
     const [open, setOpen] = useState<Kind | null>(null);
+    /** Which dialog the edited row belongs to; kept after closing so an autosaving edit can flush its last change. */
+    const [editingKind, setEditingKind] = useState<Kind | null>(null);
+    const edit = (row: Row | null) => { setEditing(row); setEditingKind(kind); setOpen(kind); };
     const [deleting, setDeleting] = useState<Row | null>(null);
     const query = kind === "risks" ? risks : kind === "issues" ? issues : decisions;
 
@@ -37,7 +40,7 @@ export function RaidTab({ projectId }: { projectId: string }) {
         <DropdownMenu>
             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="Actions"><MoreHorizontal /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => { setEditing(row); setOpen(kind); }}><Pencil /> Edit</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => edit(row)}><Pencil /> Edit</DropdownMenuItem>
                 <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setDeleting(row)}><Trash2 /> Delete</DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
@@ -70,7 +73,7 @@ export function RaidTab({ projectId }: { projectId: string }) {
     const counts = { risks: risks.data?.length, issues: issues.data?.length, decisions: decisions.data?.length };
     const addLabel = kind === "risks" ? "Log risk" : kind === "issues" ? "Log issue" : "Record decision";
     const empty = { icon: ShieldAlert, title: kind === "risks" ? "No risks logged" : kind === "issues" ? "No issues or blockers" : "No decisions recorded" };
-    const common = { loading: query.isFetching, error: query.error, onRetry: () => query.refetch(), onRowClick: canManage ? (r: Row) => { setEditing(r); setOpen(kind); } : undefined, empty };
+    const common = { loading: query.isFetching, error: query.error, onRetry: () => query.refetch(), onRowClick: canManage ? (r: Row) => edit(r) : undefined, empty };
 
     return (
         <div className="space-y-3">
@@ -82,15 +85,15 @@ export function RaidTab({ projectId }: { projectId: string }) {
                         </button>
                     ))}
                 </div>
-                {canManage && <Button size="sm" onClick={() => { setEditing(null); setOpen(kind); }}><Plus /> {addLabel}</Button>}
+                {canManage && <Button size="sm" onClick={() => edit(null)}><Plus /> {addLabel}</Button>}
             </div>
             {kind === "risks" && <DataTable columns={riskColumns} data={risks.data} rowKey={(r) => r.id} {...common} />}
             {kind === "issues" && <DataTable columns={issueColumns} data={issues.data} rowKey={(r) => r.id} {...common} />}
             {kind === "decisions" && <DataTable columns={decisionColumns} data={decisions.data} rowKey={(r) => r.id} {...common} />}
 
-            <RiskDialog open={open === "risks"} onOpenChange={(o) => setOpen(o ? "risks" : null)} projectId={projectId} item={open === "risks" ? (editing as Risk | null) : null} />
-            <IssueDialog open={open === "issues"} onOpenChange={(o) => setOpen(o ? "issues" : null)} projectId={projectId} item={open === "issues" ? (editing as Issue | null) : null} />
-            <DecisionDialog open={open === "decisions"} onOpenChange={(o) => setOpen(o ? "decisions" : null)} projectId={projectId} item={open === "decisions" ? (editing as Decision | null) : null} />
+            <RiskDialog open={open === "risks"} onOpenChange={(o) => setOpen(o ? "risks" : null)} projectId={projectId} item={editingKind === "risks" ? (editing as Risk | null) : null} />
+            <IssueDialog open={open === "issues"} onOpenChange={(o) => setOpen(o ? "issues" : null)} projectId={projectId} item={editingKind === "issues" ? (editing as Issue | null) : null} />
+            <DecisionDialog open={open === "decisions"} onOpenChange={(o) => setOpen(o ? "decisions" : null)} projectId={projectId} item={editingKind === "decisions" ? (editing as Decision | null) : null} />
             <ConfirmationDialog
                 isOpen={!!deleting}
                 onClose={() => setDeleting(null)}
@@ -98,8 +101,7 @@ export function RaidTab({ projectId }: { projectId: string }) {
                 description="It is removed from the RAID log. The audit trail keeps a record."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate({ id: projectId, kind, itemId: deleting.id }, { onSuccess: () => setDeleting(null) })}
+                onConfirm={() => { if (deleting) remove.mutate({ id: projectId, kind, itemId: deleting.id }); setDeleting(null); }}
             />
         </div>
     );

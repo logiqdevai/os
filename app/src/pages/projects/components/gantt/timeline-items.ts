@@ -1,6 +1,7 @@
 import { useCallback } from "react";
-import { toast } from "@/hooks/use-toast";
-import { useUpdateProject, useUpdateProjectChild } from "@/features/projects/hooks/use-projects";
+import { useQueryClient } from "@tanstack/react-query";
+import { patchEntity } from "@/lib/query/optimistic";
+import { PROJECTS_KEY, useUpdateProject, useUpdateProjectChild } from "@/features/projects/hooks/use-projects";
 import { useUpdateTask } from "@/features/tasks/hooks/use-tasks";
 import type { DependencyItemType, ProjectHealth, ProjectItemStatus, TimelineDependency, TimelineMilestone, TimelineTask, TimelineWorkstream } from "@/features/projects/interfaces/projects.interfaces";
 import type { GanttChange, GanttItem, GanttLink, GanttTone } from "./gantt";
@@ -66,8 +67,13 @@ export function dependencyLinks(deps: TimelineDependency[], taskDeps: { id: stri
     return links;
 }
 
-/** Writes a Gantt change through the endpoint that owns the record (keeps its permission key, audit and events). */
+/**
+ * Writes a Gantt change through the endpoint that owns the record (keeps its permission key, audit and events).
+ * Optimistic: the bar stays where it was dropped (the Gantt holds it) and every cached copy is patched; a refusal
+ * rolls back and is toasted once globally. No success toast.
+ */
 export function useTimelineReschedule(refs: Map<string, TimelineRef>) {
+    const qc = useQueryClient();
     const updateProject = useUpdateProject();
     const updateMilestone = useUpdateProjectChild("Milestone");
     const updateWorkstream = useUpdateProjectChild("Workstream");
@@ -81,8 +87,8 @@ export function useTimelineReschedule(refs: Map<string, TimelineRef>) {
         if (ref.kind !== "task") return;
         // A task with only a due date keeps only a due date (and vice versa); dates are never invented.
         const dto = ref.hasStart && !ref.hasDue ? { start_date: c.start } : !ref.hasStart && ref.hasDue ? { due_date: c.end } : { start_date: c.start, due_date: c.end };
-        const res = await updateTask.mutateAsync({ id: ref.id, ...dto });
-        toast({ title: "Task dates updated" });
-        return res;
-    }, [refs, updateProject, updateMilestone, updateWorkstream, updateTask]);
+        // Timelines cache tasks under the projects key; the task hook patches the tasks caches (refreshed on settle).
+        patchEntity<Record<string, string>>(qc, PROJECTS_KEY, ref.id, dto as Record<string, string>);
+        return updateTask.mutateAsync({ id: ref.id, ...dto });
+    }, [qc, refs, updateProject, updateMilestone, updateWorkstream, updateTask]);
 }

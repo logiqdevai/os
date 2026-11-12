@@ -43,8 +43,9 @@ export function UpdatesTab({ project }: { project: ProjectDetail }) {
     const p = usePermissions();
     const updates = useProjectChildren<StatusUpdate>(project.id, "status-updates");
     const changes = useProjectChildren<ChangeRequest>(project.id, "change-requests");
-    const publish = useProjectChildAction("Update published");
-    const decide = useProjectChildAction("Decision saved");
+    // Publishing is an outward action and keeps its button; the update shows as published at once (no toast).
+    const publish = useProjectChildAction("Could not publish the update");
+    const decide = useProjectChildAction("Could not save the decision");
     const draft = useDraftStatusUpdate();
     const [composer, setComposer] = useState<Composer | null>(null);
     const [aiNotice, setAiNotice] = useState<{ message: string; prefill: StatusUpdateDraftFields } | null>(null);
@@ -72,8 +73,8 @@ export function UpdatesTab({ project }: { project: ProjectDetail }) {
             className: "w-20",
             cell: (c) => p.can("projects.change_requests.approve") && ["REQUESTED", "UNDER_REVIEW", "ESTIMATING", "AWAITING_APPROVAL"].includes(c.status) && (
                 <div className="flex gap-1">
-                    <Button variant="ghost" size="icon-sm" aria-label={`Approve CR-${c.number}`} disabled={decide.isPending} onClick={() => decide.mutate({ id: project.id, kind: "change-requests", itemId: c.id, action: "decide", dto: { decision: "APPROVED" } })}><Check className="text-success" /></Button>
-                    <Button variant="ghost" size="icon-sm" aria-label={`Reject CR-${c.number}`} disabled={decide.isPending} onClick={() => decide.mutate({ id: project.id, kind: "change-requests", itemId: c.id, action: "decide", dto: { decision: "REJECTED" } })}><X className="text-danger" /></Button>
+                    <Button variant="ghost" size="icon-sm" aria-label={`Approve CR-${c.number}`} onClick={() => decide.mutate({ id: project.id, kind: "change-requests", itemId: c.id, action: "decide", dto: { decision: "APPROVED" }, optimistic: { status: "APPROVED" } })}><Check className="text-success" /></Button>
+                    <Button variant="ghost" size="icon-sm" aria-label={`Reject CR-${c.number}`} onClick={() => decide.mutate({ id: project.id, kind: "change-requests", itemId: c.id, action: "decide", dto: { decision: "REJECTED" }, optimistic: { status: "REJECTED" } })}><X className="text-danger" /></Button>
                 </div>
             ),
         },
@@ -117,7 +118,7 @@ export function UpdatesTab({ project }: { project: ProjectDetail }) {
                                     {!u.published_at && p.can("projects.status_updates.publish") && (
                                         <div className="ml-auto flex gap-2">
                                             <Button size="sm" variant="ghost" onClick={() => setComposer({ mode: "edit", update: u, note: u.is_ai_generated ? "AI draft: review every line before publishing." : undefined })}><PenLine /> Review</Button>
-                                            <Button size="sm" variant="outline" loading={publish.isPending} onClick={() => publish.mutate({ id: project.id, kind: "status-updates", itemId: u.id, action: "publish" })}>Publish</Button>
+                                            <Button size="sm" variant="outline" onClick={() => publish.mutate({ id: project.id, kind: "status-updates", itemId: u.id, action: "publish", optimistic: { published_at: new Date().toISOString() } })}>Publish</Button>
                                         </div>
                                     )}
                                 </div>

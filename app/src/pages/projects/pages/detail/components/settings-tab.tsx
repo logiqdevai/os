@@ -3,11 +3,11 @@ import { useUpdateProject } from "@/features/projects/hooks/use-projects";
 import type { ProjectDetail } from "@/features/projects/interfaces/projects.interfaces";
 import { ProjectForm } from "../../../components/project-form";
 
-/** Edit project fields. @perm projects.projects.update (budget: manage_budgets) */
+/** Edit project fields — autosaves (no Save button). @perm projects.projects.update (budget: manage_budgets) */
 export function SettingsTab({ project: d }: { project: ProjectDetail }) {
-    const update = useUpdateProject();
+    const update = useUpdateProject({ inline: true });
     return (
-        <Section title="Project settings">
+        <Section title="Project settings" description="Changes save automatically.">
             <div className="max-w-3xl rounded-lg border border-border bg-card p-4 md:p-5">
                 <ProjectForm
                     customerName={d.company?.name}
@@ -28,9 +28,7 @@ export function SettingsTab({ project: d }: { project: ProjectDetail }) {
                         budget_amount: d.budget_amount ? String(Number(d.budget_amount)) : "",
                         currency: d.currency ?? "EUR",
                     }}
-                    submitLabel="Save changes"
-                    pending={update.isPending}
-                    onSubmit={(dto) => update.mutate({ id: d.id, ...dto })}
+                    autosave={{ resetKey: d.id, onSave: ({ template_id: _template, ...dto }) => update.mutateAsync({ id: d.id, ...dto }) }}
                 />
             </div>
         </Section>

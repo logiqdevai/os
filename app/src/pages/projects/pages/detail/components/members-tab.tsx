@@ -83,8 +83,7 @@ export function MembersTab({ project }: { project: ProjectDetail }) {
                 description="They keep their tasks but lose access that came only from this membership."
                 confirmText="Remove"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => removing && remove.mutate({ id: project.id, membership_id: removing.membership_id }, { onSuccess: () => setRemoving(null) })}
+                onConfirm={() => { if (removing) remove.mutate({ id: project.id, membership_id: removing.membership_id }); setRemoving(null); }}
             />
         </Section>
     );

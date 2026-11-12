@@ -79,7 +79,11 @@ export default function ProjectDetailPage() {
                         <Button variant="ghost" size="icon" aria-label={d.is_favorite ? "Unstar project" : "Star project"} onClick={() => favorite.mutate({ id: d.id, favorite: !d.is_favorite })}>
                             <Star className={cn(d.is_favorite && "fill-current text-warning")} />
                         </Button>
-                        <Select value={d.status?.id ?? ""} disabled={!canEdit || update.isPending} onValueChange={(status_id) => update.mutate({ id: d.id, status_id })}>
+                        <Select
+                            value={d.status?.id ?? ""}
+                            disabled={!canEdit}
+                            onValueChange={(status_id) => update.mutate({ id: d.id, status_id, optimistic: { status: d.allowed_statuses.find((s) => s.id === status_id) ?? d.status } })}
+                        >
                             <SelectTrigger className="h-8 w-44" aria-label="Project status"><SelectValue placeholder="Set status" /></SelectTrigger>
                             <SelectContent>{d.allowed_statuses.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                         </Select>
@@ -142,8 +146,7 @@ export default function ProjectDetailPage() {
                 description="Archived projects are hidden from lists and pickers. Tasks and history are kept."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archive.mutate(d.id, { onSuccess: () => setConfirm(null) })}
+                onConfirm={() => { archive.mutate(d.id); setConfirm(null); }}
             />
             <ConfirmationDialog
                 isOpen={confirm === "delete"}
@@ -152,8 +155,7 @@ export default function ProjectDetailPage() {
                 description="Milestones, deliverables, RAID items and updates are deleted. Tasks are kept without a project. This cannot be undone."
                 confirmText="Delete project"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => remove.mutate(d.id, { onSuccess: () => navigate("/projects") })}
+                onConfirm={() => { remove.mutate(d.id); navigate("/projects"); }}
             />
         </Page>
     );

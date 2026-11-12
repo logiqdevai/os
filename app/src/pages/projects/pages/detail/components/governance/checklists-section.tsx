@@ -15,10 +15,9 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
-import { toast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/use-permission";
 import { useGovernance, useGovernanceDelete, useGovernancePatch, useGovernancePost } from "@/features/projects/hooks/use-projects";
-import type { ChecklistPhase, ProjectChecklist } from "@/features/projects/interfaces/projects.interfaces";
+import type { ChecklistPhase, ProjectChecklist, ProjectChecklistItem } from "@/features/projects/interfaces/projects.interfaces";
 import { ChecklistPhaseFormOptions } from "@/config/constants/dropdowns/projects/project-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { cn } from "@/lib/utils";
@@ -28,14 +27,35 @@ import { cn } from "@/lib/utils";
  * @perm VIEW projects.projects.read · edit / tick projects.projects.update · item → task tasks.tasks.create
  * @api /projects/:id/checklists · /checklists/:cid/items · POST /checklists/:cid/items/:iid/task
  */
+/** Optimistic checklist change: rewrite the items and recount progress, so ticks, adds and deletes show at once. */
+const withItems = (fn: (items: ProjectChecklistItem[]) => ProjectChecklistItem[]) => (c: ProjectChecklist): ProjectChecklist => {
+    const items = fn(c.items);
+    return {
+        ...c,
+        items,
+        progress: {
+            ...c.progress,
+            total: items.length,
+            done: items.filter((i) => i.is_completed).length,
+            required_open: items.filter((i) => i.is_required && !i.is_completed).length,
+        },
+    };
+};
+
 export function ChecklistsSection({ projectId, readOnly }: { projectId: string; readOnly: boolean }) {
     const p = usePermissions();
     const checklists = useGovernance<ProjectChecklist[]>(projectId, "checklists");
-    const toggle = useGovernancePatch(null, "Could not update the item");
-    const addItem = useGovernancePost(null, "Could not add the item");
-    const removeItem = useGovernanceDelete(null);
-    const removeList = useGovernanceDelete("Checklist deleted");
-    const makeTask = useGovernancePost(null, "Could not create the task");
+    const toggle = useGovernancePatch("Could not update the item");
+    const addItem = useGovernancePost("Could not add the item");
+    const removeItem = useGovernanceDelete("Could not delete the item");
+    const removeList = useGovernanceDelete("Could not delete the checklist");
+    // The task link appears on the item once it is created (no toast).
+    const makeTask = useGovernancePost("Could not create the task");
+    const patchItem = (c: ProjectChecklist, i: ProjectChecklistItem, dto: Partial<ProjectChecklistItem>) =>
+        toggle.mutate({
+            id: projectId, path: `checklists/${c.id}/items/${i.id}`, dto,
+            patch: { id: c.id, value: withItems((items) => items.map((x) => (x.id === i.id ? { ...x, ...dto } : x))) },
+        });
     const canEdit = p.can("projects.projects.update") && !readOnly;
     const canTask = p.can("tasks.tasks.create") && !readOnly;
     const [creating, setCreating] = useState(false);
@@ -45,7 +65,11 @@ export function ChecklistsSection({ projectId, readOnly }: { projectId: string; 
     const add = (c: ProjectChecklist) => {
         const d = drafts[c.id];
         if (!d?.title.trim()) return;
-        addItem.mutate({ id: projectId, path: `checklists/${c.id}/items`, dto: { title: d.title.trim(), is_required: d.required } }, { onSuccess: () => setDrafts((x) => ({ ...x, [c.id]: { title: "", required: d.required } })) });
+        const title = d.title.trim();
+        const temp = { id: `temp-${Date.now()}`, title, is_required: d.required, is_completed: false, task_id: null, task: null } as unknown as ProjectChecklistItem;
+        // Appears at once (temporary id, replaced by the refresh); the input clears immediately for the next item.
+        addItem.mutate({ id: projectId, path: `checklists/${c.id}/items`, dto: { title, is_required: d.required }, patch: { id: c.id, value: withItems((items) => [...items, temp]) } });
+        setDrafts((x) => ({ ...x, [c.id]: { title: "", required: d.required } }));
     };
 
     return (
@@ -90,29 +114,29 @@ export function ChecklistsSection({ projectId, readOnly }: { projectId: string; 
                                             <Checkbox
                                                 id={`ci-${i.id}`}
                                                 checked={i.is_completed}
-                                                disabled={!canEdit || toggle.isPending}
-                                                onCheckedChange={(v) => toggle.mutate({ id: projectId, path: `checklists/${c.id}/items/${i.id}`, dto: { is_completed: v === true } })}
+                                                disabled={!canEdit || i.id.startsWith("temp-")}
+                                                onCheckedChange={(v) => patchItem(c, i, { is_completed: v === true })}
                                                 aria-label={i.title}
                                             />
                                             <label htmlFor={`ci-${i.id}`} className={cn("min-w-0 flex-1 text-[13px]", i.is_completed ? "text-muted-foreground line-through" : "text-foreground")}>{i.title}</label>
                                             {i.is_required && <Badge variant={i.is_completed ? "neutral" : "warning"}>Required</Badge>}
                                             {i.task && <Link to={`/tasks/${i.task.identifier}`} className="font-mono text-xs text-info hover:underline">{i.task.identifier}</Link>}
-                                            {(canEdit || (canTask && !i.task_id)) && (
+                                            {(canEdit || (canTask && !i.task_id)) && !i.id.startsWith("temp-") && (
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${i.title}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
                                                         {canTask && !i.task_id && (
-                                                            <DropdownMenuItem onSelect={() => makeTask.mutate({ id: projectId, path: `checklists/${c.id}/items/${i.id}/task` }, { onSuccess: (r) => toast({ title: `Task ${(r as { identifier: string }).identifier} created` }) })}>
+                                                            <DropdownMenuItem onSelect={() => makeTask.mutate({ id: projectId, path: `checklists/${c.id}/items/${i.id}/task` })}>
                                                                 <SquarePlus /> Create task
                                                             </DropdownMenuItem>
                                                         )}
                                                         {canEdit && (
                                                             <>
-                                                                <DropdownMenuItem onSelect={() => toggle.mutate({ id: projectId, path: `checklists/${c.id}/items/${i.id}`, dto: { is_required: !i.is_required } })}>
+                                                                <DropdownMenuItem onSelect={() => patchItem(c, i, { is_required: !i.is_required })}>
                                                                     <ListChecks /> {i.is_required ? "Make optional" : "Make required"}
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuSeparator />
-                                                                <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => removeItem.mutate({ id: projectId, path: `checklists/${c.id}/items/${i.id}` })}><Trash2 /> Delete item</DropdownMenuItem>
+                                                                <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => removeItem.mutate({ id: projectId, path: `checklists/${c.id}/items/${i.id}`, patch: { id: c.id, value: withItems((items) => items.filter((x) => x.id !== i.id)) } })}><Trash2 /> Delete item</DropdownMenuItem>
                                                             </>
                                                         )}
                                                     </DropdownMenuContent>
@@ -128,7 +152,7 @@ export function ChecklistsSection({ projectId, readOnly }: { projectId: string; 
                                         <div className="flex items-center gap-2">
                                             <Switch id={`req-${c.id}`} checked={draft.required} onCheckedChange={(v) => setDrafts((x) => ({ ...x, [c.id]: { ...draft, required: v } }))} />
                                             <Label htmlFor={`req-${c.id}`} className="text-xs font-normal">Required</Label>
-                                            <Button type="submit" size="sm" variant="outline" disabled={!draft.title.trim()} loading={addItem.isPending && addItem.variables?.path === `checklists/${c.id}/items`}><ListPlus /> Add</Button>
+                                            <Button type="submit" size="sm" variant="outline" disabled={!draft.title.trim()}><ListPlus /> Add</Button>
                                         </div>
                                     </form>
                                 )}
@@ -145,15 +169,14 @@ export function ChecklistsSection({ projectId, readOnly }: { projectId: string; 
                 description="The checklist and its items are removed. Linked tasks are kept."
                 confirmText="Delete checklist"
                 variant="destructive"
-                isLoading={removeList.isPending}
-                onConfirm={() => deleting && removeList.mutate({ id: projectId, path: `checklists/${deleting.id}` }, { onSuccess: () => setDeleting(null) })}
+                onConfirm={() => { if (deleting) removeList.mutate({ id: projectId, path: `checklists/${deleting.id}`, removeId: deleting.id }); setDeleting(null); }}
             />
         </Section>
     );
 }
 
 function NewChecklistDialog({ projectId, open, onOpenChange }: { projectId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
-    const create = useGovernancePost("Checklist added");
+    const create = useGovernancePost("Could not add the checklist");
     const [name, setName] = useState("");
     const [phase, setPhase] = useState<ChecklistPhase>("launch");
     const [items, setItems] = useState("");
