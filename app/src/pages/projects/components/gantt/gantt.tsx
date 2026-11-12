@@ -196,6 +196,7 @@ export function Gantt({
     const onPointerDown = (e: PointerEvent<HTMLElement>, s: Span, mode: "move" | "start" | "end") => {
         if (!s.editable || e.button !== 0) return;
         e.stopPropagation();
+        e.preventDefault(); // no text selection while dragging a bar
         e.currentTarget.setPointerCapture(e.pointerId);
         setAdjust({ id: s.id, ds: 0, de: 0, originX: e.clientX, mode, pointerId: e.pointerId });
     };
