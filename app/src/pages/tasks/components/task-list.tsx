@@ -151,15 +151,15 @@ function BulkBar({ ids, onDone }: { ids: string[]; onDone: () => void }) {
     const [search, setSearch] = useState("");
     const people = useTaskPeople(search);
     const [archiving, setArchiving] = useState(false);
-    const run = (body: { patch?: Record<string, unknown>; action?: string }) =>
-        bulk.mutate({ task_ids: ids, ...body }, {
-            onSuccess: (r) => {
-                // Only partial failures are worth a toast; the list itself shows the successful changes.
-                if (r.failed.length) toast({ variant: "destructive", title: `${r.failed.length} of ${r.failed.length + r.updated} tasks could not be changed`, description: "Permission or workflow rules refused them." });
-                setArchiving(false);
-                onDone();
-            },
-        });
+    // Optimistic: rows change (or disappear when archived) at once and the selection clears. Only partial failures are
+    // worth a toast; a full failure is toasted globally. mutateAsync so the toast survives this bar unmounting.
+    const run = (body: { patch?: Record<string, unknown>; action?: string; optimistic?: Record<string, unknown> }) => {
+        bulk.mutateAsync({ task_ids: ids, ...body }).then((r) => {
+            if (r.failed.length) toast({ variant: "destructive", title: `${r.failed.length} of ${r.failed.length + r.updated} tasks could not be changed`, description: "Permission or workflow rules refused them." });
+        }, () => undefined);
+        setArchiving(false);
+        onDone();
+    };
     return (
         <div className="sticky bottom-4 z-20 mx-auto flex w-fit max-w-full flex-wrap items-center gap-2 rounded-lg border border-border bg-popover p-2 shadow-pop">
             <span className="px-2 text-[13px] font-medium">{ids.length} selected</span>
@@ -175,7 +175,7 @@ function BulkBar({ ids, onDone }: { ids: string[]; onDone: () => void }) {
                 value={null}
                 onSearch={setSearch}
                 noneLabel="Unassign"
-                onChange={(v) => run({ patch: { assignee_membership_id: v } })}
+                onChange={(v) => run({ patch: { assignee_membership_id: v }, optimistic: { assignee: (people.data ?? []).find((m) => m.id === v) ?? null } })}
                 trigger={<Button variant="outline" size="sm"><UserRound /> Assign</Button>}
                 ariaLabel="Assign"
             />
@@ -188,7 +188,6 @@ function BulkBar({ ids, onDone }: { ids: string[]; onDone: () => void }) {
                 description="Archived tasks are hidden from lists and boards. You can restore them later."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={bulk.isPending}
                 onConfirm={() => run({ action: "archive" })}
             />
         </div>

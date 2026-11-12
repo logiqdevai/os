@@ -21,7 +21,8 @@ import {
     useAddDependency,
     useArchiveTask,
     useCreateComment,
-    useCreateTask,
+    useCreateSubtask,
+    isTempId,
     useCycles,
     useDeleteChecklistItem,
     useDeleteComment,
@@ -37,7 +38,7 @@ import {
     useUpdateChecklistItem,
     useUpdateTask,
 } from "@/features/tasks/hooks/use-tasks";
-import type { TaskCommentVisibility, TaskDependencyType, TaskDetail, UpdateTaskDto } from "@/features/tasks/interfaces/tasks.interfaces";
+import type { MemberRef, TaskCommentVisibility, TaskDependencyType, TaskDetail, UpdateTaskDto } from "@/features/tasks/interfaces/tasks.interfaces";
 import { TaskCommentVisibilityFormOptions, TaskDependencyTypeFormOptions } from "@/config/constants/dropdowns/tasks/task-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatDateTime, formatRelative, personName } from "@/lib/format";
@@ -112,7 +113,7 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
                 <ChecklistSection task={t} canEdit={canEdit} />
                 <LinksSection task={t} canEdit={canEdit} />
                 <AttachmentsSection task={t} canEdit={canEdit} />
-                <CommentsSection task={t} me={me} />
+                <CommentsSection task={t} me={me} meRef={session?.active_organization ? { id: session.active_organization.membership_id, job_title: null, user: session.user } : null} />
                 <ActivitySection taskId={t.id} />
             </div>
 
@@ -194,7 +195,7 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
                     {t.team && <div className="flex justify-between"><span>Team</span><span>{t.team.name}</span></div>}
                     {t.milestone && <div className="flex justify-between"><span>Milestone</span><span className="truncate">{t.milestone.name}</span></div>}
                     <div className="flex items-center gap-2 pt-2">
-                        <Button variant="outline" size="sm" className="flex-1" loading={watch.isPending} onClick={() => watch.mutate({ id: t.id, watching: !t.is_watching })}>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => watch.mutate({ id: t.id, watching: !t.is_watching })}>
                             {t.is_watching ? <><BellOff /> Unsubscribe</> : <><Bell /> Subscribe</>}
                         </Button>
                         <DropdownMenu>
@@ -221,8 +222,7 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
                 description="Comments, checklist and links are deleted. Sub-tasks are kept. This cannot be undone."
                 confirmText="Delete task"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => remove.mutate(t.id, { onSuccess: () => { setDeleting(false); if (onDeleted) onDeleted(); else navigate("/tasks"); } })}
+                onConfirm={() => { remove.mutate(t.id); setDeleting(false); if (onDeleted) onDeleted(); else navigate("/tasks"); }}
             />
         </div>
     );
@@ -238,13 +238,15 @@ function SectionTitle({ children, action }: { children: ReactNode; action?: Reac
 }
 
 function SubtasksSection({ task: t, canEdit }: { task: TaskDetail; canEdit: boolean }) {
-    const create = useCreateTask();
+    // Optimistic: the sub-task appears at once and the input clears for the next one.
+    const create = useCreateSubtask();
     const canCreate = usePermissions().can("tasks.tasks.create");
     const [title, setTitle] = useState<string | null>(null);
     const done = t.subtasks.filter((s) => s.status?.category === "DONE").length;
     const add = () => {
         if (!title?.trim()) return setTitle(null);
-        create.mutate({ title: title.trim(), parent_task_id: t.id, team_id: t.team_id ?? undefined, project_id: t.project_id ?? undefined }, { onSuccess: () => setTitle("") });
+        create.mutate({ title: title.trim(), parent_task_id: t.id, team_id: t.team_id ?? undefined, project_id: t.project_id ?? undefined });
+        setTitle("");
     };
     if (!t.subtasks.length && !(canEdit && canCreate)) return null;
     return (
@@ -255,7 +257,12 @@ function SubtasksSection({ task: t, canEdit }: { task: TaskDetail; canEdit: bool
             <ul className="divide-y divide-border-soft rounded-lg border border-border bg-card">
                 {t.subtasks.map((s) => (
                     <li key={s.id}>
-                        <Link to={`/tasks/${s.identifier}`} className="flex items-center gap-2 px-3 py-2 text-[13px] hover:bg-accent/50">
+                        <Link
+                            to={`/tasks/${s.identifier}`}
+                            aria-disabled={isTempId(s.id) || undefined}
+                            onClick={(e) => isTempId(s.id) && e.preventDefault()}
+                            className={cn("flex items-center gap-2 px-3 py-2 text-[13px] hover:bg-accent/50", isTempId(s.id) && "opacity-70")}
+                        >
                             <StatusIcon category={s.status?.category} color={s.status?.color} />
                             <span className="w-16 shrink-0 font-mono text-xs text-muted-foreground">{s.identifier}</span>
                             <span className={cn("min-w-0 flex-1 truncate", s.status?.category === "DONE" && "text-muted-foreground line-through")}>{s.title}</span>
@@ -266,7 +273,7 @@ function SubtasksSection({ task: t, canEdit }: { task: TaskDetail; canEdit: bool
                 {title !== null && (
                     <li className="flex items-center gap-2 px-3 py-2">
                         <Input autoFocus className="h-7" placeholder="Sub-task title" value={title} aria-label="Sub-task title" onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") add(); if (e.key === "Escape") setTitle(null); }} />
-                        <Button size="sm" loading={create.isPending} onClick={add}>Add</Button>
+                        <Button size="sm" onClick={add}>Add</Button>
                     </li>
                 )}
                 {!t.subtasks.length && title === null && <li className="px-3 py-2 text-[13px] text-muted-foreground">No sub-tasks</li>}
@@ -288,16 +295,16 @@ function ChecklistSection({ task: t, canEdit }: { task: TaskDetail; canEdit: boo
             <ul className="space-y-1">
                 {t.checklist_items.map((i) => (
                     <li key={i.id} className="group flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accent/40">
-                        <Checkbox checked={i.is_completed} disabled={!canEdit} aria-label={i.title} onCheckedChange={(v) => toggle.mutate({ id: t.id, itemId: i.id, is_completed: v === true })} />
+                        <Checkbox checked={i.is_completed} disabled={!canEdit || isTempId(i.id)} aria-label={i.title} onCheckedChange={(v) => toggle.mutate({ id: t.id, itemId: i.id, is_completed: v === true })} />
                         <span className={cn("flex-1 text-[13px]", i.is_completed && "text-muted-foreground line-through")}>{i.title}</span>
-                        {canEdit && <Button variant="ghost" size="icon-sm" className="opacity-60 group-hover:opacity-100" aria-label={`Remove ${i.title}`} onClick={() => remove.mutate({ id: t.id, itemId: i.id })}><X /></Button>}
+                        {canEdit && !isTempId(i.id) && <Button variant="ghost" size="icon-sm" className="opacity-60 group-hover:opacity-100" aria-label={`Remove ${i.title}`} onClick={() => remove.mutate({ id: t.id, itemId: i.id })}><X /></Button>}
                     </li>
                 ))}
             </ul>
             {canEdit && (
-                <form className="mt-1 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (title.trim()) add.mutate({ id: t.id, title: title.trim() }, { onSuccess: () => setTitle("") }); }}>
+                <form className="mt-1 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (title.trim()) { add.mutate({ id: t.id, title: title.trim() }); setTitle(""); } }}>
                     <Input className="h-8" placeholder="Add an item…" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="New checklist item" />
-                    <Button type="submit" size="sm" variant="outline" disabled={!title.trim()} loading={add.isPending}>Add</Button>
+                    <Button type="submit" size="sm" variant="outline" disabled={!title.trim()}>Add</Button>
                 </form>
             )}
         </section>
@@ -346,7 +353,7 @@ function LinksSection({ task: t, canEdit }: { task: TaskDetail; canEdit: boolean
                             loading={lookup.isFetching}
                             placeholder="Find a task…"
                             searchPlaceholder="Identifier or title…"
-                            onChange={(id) => id && add.mutate({ id: t.id, target_task_id: id, type }, { onSuccess: () => setAdding(false) })}
+                            onChange={(id) => { if (id) { add.mutate({ id: t.id, target_task_id: id, type }); setAdding(false); } }}
                         />
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => setAdding(false)}>Cancel</Button>
@@ -403,7 +410,7 @@ function AttachmentsSection({ task: t, canEdit }: { task: TaskDetail; canEdit: b
     );
 }
 
-function CommentsSection({ task: t, me }: { task: TaskDetail; me?: string | null }) {
+function CommentsSection({ task: t, me, meRef }: { task: TaskDetail; me?: string | null; meRef: MemberRef | null }) {
     const p = usePermissions();
     const comments = useTaskComments(t.id);
     const create = useCreateComment();
@@ -413,7 +420,12 @@ function CommentsSection({ task: t, me }: { task: TaskDetail; me?: string | null
     const [body, setBody] = useState("");
     const [visibility, setVisibility] = useState<TaskCommentVisibility>(canInternal ? "INTERNAL" : "CUSTOMER_VISIBLE");
     const visibilityOptions = TaskCommentVisibilityFormOptions.filter((o) => (o.id === "INTERNAL" ? canInternal : t.customer_visible));
-    const post = () => body.trim() && create.mutate({ id: t.id, body: body.trim(), visibility }, { onSuccess: () => setBody("") });
+    // Optimistic: the comment shows at once (with my name) and the box clears; a refused post rolls back and keeps nothing.
+    const post = () => {
+        if (!body.trim()) return;
+        create.mutate({ id: t.id, body: body.trim(), visibility, optimistic: { author: meRef, author_membership_id: me ?? null } });
+        setBody("");
+    };
 
     return (
         <section aria-label="Comments">
@@ -427,7 +439,7 @@ function CommentsSection({ task: t, me }: { task: TaskDetail; me?: string | null
                                 <span>{formatRelative(c.created_at)}</span>
                                 {c.visibility === "CUSTOMER_VISIBLE" && <Badge variant="info">Customer can see</Badge>}
                                 {c.edited_at && <span>(edited)</span>}
-                                {(c.author_membership_id === me || p.can("tasks.tasks.delete")) && (
+                                {!isTempId(c.id) && (c.author_membership_id === me || p.can("tasks.tasks.delete")) && (
                                     <Button variant="ghost" size="icon-sm" className="ml-auto size-6" aria-label="Delete comment" onClick={() => remove.mutate({ id: t.id, commentId: c.id })}><Trash2 className="size-3.5" /></Button>
                                 )}
                             </div>
@@ -455,7 +467,7 @@ function CommentsSection({ task: t, me }: { task: TaskDetail; me?: string | null
                                 <SelectContent>{visibilityOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
-                        <Button size="sm" disabled={!body.trim()} loading={create.isPending} onClick={post}>Comment</Button>
+                        <Button size="sm" disabled={!body.trim()} onClick={post}>Comment</Button>
                     </div>
                 </div>
             )}

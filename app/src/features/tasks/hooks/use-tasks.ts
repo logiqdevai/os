@@ -1,7 +1,7 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import * as service from "../services/tasks.services";
-import { useEntityRemove, useEntityUpdate } from "@/lib/query/optimistic";
-import type { BoardData } from "../interfaces/tasks.interfaces";
+import { patchEntity, removeEntity, useEntityRemove, useEntityUpdate, useOptimisticMutation } from "@/lib/query/optimistic";
+import type { BoardData, MemberRef, TaskComment, TaskDetail, TaskRef, TaskStatus } from "../interfaces/tasks.interfaces";
 
 export const TASKS_KEY = ["tasks"] as const;
 type Params = Record<string, unknown>;
@@ -28,24 +28,50 @@ export const useCycle = (id: string | undefined) => useQuery({ queryKey: [...TAS
 export const useReleases = (params: Params) => useQuery({ queryKey: [...TASKS_KEY, "releases", params], queryFn: () => service.getReleases(params), placeholderData: keepPreviousData });
 export const useRelease = (id: string | undefined) => useQuery({ queryKey: [...TASKS_KEY, "release", id], queryFn: () => service.getRelease(id as string), enabled: !!id });
 
+const PROJECTS_ROOT = ["projects"] as const;
+
 /**
- * Task mutation: refreshes tasks (and project rollups) when it settles. No success toast (the UI shows the result);
- * a failure is toasted once by the global MutationCache with `failure` as the title.
- * `_success` is kept in the signature only so call sites read naturally; it is never shown.
+ * Non-optimistic task mutation (creations and server-computed results): refreshes tasks (and project rollups) when it
+ * settles. No success toast (the UI shows the result); a failure is toasted once by the global MutationCache.
  */
-function useTaskMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, _success: string | null, failure: string) {
+function useTaskMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, errorTitle: string, errorToast = true) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: fn,
-        meta: { errorTitle: failure },
+        meta: { errorTitle, errorToast },
         onSettled: () => {
             qc.invalidateQueries({ queryKey: TASKS_KEY });
-            qc.invalidateQueries({ queryKey: ["projects"] });
+            qc.invalidateQueries({ queryKey: PROJECTS_ROOT });
         },
     });
 }
 
-export const useCreateTask = () => useTaskMutation(service.createTask, null, "Could not create task");
+/** Optimistic task mutation over every tasks cache: `apply` patches the cache before the request; rollback on failure. */
+function useTaskOptimistic<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, errorTitle: string, apply: (qc: QueryClient, vars: TVars) => void, errorToast = true) {
+    return useOptimisticMutation<TResult, TVars>({ roots: [TASKS_KEY], alsoInvalidate: [PROJECTS_ROOT], meta: { errorTitle, errorToast }, mutationFn: fn, apply });
+}
+
+/** Patch the open task detail (the only cache that holds checklist, links, attachments, sub-tasks). */
+const patchTaskDetail = (qc: QueryClient, id: string, fn: (t: TaskDetail) => TaskDetail) =>
+    patchEntity<TaskDetail>(qc, TASKS_KEY, id, (t) => ("checklist_items" in t ? fn(t) : t));
+const tempId = () => `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+/** True for rows added optimistically that the server has not confirmed yet (hide their row actions). */
+export const isTempId = (id: string) => id.startsWith("temp-");
+
+export const useCreateTask = () => useTaskMutation(service.createTask, "Could not create task");
+/**
+ * Sub-task: appears under the parent at once (temporary row, replaced by the refresh). `optimistic.assignee` etc. are
+ * not needed — a new sub-task starts unassigned in the parent's first status.
+ */
+export const useCreateSubtask = () =>
+    useTaskOptimistic(
+        (v: Parameters<typeof service.createTask>[0] & { parent_task_id: string }) => service.createTask(v),
+        "Could not add sub-task",
+        (qc, v) => patchTaskDetail(qc, v.parent_task_id, (t) => ({
+            ...t,
+            subtasks: [...t.subtasks, { id: tempId(), identifier: "…", title: v.title, status: t.workflow_statuses[0] ?? null, assignee: null } as unknown as TaskRef],
+        })),
+    );
 /** Optimistic: every cached list, board and detail shows the change at once; `optimistic` carries display objects (status, assignee…). */
 export const useUpdateTask = () =>
     useEntityUpdate({ root: TASKS_KEY, mutationFn: service.updateTask, alsoInvalidate: [["projects"]], meta: { errorTitle: "Could not update task" } });
@@ -56,7 +82,8 @@ function moveOnBoard(data: BoardData | undefined, v: MoveVars): BoardData | unde
     if (!data) return data;
     const task = data.tasks.find((t) => t.id === v.id);
     if (!task) return data;
-    const moved = { ...task, ...(v.status_id && { status_id: v.status_id }) };
+    const status = v.status_id ? data.statuses.find((s) => s.id === v.status_id) : undefined;
+    const moved = { ...task, ...(v.status_id && { status_id: v.status_id }), ...(status && { status }) };
     const rest = data.tasks.filter((t) => t.id !== v.id);
     let at = v.before_task_id ? rest.findIndex((t) => t.id === v.before_task_id) : -1;
     if (at < 0 && v.after_task_id) {
@@ -91,31 +118,108 @@ export const useMoveTask = () => {
 };
 export const useDeleteTask = () => useEntityRemove({ root: TASKS_KEY, mutationFn: service.deleteTask, alsoInvalidate: [["projects"]], meta: { errorTitle: "Could not delete task" } });
 export const useArchiveTask = () => useEntityRemove({ root: TASKS_KEY, mutationFn: service.archiveTask, alsoInvalidate: [["projects"]], meta: { errorTitle: "Could not archive task" } });
-export const useBulkTasks = () => useTaskMutation(service.bulkTasks, null, "Bulk update failed");
-export const useCreateComment = () => useTaskMutation(service.createComment, null, "Could not post comment");
-export const useDeleteComment = () => useTaskMutation(service.deleteComment, "Comment deleted", "Could not delete comment");
-export const useAddChecklistItem = () => useTaskMutation(service.addChecklistItem, null, "Could not add item");
-export const useUpdateChecklistItem = () => useTaskMutation(service.updateChecklistItem, null, "Could not update item");
-export const useDeleteChecklistItem = () => useTaskMutation(service.deleteChecklistItem, null, "Could not remove item");
-export const useAddDependency = () => useTaskMutation(service.addDependency, "Link added", "Could not link tasks");
-export const useRemoveDependency = () => useTaskMutation(service.removeDependency, "Link removed", "Could not remove link");
-export const useSetWatching = () => useTaskMutation(service.setWatching, null, "Could not update subscription");
-export const useAddAttachment = () => useTaskMutation(service.addAttachment, "Attachment added", "Could not add attachment");
-export const useRemoveAttachment = () => useTaskMutation(service.removeAttachment, "Attachment removed", "Could not remove attachment");
-export const useCreateTaskStatus = () => useTaskMutation(service.createTaskStatus, "Status added", "Could not add status");
-export const useUpdateTaskStatus = () => useTaskMutation(service.updateTaskStatus, "Status updated", "Could not update status");
-export const useArchiveTaskStatus = () => useTaskMutation(service.archiveTaskStatus, "Status updated", "Could not archive status");
-export const useReorderTaskStatuses = () => useTaskMutation(service.reorderTaskStatuses, null, "Could not reorder statuses");
-export const useCreateTaskType = () => useTaskMutation(service.createTaskType, "Type added", "Could not add type");
-export const useArchiveTaskType = () => useTaskMutation(service.archiveTaskType, "Type updated", "Could not archive type");
-export const useCreateTaskLabel = () => useTaskMutation(service.createTaskLabel, "Label added", "Could not add label");
-export const useUpdateTaskLabel = () => useTaskMutation(service.updateTaskLabel, "Label updated", "Could not update label");
-export const useArchiveTaskLabel = () => useTaskMutation(service.archiveTaskLabel, "Label updated", "Could not archive label");
-export const useCreateCycle = () => useTaskMutation(service.createCycle, "Cycle created", "Could not create cycle");
-export const useUpdateCycle = () => useTaskMutation(service.updateCycle, "Cycle updated", "Could not update cycle");
-export const useCompleteCycle = () => useTaskMutation(service.completeCycle, "Cycle completed", "Could not complete cycle");
-export const useCreateRelease = () => useTaskMutation(service.createRelease, "Release created", "Could not create release");
-export const useUpdateRelease = () => useTaskMutation(service.updateRelease, "Release updated", "Could not update release");
-export const useAddReleaseDeployment = () => useTaskMutation(service.addReleaseDeployment, "Deployment recorded", "Could not record deployment");
-export const useDraftReleaseNotes = () => useTaskMutation(service.draftReleaseNotes, null, "Could not draft release notes");
-export const usePublishReleaseNotes = () => useTaskMutation(service.publishReleaseNotes, "Release notes published", "Could not publish release notes");
+/**
+ * Bulk changes: optimistic (fields patched / archived rows removed at once). The server reports per-task failures;
+ * the refresh on settle puts refused tasks back and the caller toasts the partial failure.
+ * Pass display objects for id fields in `optimistic` (e.g. `{ assignee }`).
+ */
+export const useBulkTasks = () =>
+    useTaskOptimistic(
+        ({ optimistic: _o, ...v }: Parameters<typeof service.bulkTasks>[0] & { optimistic?: Record<string, unknown> }) => service.bulkTasks(v),
+        "Bulk update failed",
+        (qc, { task_ids, patch, action, optimistic }) => {
+            for (const id of task_ids) {
+                if (action === "archive") removeEntity(qc, TASKS_KEY, id);
+                else if (patch || optimistic) patchEntity(qc, TASKS_KEY, id, { ...(patch ?? {}), ...(optimistic ?? {}) });
+            }
+        },
+    );
+
+/** Comment: shows at once at the end of the thread (temporary row with `optimistic.author`), replaced by the refresh. */
+type CommentVars = Parameters<typeof service.createComment>[0] & { optimistic?: { author: MemberRef | null; author_membership_id: string | null } };
+export const useCreateComment = () =>
+    useTaskOptimistic(
+        ({ optimistic: _o, ...v }: CommentVars) => service.createComment(v),
+        "Could not post comment",
+        (qc, v) => qc.setQueryData<TaskComment[]>([...TASKS_KEY, "comments", v.id], (list) => [
+            ...(list ?? []),
+            {
+                id: tempId(), body: v.body, visibility: (v.visibility ?? "INTERNAL") as TaskComment["visibility"], parent_comment_id: null,
+                author: v.optimistic?.author ?? null, author_membership_id: v.optimistic?.author_membership_id ?? null, edited_at: null, created_at: new Date().toISOString(),
+            },
+        ]),
+    );
+export const useDeleteComment = () =>
+    useTaskOptimistic(service.deleteComment, "Could not delete comment", (qc, { commentId }) => removeEntity(qc, TASKS_KEY, commentId));
+
+/** Checklist: add / tick / remove change the panel at once. */
+export const useAddChecklistItem = () =>
+    useTaskOptimistic(service.addChecklistItem, "Could not add item", (qc, { id, title }) =>
+        patchTaskDetail(qc, id, (t) => ({ ...t, checklist_items: [...t.checklist_items, { id: tempId(), title, is_completed: false, sort_order: t.checklist_items.length }] })),
+    );
+export const useUpdateChecklistItem = () =>
+    useTaskOptimistic(service.updateChecklistItem, "Could not update item", (qc, { id, itemId, ...dto }) =>
+        patchTaskDetail(qc, id, (t) => ({ ...t, checklist_items: t.checklist_items.map((i) => (i.id === itemId ? { ...i, ...dto } : i)) })),
+    );
+export const useDeleteChecklistItem = () =>
+    useTaskOptimistic(service.deleteChecklistItem, "Could not remove item", (qc, { id, itemId }) =>
+        patchTaskDetail(qc, id, (t) => ({ ...t, checklist_items: t.checklist_items.filter((i) => i.id !== itemId) })),
+    );
+
+/** Linking needs the server's task reference: the picker closes at once and the link appears on refresh. */
+export const useAddDependency = () => useTaskMutation(service.addDependency, "Could not link tasks");
+export const useRemoveDependency = () =>
+    useTaskOptimistic(service.removeDependency, "Could not remove link", (qc, { id, depId }) =>
+        patchTaskDetail(qc, id, (t) => ({ ...t, dependencies_from: t.dependencies_from.filter((d) => d.id !== depId), dependencies_to: t.dependencies_to.filter((d) => d.id !== depId) })),
+    );
+export const useSetWatching = () =>
+    useTaskOptimistic(service.setWatching, "Could not update subscription", (qc, { id, watching }) => patchEntity(qc, TASKS_KEY, id, { is_watching: watching }));
+/** Adding an attachment creates a document on the server, so it is not optimistic; the form closes on success. */
+export const useAddAttachment = () => useTaskMutation(service.addAttachment, "Could not add attachment");
+export const useRemoveAttachment = () =>
+    useTaskOptimistic(service.removeAttachment, "Could not remove attachment", (qc, { id, attId }) =>
+        patchTaskDetail(qc, id, (t) => ({ ...t, attachments: t.attachments.filter((a) => a.id !== attId) })),
+    );
+
+// Setup: statuses, types, labels.
+export const useCreateTaskStatus = () => useTaskMutation(service.createTaskStatus, "Could not add status");
+export const useUpdateTaskStatus = ({ inline = false }: { inline?: boolean } = {}) =>
+    useTaskOptimistic(service.updateTaskStatus, "Could not update status", (qc, { id, ...dto }) => patchEntity(qc, TASKS_KEY, id, dto), !inline);
+/** Archiving moves tasks to the replacement status on the server; the status disappears at once. */
+export const useArchiveTaskStatus = () =>
+    useTaskOptimistic(service.archiveTaskStatus, "Could not archive status", (qc, { id }) => removeEntity(qc, TASKS_KEY, id));
+/** Reorder: the new order shows at once in every cached status list. */
+export const useReorderTaskStatuses = () =>
+    useTaskOptimistic(service.reorderTaskStatuses, "Could not reorder statuses", (qc, ids) => {
+        const order = new Map(ids.map((id, i) => [id, i]));
+        qc.setQueriesData<TaskStatus[]>({ queryKey: [...TASKS_KEY, "statuses"] }, (list) =>
+            Array.isArray(list) ? [...list].sort((a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9)) : list,
+        );
+    });
+export const useCreateTaskType = () => useTaskMutation(service.createTaskType, "Could not add type");
+/** Archive / restore toggle: the row flips at once. */
+export const useArchiveTaskType = () =>
+    useTaskOptimistic(service.archiveTaskType, "Could not archive type", (qc, id) =>
+        patchEntity<{ archived_at: string | null }>(qc, TASKS_KEY, id, (e) => ({ ...e, archived_at: e.archived_at ? null : new Date().toISOString() })),
+    );
+export const useCreateTaskLabel = () => useTaskMutation(service.createTaskLabel, "Could not add label");
+export const useUpdateTaskLabel = () => useTaskOptimistic(service.updateTaskLabel, "Could not update label", (qc, { id, ...dto }) => patchEntity(qc, TASKS_KEY, id, dto));
+export const useArchiveTaskLabel = () => useTaskOptimistic(service.archiveTaskLabel, "Could not archive label", (qc, id) => removeEntity(qc, TASKS_KEY, id));
+
+// Cycles and releases.
+export const useCreateCycle = () => useTaskMutation(service.createCycle, "Could not create cycle");
+export const useUpdateCycle = ({ inline = false }: { inline?: boolean } = {}) =>
+    useTaskOptimistic(service.updateCycle, "Could not update cycle", (qc, { id, ...dto }) => patchEntity(qc, TASKS_KEY, id, dto), !inline);
+/** Completing carries unfinished tasks over on the server: the cycle shows Completed at once, tasks move on refresh. */
+export const useCompleteCycle = () =>
+    useTaskOptimistic(service.completeCycle, "Could not complete cycle", (qc, { id }) => patchEntity(qc, TASKS_KEY, id, { status: "COMPLETED" }));
+export const useCreateRelease = () => useTaskMutation(service.createRelease, "Could not create release");
+export const useUpdateRelease = ({ inline = false }: { inline?: boolean } = {}) =>
+    useTaskOptimistic(service.updateRelease, "Could not update release", (qc, { id, ...dto }) => patchEntity(qc, TASKS_KEY, id, dto), !inline);
+export const useAddReleaseDeployment = () => useTaskMutation(service.addReleaseDeployment, "Could not record deployment");
+export const useDraftReleaseNotes = () => useTaskMutation(service.draftReleaseNotes, "Could not draft release notes");
+/** Publishing is an outward action with its own button; the notes show as published at once. */
+export const usePublishReleaseNotes = () =>
+    useTaskOptimistic(service.publishReleaseNotes, "Could not publish release notes", (qc, { id, notes }) =>
+        patchEntity(qc, TASKS_KEY, id, { notes, notes_published_at: new Date().toISOString() }),
+    );

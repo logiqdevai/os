@@ -47,7 +47,7 @@ export default function CycleDetailPage() {
                 meta={<Badge variant={c.status === "ACTIVE" ? "info" : c.status === "COMPLETED" ? "success" : "neutral"}>{getDropdownOptionLabel(CycleStatusFormOptions, c.status)}</Badge>}
                 actions={canManage && c.status !== "COMPLETED" && (
                     <>
-                        {c.status === "PLANNED" && <Button variant="outline" loading={update.isPending} onClick={() => update.mutate({ id: c.id, status: "ACTIVE" })}><Play /> Start cycle</Button>}
+                        {c.status === "PLANNED" && <Button variant="outline" onClick={() => update.mutate({ id: c.id, status: "ACTIVE" })}><Play /> Start cycle</Button>}
                         <Button onClick={() => setCompleting(true)}><CheckCircle2 /> Complete cycle</Button>
                     </>
                 )}
@@ -82,7 +82,7 @@ export default function CycleDetailPage() {
                     />
                 </Section>
             </div>
-            <Dialog open={completing} onOpenChange={(o) => !complete.isPending && setCompleting(o)}>
+            <Dialog open={completing} onOpenChange={setCompleting}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Complete {c.name ?? `Cycle ${c.number}`}?</DialogTitle>
@@ -99,8 +99,8 @@ export default function CycleDetailPage() {
                         </RadioGroup>
                     )}
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setCompleting(false)} disabled={complete.isPending}>Cancel</Button>
-                        <Button loading={complete.isPending} onClick={() => complete.mutate({ id: c.id, carry_over: unfinished ? carry : "backlog" }, { onSuccess: () => setCompleting(false) })}>Complete cycle</Button>
+                        <Button variant="ghost" onClick={() => setCompleting(false)}>Cancel</Button>
+                        <Button onClick={() => { complete.mutate({ id: c.id, carry_over: unfinished ? carry : "backlog" }); setCompleting(false); }}>Complete cycle</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

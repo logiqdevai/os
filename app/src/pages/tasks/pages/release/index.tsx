@@ -92,8 +92,7 @@ export default function ReleaseDetailPage() {
                 title={`Mark ${r.name} as released?`}
                 description={open ? `${open} tasks in this release are not done yet.` : "All tasks are done."}
                 confirmText="Mark released"
-                isLoading={update.isPending}
-                onConfirm={() => update.mutate({ id: r.id, status: "RELEASED" }, { onSuccess: () => setShipping(false) })}
+                onConfirm={() => { update.mutate({ id: r.id, status: "RELEASED", released_at: new Date().toISOString() }); setShipping(false); }}
             />
             <Dialog open={deploying} onOpenChange={(o) => !deploy.isPending && setDeploying(o)}>
                 <DialogContent className="sm:max-w-md">
@@ -117,7 +116,7 @@ export default function ReleaseDetailPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setDeploying(false)} disabled={deploy.isPending}>Cancel</Button>
-                        <Button loading={deploy.isPending} onClick={() => deploy.mutate({ id: r.id, environment: env, status, url: url || undefined }, { onSuccess: () => setDeploying(false) })}>Save</Button>
+                        <Button loading={deploy.isPending} onClick={() => deploy.mutate({ id: r.id, environment: env, status, url: url || undefined }, { onSuccess: () => setDeploying(false) })}>Record deployment</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

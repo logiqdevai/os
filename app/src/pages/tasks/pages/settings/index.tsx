@@ -11,6 +11,9 @@ import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SaveStatus } from "@/components/ui/save-status";
+import { InlineText } from "@/components/ui/inline-edit";
+import { useAutosave } from "@/hooks/use-autosave";
 import {
     useArchiveTaskLabel,
     useArchiveTaskStatus,
@@ -100,8 +103,8 @@ function WorkflowSection() {
                                 <span className="text-xs text-muted-foreground">· {getDropdownOptionLabel(TaskStatusCategoryFormOptions, s.category)}</span>
                                 <span className="ml-auto text-xs text-muted-foreground tabular">{s._count?.tasks ?? 0} tasks</span>
                                 <div className="flex gap-0.5">
-                                    <Button variant="ghost" size="icon-sm" aria-label={`Move ${s.name} up`} disabled={i === 0 || reorder.isPending} onClick={() => move(i, -1)}><ArrowUp /></Button>
-                                    <Button variant="ghost" size="icon-sm" aria-label={`Move ${s.name} down`} disabled={i === list.length - 1 || reorder.isPending} onClick={() => move(i, 1)}><ArrowDown /></Button>
+                                    <Button variant="ghost" size="icon-sm" aria-label={`Move ${s.name} up`} disabled={i === 0} onClick={() => move(i, -1)}><ArrowUp /></Button>
+                                    <Button variant="ghost" size="icon-sm" aria-label={`Move ${s.name} down`} disabled={i === list.length - 1} onClick={() => move(i, 1)}><ArrowDown /></Button>
                                     <Button variant="ghost" size="icon-sm" aria-label={`Edit ${s.name}`} onClick={() => { setEditing(s); setOpen(true); }}><Pencil /></Button>
                                     <Button variant="ghost" size="icon-sm" aria-label={`Archive ${s.name}`} disabled={list.length <= 1} onClick={() => { setReplacement(list.find((x) => x.id !== s.id && x.category === s.category)?.id ?? list.find((x) => x.id !== s.id)?.id ?? ""); setArchiving(s); }}><Archive /></Button>
                                 </div>
@@ -111,7 +114,7 @@ function WorkflowSection() {
                 )}
             </div>
             <StatusDialog open={open} onOpenChange={setOpen} status={editing} teamId={teamId === "none" ? null : teamId} all={list} />
-            <Dialog open={!!archiving} onOpenChange={(o) => !archive.isPending && !o && setArchiving(null)}>
+            <Dialog open={!!archiving} onOpenChange={(o) => !o && setArchiving(null)}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Archive "{archiving?.name}"?</DialogTitle>
@@ -124,12 +127,11 @@ function WorkflowSection() {
                         </Select>
                     )}
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setArchiving(null)} disabled={archive.isPending}>Cancel</Button>
+                        <Button variant="ghost" onClick={() => setArchiving(null)}>Cancel</Button>
                         <Button
                             variant="destructive"
-                            loading={archive.isPending}
                             disabled={!!archiving?._count?.tasks && !replacement}
-                            onClick={() => archiving && archive.mutate({ id: archiving.id, replacement_status_id: archiving._count?.tasks ? replacement : undefined }, { onSuccess: () => setArchiving(null) })}
+                            onClick={() => { if (archiving) archive.mutate({ id: archiving.id, replacement_status_id: archiving._count?.tasks ? replacement : undefined }); setArchiving(null); }}
                         >
                             Archive status
                         </Button>
@@ -140,9 +142,12 @@ function WorkflowSection() {
     );
 }
 
+/** New status (explicit "Add status") or edit one (autosaves; "Done" closes). */
 function StatusDialog({ open, onOpenChange, status, teamId, all }: { open: boolean; onOpenChange: (o: boolean) => void; status: TaskStatus | null; teamId: string | null; all: TaskStatus[] }) {
     const create = useCreateTaskStatus();
-    const update = useUpdateTaskStatus();
+    const update = useUpdateTaskStatus({ inline: true });
+    const [dirty, setDirty] = useState(false);
+    const touch = <T,>(set: (v: T) => void) => (v: T) => { setDirty(true); set(v); };
     const [name, setName] = useState("");
     const [category, setCategory] = useState<TaskStatusCategory>("TODO");
     const [color, setColor] = useState("neutral");
@@ -152,36 +157,42 @@ function StatusDialog({ open, onOpenChange, status, teamId, all }: { open: boole
     const k = `${open}-${status?.id ?? "new"}`;
     if (key !== k) {
         setKey(k);
+        setDirty(false);
         setName(status?.name ?? "");
         setCategory(status?.category ?? "TODO");
         setColor(status?.color ?? "neutral");
         setIsDefault(status?.is_default ?? false);
         setTransitions(status?.allowed_transitions ?? []);
     }
-    const pending = create.isPending || update.isPending;
+    const pending = create.isPending;
+    const dto = { name: name.trim(), category, color, is_default: isDefault, allowed_transitions: transitions };
+    const autosave = useAutosave({ value: dto, enabled: open && !!status && dirty && !!dto.name, save: (v) => update.mutateAsync({ id: status!.id, ...v }) });
+    const close = () => { if (status && dto.name) autosave.flush(); onOpenChange(false); };
     const save = () => {
-        const dto = { name: name.trim(), category, color, is_default: isDefault, allowed_transitions: transitions };
-        const done = { onSuccess: () => onOpenChange(false) };
-        if (status) update.mutate({ id: status.id, ...dto }, done);
-        else create.mutate({ ...dto, team_id: teamId ?? undefined }, done);
+        if (status) return close();
+        create.mutate({ ...dto, team_id: teamId ?? undefined }, { onSuccess: () => onOpenChange(false) });
     };
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !pending && close())}>
             <DialogContent className="sm:max-w-md">
-                <DialogHeader><DialogTitle>{status ? "Edit status" : "New status"}</DialogTitle><DialogDescription>The category drives boards, reports and cycle progress.</DialogDescription></DialogHeader>
+                <DialogHeader>
+                    <DialogTitle>{status ? "Edit status" : "New status"}</DialogTitle>
+                    <DialogDescription>The category drives boards, reports and cycle progress.</DialogDescription>
+                    {status && <SaveStatus state={autosave} />}
+                </DialogHeader>
                 <div className="space-y-4">
-                    <div className="space-y-1.5"><Label htmlFor="ts-name">Name</Label><Input id="ts-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="QA" /></div>
+                    <div className="space-y-1.5"><Label htmlFor="ts-name">Name</Label><Input id="ts-name" autoFocus value={name} onChange={(e) => touch(setName)(e.target.value)} placeholder="QA" /></div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <Label>Category</Label>
-                            <Select value={category} onValueChange={(v) => setCategory(v as TaskStatusCategory)}>
+                            <Select value={category} onValueChange={(v) => touch(setCategory)(v as TaskStatusCategory)}>
                                 <SelectTrigger aria-label="Category"><SelectValue /></SelectTrigger>
                                 <SelectContent>{TaskStatusCategoryFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-1.5">
                             <Label>Color</Label>
-                            <Select value={color} onValueChange={setColor}>
+                            <Select value={color} onValueChange={touch(setColor)}>
                                 <SelectTrigger aria-label="Color"><SelectValue /></SelectTrigger>
                                 <SelectContent>{ColorTokenFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                             </Select>
@@ -193,18 +204,24 @@ function StatusDialog({ open, onOpenChange, status, teamId, all }: { open: boole
                             {all.filter((s) => s.id !== status?.id).map((s) => {
                                 const on = transitions.includes(s.slug);
                                 return (
-                                    <button key={s.id} type="button" aria-pressed={on} onClick={() => setTransitions(on ? transitions.filter((t) => t !== s.slug) : [...transitions, s.slug])} className={on ? "rounded-xs border border-info bg-info-soft px-1.5 text-xs text-info" : "rounded-xs border border-border px-1.5 text-xs text-muted-foreground"}>
+                                    <button key={s.id} type="button" aria-pressed={on} onClick={() => touch(setTransitions)(on ? transitions.filter((t) => t !== s.slug) : [...transitions, s.slug])} className={on ? "rounded-xs border border-info bg-info-soft px-1.5 text-xs text-info" : "rounded-xs border border-border px-1.5 text-xs text-muted-foreground"}>
                                         {s.name}
                                     </button>
                                 );
                             })}
                         </div>
                     </div>
-                    <div className="flex items-center justify-between rounded-md border border-border p-3"><span className="text-[13px]">Default for new tasks</span><Switch checked={isDefault} onCheckedChange={setIsDefault} aria-label="Default status" /></div>
+                    <div className="flex items-center justify-between rounded-md border border-border p-3"><span className="text-[13px]">Default for new tasks</span><Switch checked={isDefault} onCheckedChange={touch(setIsDefault)} aria-label="Default status" /></div>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                    <Button disabled={!name.trim()} loading={pending} onClick={save}>{status ? "Save" : "Add status"}</Button>
+                    {status ? (
+                        <Button onClick={close}>Done</Button>
+                    ) : (
+                        <>
+                            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                            <Button disabled={!name.trim()} loading={pending} onClick={save}>Add status</Button>
+                        </>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -240,7 +257,11 @@ function LabelsSection() {
     const [name, setName] = useState("");
     const [color, setColor] = useState("info");
     const columns: DataTableColumn<TaskLabel>[] = [
-        { key: "name", header: "Label", cell: (l) => <span className="flex items-center gap-2 font-medium text-foreground"><LabelDot color={l.color} />{l.name}</span> },
+        {
+            key: "name", header: "Label",
+            // Rename in place: saves on blur / Enter, Esc reverts.
+            cell: (l) => <span className="flex items-center gap-2 font-medium text-foreground"><LabelDot color={l.color} /><InlineText value={l.name} aria-label={`Name of ${l.name}`} maxLength={60} onSave={(name) => update.mutate({ id: l.id, name })} /></span>,
+        },
         {
             key: "color", header: "Color", hideBelow: "sm",
             cell: (l) => (
