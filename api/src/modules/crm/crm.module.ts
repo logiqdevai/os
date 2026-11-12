@@ -30,6 +30,7 @@ import { SavedViewsController } from './saved-views/saved-views.controller';
 import { SavedViewsService } from './saved-views/saved-views.service';
 import { CrmMiscMcp } from './crm-misc.mcp';
 
+import { FilesModule } from '@/modules/files/files.module';
 import { CrmCustomFieldValuesService } from './custom-fields/custom-field-values.service';
 import { CrmCustomFieldsService } from './custom-fields/custom-fields.service';
 import { CrmCustomFieldsController } from './custom-fields/custom-fields.controller';
@@ -38,16 +39,20 @@ import { CrmLeadRulesService } from './rules/lead-rules.service';
 import { CrmTargetsService } from './rules/targets.service';
 import { CrmRulesController } from './rules/rules.controller';
 import { CrmRulesMcp } from './rules/rules.mcp';
+import { CrmImportsService } from './imports/imports.service';
+import { CrmImportsController } from './imports/imports.controller';
+import { CrmImportsMcp } from './imports/imports.mcp';
 
 /** Extensions (02 §22–33): custom fields, rules & targets, import, merge & duplicates, bulk actions, reports. */
-const FEATURE_CONTROLLERS = [CrmCustomFieldsController, CrmRulesController];
-const FEATURE_PROVIDERS = [CrmCustomFieldValuesService, CrmCustomFieldsService, CrmCustomFieldsMcp, CrmLeadRulesService, CrmTargetsService, CrmRulesMcp];
+const FEATURE_CONTROLLERS = [CrmCustomFieldsController, CrmRulesController, CrmImportsController];
+const FEATURE_PROVIDERS = [CrmCustomFieldValuesService, CrmCustomFieldsService, CrmCustomFieldsMcp, CrmLeadRulesService, CrmTargetsService, CrmRulesMcp, CrmImportsService, CrmImportsMcp];
 
 /**
  * 02 CRM & Sales (docs/features/02-crm-sales-management.md) plus the platform tags and saved views it owns.
  * Other modules import this module for `CrmCompaniesService.search` / `CrmContactsService.search` (customer pickers).
  */
 @Module({
+    imports: [FilesModule],
     controllers: [
         CrmCompaniesController, CrmContactsController, CrmLeadsController, CrmDealsController, CrmPipelinesController,
         CrmActivitiesController, CrmNotesController, CrmSettingsController, CrmInsightsController, TagsController, SavedViewsController,

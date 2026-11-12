@@ -63,6 +63,18 @@ export const CrmApiRoutes = {
         groups: "/custom-field-groups",
         group: (id: string) => `/custom-field-groups/${id}`,
     },
+    imports: {
+        list: "/crm/imports",
+        fields: "/crm/imports/fields",
+        mappings: "/crm/imports/mappings",
+        mapping_delete: (id: string) => `/crm/imports/mappings/${id}`,
+        detail: (id: string) => `/crm/imports/${id}`,
+        mapping: (id: string) => `/crm/imports/${id}/mapping`,
+        preview: (id: string) => `/crm/imports/${id}/preview`,
+        start: (id: string) => `/crm/imports/${id}/start`,
+        errors: (id: string) => `/crm/imports/${id}/errors.csv`,
+        rollback: (id: string) => `/crm/imports/${id}/rollback`,
+    },
     rules: {
         fields: "/crm/rules/fields",
         assignment: "/crm/assignment-rules",

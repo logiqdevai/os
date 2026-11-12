@@ -1,4 +1,4 @@
-import { Building2, Handshake, Inbox, Layers, LayoutDashboard, Phone, Settings, Shuffle, SlidersHorizontal, Target, TrendingUp, Users } from "lucide-react";
+import { Building2, FileUp, Handshake, Inbox, Layers, LayoutDashboard, Phone, Settings, Shuffle, SlidersHorizontal, Target, TrendingUp, Users } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
 export const crmApp: AppDefinition = {
@@ -24,6 +24,7 @@ export const crmApp: AppDefinition = {
         { label: "Setup", items: [
             { label: "Pipelines & stages", to: "/crm/pipelines", icon: Layers, permissions: ["crm.pipelines.manage"] },
             { label: "Settings & tags", to: "/crm/settings", icon: Settings, permissions: ["crm.settings.manage"] },
+            { label: "Import", to: "/crm/imports", icon: FileUp, permissions: ["crm.records.import"] },
             { label: "Lead rules", to: "/crm/lead-rules", icon: Shuffle, permissions: ["crm.settings.manage", "crm.scoring_rules.manage"] },
             { label: "Custom fields", to: "/crm/custom-fields", icon: SlidersHorizontal, permissions: ["platform.custom_fields.manage"] },
         ] },

@@ -17,4 +17,6 @@ export const CrmPaths = {
     custom_fields: "/crm/custom-fields",
     targets: "/crm/targets",
     lead_rules: "/crm/lead-rules",
+    imports: "/crm/imports",
+    import: (id: string) => `/crm/imports/${id}`,
 };
