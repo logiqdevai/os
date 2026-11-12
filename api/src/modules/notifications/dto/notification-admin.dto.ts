@@ -114,10 +114,11 @@ const ruleBase = z.object({
     priority: z.number().int().min(0).max(1000).optional(),
     is_active: z.boolean().optional(),
 });
-const ruleChecks = <T extends z.ZodTypeAny>(s: T) => s
-    .refine((v: z.infer<typeof ruleBase>) => !(v.event_type_id && v.module), { message: 'Choose an event type or a module, not both', path: ['module'] })
-    .refine((v: z.infer<typeof ruleBase>) => v.kind === 'SUPPRESS' || !!v.window_seconds, { message: 'Set a window for this kind of rule', path: ['window_seconds'] })
-    .refine((v: z.infer<typeof ruleBase>) => v.kind !== 'THROTTLE' || !!v.max_per_window, { message: 'Set the maximum per window', path: ['max_per_window'] });
+type RuleInput = Partial<z.infer<typeof ruleBase>>;
+const ruleChecks = (s: typeof ruleBase) => s
+    .refine((v: RuleInput) => !(v.event_type_id && v.module), { message: 'Choose an event type or a module, not both', path: ['module'] })
+    .refine((v: RuleInput) => v.kind === 'SUPPRESS' || !!v.window_seconds, { message: 'Set a window for this kind of rule', path: ['window_seconds'] })
+    .refine((v: RuleInput) => v.kind !== 'THROTTLE' || !!v.max_per_window, { message: 'Set the maximum per window', path: ['max_per_window'] });
 export const CreateDeliveryRuleSchema = ruleChecks(ruleBase);
 export type CreateDeliveryRuleInput = z.infer<typeof ruleBase>;
 export const UpdateDeliveryRuleSchema = ruleBase.partial();

@@ -209,10 +209,10 @@ export class NotificationAdminService {
 
     /** Render with a sample payload (no send). */
     async previewTemplate(ctx: OrgContext, dto: PreviewTemplateInput) {
-        const org = await this.prisma.organization.findUnique({ where: { id: ctx.organization_id }, select: { name: true } });
+        const org = await this.prisma.organization.findUnique({ where: { id: ctx.organization_id }, select: { display_name: true } });
         const sample: Record<string, unknown> = {
             title: 'WEB-142 was assigned to you', body: 'Rebuild pricing page hero', entity_label: 'WEB-142', url: 'https://app.example.com/tasks/WEB-142', link: 'https://app.example.com/tasks/WEB-142',
-            actor: { name: 'Marco Silva' }, recipient: { name: 'Anna Meyer' }, organization: { name: org?.name ?? 'Your organization' }, ...(dto.sample ?? {}),
+            actor: { name: 'Marco Silva' }, recipient: { name: 'Anna Meyer' }, organization: { name: org?.display_name ?? 'Your organization' }, ...(dto.sample ?? {}),
         };
         const title = renderVars(dto.title, sample);
         const body = renderVars(dto.body, sample);
@@ -222,7 +222,7 @@ export class NotificationAdminService {
             subject: renderVars(dto.subject ?? dto.title, sample),
             title,
             body,
-            html: emailLayout({ orgName: org?.name ?? '', heading: title, paragraphs: [body], cta: { label: renderVars(dto.cta_label ?? 'Open', sample), url: String(sample.url) }, footer: 'Preview with sample data.' }),
+            html: emailLayout({ orgName: org?.display_name ?? '', heading: title, paragraphs: [body], cta: { label: renderVars(dto.cta_label ?? 'Open', sample), url: String(sample.url) }, footer: 'Preview with sample data.' }),
             missing_variables: missing,
         };
     }
