@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Archive, Inbox as InboxIcon, Pencil, Plug, Plus, RefreshCw } from "lucide-react";
+import { Archive, Inbox as InboxIcon, Pencil, Plug, Plus } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -20,10 +20,11 @@ import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { RoutingStrategyOptions, SupportChannelTypeDescriptionOptions, SupportChannelTypeOptions } from "@/config/constants/dropdowns/support/support.options";
-import { useArchiveInbox, useChannels, useCreateChannel, useCreateInbox, useInboxes, useRotateWidgetKey, useUpdateChannel, useUpdateInbox } from "@/features/support/hooks/use-support";
+import { useArchiveInbox, useChannels, useCreateChannel, useCreateInbox, useInboxes, useUpdateChannel, useUpdateInbox } from "@/features/support/hooks/use-support";
 import { channelFormSchema, inboxFormSchema, type ChannelFormValues, type InboxFormValues } from "@/features/support/validation-schemas/support.schema";
 import type { Inbox } from "@/features/support/interfaces/support.interfaces";
 import { useSearchParams } from "react-router-dom";
+import { WidgetSetup } from "./components/widget-setup";
 
 /**
  * Inboxes and channels — /support/channels?tab=inboxes|channels (mockup 13-support `channels`, `channel-create`, `widget`).
@@ -148,7 +149,6 @@ function InboxDialog({ open, onOpenChange, inbox }: { open: boolean; onOpenChang
 function ChannelsTab() {
     const channels = useChannels();
     const update = useUpdateChannel();
-    const rotate = useRotateWidgetKey();
     const canManage = usePermission("support.inboxes.manage");
     const [open, setOpen] = useState(false);
     if (channels.isLoading) return <ListSkeleton />;
@@ -181,13 +181,7 @@ function ChannelsTab() {
                                     </label>
                                 )}
                             </div>
-                            {c.widget_key && (
-                                <div className="mt-3 space-y-2">
-                                    <div className="text-xs text-muted-foreground">Embed key (allowed sites: {c.allowed_origins.length ? c.allowed_origins.join(", ") : "none yet"})</div>
-                                    <pre className="overflow-x-auto rounded-md border border-border bg-secondary p-2 text-xs text-foreground">{c.widget_key}</pre>
-                                    {canManage && <Button size="sm" variant="outline" loading={rotate.isPending} onClick={() => rotate.mutate(c.id, { onSuccess: () => toast({ title: "Embed key rotated", description: "Update the snippet on your site." }), onError: (e) => toast({ variant: "destructive", title: "Could not rotate key", description: getApiErrorMessage(e) }) })}><RefreshCw /> Rotate key</Button>}
-                                </div>
-                            )}
+                            {c.widget_key && <WidgetSetup channel={c} canManage={canManage} />}
                         </div>
                     ))}
                 </div>

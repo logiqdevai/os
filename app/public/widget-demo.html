@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat widget test page</title>
+  <style>
+    :root { --bg: #f8fafc; --fg: #0f172a; --muted: #64748b; --card: #ffffff; --line: #e2e8f0; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #020617; --fg: #f1f5f9; --muted: #94a3b8; --card: #0f172a; --line: #1e293b; } }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 680px; margin: 0 auto; padding: 32px 16px 120px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-top: 16px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+    input { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-size: 14px; }
+    button { margin-top: 12px; padding: 8px 14px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font-weight: 600; cursor: pointer; }
+    code { font-size: 12px; word-break: break-all; }
+    p { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Chat widget test page</h1>
+    <p>This page stands in for a customer website. It loads the embeddable script of a Support widget channel
+      (Support → Inboxes &amp; channels → Channels → "Test page"). Messages you send here appear live in the agent inbox,
+      and agent replies appear here without reloading.</p>
+    <form class="card" id="setup">
+      <label for="api">API URL</label>
+      <input id="api" name="api" placeholder="http://localhost:3000" />
+      <label for="key">Embed key</label>
+      <input id="key" name="key" placeholder="wk_…" />
+      <button type="submit">Load widget</button>
+      <p id="status" role="status"></p>
+    </form>
+    <div class="card">
+      <strong>Snippet on a real site</strong>
+      <p><code id="snippet">&lt;script src="…/support/widget/&lt;key&gt;.js" async&gt;&lt;/script&gt;</code></p>
+    </div>
+  </main>
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var form = document.getElementById("setup");
+      form.api.value = params.get("api") || "http://localhost:3000";
+      form.key.value = params.get("key") || "";
+      function load(api, key) {
+        if (!api || !key) return;
+        var src = api.replace(/\/+$/, "") + "/support/widget/" + encodeURIComponent(key) + ".js";
+        document.getElementById("snippet").textContent = '<script src="' + src + '" async><\/script>';
+        var s = document.createElement("script");
+        s.src = src;
+        s.async = true;
+        s.onload = function () { document.getElementById("status").textContent = "Widget loaded — open it with the button in the corner."; };
+        s.onerror = function () { document.getElementById("status").textContent = "Could not load the widget. Check the API URL, the key and that the channel is active."; };
+        document.body.appendChild(s);
+      }
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var next = new URLSearchParams({ api: form.api.value.trim(), key: form.key.value.trim() });
+        location.search = next.toString();
+      });
+      load(form.api.value.trim(), form.key.value.trim());
+    })();
+  </script>
+</body>
+</html>

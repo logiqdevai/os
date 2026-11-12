@@ -27,6 +27,10 @@ import { SupportAnalyticsController } from './analytics/analytics.controller';
 import { SupportAiService } from './ai/support-ai.service';
 import { SupportAiController } from './ai/support-ai.controller';
 import { SupportMcp } from './support.mcp';
+import { SupportWidgetService } from './widget/widget.service';
+import { SupportWidgetController } from './widget/widget.controller';
+import { SupportRealtimeService } from './realtime/support-realtime.service';
+import { SupportGateway } from './realtime/support.gateway';
 
 /** 13 Customer Support & Communication Hub (docs/features/13-customer-support-communication-hub.md). */
 @Module({
@@ -45,6 +49,7 @@ import { SupportMcp } from './support.mcp';
         IncidentsController,
         SupportAnalyticsController,
         SupportAiController,
+        SupportWidgetController,
     ],
     providers: [
         SupportSetupService,
@@ -63,6 +68,9 @@ import { SupportMcp } from './support.mcp';
         SupportAnalyticsService,
         SupportAiService,
         SupportMcp,
+        SupportWidgetService,
+        SupportRealtimeService,
+        SupportGateway,
     ],
     exports: [TicketsService, ConversationsService, KnowledgeService, CsatService, SupportSetupService, TicketWorkflowService],
 })

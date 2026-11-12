@@ -4,6 +4,7 @@ import { MessagesSquare } from "lucide-react";
 import { EmptyState } from "@/components/ui/states";
 import { usePageMetadata } from "@/hooks/use-page-metadata";
 import { cn } from "@/lib/utils";
+import { useSupportSocket } from "@/features/support/hooks/use-support-socket";
 import { ConversationList } from "./components/conversation-list";
 import { ConversationPane } from "./components/conversation-pane";
 import { SUPPORT_PATHS } from "../../support-paths";
@@ -11,12 +12,13 @@ import { SUPPORT_PATHS } from "../../support-paths";
 /**
  * Support inbox — /support and /support/c/:conversationId (13 §1, mockup 13-support `inbox`).
  * Three panes filling the main area: list · thread + composer · details (xl+, a sheet below).
- * Phones: the list and the thread are separate views.
+ * Phones: the list and the thread are separate views. Live: Socket.IO `/support` refreshes the list, counts and the open thread.
  * @perm VIEW support.conversations.read · reply support.conversations.reply · assign .assign · resolve .close
  */
 export default function InboxPage() {
     usePageMetadata({ title: "Inbox" });
     const { conversationId } = useParams();
+    useSupportSocket(conversationId);
     const [sp, setSp] = useSearchParams();
     const view = sp.get("view") ?? "mine";
     const status = sp.get("status") ?? "OPEN,PENDING";

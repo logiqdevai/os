@@ -66,3 +66,14 @@ export const channelFormSchema = z
     })
     .refine((v) => v.type !== "EMAIL" || !!v.email_address, { path: ["email_address"], message: "An email channel needs an address" });
 export type ChannelFormValues = z.infer<typeof channelFormSchema>;
+
+/** Website chat widget appearance (SupportChannel.config) and allowed sites. */
+export const widgetAppearanceSchema = z.object({
+    title: z.string().trim().max(80).optional(),
+    welcome_message: z.string().trim().max(500).optional(),
+    color: z.union([z.literal(""), z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a hex colour like #2563eb")]).optional(),
+    position: z.enum(["right", "left"]),
+    require_email: z.boolean(),
+    allowed_origins: z.string().optional(),
+});
+export type WidgetAppearanceValues = z.infer<typeof widgetAppearanceSchema>;

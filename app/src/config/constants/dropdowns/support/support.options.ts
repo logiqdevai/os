@@ -173,3 +173,8 @@ export const PriorityTone: Record<TicketPriority, BadgeVariant> = { URGENT: "dan
 export const StatusCategoryTone: Record<TicketStatusCategory, BadgeVariant> = { NEW: "info", OPEN: "info", PENDING_CUSTOMER: "warning", ON_HOLD: "neutral", RESOLVED: "success", CLOSED: "neutral" };
 export const ConversationStatusTone: Record<ConversationStatus, BadgeVariant> = { OPEN: "info", PENDING: "warning", SNOOZED: "violet", RESOLVED: "success" };
 export const KnowledgeStatusTone: Record<KnowledgeArticleStatus, BadgeVariant> = { DRAFT: "neutral", IN_REVIEW: "warning", PUBLISHED: "success", ARCHIVED: "neutral" };
+
+export const WidgetPositionOptions: DropdownOption<"right" | "left">[] = [
+    { id: "right", label: "Bottom right" },
+    { id: "left", label: "Bottom left" },
+];

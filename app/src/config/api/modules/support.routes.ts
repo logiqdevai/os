@@ -1,5 +1,9 @@
 /** 13 Customer Support API (api/src/modules/support). */
 export const SupportApiRoutes = {
+    /** Socket.IO namespace for live inbox updates (agents) and the website widget (visitors). */
+    socket_namespace: "/support",
+    /** Public embeddable chat script of a WIDGET / LIVE_CHAT channel. */
+    widgetScript: (key: string) => `/support/widget/${key}.js`,
     settings: "/support/settings",
     inboxes: { list: "/support/inboxes", detail: (id: string) => `/support/inboxes/${id}`, archive: (id: string) => `/support/inboxes/${id}/archive` },
     channels: {
