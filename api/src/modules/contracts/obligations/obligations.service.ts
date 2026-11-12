@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ContractObligationStatus, ModuleKey, Prisma } from 'generated/prisma';
+import { ContractObligationStatus, ExtractionReviewState, ModuleKey, Prisma } from 'generated/prisma';
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { AuditService } from '@/shared/audit/audit.service';
 import { EventsService } from '@/shared/events/events.service';
@@ -37,6 +37,8 @@ export class ContractObligationsService {
             ...(query.overdue && { status: { in: OPEN }, due_date: { lt: now } }),
             ...(query.due_within_days && { status: { in: OPEN }, due_date: { gte: now, lte: addDays(now, query.due_within_days) } }),
             ...(query.search && { title: { contains: query.search, mode: 'insensitive' } }),
+            // AI suggestions waiting for review (or rejected) are not obligations yet (04 §75).
+            NOT: { review_state: { in: [ExtractionReviewState.PENDING_REVIEW, ExtractionReviewState.REJECTED] } },
         };
         const [items, total] = await Promise.all([
             this.prisma.contractObligation.findMany({
