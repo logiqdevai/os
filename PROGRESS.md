@@ -20,6 +20,7 @@ Missing functionality may be added to DB, API and UI.
 | Seed | `cd api && npx dotenv run -f .env.staging -- npx prisma db seed` | Idempotent. Slow over the remote link (~5–10 min). |
 
 Test accounts (staging, test data only):
+- `petrosrodinos@gmail.com` / same as the email — the user's own account, org "Petros Studio": OpenAI + Resend (send-only key) connected through Integrations; seeded with `scripts/demo-data.mjs` + `scripts/demo-data-extra.mjs` (colleagues `kim|jonas|sofia|marco|elena|nikos|laura@demo.logiqdev.test`, password `Password123!`). Notifications there are in-app only (email would try fake addresses through the live Resend).
 - `owner@logiqdev.test` / `Password123!` — owner of org "Logiqdev" (all permissions, demo data from `scripts/demo-data.mjs`).
 - `portal.customer@logiqdev.test` / `PortalTest-2026!` — customer portal user of Helios Energy (open `/portal`).
 - `sam.signup@logiqdev.test` / `SignupTest-2026!` — owner of a fresh, nearly empty org "Sweep Studio" (sign-up flow test).
@@ -141,6 +142,16 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 
 ## Log
 
+- 2026-11-12 — **Coordinator: live feature test pass on the user's account.** ~330 checks across AI (proposal draft, contract review/obligations,
+  support suggest/summarize/auto-answer grounded in a published article, comm AI x5, docs Q&A, status update, release notes), MFA (TOTP, recovery
+  codes, rate limit, enforcement), idle timeout, security policy, sessions, domains, SSO secret handling, delegations, access reviews, retention,
+  webhooks (secret once, rotate, pause), calendar (room conflict 409, one-occurrence edit, iCal feed, projected dates), push devices, messaging
+  (huddle, moderation, export), CRM (custom fields, saved views, merge, bulk, import, reports), PDFs, public proposal links, portal, people, time,
+  all 568 GET routes, page sweep at 1280px and 390px over seeded data. Fixed: OpenAI strict schema + missing assumptions list, Resend send-only keys,
+  webhook URL shown in the app, `organization.name` → `display_name` (iCal feed, notification delivery, forms), duplicate task-assigned notification,
+  widget (script origin, localhost origin, page URL query stripped), AI summaries rendered as Markdown, SSRF guard for hostnames resolving to private
+  addresses, status-update period ordering. Not testable without outside access: real email delivery (Resend has no verified domain: only the account
+  owner's address can receive), SMS (no Twilio), real SSO login, external calendar sync. Registration is rate limited per IP (1 hour block) — reuse accounts.
 - 2026-11-12 — **13 Support AI auto-answer + office hours + typing; 12 huddle audio** (agent 07/13 + 11/12 follow-up). Typechecked; not run live.
   - **AI auto-answer** (`support/ai/support-ai-agent.service.ts`, event bus after `support.conversation.created|customer_replied`): per channel
     `SupportChannel.config.ai = { mode: OFF|SUGGEST|AUTO_REPLY, min_confidence, max_turns, handover_phrases }` (`ai_agent_enabled` mirrors mode),
