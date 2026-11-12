@@ -4,7 +4,7 @@ import { ModuleKey } from 'generated/prisma';
 import { z } from 'zod';
 import { JwtGuard } from '@/shared/guards/jwt.guard';
 import { PermissionsGuard } from '@/shared/authorization/guards/permissions.guard';
-import { CurrentOrg, RequirePermission } from '@/shared/authorization/decorators/require-permission.decorator';
+import { CurrentOrg, RequireAnyPermission, RequirePermission } from '@/shared/authorization/decorators/require-permission.decorator';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { ZodValidationPipe } from '@/shared/pipes/zod.validation.pipe';
 import { AutomationInsightsService } from './automation-insights.service';
@@ -46,8 +46,8 @@ export class AutomationSettingsController {
     }
 
     @Get('triggers')
-    @RequirePermission('automation.rules.read')
-    @ApiOperation({ summary: 'Trigger catalog + event keys discovered on the bus' })
+    @RequireAnyPermission('automation.rules.read', 'automation.webhooks.read')
+    @ApiOperation({ summary: 'Trigger catalog + event keys discovered on the bus (also the event picker of outbound webhooks)' })
     triggers(@CurrentOrg() ctx: OrgContext, @Query(new ZodValidationPipe(CatalogQuerySchema)) query: z.infer<typeof CatalogQuerySchema>) {
         return this.insights.triggers(ctx, query);
     }

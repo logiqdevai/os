@@ -93,15 +93,10 @@ export class CreateChannelDto {
     @Matches(/^https:\/\/[^\s/]+$/, { each: true, message: 'Each origin must look like https://example.com' })
     allowed_origins?: string[];
 
-    @ApiProperty({ required: false, description: 'Widget colours, welcome text, office hours, form fields' })
+    @ApiProperty({ required: false, description: 'Widget colours, welcome text, form fields. The `ai` and `office_hours` keys are kept; change them with PUT /support/channels/:id/ai-agent and /office-hours.' })
     @IsOptional()
     @IsObject()
     config?: Record<string, unknown>;
-
-    @ApiProperty({ required: false })
-    @IsOptional()
-    @IsBoolean()
-    ai_agent_enabled?: boolean;
 
     @ApiProperty({ required: false })
     @IsOptional()

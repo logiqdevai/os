@@ -13,6 +13,9 @@ import { AcceptSuggestionSchema, RejectSuggestionSchema, SuggestionQuerySchema, 
 import { IncidentsService } from './incidents/incidents.service';
 import { IncidentQuerySchema } from './incidents/dto/incident.dto';
 import { SupportEmailService } from './email/support-email.service';
+import { SupportAiAgentService } from './ai/support-ai-agent.service';
+import { InboxesService } from './inboxes/inboxes.service';
+import { ChannelAiConfigSchema, OfficeHoursSchema } from './common/channel-config.utils';
 
 const id = z.object({ id: z.string().uuid() });
 const M = ModuleKey.SUPPORT;
@@ -29,6 +32,8 @@ export class SupportMcp implements OnModuleInit {
         private readonly ai: SupportAiService,
         private readonly incidents: IncidentsService,
         private readonly email: SupportEmailService,
+        private readonly aiAgent: SupportAiAgentService,
+        private readonly inboxes: InboxesService,
     ) { }
 
     onModuleInit() {
@@ -136,6 +141,21 @@ export class SupportMcp implements OnModuleInit {
                 handler: (ctx, { id: sid, ...dto }) => this.ai.accept(ctx, sid, dto),
             },
             { name: 'support_ai_suggestions_reject', description: 'Reject an AI suggestion with an optional note.', permission: 'support.ai.use', module: M, resource_type: 'support_ai_suggestion', input: RejectSuggestionSchema.extend({ id: z.string().uuid() }), handler: (ctx, { id: sid, note }) => this.ai.reject(ctx, sid, note) },
+            // --- AI auto-answer -------------------------------------------------------------------
+            { name: 'support_ai_sessions_list', description: 'AI auto-answer sessions of a conversation: status, turns, cited articles, handover reason, usage.', permission: 'support.conversations.read', module: M, resource_type: 'support_conversation', input: z.object({ conversation_id: z.string().uuid() }), handler: (ctx, a) => this.aiAgent.sessions(ctx, a.conversation_id) },
+            { name: 'support_ai_take_over', description: 'Take a conversation over from the AI assistant (ends its active session; the customer is not messaged).', permission: 'support.conversations.reply', module: M, resource_type: 'support_conversation', input: z.object({ conversation_id: z.string().uuid() }), handler: (ctx, a) => this.aiAgent.takeOver(ctx, a.conversation_id) },
+            { name: 'support_channels_automation_get', description: 'AI auto-answer mode / threshold / max turns and office hours (with open now?) of a channel.', permission: 'support.inboxes.read', module: M, resource_type: 'support_channel', input: id, handler: (ctx, a) => this.inboxes.channelAutomation(ctx, a.id) },
+            {
+                name: 'support_channels_ai_agent_update',
+                description: 'Set AI auto-answer on a channel: mode OFF | SUGGEST | AUTO_REPLY, min_confidence (0.5–0.99), max_turns, handover_phrases. AUTO_REPLY lets the AI answer customers.',
+                permission: 'support.ai.configure',
+                module: M,
+                resource_type: 'support_channel',
+                sensitive: true,
+                input: ChannelAiConfigSchema.extend({ id: z.string().uuid() }),
+                handler: (ctx, { id: cid, ...dto }) => this.inboxes.setAiAgent(ctx, cid, dto),
+            },
+            { name: 'support_channels_office_hours_update', description: 'Set office hours of a widget / live chat channel (organization hours or custom per weekday, time zone, offline message).', permission: 'support.inboxes.manage', module: M, resource_type: 'support_channel', input: OfficeHoursSchema.extend({ id: z.string().uuid() }), handler: (ctx, { id: cid, ...dto }) => this.inboxes.setOfficeHours(ctx, cid, dto) },
             // --- Incidents -----------------------------------------------------------------------
             { name: 'support_incidents_list', description: 'List incidents (status DETECTED|CONFIRMED|RESOLVED|DISMISSED, severity).', permission: 'support.tickets.read', module: M, resource_type: 'support_incident', input: IncidentQuerySchema, handler: (ctx, a) => this.incidents.findAll(ctx, a) },
             { name: 'support_incidents_get', description: 'Get an incident with its timeline and affected tickets.', permission: 'support.tickets.read', module: M, resource_type: 'support_incident', input: id, handler: (ctx, a) => this.incidents.findOne(ctx, a.id) },

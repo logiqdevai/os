@@ -48,12 +48,19 @@ export class NotificationPreferencesService implements OnModuleInit {
 
     async getSettings(ctx: OrgContext) {
         const membership_id = this.me(ctx);
-        const [row, org] = await Promise.all([
+        const [row, org, member, sms, devices] = await Promise.all([
             this.prisma.notificationRecipientSettings.findUnique({ where: { membership_id } }),
             this.prisma.notificationOrgSettings.findUnique({ where: { organization_id: ctx.organization_id } }),
+            this.prisma.membership.findUnique({ where: { id: membership_id }, select: { user: { select: { id: true, email: true, phone: true } } } }),
+            this.prisma.integrationConnection.count({ where: { organization_id: ctx.organization_id, category: 'SMS', provider: 'TWILIO', status: 'ACTIVE', disconnected_at: null } }),
+            ctx.user_id ? this.prisma.notificationPushDevice.count({ where: { user_id: ctx.user_id, platform: 'WEB', disabled_at: null } }) : 0,
         ]);
         const enabled_channels = org?.enabled_channels ?? [NotificationChannel.IN_APP, NotificationChannel.EMAIL];
-        if (row) return { ...row, organization: { enabled_channels } };
+        const phone = member?.user?.phone ?? null;
+        // Where each channel reaches me (phone masked: the profile owns it, 01).
+        const organization = { enabled_channels, sms_available: sms > 0 };
+        const contact = { email: member?.user?.email ?? null, phone_masked: phone ? `${phone.slice(0, 3)}••••${phone.slice(-3)}` : null, push_devices: devices };
+        if (row) return { ...row, organization, contact };
         // Defaults (no row yet) — same values as the column defaults.
         return {
             id: null, organization_id: ctx.organization_id, membership_id, recipient_type: NotificationRecipientType.MEMBERSHIP,
@@ -61,7 +68,7 @@ export class NotificationPreferencesService implements OnModuleInit {
             sound_enabled: true, dnd_enabled: false, dnd_start_time: null, dnd_end_time: null, dnd_weekdays: [], dnd_until: null, timezone: null,
             dnd_allow_critical: true, digest_frequency: org?.default_digest_frequency ?? 'IMMEDIATE', digest_channel: 'EMAIL', digest_hour: null, digest_weekday: null,
             show_previews: !(org?.hide_previews_by_default ?? false), thread_notifications: true, reaction_notifications: true, keyword_notifications: true, language: null,
-            organization: { enabled_channels },
+            organization, contact,
         };
     }
 
@@ -91,7 +98,9 @@ export class NotificationPreferencesService implements OnModuleInit {
             this.prisma.notificationOrgDefault.findMany({ where: { organization_id: ctx.organization_id } }),
             this.prisma.notificationOrgSettings.findUnique({ where: { organization_id: ctx.organization_id } }),
         ]);
-        const channels = (org?.enabled_channels ?? [NotificationChannel.IN_APP, NotificationChannel.EMAIL]).filter((c) => c === NotificationChannel.IN_APP || c === NotificationChannel.EMAIL);
+        // Channels the organization enabled and the engine delivers (DESKTOP has no provider yet), in a stable order.
+        const enabled = org?.enabled_channels ?? [NotificationChannel.IN_APP, NotificationChannel.EMAIL];
+        const channels = [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH, NotificationChannel.SMS].filter((c) => c === NotificationChannel.IN_APP || enabled.includes(c));
         const enabledModules = new Set(ctx.effective.modules);
         return types
             .filter((t) => !enabledModules.size || enabledModules.has(t.module))
@@ -108,6 +117,8 @@ export class NotificationPreferencesService implements OnModuleInit {
                         const forced = mandatory && (t.forced_channels.includes(channel) || channel === NotificationChannel.IN_APP);
                         if (forced) return { channel, enabled: true, source: 'organization' as const, locked: true };
                         if (own) return { channel, enabled: own.enabled, source: 'own' as const, locked: false };
+                        // Push mirrors the inbox unless switched off (same rule as NotificationDeliveryService.plan).
+                        if (channel === NotificationChannel.PUSH) return { channel, enabled: orgDefault ? orgDefault.enabled : true, source: orgDefault ? 'organization' as const : 'platform' as const, locked: false };
                         if (orgDefault) return { channel, enabled: orgDefault.enabled && orgDefault.channels.includes(channel), source: 'organization' as const, locked: false };
                         return { channel, enabled: t.default_channels.includes(channel), source: 'platform' as const, locked: false };
                     }),

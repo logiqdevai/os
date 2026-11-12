@@ -26,6 +26,7 @@ import { SupportAnalyticsService } from './analytics/analytics.service';
 import { SupportAnalyticsController } from './analytics/analytics.controller';
 import { SupportAiService } from './ai/support-ai.service';
 import { SupportAiController } from './ai/support-ai.controller';
+import { SupportAiAgentService } from './ai/support-ai-agent.service';
 import { SupportMcp } from './support.mcp';
 import { SupportWidgetService } from './widget/widget.service';
 import { SupportWidgetController } from './widget/widget.controller';
@@ -73,6 +74,7 @@ import { SupportEmailInboundController, SupportEmailSetupController } from './em
         IncidentsService,
         SupportAnalyticsService,
         SupportAiService,
+        SupportAiAgentService,
         SupportMcp,
         SupportWidgetService,
         SupportRealtimeService,

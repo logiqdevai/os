@@ -12,7 +12,7 @@ import { DeliveryQuery, DigestQuery, EventLogQuery } from '../dto/notification-a
 const day = (v: string | undefined, end = false) => (v ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T${end ? '23:59:59.999' : '00:00:00.000'}Z` : v) : undefined);
 const range = (q: { from?: string; to?: string }) => (q.from || q.to ? { ...(q.from && { gte: day(q.from) }), ...(q.to && { lte: day(q.to, true) }) } : undefined);
 
-/** Retrying makes sense for failures and for "no provider connected" (after Resend is connected). */
+/** Retrying makes sense for failures, "no provider connected" (after Resend / Twilio is connected) and push "no device" (after a browser registered). */
 const RETRYABLE: NotificationDeliveryStatus[] = [NotificationDeliveryStatus.FAILED, NotificationDeliveryStatus.SKIPPED];
 
 /**
@@ -82,14 +82,18 @@ export class NotificationLogService {
         // Purged rows (retention) and other organizations' rows are 404.
         if (!d) throw new NotFoundException({ message: 'Delivery not found', code: 'delivery_not_found' });
         this.audit.recordAsync(ctx, 'notification.delivery_viewed', { resource_type: 'notification_delivery', resource_id: id, metadata: { channel: d.channel, sensitive: true } });
-        return { ...d, rendered_body: d.preview_hidden ? null : d.rendered_body, can_retry: RETRYABLE.includes(d.status) && (d.status !== NotificationDeliveryStatus.SKIPPED || d.skip_reason === NotificationSkipReason.CHANNEL_NOT_AVAILABLE) };
+        return { ...d, rendered_body: d.preview_hidden ? null : d.rendered_body, can_retry: !d.digest_id && ['EMAIL', 'SMS', 'PUSH'].includes(d.channel) && RETRYABLE.includes(d.status)
+            && (d.status !== NotificationDeliveryStatus.SKIPPED || d.skip_reason === NotificationSkipReason.CHANNEL_NOT_AVAILABLE || (d.channel === 'PUSH' && d.skip_reason === NotificationSkipReason.NO_DEVICE)) };
     }
 
     async retry(ctx: OrgContext, id: string) {
         const d = await this.prisma.notificationDelivery.findFirst({ where: { id, organization_id: ctx.organization_id }, select: { id: true, status: true, skip_reason: true, channel: true, digest_id: true } });
         if (!d) throw new NotFoundException({ message: 'Delivery not found', code: 'delivery_not_found' });
         const ok = d.status === NotificationDeliveryStatus.FAILED || (d.status === NotificationDeliveryStatus.SKIPPED && d.skip_reason === NotificationSkipReason.CHANNEL_NOT_AVAILABLE);
-        if (!ok || d.channel !== 'EMAIL') throw new ConflictException({ message: 'Only failed email deliveries (or ones skipped because no provider was connected) can be retried', code: 'delivery_not_retryable' });
+        const retryable = d.status === NotificationDeliveryStatus.SKIPPED && d.skip_reason === NotificationSkipReason.NO_DEVICE && d.channel === 'PUSH';
+        if (!(ok || retryable) || !['EMAIL', 'SMS', 'PUSH'].includes(d.channel) || d.digest_id) {
+            throw new ConflictException({ message: 'Only failed email, SMS or push deliveries (or ones skipped because no provider or device was available) can be retried', code: 'delivery_not_retryable' });
+        }
         await this.engine.retry(id);
         await this.audit.record(ctx, 'notification.delivery_retried', { resource_type: 'notification_delivery', resource_id: id, metadata: { previous_status: d.status, skip_reason: d.skip_reason } });
         this.events.publish(ctx, { event_key: 'notification.delivery.retried', module: ModuleKey.NOTIFICATIONS, entity_kind: 'notification_delivery', entity_id: id, payload: {} });

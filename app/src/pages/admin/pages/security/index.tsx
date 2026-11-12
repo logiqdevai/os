@@ -95,9 +95,10 @@ export default function SecurityPolicyPage() {
     const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => (d ? { ...d, [key]: value } : d));
 
     const risky: string[] = [];
-    if (changes.mfa_policy && changes.mfa_policy !== "OPTIONAL") risky.push("Members without MFA will have to set it up before they can work.");
+    if (changes.mfa_policy && changes.mfa_policy !== "OPTIONAL") risky.push("Members without MFA will have to set it up before they can work, including you if you have not.");
     if (changes.allowed_ip_ranges && draft.allowed_ip_ranges.length) risky.push("Sign-in from any address outside the allowed ranges is blocked.");
     if (changes.session_duration_minutes && changes.session_duration_minutes < policy.data.session_duration_minutes) risky.push("New sessions will expire sooner; existing sessions keep their current expiry.");
+    if (changes.idle_timeout_minutes) risky.push(`Sessions idle for more than ${formatMinutes(changes.idle_timeout_minutes)} are signed out, including sessions open right now.`);
     if (changes.sso_required) risky.push("Members must sign in with your identity provider.");
     if (changes.password_min_length && changes.password_min_length > policy.data.password_min_length) risky.push("New passwords must follow the longer minimum; existing passwords keep working.");
 
@@ -133,7 +134,7 @@ export default function SecurityPolicyPage() {
                         </SettingRow>
                         <div className="flex gap-2 px-4 py-3 text-xs text-muted-foreground">
                             <Info className="mt-0.5 size-3.5 flex-none" />
-                            <span>The MFA policy is saved now and enforced at sign-in once MFA enrolment is available to members.</span>
+                            <span>Members who must use MFA and have not set it up are sent to set it up right after sign-in and cannot use anything else until they do. “Admins” are members who can manage security, settings, roles, permissions or members; “sensitive modules” means anyone holding a sensitive permission. Members set it up in Settings → Security; you can reset a member’s MFA from their profile.</span>
                         </div>
                     </Card>
                 </Section>
@@ -157,7 +158,7 @@ export default function SecurityPolicyPage() {
                         <SettingRow title="Session duration" hint="How long a sign-in lasts. Applies to new sessions.">
                             <Pick label="Session duration" value={String(draft.session_duration_minutes)} options={withCurrent(SessionDurationOptions, draft.session_duration_minutes, formatMinutes)} onChange={(v) => set("session_duration_minutes", Number(v))} />
                         </SettingRow>
-                        <SettingRow title="Idle timeout" hint="Saved now; enforced once activity tracking per session is on.">
+                        <SettingRow title="Idle timeout" hint="Sign out a session after this long without activity. Background refreshes do not count as activity.">
                             <Pick label="Idle timeout" value={draft.idle_timeout_minutes === null ? "none" : String(draft.idle_timeout_minutes)} options={withCurrent(IdleTimeoutOptions, draft.idle_timeout_minutes, formatMinutes)} onChange={(v) => set("idle_timeout_minutes", v === "none" ? null : Number(v))} />
                         </SettingRow>
                         <SettingRow title="Members can see and end their own sessions" hint={<>Admins always can, in <Link className="underline" to="/admin/sessions">Sessions</Link>.</>}>

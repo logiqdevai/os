@@ -3,7 +3,8 @@ import { InvitationPolicy, MembershipStatus, MfaPolicy, ModuleKey, OrganizationS
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { AuditService } from '@/shared/audit/audit.service';
 import { EventsService } from '@/shared/events/events.service';
-import { ipMatches, sha256 } from '@/shared/authorization/credentials.service';
+import { CredentialsService, ipMatches, sha256 } from '@/shared/authorization/credentials.service';
+import { MfaRequirementService } from '@/shared/authorization/mfa-requirement.service';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { UpdateSecurityPolicyInput } from './dto/security-policy.dto';
 
@@ -45,6 +46,8 @@ export class SecurityPolicyService {
         private readonly prisma: PrismaService,
         private readonly audit: AuditService,
         private readonly events: EventsService,
+        private readonly credentials: CredentialsService,
+        private readonly mfa: MfaRequirementService,
     ) { }
 
     // ---------------------------------------------------------------------------------------------
@@ -99,6 +102,9 @@ export class SecurityPolicyService {
 
         const changed = Object.keys(dto).filter((k) => JSON.stringify((before as Record<string, unknown>)[k]) !== JSON.stringify((saved as Record<string, unknown>)[k]));
         if (changed.length) {
+            // Enforcement caches pick the new MFA requirement and idle timeout up immediately.
+            this.credentials.forgetIdleTimeout(ctx.organization_id);
+            this.mfa.clear();
             const pick = (src: object) => Object.fromEntries(changed.map((k) => [k, (src as Record<string, unknown>)[k]]));
             await this.audit.record(ctx, 'organization.security_policy_changed', {
                 resource_type: 'organization_security_policy',

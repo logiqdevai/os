@@ -9,6 +9,9 @@ import { RegisterEmailDto } from '../dto/register-email.dto';
 import { LoginEmailDto } from '../dto/login-email.dto';
 import { OrganizationSetupService } from './organization-setup.service';
 import { SecurityPolicyService } from '../../admin/security/security-policy.service';
+import { MfaRequirementService } from '@/shared/authorization/mfa-requirement.service';
+import { MFA_CHALLENGE_TTL_SECONDS, MfaFactorInput, MfaService } from '../mfa/mfa.service';
+import { AuthRateLimitService } from '../mfa/auth-rate-limit.service';
 
 export interface ClientMeta {
     ip_address?: string | null;
@@ -30,9 +33,13 @@ export class EmailAuthService {
         private readonly audit: AuditService,
         private readonly organizations: OrganizationSetupService,
         private readonly securityPolicy: SecurityPolicyService,
+        private readonly mfa: MfaService,
+        private readonly mfaRequirement: MfaRequirementService,
+        private readonly rateLimit: AuthRateLimitService,
     ) { }
 
     async registerWithEmail(dto: RegisterEmailDto, meta: ClientMeta) {
+        await this.rateLimit.consume(`register:${meta.ip_address ?? 'unknown'}`, 10, 3600);
         const email = dto.email.trim().toLowerCase();
         const existing = await this.prisma.user.findUnique({ where: { email } });
         if (existing) throw new ConflictException({ message: 'An account with this email already exists', code: 'email_taken' });
@@ -72,11 +79,19 @@ export class EmailAuthService {
 
         const { password_max_age_days: _maxAge, ...session } = await this.issueSession(user.id, user.role, activeOrg, meta);
         await this.audit.record(null, 'user.registered', { resource_type: 'user', resource_id: user.id, metadata: { organization_id: activeOrg } });
-        return { ...session, user: publicUser(user) };
+        // Joining an organization that requires MFA for everyone: the app sends the person to enrolment first.
+        const requirement = await this.mfaRequirement.requirementFor(user.id, activeOrg);
+        return { ...session, mfa_enrollment_required: requirement.required, mfa_required_reason: requirement.reason, user: publicUser(user) };
     }
 
+    /**
+     * Step 1 of sign-in. Without MFA this returns a session. With MFA it returns `{ mfa_required, mfa_token }`
+     * and the session is issued by `completeMfaLogin` (POST /auth/mfa/verify) after a valid code (01 §74).
+     */
     async loginWithEmail(dto: LoginEmailDto, meta: ClientMeta) {
         const email = dto.email.trim().toLowerCase();
+        await this.rateLimit.consume(`login-ip:${meta.ip_address ?? 'unknown'}`, 30, 300);
+        await this.rateLimit.consume(`login-email:${email}`, 10, 300);
         const user = await this.prisma.user.findUnique({ where: { email } });
         const ok = !!user && !!user.password && (await bcrypt.compare(dto.password, user.password));
         if (!ok) {
@@ -85,14 +100,39 @@ export class EmailAuthService {
         }
         if (user.status !== 'ACTIVE') throw new ForbiddenException({ message: 'This account is not active', code: 'user_inactive' });
 
+        if (user.mfa_enabled) {
+            return { mfa_required: true as const, mfa_token: await this.mfa.createChallenge(user.id), mfa_methods: ['TOTP', 'RECOVERY_CODE'], expires_in_seconds: MFA_CHALLENGE_TTL_SECONDS };
+        }
+        return this.finishLogin(user, meta, null);
+    }
+
+    /** Step 2 of sign-in for users with MFA: the challenge token from step 1 plus a TOTP code or a recovery code. */
+    async completeMfaLogin(input: { mfa_token: string } & MfaFactorInput, meta: ClientMeta) {
+        const { user_id, method } = await this.mfa.verifyChallenge(input.mfa_token, input, meta.ip_address ?? null);
+        const user = await this.prisma.user.findUnique({ where: { id: user_id } });
+        if (!user || user.status !== 'ACTIVE') throw new ForbiddenException({ message: 'This account is not active', code: 'user_inactive' });
+        const remaining = method === 'RECOVERY_CODE' ? (await this.mfa.status(user.id, null)).recovery_codes.remaining : null;
+        return { ...(await this.finishLogin(user, meta, method)), recovery_codes_remaining: remaining };
+    }
+
+    private async finishLogin(user: { id: string; role: string; default_organization_id: string | null; password_changed_at: Date | null; mfa_enabled: boolean; password?: string }, meta: ClientMeta, mfaMethod: string | null) {
         const session = await this.issueSession(user.id, user.role, user.default_organization_id, meta);
         await this.prisma.user.update({ where: { id: user.id }, data: { last_login_at: new Date() } });
-        await this.audit.record(null, 'user.login', { resource_type: 'user', resource_id: user.id, metadata: { ip: meta.ip_address } });
+        await this.audit.record(null, 'user.login', { resource_type: 'user', resource_id: user.id, metadata: { ip: meta.ip_address, mfa: mfaMethod } });
         // 01 §73 password max age: the app asks the user to choose a new password (sign-in still succeeds).
         const maxAge = session.password_max_age_days;
         const password_change_required = !!maxAge && (!user.password_changed_at || user.password_changed_at.getTime() < Date.now() - maxAge * 86400_000);
+        // 01 §74: members the policy requires to use MFA but who have not enrolled get a session that only reaches
+        // /auth/* until they enrol (PermissionsGuard answers 403 mfa_enrollment_required elsewhere).
+        const requirement = user.mfa_enabled ? null : await this.mfaRequirement.requirementFor(user.id, user.default_organization_id);
         const { password_max_age_days: _maxAge, ...rest } = session;
-        return { ...rest, password_change_required, user: publicUser(user) };
+        return {
+            ...rest,
+            password_change_required,
+            mfa_enrollment_required: !!requirement?.required,
+            mfa_required_reason: requirement?.reason ?? null,
+            user: publicUser(user),
+        };
     }
 
     /** Session lifetime and IP allow-list come from the active organization's security policy (01 §72–73). */
@@ -162,8 +202,11 @@ export class EmailAuthService {
             });
         }
 
+        const requirement = await this.mfaRequirement.requirementFor(userId, active?.organization_id ?? null);
+
         return {
             user: publicUser(user),
+            mfa: { enabled: user.mfa_enabled, required: requirement.required, required_reason: requirement.reason, enrollment_required: requirement.required && !user.mfa_enabled },
             organizations: activeMemberships.map((m) => ({ ...m.organization, membership_id: m.id, job_title: m.job_title })),
             active_organization: active ? { ...active.organization, membership_id: active.id, default_branch_id: active.default_branch_id } : null,
             customer_memberships: customerMemberships,

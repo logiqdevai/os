@@ -16,22 +16,29 @@ import { NotificationAdminMcp } from './admin/notification-admin.mcp';
 import {
     NotificationDefaultsController, NotificationDeliveryRulesController, NotificationEventTypesController, NotificationLogController, NotificationSettingsController, NotificationTemplatesController,
 } from './admin/notification-admin.controller';
+import { NotificationWebhookEvents } from './delivery/notification-webhook-events.service';
+import { WebPushKeysService } from './push/web-push-keys.service';
+import { WebPushSender } from './push/web-push.sender';
+import { PushDevicesService } from './push/push-devices.service';
+import { MyNotificationDigestsController, NotificationDevicesController } from './push/push-devices.controller';
+import { NotificationRetentionService } from './retention/notification-retention.service';
 
 /**
  * 14 Notifications & Activity Center. Other modules import this module and call `NotificationsService.notify()`,
  * or simply publish events with the payload contract (see notifications.fanout.ts / PROGRESS.md).
  */
 @Module({
-    // Email goes through 11 (CommDispatchService) with the organization's own Resend connection.
+    // Email and SMS go through 11 (CommDispatchService) with the organization's own Resend / Twilio connection; push uses platform VAPID keys.
     imports: [CommunicationsModule],
-    // Order matters: /notifications/preferences/* must register before /notifications/:id.
+    // Order matters: /notifications/preferences/*, /devices, /digests must register before /notifications/:id.
     controllers: [
-        NotificationPreferencesController, NotificationsController, ActivityController, AnnouncementsController,
+        NotificationPreferencesController, NotificationDevicesController, MyNotificationDigestsController, NotificationsController, ActivityController, AnnouncementsController,
         NotificationEventTypesController, NotificationTemplatesController, NotificationDefaultsController, NotificationDeliveryRulesController, NotificationLogController, NotificationSettingsController,
     ],
     providers: [
         NotificationsService, NotificationPreferencesService, ActivityService, AnnouncementsService, InboxActionsService, NotificationsFanout, NotificationsMcp,
         NotificationRulesService, NotificationDeliveryService, NotificationAdminService, NotificationLogService, NotificationAdminMcp,
+        NotificationWebhookEvents, WebPushKeysService, WebPushSender, PushDevicesService, NotificationRetentionService,
     ],
     exports: [NotificationsService, ActivityService],
 })

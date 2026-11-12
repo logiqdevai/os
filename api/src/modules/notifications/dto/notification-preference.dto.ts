@@ -50,6 +50,7 @@ export const UpdateRecipientSettingsSchema = z.object({
     level: z.nativeEnum(NotificationLevel).optional(),
     in_app_enabled: z.boolean().optional(),
     email_enabled: z.boolean().optional(),
+    sms_enabled: z.boolean().optional(),
     push_enabled: z.boolean().optional(),
     sound_enabled: z.boolean().optional(),
     show_previews: z.boolean().optional(),
@@ -58,6 +59,7 @@ export const UpdateRecipientSettingsSchema = z.object({
     dnd_end_time: z.string().regex(HHMM).nullable().optional(),
     dnd_weekdays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
     dnd_until: z.string().datetime().nullable().optional(),
+    dnd_allow_critical: z.boolean().optional(),
     timezone: z.string().max(64).nullable().optional(),
     digest_frequency: z.nativeEnum(NotificationDigestFrequency).optional(),
 });

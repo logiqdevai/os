@@ -93,3 +93,18 @@ export const UpdateInboundWebhookSchema = z.object({
     rate_limit_per_minute: z.number().int().min(1).max(10000).nullable().optional(),
     status: z.enum([InboundWebhookStatus.ACTIVE, InboundWebhookStatus.PAUSED]).optional(),
 });
+
+/** MCP input for outbound endpoints (same fields and limits as CreateOutboundWebhookDto). */
+export const CreateOutboundWebhookSchema = z.object({
+    name: z.string().min(1).max(120),
+    description: z.string().max(1000).optional(),
+    url: z.string().url().max(2000),
+    subscribed_events: z.array(z.string().max(200)).max(200).describe('Event keys, prefix wildcards (`crm.*`) or `*`'),
+    headers: z.record(z.string(), z.string()).optional(),
+    api_version: z.string().max(20).optional(),
+    max_attempts: z.number().int().min(1).max(20).optional(),
+    retry_backoff_seconds: z.number().int().min(5).max(86400).optional(),
+    timeout_seconds: z.number().int().min(1).max(30).optional(),
+    disable_after_failures: z.number().int().min(1).max(10000).nullable().optional(),
+});
+export const UpdateOutboundWebhookSchema = CreateOutboundWebhookSchema.partial().extend({ id: z.string().uuid() });

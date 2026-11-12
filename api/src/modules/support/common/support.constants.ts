@@ -66,3 +66,6 @@ export const MEMBER_SELECT = {
 } as const;
 
 export const USER_PUBLIC_SELECT = { id: true, email: true, display_name: true, first_name: true, last_name: true, profile_photo_url: true } as const;
+
+/** Customer-facing label on every automatic AI answer (13 §3: AI replies are clearly marked). */
+export const AI_REPLY_LABEL = 'Answered by our AI assistant. Reply "human" to talk to a person.';

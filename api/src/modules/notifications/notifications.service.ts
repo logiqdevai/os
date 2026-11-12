@@ -20,6 +20,7 @@ import { NotifyContext, NotifyInput, NotifyRecipient } from './interfaces/notify
 import { humanizeEventKey, memberUserSelect } from './utils/system-context';
 import { NotificationRulesService } from './delivery/notification-rules.service';
 import { NotificationDeliveryService } from './delivery/notification-delivery.service';
+import { NotificationWebhookEvents } from './delivery/notification-webhook-events.service';
 
 type EventTypeRow = { id: string; key: string; mandatory_by_default: boolean; category: NotificationCategory; priority: NotificationPriority };
 
@@ -46,6 +47,7 @@ export class NotificationsService {
         private readonly events: EventsService,
         private readonly rules: NotificationRulesService,
         private readonly delivery: NotificationDeliveryService,
+        private readonly webhooks: NotificationWebhookEvents,
     ) { }
 
     // ---------------------------------------------------------------- inbox (own rows only)
@@ -326,8 +328,12 @@ export class NotificationsService {
             where: { id: event.id },
             data: { status: NotificationEventStatus.PROCESSED, processed_at: now, notification_count: { increment: res.count } },
         });
-        // Other channels (email now): preferences, quiet hours, digests and the org's own provider decide per recipient.
-        if (res.count) this.delivery.planAsync(orgId, event.id);
+        // Other channels (email, SMS, push): preferences, quiet hours, digests and the org's own provider decide per recipient.
+        if (res.count) {
+            this.delivery.planAsync(orgId, event.id);
+            // 14 §14 — notification.created for outbound webhooks / automation (only when the organization turned it on).
+            this.webhooks.created(orgId, event.id).catch((e) => this.logger.warn(`notification.created not published: ${(e as Error).message}`));
+        }
         if (mandatory && res.count) {
             this.audit.recordAsync(ctx as OrgContext, 'notification.mandatory_delivered', { resource_type: 'notification_event', resource_id: event.id, metadata: { event_key: input.event_key, count: res.count } });
         }

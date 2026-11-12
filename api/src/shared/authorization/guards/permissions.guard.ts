@@ -4,6 +4,7 @@ import { AuthorizationService } from '../authorization.service';
 import { PERMISSIONS_METADATA, PermissionRequirement } from '../decorators/require-permission.decorator';
 import { AccessChannel, RequestPrincipal } from '../interfaces/org-context.interface';
 import { AuditService } from '@/shared/audit/audit.service';
+import { MfaRequirementService } from '../mfa-requirement.service';
 
 /**
  * Organization permission guard. Order: JwtGuard → PermissionsGuard.
@@ -17,6 +18,7 @@ export class PermissionsGuard implements CanActivate {
         private readonly reflector: Reflector,
         private readonly authorization: AuthorizationService,
         private readonly audit: AuditService,
+        private readonly mfa: MfaRequirementService,
     ) { }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -37,6 +39,12 @@ export class PermissionsGuard implements CanActivate {
             user_agent: request.headers['user-agent'] ?? null,
         }));
         request.org = ctx;
+
+        // 01 §74: a person the security policy requires to use MFA works only after enrolling (the app shows the
+        // enrolment screen; /auth/* self-service endpoints stay open). API keys and service accounts are exempt.
+        if (principal?.kind === 'user' && ctx.user_id && (await this.mfa.mustEnroll(ctx.user_id, ctx.organization_id, Object.keys(ctx.effective.permissions)))) {
+            throw new ForbiddenException({ message: 'Your organization requires two-step verification. Set it up to continue.', code: 'mfa_enrollment_required' });
+        }
 
         if (requirement.mode === 'member') return true;
 

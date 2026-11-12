@@ -8,11 +8,13 @@ import { CreateJwtServiceModule } from '@/shared/utils/jwt/jwt.module';
 import { ResendModule } from '@/integrations/notifications/resend/resend.module';
 import { OrganizationSetupService } from './services/organization-setup.service';
 import { SecurityPolicyModule } from '../admin/security/security-policy.module';
+import { MfaModule } from './mfa/mfa.module';
+import { MfaController } from './controllers/mfa.controller';
 
 @Module({
-  imports: [PrismaModule, CreateJwtServiceModule, ResendModule, SecurityPolicyModule],
+  imports: [PrismaModule, CreateJwtServiceModule, ResendModule, SecurityPolicyModule, MfaModule],
   providers: [EmailAuthService, PasswordService, OrganizationSetupService, Logger],
-  controllers: [EmailAuthController, PasswordController],
+  controllers: [EmailAuthController, PasswordController, MfaController],
   exports: [OrganizationSetupService, EmailAuthService],
 })
 export class AuthModule { }

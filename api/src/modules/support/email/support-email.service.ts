@@ -143,7 +143,7 @@ export class SupportEmailService implements OnModuleInit, OnModuleDestroy {
     private onEvent(e: PublishedEvent) {
         if (e.event_key !== 'support.conversation.replied') return;
         const p = (e.payload ?? {}) as Record<string, unknown>;
-        if (p.channel_type !== 'EMAIL' || p.kind !== 'AGENT' || typeof p.message_id !== 'string') return;
+        if (p.channel_type !== 'EMAIL' || (p.kind !== 'AGENT' && p.kind !== 'AI_AGENT') || typeof p.message_id !== 'string') return;
         const messageId = p.message_id;
         setImmediate(() => this.sendReply(e.organization_id, messageId).catch((err) => this.logger.warn(`support email ${messageId} not sent: ${(err as Error).message}`)));
     }

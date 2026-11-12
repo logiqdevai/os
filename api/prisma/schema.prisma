@@ -418,21 +418,23 @@ model PasswordResetToken {
 
 /// 01 §6, §74 — configured authentication factors per user (passkeys, OAuth links, MFA).
 model UserAuthMethod {
-  id           String         @id @default(uuid())
-  user_id      String
-  type         AuthMethodType
+  id                String         @id @default(uuid())
+  user_id           String
+  type              AuthMethodType
   /// Provider or credential identifier: OAuth subject, passkey credential id, phone number, etc.
-  identifier   String?
-  /// Hashed secret where applicable (TOTP seed, recovery codes). Never plain text.
-  secret_hash  String?
-  label        String?
+  identifier        String?
+  /// One-way hash where the secret only needs to be compared (one recovery code per RECOVERY_CODES row). Never plain text.
+  secret_hash       String?
+  /// Reversible secret encrypted with secret-box (AES-256-GCM), e.g. the TOTP seed, which must be read to verify codes.
+  secret_ciphertext String?
+  label             String?
   /// Provider-specific data (OAuth provider name, passkey public key, transports, …).
-  metadata     Json?
-  verified_at  DateTime?
-  last_used_at DateTime?
-  disabled_at  DateTime?
-  created_at   DateTime       @default(now())
-  updated_at   DateTime       @updatedAt
+  metadata          Json?
+  verified_at       DateTime?
+  last_used_at      DateTime?
+  disabled_at       DateTime?
+  created_at        DateTime       @default(now())
+  updated_at        DateTime       @updatedAt
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -16200,8 +16202,8 @@ model NotificationOrgSettings {
   /// 14 §9 — default retry policy for failed channel deliveries.
   max_delivery_attempts    Int                         @default(5)
   retry_backoff_seconds    Int                         @default(60)
-  /// Days to keep read / archived notifications before purge; null = keep.
-  retention_days           Int?
+  /// Days to keep read / archived notifications before the daily purge (mandatory ones are kept); null = keep forever.
+  retention_days           Int?                        @default(365)
   /// 14 §14 — emit notification.* webhook events through 20 OutboundWebhook.
   webhook_events_enabled   Boolean                     @default(false)
   updated_by_membership_id String?
@@ -16450,6 +16452,21 @@ model NotificationPushDevice {
   @@unique([platform, token])
   @@index([user_id, disabled_at])
   @@map("notification_push_devices")
+}
+
+/// 14 §5 — the deployment's Web Push (VAPID) key pair. Platform-level, not per organization: push devices belong to a User and a
+/// browser holds one subscription per service worker, bound to one public key. Generated on first use (single row, id "default");
+/// the private key is encrypted with the secret box (api/src/shared/utils/crypto/secret-box.utils.ts) and never returned.
+model PlatformWebPushKey {
+  id                     String   @id @default("default")
+  /// URL-safe base64 VAPID public key (the browser's applicationServerKey).
+  public_key             String
+  private_key_ciphertext String
+  /// VAPID subject (mailto: or https: URL) sent to push services.
+  subject                String
+  created_at             DateTime @default(now())
+
+  @@map("platform_web_push_keys")
 }
 
 // --- Delivery rules -----------------------------------------------------------------------------

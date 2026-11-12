@@ -7,6 +7,7 @@ import { CurrentOrg, RequireAnyPermission, RequirePermission } from '@/shared/au
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { ZodValidationPipe } from '@/shared/pipes/zod.validation.pipe';
 import { SuggestionQuery, SuggestionQuerySchema, SupportAiService } from './support-ai.service';
+import { SupportAiAgentService } from './support-ai-agent.service';
 
 class ReviewSuggestionDto {
     @ApiProperty()
@@ -47,7 +48,24 @@ class RejectSuggestionDto {
 @Controller('support/ai')
 @UseGuards(JwtGuard, PermissionsGuard)
 export class SupportAiController {
-    constructor(private readonly ai: SupportAiService) { }
+    constructor(
+        private readonly ai: SupportAiService,
+        private readonly agent: SupportAiAgentService,
+    ) { }
+
+    @Get('conversations/:id/sessions')
+    @RequirePermission('support.conversations.read')
+    @ApiOperation({ summary: 'AI auto-answer sessions of a conversation: status, turns, cited articles, handover reason, token usage' })
+    sessions(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string) {
+        return this.agent.sessions(ctx, id);
+    }
+
+    @Post('conversations/:id/take-over')
+    @RequirePermission('support.conversations.reply')
+    @ApiOperation({ summary: 'Take the conversation over from the AI assistant (ends its active session; the customer is not messaged)' })
+    takeOver(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string) {
+        return this.agent.takeOver(ctx, id);
+    }
 
     @Get('status')
     @RequireAnyPermission('support.ai.use', 'support.ai.configure', 'support.conversations.read')

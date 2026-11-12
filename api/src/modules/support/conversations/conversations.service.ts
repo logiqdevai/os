@@ -35,6 +35,8 @@ export interface AddMessageInput {
     mentions?: string[];
     canned_response_id?: string | null;
     channel_type?: SupportChannelType | null;
+    /** AI_AGENT only: false for notices (e.g. "passing you to the team") that must not count as a response for SLA / metrics. */
+    counts_as_response?: boolean;
 }
 
 const LIST_INCLUDE = {
@@ -316,7 +318,8 @@ export class ConversationsService {
     async addMessage(tx: Tx, conversationId: string, input: AddMessageInput) {
         const conv = await tx.supportConversation.findUniqueOrThrow({ where: { id: conversationId } });
         const now = new Date();
-        const isAgentPublic = input.kind === 'AGENT' || input.kind === 'AI_AGENT';
+        const isPublicReply = input.kind === 'AGENT' || input.kind === 'AI_AGENT';
+        const isAgentPublic = isPublicReply && input.counts_as_response !== false;
         const isCustomer = input.kind === 'CUSTOMER';
         const channel = input.channel_type ?? conv.channel_type;
         const firstResponse = isAgentPublic && !conv.first_agent_response_at;
@@ -336,8 +339,8 @@ export class ConversationsService {
                 canned_response_id: input.canned_response_id ?? null,
                 is_first_response: firstResponse,
                 // Portal / widget / chat replies are delivered in-app; email goes out through 11 (PENDING until sent).
-                delivery_status: isAgentPublic ? (channel === 'EMAIL' ? 'PENDING' : 'DELIVERED') : null,
-                delivered_at: isAgentPublic && channel !== 'EMAIL' ? now : null,
+                delivery_status: isPublicReply ? (channel === 'EMAIL' ? 'PENDING' : 'DELIVERED') : null,
+                delivered_at: isPublicReply && channel !== 'EMAIL' ? now : null,
             },
             include: { author: { select: MEMBER_SELECT }, author_user: { select: USER_PUBLIC_SELECT } },
         });

@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '@/core/databases/prisma/prisma.module';
 import { AuthorizationService } from './authorization/authorization.service';
 import { CredentialsService } from './authorization/credentials.service';
+import { MfaRequirementService } from './authorization/mfa-requirement.service';
 import { PermissionsGuard } from './authorization/guards/permissions.guard';
 import { AuditService } from './audit/audit.service';
 import { EventsService } from './events/events.service';
@@ -16,7 +17,7 @@ import { McpRegistry } from '@/core/mcp/mcp.registry';
 @Global()
 @Module({
     imports: [PrismaModule, JwtModule.register({})],
-    providers: [AuthorizationService, CredentialsService, PermissionsGuard, JwtGuard, AuditService, EventsService, McpRegistry],
-    exports: [PrismaModule, JwtModule, AuthorizationService, CredentialsService, PermissionsGuard, JwtGuard, AuditService, EventsService, McpRegistry],
+    providers: [AuthorizationService, CredentialsService, MfaRequirementService, PermissionsGuard, JwtGuard, AuditService, EventsService, McpRegistry],
+    exports: [PrismaModule, JwtModule, AuthorizationService, CredentialsService, MfaRequirementService, PermissionsGuard, JwtGuard, AuditService, EventsService, McpRegistry],
 })
 export class PlatformModule { }

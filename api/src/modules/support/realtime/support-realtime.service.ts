@@ -43,6 +43,24 @@ export class SupportRealtimeService implements OnModuleInit, OnModuleDestroy {
         this.events.bus.off('event', this.listener);
     }
 
+    /** Typing indicator to the visitor of a conversation (`typing` {from: 'team' | 'ai', name, active}). Never throws. */
+    toVisitor(conversationId: string, event: string, payload: unknown) {
+        try {
+            this.server?.to(supportVisitorRoom(conversationId)).emit(event, payload);
+        } catch (error) {
+            this.logger.warn(`support realtime push failed: ${(error as Error).message}`);
+        }
+    }
+
+    /** To agents watching a conversation (scope-checked room). Never throws. */
+    toWatchers(conversationId: string, event: string, payload: unknown) {
+        try {
+            this.server?.to(supportConversationRoom(conversationId)).emit(event, payload);
+        } catch (error) {
+            this.logger.warn(`support realtime push failed: ${(error as Error).message}`);
+        }
+    }
+
     private onEvent(e: PublishedEvent) {
         if (!this.server || !e.event_key.startsWith('support.')) return;
         try {

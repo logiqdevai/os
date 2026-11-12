@@ -9,6 +9,7 @@ import { slugify } from '@/modules/auth/services/organization-setup.service';
 import { SupportSetupService } from '../common/support-setup.service';
 import { MEMBER_SELECT, SUPPORT_PERMS } from '../common/support.constants';
 import { CreateChannelDto, CreateInboxDto, UpdateAgentProfileDto, UpdateChannelDto, UpdateInboxDto } from './dto/inbox.dto';
+import { ChannelAiConfig, mergeOwnedConfigKeys, OfficeHoursConfig, officeHoursStatus, readAiConfig, readOfficeHours, withConfigKey } from '../common/channel-config.utils';
 
 const widgetKey = () => `wk_${randomBytes(18).toString('base64url')}`;
 
@@ -108,8 +109,9 @@ export class InboxesService {
                     name: dto.name,
                     email_address: dto.email_address?.toLowerCase() ?? null,
                     allowed_origins: dto.allowed_origins ?? [],
-                    config: (dto.config ?? undefined) as Prisma.InputJsonValue,
-                    ai_agent_enabled: dto.ai_agent_enabled ?? false,
+                    // AI and office hours are set through their own endpoints (support.ai.configure / support.inboxes.manage).
+                    config: (dto.config ? mergeOwnedConfigKeys(dto.config, null) : undefined) as Prisma.InputJsonValue,
+                    ai_agent_enabled: false,
                     is_active: dto.is_active ?? true,
                     csat_enabled: dto.csat_enabled ?? true,
                     widget_key: needsKey ? widgetKey() : null,
@@ -129,15 +131,12 @@ export class InboxesService {
     async updateChannel(ctx: OrgContext, id: string, dto: UpdateChannelDto) {
         const before = await this.channel(ctx, id);
         if (dto.inbox_id) await this.findOne(ctx, dto.inbox_id);
-        if (dto.ai_agent_enabled !== undefined && dto.ai_agent_enabled !== before.ai_agent_enabled && !ctx.can(SUPPORT_PERMS.aiConfigure)) {
-            throw new ForbiddenException({ message: 'Turning the AI agent on or off needs support.ai.configure', code: 'permission_denied', permissions: [SUPPORT_PERMS.aiConfigure] });
-        }
         const { config, type, ...rest } = dto;
         void type; // the channel type cannot change
         try {
             const ch = await this.prisma.supportChannel.update({
                 where: { id },
-                data: { ...rest, ...(rest.email_address && { email_address: rest.email_address.toLowerCase(), verified_at: null }), ...(config !== undefined && { config: config as Prisma.InputJsonValue }) },
+                data: { ...rest, ...(rest.email_address && { email_address: rest.email_address.toLowerCase(), verified_at: null }), ...(config !== undefined && { config: mergeOwnedConfigKeys(config, before.config) as Prisma.InputJsonValue }) },
             });
             await this.audit.record(ctx, 'support_channel.updated', { resource_type: 'support_channel', resource_id: id, metadata: { after: dto } });
             this.events.publish(ctx, { event_key: 'support.channel.updated', module: ModuleKey.SUPPORT, entity_kind: 'support_channel', entity_id: id, changes: dto as Record<string, unknown> });
@@ -146,6 +145,38 @@ export class InboxesService {
             if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') throw new ConflictException({ message: 'This email address is already connected', code: 'channel_email_taken' });
             throw e;
         }
+    }
+
+    /** Effective AI auto-answer and office-hours settings of a channel (with the live open/closed state). */
+    async channelAutomation(ctx: OrgContext, id: string) {
+        const ch = await this.channel(ctx, id);
+        const org = await this.prisma.organization.findUniqueOrThrow({ where: { id: ctx.organization_id }, select: { business_hours: true, working_days: true, default_timezone: true } });
+        const officeHours = readOfficeHours(ch.config);
+        return { channel_id: ch.id, ai: readAiConfig(ch.config), office_hours: officeHours, office_hours_status: officeHoursStatus(officeHours, org) };
+    }
+
+    /** 13 §3 — AI auto-answer of one channel: off / suggest only / auto-reply above a confidence threshold. */
+    async setAiAgent(ctx: OrgContext, id: string, ai: ChannelAiConfig) {
+        const before = await this.channel(ctx, id);
+        if (ai.mode !== 'OFF' && (before.type === 'PHONE' || before.type === 'API' || before.type === 'FORM')) {
+            throw new BadRequestException({ message: 'The AI agent answers on chat, widget, email and portal channels only', code: 'channel_ai_unsupported' });
+        }
+        const previous = readAiConfig(before.config);
+        await this.prisma.supportChannel.update({ where: { id }, data: { config: withConfigKey(before.config, 'ai', ai) as Prisma.InputJsonValue, ai_agent_enabled: ai.mode !== 'OFF' } });
+        await this.audit.record(ctx, 'support_channel.ai_agent_updated', { resource_type: 'support_channel', resource_id: id, metadata: { before: previous, after: ai } });
+        this.events.publish(ctx, { event_key: 'support.channel.ai_agent_updated', module: ModuleKey.SUPPORT, entity_kind: 'support_channel', entity_id: id, payload: { mode: ai.mode, previous_mode: previous.mode, min_confidence: ai.min_confidence, max_turns: ai.max_turns } });
+        return this.channelAutomation(ctx, id);
+    }
+
+    /** 13 §5 — live-chat office hours: outside them the widget shows a "we'll reply by email" form. */
+    async setOfficeHours(ctx: OrgContext, id: string, oh: OfficeHoursConfig) {
+        const before = await this.channel(ctx, id);
+        if (before.type !== 'WIDGET' && before.type !== 'LIVE_CHAT') throw new BadRequestException({ message: 'Office hours apply to widget and live chat channels', code: 'channel_no_widget' });
+        const previous = readOfficeHours(before.config);
+        await this.prisma.supportChannel.update({ where: { id }, data: { config: withConfigKey(before.config, 'office_hours', oh) as Prisma.InputJsonValue } });
+        await this.audit.record(ctx, 'support_channel.office_hours_updated', { resource_type: 'support_channel', resource_id: id, metadata: { before: previous, after: oh } });
+        this.events.publish(ctx, { event_key: 'support.channel.office_hours_updated', module: ModuleKey.SUPPORT, entity_kind: 'support_channel', entity_id: id, payload: { enabled: oh.enabled } });
+        return this.channelAutomation(ctx, id);
     }
 
     async rotateWidgetKey(ctx: OrgContext, id: string) {

@@ -104,3 +104,24 @@ export function businessMinutesBetween(from: Date, to: Date, bh: BusinessHours):
     }
     return Math.round(total);
 }
+
+/** Whether `at` falls inside a working window (office hours of a chat channel, 13 §5). */
+export function isWithinBusinessHours(at: Date, bh: BusinessHours): boolean {
+    const { weekday, minute } = localParts(at, bh.timezone);
+    const window = bh.days.get(weekday);
+    return !!window && minute >= window[0] && minute < window[1];
+}
+
+/** The next instant (≥ `from`) at which a working window opens; null when no window exists within 8 days. */
+export function nextBusinessOpening(from: Date, bh: BusinessHours): Date | null {
+    if (isWithinBusinessHours(from, bh)) return from;
+    let cursor = new Date(from.getTime());
+    for (let guard = 0; guard < 20; guard++) {
+        const { weekday, minute } = localParts(cursor, bh.timezone);
+        const window = bh.days.get(weekday);
+        if (window && minute < window[1]) return new Date(cursor.getTime() + Math.max(0, window[0] - minute) * 60_000);
+        cursor = new Date(cursor.getTime() + (24 * 60 - minute) * 60_000);
+        cursor.setUTCSeconds(0, 0);
+    }
+    return null;
+}

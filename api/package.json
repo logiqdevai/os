@@ -93,6 +93,7 @@
     "twilio": "^6.2.0",
     "twitter-api-v2": "^1.29.1",
     "uuid": "^14.0.3",
+    "web-push": "^3.6.7",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -112,6 +113,7 @@
     "@types/nodemailer": "^8.0.2",
     "@types/otp-generator": "^4.0.2",
     "@types/supertest": "^7.2.1",
+    "@types/web-push": "^3.6.4",
     "@typescript-eslint/eslint-plugin": "^8.72.0",
     "@typescript-eslint/parser": "^8.72.0",
     "cross-env": "^10.1.0",

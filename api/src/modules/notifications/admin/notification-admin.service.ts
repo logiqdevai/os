@@ -8,6 +8,8 @@ import { orderBy, paginate, skipTake } from '@/shared/utils/pagination/paginatio
 import { emailLayout, renderVars } from '../utils/delivery.utils';
 import { NotificationRulesService } from '../delivery/notification-rules.service';
 import { NotificationDeliveryService } from '../delivery/notification-delivery.service';
+import { NotificationWebhookEvents } from '../delivery/notification-webhook-events.service';
+import { DEFAULT_NOTIFICATION_RETENTION_DAYS } from '../retention/notification-retention.service';
 import {
     CreateDeliveryRuleInput, CreateEventTypeInput, CreateTemplateInput, EventTypeQuery, PreviewTemplateInput, SetOrgDefaultInput, TemplateQuery, UpdateDeliveryRuleInput,
     UpdateEventTypeInput, UpdateOrgSettingsInput, UpdateTemplateInput,
@@ -17,7 +19,7 @@ const NOT_FOUND = (what: string, code: string) => new NotFoundException({ messag
 const ORG_DEFAULT_SETTINGS = {
     enabled_channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL], portal_enabled_channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL], email_sender_identity_id: null,
     sms_sender_identity_id: null, default_level: 'ALL', default_digest_frequency: 'IMMEDIATE', default_digest_hour: 8, default_digest_weekday: 1, hide_previews_by_default: false,
-    max_delivery_attempts: 5, retry_backoff_seconds: 60, retention_days: null, webhook_events_enabled: false,
+    max_delivery_attempts: 5, retry_backoff_seconds: 60, retention_days: DEFAULT_NOTIFICATION_RETENTION_DAYS, webhook_events_enabled: false,
 } as const;
 
 /**
@@ -33,6 +35,7 @@ export class NotificationAdminService {
         private readonly events: EventsService,
         private readonly rules: NotificationRulesService,
         private readonly delivery: NotificationDeliveryService,
+        private readonly webhooks: NotificationWebhookEvents,
     ) { }
 
     private visibleType(ctx: OrgContext): Prisma.NotificationEventTypeWhereInput {
@@ -318,21 +321,32 @@ export class NotificationAdminService {
     // ================================================================ organization settings
 
     async getSettings(ctx: OrgContext) {
-        const [row, emailConnected, senders] = await Promise.all([
+        const [row, emailConnected, smsConnected, senders, devices] = await Promise.all([
             this.prisma.notificationOrgSettings.findUnique({ where: { organization_id: ctx.organization_id } }),
             this.delivery.emailAvailable(ctx.organization_id),
-            this.prisma.commSenderIdentity.findMany({ where: { organization_id: ctx.organization_id, channel: 'EMAIL' }, select: { id: true, address: true, display_name: true, status: true }, orderBy: { address: 'asc' } }),
+            this.delivery.smsAvailable(ctx.organization_id),
+            this.prisma.commSenderIdentity.findMany({ where: { organization_id: ctx.organization_id, channel: { in: ['EMAIL', 'SMS'] } }, select: { id: true, channel: true, address: true, display_name: true, status: true }, orderBy: { address: 'asc' } }),
+            // Organizations only see counts of their members' browsers (devices are user-level, mockup 14 "Devices").
+            this.prisma.notificationPushDevice.count({ where: { disabled_at: null, platform: 'WEB', user: { memberships: { some: { organization_id: ctx.organization_id, status: 'ACTIVE' } } } } }),
         ]);
         return {
             ...(row ?? { organization_id: ctx.organization_id, ...ORG_DEFAULT_SETTINGS }),
-            providers: { email: { connected: emailConnected, reason: emailConnected ? null : 'No email provider connected. Connect Resend in Admin → Integrations.' } },
-            sender_identities: senders,
+            providers: {
+                email: { connected: emailConnected, reason: emailConnected ? null : 'No email provider connected. Connect Resend in Admin → Integrations.' },
+                sms: { connected: smsConnected, reason: smsConnected ? null : 'No SMS provider connected. Connect Twilio in Admin → Integrations.' },
+                push: { connected: true, reason: null, active_browsers: devices },
+            },
+            sender_identities: senders.filter((x) => x.channel === 'EMAIL'),
+            sms_sender_identities: senders.filter((x) => x.channel === 'SMS'),
         };
     }
 
     async updateSettings(ctx: OrgContext, dto: UpdateOrgSettingsInput) {
         if (dto.email_sender_identity_id && !(await this.prisma.commSenderIdentity.findFirst({ where: { id: dto.email_sender_identity_id, organization_id: ctx.organization_id, channel: 'EMAIL' }, select: { id: true } }))) {
             throw NOT_FOUND('Sender identity', 'sender_identity_not_found');
+        }
+        if (dto.sms_sender_identity_id && !(await this.prisma.commSenderIdentity.findFirst({ where: { id: dto.sms_sender_identity_id, organization_id: ctx.organization_id, channel: 'SMS' }, select: { id: true } }))) {
+            throw NOT_FOUND('SMS sender', 'sender_identity_not_found');
         }
         const enabled = dto.enabled_channels ? [...new Set([NotificationChannel.IN_APP, ...dto.enabled_channels])] : undefined;
         const before = await this.prisma.notificationOrgSettings.findUnique({ where: { organization_id: ctx.organization_id } });
@@ -341,6 +355,7 @@ export class NotificationAdminService {
             update: { ...dto, enabled_channels: enabled, updated_by_membership_id: ctx.membership_id },
             create: { ...dto, enabled_channels: enabled, organization_id: ctx.organization_id, updated_by_membership_id: ctx.membership_id },
         });
+        this.webhooks.invalidate(ctx.organization_id);
         await this.audit.record(ctx, 'notification.org_settings_updated', { resource_type: 'notification_org_settings', resource_id: ctx.organization_id, metadata: { before, after: dto } });
         this.publish(ctx, 'notification.settings.updated', 'notification_org_settings', ctx.organization_id, { changes: Object.keys(dto) });
         return this.getSettings(ctx);

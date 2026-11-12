@@ -29,7 +29,8 @@ export class JwtGuard implements CanActivate {
         }
 
         try {
-            request.user = await this.credentials.resolve(token, request.ip);
+            // The app sends `X-Client-Active: 0` on background polling so it does not reset the idle timeout (01 §73).
+            request.user = await this.credentials.resolve(token, request.ip, { activity: request.headers['x-client-active'] !== '0' });
             return true;
         } catch (error) {
             if (isPublic) return true;

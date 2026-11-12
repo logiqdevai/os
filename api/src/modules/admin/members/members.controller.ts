@@ -61,6 +61,14 @@ export class MembersController {
         return this.members.reactivate(ctx, id);
     }
 
+    @Post(':id/mfa/reset')
+    @HttpCode(200)
+    @RequirePermission('users.members.manage')
+    @ApiOperation({ summary: 'Reset the member’s two-step verification (removes factors; they enrol again). Audited as user.mfa_disabled.' })
+    resetMfa(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string) {
+        return this.members.resetMfa(ctx, id);
+    }
+
     @Post(':id/offboard')
     @HttpCode(200)
     @RequirePermission('users.members.offboard')

@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtGuard } from '@/shared/guards/jwt.guard';
 import { PermissionsGuard } from '@/shared/authorization/guards/permissions.guard';
 import { CurrentOrg, RequireAnyPermission, RequirePermission } from '@/shared/authorization/decorators/require-permission.decorator';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
+import { ZBody } from '@/modules/finance-shared/zod-body.pipe';
 import { InboxesService } from './inboxes.service';
+import { ChannelAiConfig, ChannelAiConfigSchema, OfficeHoursConfig, OfficeHoursSchema } from '../common/channel-config.utils';
 import { CreateChannelDto, CreateInboxDto, UpdateAgentProfileDto, UpdateChannelDto, UpdateInboxDto } from './dto/inbox.dto';
 
 @ApiTags('Support · Inboxes & channels')
@@ -72,9 +74,30 @@ export class InboxesController {
 
     @Patch('channels/:id')
     @RequirePermission('support.inboxes.manage')
-    @ApiOperation({ summary: 'Update a channel (AI agent toggle needs support.ai.configure)' })
+    @ApiOperation({ summary: 'Update a channel (the `ai` and `office_hours` config keys are kept; use the dedicated endpoints)' })
     updateChannel(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateChannelDto) {
         return this.inboxes.updateChannel(ctx, id, dto);
+    }
+
+    @Get('channels/:id/automation')
+    @RequireAnyPermission('support.inboxes.read', 'support.inboxes.manage', 'support.ai.configure')
+    @ApiOperation({ summary: 'AI auto-answer settings and office hours of a channel, with the live open / closed state' })
+    automation(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string) {
+        return this.inboxes.channelAutomation(ctx, id);
+    }
+
+    @Put('channels/:id/ai-agent')
+    @RequirePermission('support.ai.configure')
+    @ApiOperation({ summary: 'AI auto-answer on this channel: mode OFF | SUGGEST | AUTO_REPLY, min_confidence, max_turns, handover_phrases' })
+    setAiAgent(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body(ZBody(ChannelAiConfigSchema)) dto: ChannelAiConfig) {
+        return this.inboxes.setAiAgent(ctx, id, dto);
+    }
+
+    @Put('channels/:id/office-hours')
+    @RequirePermission('support.inboxes.manage')
+    @ApiOperation({ summary: 'Office hours of a widget / live chat channel (outside them visitors get a "we'll reply by email" form)' })
+    setOfficeHours(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body(ZBody(OfficeHoursSchema)) dto: OfficeHoursConfig) {
+        return this.inboxes.setOfficeHours(ctx, id, dto);
     }
 
     @Post('channels/:id/verify')

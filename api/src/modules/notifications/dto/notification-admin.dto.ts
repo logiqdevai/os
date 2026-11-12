@@ -147,6 +147,7 @@ export const UpdateOrgSettingsSchema = z.object({
     enabled_channels: channels.optional(),
     portal_enabled_channels: channels.optional(),
     email_sender_identity_id: z.string().uuid().nullable().optional(),
+    sms_sender_identity_id: z.string().uuid().nullable().optional(),
     default_level: z.nativeEnum(NotificationLevel).optional(),
     default_digest_frequency: z.nativeEnum(NotificationDigestFrequency).optional(),
     default_digest_hour: z.number().int().min(0).max(23).optional(),

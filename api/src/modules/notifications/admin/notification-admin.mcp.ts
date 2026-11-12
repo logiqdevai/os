@@ -27,7 +27,7 @@ export class NotificationAdminMcp implements OnModuleInit {
             },
             {
                 name: 'notifications_defaults_manage',
-                description: 'Set the organization default of a module or an event type: enabled, channels (IN_APP, EMAIL), delivery mode, digest frequency, mandatory.',
+                description: 'Set the organization default of a module or an event type: enabled, channels (IN_APP, EMAIL, PUSH, SMS), delivery mode, digest frequency, mandatory.',
                 permission: 'notifications.defaults.manage', module: M, resource_type: 'notification_org_default', sensitive: true,
                 input: SetOrgDefaultSchema,
                 handler: (ctx, args) => this.admin.setDefault(ctx, args),

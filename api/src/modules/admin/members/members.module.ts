@@ -3,8 +3,10 @@ import { MembersController } from './members.controller';
 import { MembersService } from './members.service';
 import { MembersMcp } from './members.mcp';
 import { AdminAccessService } from '../shared/admin-access.service';
+import { MfaModule } from '../../auth/mfa/mfa.module';
 
 @Module({
+    imports: [MfaModule],
     controllers: [MembersController],
     providers: [MembersService, MembersMcp, AdminAccessService],
     exports: [MembersService],

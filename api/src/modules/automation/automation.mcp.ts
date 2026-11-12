@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { AutomationRunMode, ModuleKey } from 'generated/prisma';
+import { AutomationRunMode, ModuleKey, OutboundWebhookStatus } from 'generated/prisma';
 import { z } from 'zod';
 import { McpRegistry } from '@/core/mcp/mcp.registry';
 import { RulesService } from './rules/rules.service';
@@ -10,7 +10,7 @@ import { AutomationInsightsService } from './settings/automation-insights.servic
 import { CreateRuleSchema, RuleQuerySchema, UpdateRuleSchema } from './rules/dto/rule.dto';
 import { EventQuerySchema, PublishEventSchema, RunQuerySchema } from './runs/dto/run.dto';
 import { JobQuerySchema } from './jobs/dto/job.dto';
-import { OutboundQuerySchema, UpdateInboundWebhookSchema } from './webhooks/dto/webhook.dto';
+import { CreateOutboundWebhookSchema, DeliveryQuerySchema, OutboundQuerySchema, UpdateInboundWebhookSchema, UpdateOutboundWebhookSchema } from './webhooks/dto/webhook.dto';
 import { ApprovalPoliciesService } from './approval-policies/approval-policies.service';
 import { ApprovalPolicyQuerySchema, CreateApprovalPolicySchema, UpdateApprovalPolicySchema } from './approval-policies/dto/approval-policy.dto';
 
@@ -61,6 +61,16 @@ export class AutomationMcp implements OnModuleInit {
             { name: 'automation_inbound_webhooks_update', description: 'Edit an inbound endpoint: name, auth, IP allow-list, rate limit, pause/resume, or link the workflow it starts (rule_id; needs automation.rules.update).', permission: 'automation.webhooks.manage', module: M, resource_type: 'inbound_webhook', sensitive: true, input: UpdateInboundWebhookSchema, handler: (ctx, { id: hookId, ...rest }) => this.webhooks.updateInbound(ctx, hookId, rest) },
             { name: 'automation_agents_overview', description: 'AI agents & MCP overview: tool-call counts by status, tool, account and client over N days (call stats need organizations.mcp_calls.read) and the service accounts workflows run as.', permission: 'automation.rules.read', module: M, input: z.object({ days: z.number().int().min(1).max(90).default(30) }), handler: (ctx, a) => this.insights.agentsOverview(ctx, a.days) },
             { name: 'automation_webhooks_list', description: 'List outbound webhook endpoints (secrets are never returned).', permission: 'automation.webhooks.read', module: M, resource_type: 'outbound_webhook', input: OutboundQuerySchema, handler: (ctx, a) => this.webhooks.listOutbound(ctx, a) },
+            // Outbound webhooks (20 §12, administered in Admin → Webhooks). Secrets are only returned by create / rotate.
+            { name: 'automation_webhooks_get', description: 'Get one outbound webhook with 7-day delivery counts by status (never the secret).', permission: 'automation.webhooks.read', module: M, resource_type: 'outbound_webhook', input: id, handler: (ctx, a) => this.webhooks.getOutbound(ctx, a.id) },
+            { name: 'automation_webhooks_create', description: 'Create an outbound webhook for platform event keys (`crm.deal.won`, `tasks.*`, `*`). Returns the HMAC-SHA256 signing secret once.', permission: 'automation.webhooks.manage', module: M, resource_type: 'outbound_webhook', sensitive: true, input: CreateOutboundWebhookSchema, handler: (ctx, a) => this.webhooks.createOutbound(ctx, a) },
+            { name: 'automation_webhooks_update', description: 'Change an outbound webhook: URL, events, headers, retries.', permission: 'automation.webhooks.manage', module: M, resource_type: 'outbound_webhook', sensitive: true, input: UpdateOutboundWebhookSchema, handler: (ctx, { id: hookId, ...rest }) => this.webhooks.updateOutbound(ctx, hookId, rest) },
+            { name: 'automation_webhooks_set_enabled', description: 'Enable (resume, resets the failure counter) or disable (pause) an outbound webhook.', permission: 'automation.webhooks.manage', module: M, resource_type: 'outbound_webhook', sensitive: true, input: z.object({ id: z.string().uuid(), enabled: z.boolean() }), handler: (ctx, a) => this.webhooks.setOutboundStatus(ctx, a.id, a.enabled ? OutboundWebhookStatus.ACTIVE : OutboundWebhookStatus.PAUSED) },
+            { name: 'automation_webhooks_test', description: 'Send a signed `webhook.test` delivery now and return the result.', permission: 'automation.webhooks.manage', module: M, resource_type: 'outbound_webhook', sensitive: true, input: id, handler: (ctx, a) => this.webhooks.sendTest(ctx, a.id) },
+            { name: 'automation_webhooks_rotate_secret', description: 'Rotate the signing secret (returned once; the previous one stays valid for 24 hours).', permission: 'automation.webhooks.manage', module: M, resource_type: 'outbound_webhook', sensitive: true, input: id, handler: (ctx, a) => this.webhooks.rotateOutboundSecret(ctx, a.id) },
+            { name: 'automation_webhooks_delete', description: 'Delete an outbound webhook and its delivery log.', permission: 'automation.webhooks.manage', module: M, resource_type: 'outbound_webhook', sensitive: true, input: id, handler: (ctx, a) => this.webhooks.removeOutbound(ctx, a.id) },
+            { name: 'automation_webhook_deliveries_list', description: 'Delivery log: filter by webhook_id, status, event_key.', permission: 'automation.webhooks.read', module: M, resource_type: 'webhook_delivery', input: DeliveryQuerySchema, handler: (ctx, a) => this.webhooks.listDeliveries(ctx, a) },
+            { name: 'automation_webhook_deliveries_retry', description: 'Retry a failed or dead-lettered delivery now.', permission: 'automation.webhooks.manage', module: M, resource_type: 'webhook_delivery', sensitive: true, input: id, handler: (ctx, a) => this.webhooks.retryDelivery(ctx, a.id) },
         ]);
     }
 }

@@ -1,13 +1,17 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PasswordService } from '../services/password.service';
+import { AuthRateLimitService } from '../mfa/auth-rate-limit.service';
 import { ForgotPasswordDto } from '../dto/forgot-password.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
 
 @ApiTags('Password Reset')
 @Controller('auth')
 export class PasswordController {
-    constructor(private readonly passwordService: PasswordService) { }
+    constructor(
+        private readonly passwordService: PasswordService,
+        private readonly rateLimit: AuthRateLimitService,
+    ) { }
 
     @Post('forgot-password')
     @ApiOperation({ summary: 'Request a password reset email' })
@@ -16,7 +20,8 @@ export class PasswordController {
         status: 200,
         description: 'Password reset email sent if account exists',
     })
-    forgotPassword(@Body() dto: ForgotPasswordDto) {
+    async forgotPassword(@Body() dto: ForgotPasswordDto, @Req() req: { ip?: string }) {
+        await this.rateLimit.consume(`forgot-password:${req.ip ?? 'unknown'}`, 10, 900);
         return this.passwordService.forgotPassword(dto);
     }
 
@@ -31,7 +36,8 @@ export class PasswordController {
         status: 400,
         description: 'Invalid or expired reset token',
     })
-    resetPassword(@Body() dto: ResetPasswordDto) {
+    async resetPassword(@Body() dto: ResetPasswordDto, @Req() req: { ip?: string }) {
+        await this.rateLimit.consume(`reset-password:${req.ip ?? 'unknown'}`, 20, 900);
         return this.passwordService.resetPassword(dto);
     }
 }

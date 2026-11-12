@@ -7,6 +7,8 @@ import { EventsService } from '@/shared/events/events.service';
 import { externalContext, RateLimiter } from '@/modules/proposals/utils/system-context.utils';
 import { ConversationsService } from '../conversations/conversations.service';
 import { StartWidgetConversationDto, WidgetMessagesQuery } from './dto/widget.dto';
+import { officeHoursStatus, readAiConfig, readOfficeHours } from '../common/channel-config.utils';
+import { AI_REPLY_LABEL } from '../common/support.constants';
 
 export interface WidgetRequestMeta {
     ip?: string | null;
@@ -59,7 +61,7 @@ export class SupportWidgetService {
         if (!key || key.length > 80) throw new NotFoundException({ message: 'Chat is not available', code: 'widget_not_found' });
         const channel = await this.prisma.supportChannel.findUnique({
             where: { widget_key: key },
-            include: { inbox: { select: { id: true, archived_at: true } }, organization: { select: { id: true, display_name: true, logo_url: true, deleted_at: true } } },
+            include: { inbox: { select: { id: true, archived_at: true } }, organization: { select: { id: true, display_name: true, logo_url: true, deleted_at: true, business_hours: true, working_days: true, default_timezone: true } } },
         });
         if (!channel || !channel.is_active || !WIDGET_TYPES.includes(channel.type as (typeof WIDGET_TYPES)[number]) || channel.inbox.archived_at || channel.organization.deleted_at) {
             throw new NotFoundException({ message: 'Chat is not available', code: 'widget_not_found' });
@@ -84,12 +86,26 @@ export class SupportWidgetService {
         };
     }
 
+    /** Office hours of a widget channel right now (13 §5): closed → the widget shows the "we'll reply by email" form. */
+    officeHours(channel: { config: unknown; organization: { business_hours: unknown; working_days: unknown; default_timezone: string | null } }) {
+        const oh = readOfficeHours(channel.config);
+        const status = officeHoursStatus(oh, channel.organization);
+        return {
+            ...status,
+            offline_message: status.open ? null : oh.offline_message || "We're away right now. Leave your email and message — we'll reply by email as soon as we're back.",
+        };
+    }
+
     /** Public appearance of the widget (no ids beyond the key, no secrets). */
     async config(key: string, meta: WidgetRequestMeta) {
         this.throttle(this.limiter, meta.ip ?? 'unknown');
         const channel = await this.channelByKey(key, meta.origin);
         const look = this.appearance(channel.config);
+        const ai = readAiConfig(channel.config);
         return {
+            office_hours: this.officeHours(channel),
+            /** The AI assistant may answer first; the widget tells visitors before they write (13 §3 transparency). */
+            ai_assistant: channel.ai_agent_enabled && ai.mode === 'AUTO_REPLY' ? { enabled: true, notice: AI_REPLY_LABEL } : { enabled: false, notice: null },
             title: look.title ?? channel.organization.display_name,
             welcome_message: look.welcome_message ?? 'Hi! Ask us anything — we usually reply within a few minutes during office hours.',
             color: look.color ?? '#2563eb',
@@ -104,7 +120,12 @@ export class SupportWidgetService {
         this.throttle(this.startLimiter, `${meta.ip ?? 'unknown'}:${key}`);
         const channel = await this.channelByKey(key, meta.origin);
         const look = this.appearance(channel.config);
-        if (look.require_email && !dto.email) throw new HttpException({ message: 'Enter your email so we can reply', code: 'widget_email_required' }, HttpStatus.BAD_REQUEST);
+        const hours = this.officeHours(channel);
+        if ((look.require_email || !hours.open) && !dto.email) {
+            throw new HttpException({ message: hours.open ? 'Enter your email so we can reply' : "Enter your email — we're offline and will reply by email", code: 'widget_email_required' }, HttpStatus.BAD_REQUEST);
+        }
+        // Outside office hours the conversation is answered by email when the inbox has an active email channel.
+        const replyByEmail = !hours.open && !!(await this.prisma.supportChannel.findFirst({ where: { organization_id: channel.organization_id, inbox_id: channel.inbox_id, type: 'EMAIL', is_active: true, email_address: { not: null } }, select: { id: true } }));
 
         const email = dto.email?.trim().toLowerCase() || null;
         const name = dto.name?.trim() || null;
@@ -121,7 +142,7 @@ export class SupportWidgetService {
                     organization_id: channel.organization_id,
                     inbox_id: channel.inbox_id,
                     channel_id: channel.id,
-                    channel_type: channel.type,
+                    channel_type: replyByEmail ? 'EMAIL' : channel.type,
                     subject,
                     visitor_key: sha256(secret),
                     customer_name: name ?? (contact ? [contact.first_name, contact.last_name].filter(Boolean).join(' ') : null),
@@ -134,16 +155,16 @@ export class SupportWidgetService {
             return c;
         });
         const ctx = externalContext(channel.organization_id, meta);
-        await this.audit.record(ctx, 'support_conversation.created', { resource_type: 'support_conversation', resource_id: conv.id, metadata: { via: 'widget', channel_id: channel.id, visitor_email: email, origin: meta.origin ?? null } });
+        await this.audit.record(ctx, 'support_conversation.created', { resource_type: 'support_conversation', resource_id: conv.id, metadata: { via: 'widget', channel_id: channel.id, visitor_email: email, origin: meta.origin ?? null, outside_office_hours: !hours.open, reply_by_email: replyByEmail } });
         this.events.publish(ctx, {
             event_key: 'support.conversation.created',
             module: ModuleKey.SUPPORT,
             entity_type: 'SUPPORT_CONVERSATION',
             entity_id: conv.id,
-            payload: { subject, channel_type: channel.type, inbox_id: channel.inbox_id, company_id: conv.company_id, via: 'widget' },
+            payload: { subject, channel_type: conv.channel_type, inbox_id: channel.inbox_id, company_id: conv.company_id, via: 'widget', outside_office_hours: !hours.open },
             activity: { summary: `New chat${name ? ` from ${name}` : ''}: ${subject}`, company_id: conv.company_id },
         });
-        return { token: `${conv.id}.${secret}`, ...(await this.thread(conv.id)) };
+        return { token: `${conv.id}.${secret}`, offline: !hours.open, reply_by_email: replyByEmail, ...(await this.thread(conv.id)) };
     }
 
     /** Resolve `<conversation_id>.<secret>` for this widget key (401 when it does not match). */
@@ -177,7 +198,9 @@ export class SupportWidgetService {
             messages: conv.messages.map((m) => ({
                 id: m.id,
                 from: m.kind === 'CUSTOMER' ? 'visitor' : 'team',
-                author_name: m.kind === 'CUSTOMER' ? m.author_name : m.kind === 'AI_AGENT' ? 'Assistant' : (m.author?.user.first_name || m.author?.user.display_name || 'Support'),
+                /** Written by the AI assistant — the widget labels these messages (13 §3). */
+                is_ai: m.kind === 'AI_AGENT',
+                author_name: m.kind === 'CUSTOMER' ? m.author_name : m.kind === 'AI_AGENT' ? 'AI assistant' : (m.author?.user.first_name || m.author?.user.display_name || 'Support'),
                 author_photo_url: m.kind === 'AGENT' ? m.author?.user.profile_photo_url ?? null : null,
                 body: m.body,
                 created_at: m.created_at,

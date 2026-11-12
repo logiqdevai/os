@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { MembershipStatus, ModuleKey, Prisma, ScopeType } from 'generated/prisma';
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { AuditService } from '@/shared/audit/audit.service';
@@ -7,6 +7,7 @@ import { AuthorizationService } from '@/shared/authorization/authorization.servi
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { orderBy, paginate, skipTake } from '@/shared/utils/pagination/pagination.utils';
 import { AdminAccessService, USER_SELECT } from '../shared/admin-access.service';
+import { MfaService } from '../../auth/mfa/mfa.service';
 import { AssignRoleDto, MemberBranchDto, OffboardMemberDto, UpdateMemberDto } from './dto/member.dto';
 import { MemberQuery } from './dto/member-query.schema';
 
@@ -30,6 +31,7 @@ export class MembersService {
         private readonly events: EventsService,
         private readonly authorization: AuthorizationService,
         private readonly access: AdminAccessService,
+        private readonly mfa: MfaService,
     ) { }
 
     /** Branch- or team-scoped readers only see members of their branches / teams. */
@@ -102,8 +104,35 @@ export class MembersService {
             },
         });
         if (!member) throw new NotFoundException({ message: 'Member not found', code: 'membership_not_found' });
-        const owners = await this.access.ownerMembershipIds(ctx.organization_id);
-        return { ...member, is_owner: owners.includes(member.id), is_self: member.id === ctx.membership_id };
+        const [owners, factors] = await Promise.all([
+            this.access.ownerMembershipIds(ctx.organization_id),
+            // Sign-in methods card: types and dates only, never secrets.
+            this.prisma.userAuthMethod.findMany({ where: { user_id: member.user_id, type: { in: ['TOTP', 'RECOVERY_CODES'] } }, select: { type: true, verified_at: true, last_used_at: true, disabled_at: true } }),
+        ]);
+        const totp = factors.find((f) => f.type === 'TOTP' && f.verified_at && !f.disabled_at);
+        const codes = factors.filter((f) => f.type === 'RECOVERY_CODES');
+        return {
+            ...member,
+            is_owner: owners.includes(member.id),
+            is_self: member.id === ctx.membership_id,
+            mfa_factors: {
+                totp: totp ? { verified_at: totp.verified_at, last_used_at: totp.last_used_at } : null,
+                recovery_codes: { total: codes.length, remaining: codes.filter((c) => !c.disabled_at).length },
+            },
+        };
+    }
+
+    /** 01-admin member detail "Reset MFA": removes the member's factors so they enrol again (audited, member notified). */
+    async resetMfa(ctx: OrgContext, id: string) {
+        const member = await this.findOne(ctx, id);
+        if (member.is_self) throw new BadRequestException({ message: 'Manage your own two-step verification in Settings → Security', code: 'cannot_reset_own_mfa' });
+        if (member.is_owner) {
+            const owners = await this.access.ownerMembershipIds(ctx.organization_id);
+            if (!ctx.membership_id || !owners.includes(ctx.membership_id)) {
+                throw new ForbiddenException({ message: 'Only an owner can reset the two-step verification of an owner', code: 'owner_mfa_reset_forbidden' });
+            }
+        }
+        return this.mfa.adminReset(ctx, member.user_id, id);
     }
 
     async update(ctx: OrgContext, id: string, dto: UpdateMemberDto) {

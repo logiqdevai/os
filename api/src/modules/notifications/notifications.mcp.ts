@@ -10,6 +10,8 @@ import { NotificationQuerySchema, ReadAllNotificationsSchema, UpdateNotification
 import { UpdateRecipientSettingsSchema } from './dto/notification-preference.dto';
 import { ActivityQuerySchema } from './dto/activity-query.schema';
 import { CreateAnnouncementSchema } from './dto/announcement.dto';
+import { MyDigestQuerySchema } from './dto/notification-device.dto';
+import { PushDevicesService } from './push/push-devices.service';
 
 /**
  * MCP adapter for 14. Own-inbox tools act as the caller (own rows only) and are listed to holders of
@@ -23,6 +25,7 @@ export class NotificationsMcp implements OnModuleInit {
         private readonly prefs: NotificationPreferencesService,
         private readonly activity: ActivityService,
         private readonly announcements: AnnouncementsService,
+        private readonly devices: PushDevicesService,
     ) { }
 
     onModuleInit() {
@@ -72,6 +75,15 @@ export class NotificationsMcp implements OnModuleInit {
                 resource_type: 'notification_recipient_settings',
                 input: UpdateRecipientSettingsSchema,
                 handler: (ctx, args) => this.prefs.updateSettings(ctx, args),
+            },
+            {
+                name: 'notifications_digests_list',
+                description: 'My notification digest history: period, frequency, item count, status (OPEN, SENT, EMPTY, FAILED) and sent time.',
+                permission: OWN,
+                module: ModuleKey.NOTIFICATIONS,
+                resource_type: 'notification_digest',
+                input: MyDigestQuerySchema,
+                handler: (ctx, args) => this.devices.digests(ctx, args),
             },
             {
                 name: 'notifications_activity_read',
