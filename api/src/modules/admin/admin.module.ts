@@ -13,6 +13,7 @@ import { AuditLogModule } from './audit/audit-log.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { SecurityPolicyModule } from './security/security-policy.module';
+import { DomainsModule } from './domains/domains.module';
 
 /**
  * Module 01 Administration (docs/features/01-users-organizations-permissions.md). Teams is registered on its own
@@ -34,6 +35,7 @@ import { SecurityPolicyModule } from './security/security-policy.module';
         IntegrationsModule,
         SessionsModule,
         SecurityPolicyModule,
+        DomainsModule,
     ],
 })
 export class AdminModule { }

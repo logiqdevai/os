@@ -92,4 +92,9 @@ export const AdminApiRoutes = {
         revokeAll: "/sessions/revoke-all",
     },
     securityPolicy: "/security-policy",
+    domains: {
+        list: "/domains",
+        detail: (id: string) => `/domains/${id}`,
+        verify: (id: string) => `/domains/${id}/verify`,
+    },
 };

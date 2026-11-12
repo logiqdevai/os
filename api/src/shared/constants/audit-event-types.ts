@@ -58,7 +58,10 @@ export const AUDIT_EVENT_TYPES = {
     'organization.module_disabled': t('organization_module', 'Product module disabled for the organization', { sensitive: true }),
     'organization.security_policy_changed': t('organization_security_policy', 'Security policy changed', { sensitive: true, notifyAdmins: true }),
     'organization.deletion_requested': t('organization', 'Organization deletion requested', { sensitive: true, notifyAdmins: true }),
+    'domain.added': t('organization_domain', 'Domain added (verification pending)'),
+    'domain.updated': t('organization_domain', 'Domain discovery or auto-provision changed', { sensitive: true }),
     'domain.verified': t('organization_domain', 'Domain verified'),
+    'domain.verification_failed': t('organization_domain', 'Domain DNS check failed'),
     'domain.revoked': t('organization_domain', 'Domain revoked', { sensitive: true }),
 
     // --- Membership & access (01 §24, §44-§61, §92-§99) ---
