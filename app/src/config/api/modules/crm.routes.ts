@@ -78,6 +78,7 @@ export const CrmApiRoutes = {
     },
     duplicates: { list: "/crm/duplicates", dismiss: "/crm/duplicates/dismiss", rules: "/crm/duplicate-rules" },
     merge: { preview: "/crm/merge/preview", run: "/crm/merge" },
+    bulk: "/crm/bulk",
     rules: {
         fields: "/crm/rules/fields",
         assignment: "/crm/assignment-rules",

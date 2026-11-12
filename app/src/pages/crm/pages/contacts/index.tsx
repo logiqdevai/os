@@ -19,6 +19,7 @@ import { MemberChip, RecordLink, TagList } from "../../components/crm-ui";
 import { ExportButton } from "../../components/crm-actions";
 import { ContactFormDialog } from "../../components/contact-form-dialog";
 import { SavedViewsMenu, useHiddenColumns } from "../../components/saved-views-menu";
+import { BulkActionBar, selectionColumn, useCanBulk, useRowSelection } from "../../components/bulk-actions";
 
 /**
  * Contacts (mockup `contacts`).
@@ -29,6 +30,8 @@ import { SavedViewsMenu, useHiddenColumns } from "../../components/saved-views-m
 export default function ContactsPage() {
     const { params, setPage, search, setSearch, filters, setFilter } = useListParams({ limit: 25 });
     const hidden = useHiddenColumns();
+    const sel = useRowSelection(JSON.stringify(params));
+    const canBulk = useCanBulk("CRM_CONTACT");
     const contacts = useContacts(params);
     const exportContacts = useExportContacts();
     const canCreate = usePermission("crm.contacts.create");
@@ -54,6 +57,7 @@ export default function ContactsPage() {
     ];
 
     const visibleColumns = columns.filter((c) => !hidden.has(c.key));
+    const tableColumns = canBulk ? [selectionColumn(sel, contacts.data?.data), ...visibleColumns] : visibleColumns;
 
     return (
         <Page>
@@ -82,8 +86,9 @@ export default function ContactsPage() {
                     <SelectContent>{ArchivedFilterOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                 </Select>
             </TableToolbar>
+            <BulkActionBar entity="CRM_CONTACT" sel={sel} archived={filters.archived === "true"} />
             <DataTable
-                columns={visibleColumns}
+                columns={tableColumns}
                 data={contacts.data?.data}
                 rowKey={(c) => c.id}
                 loading={contacts.isFetching}

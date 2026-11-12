@@ -20,6 +20,7 @@ import { MemberChip, Money, TagList } from "../../components/crm-ui";
 import { ExportButton } from "../../components/crm-actions";
 import { CompanyFormDialog } from "../../components/company-form-dialog";
 import { SavedViewsMenu, useHiddenColumns } from "../../components/saved-views-menu";
+import { BulkActionBar, selectionColumn, useCanBulk, useRowSelection } from "../../components/bulk-actions";
 
 /**
  * Companies (mockup `companies`).
@@ -30,6 +31,8 @@ import { SavedViewsMenu, useHiddenColumns } from "../../components/saved-views-m
 export default function CompaniesPage() {
     const { params, setPage, search, setSearch, filters, setFilter } = useListParams({ limit: 25 });
     const hidden = useHiddenColumns();
+    const sel = useRowSelection(JSON.stringify(params));
+    const canBulk = useCanBulk("CRM_COMPANY");
     const companies = useCompanies(params);
     const settings = useCrmSettings();
     const exportCompanies = useExportCompanies();
@@ -57,6 +60,7 @@ export default function CompaniesPage() {
     ];
 
     const visibleColumns = columns.filter((c) => !hidden.has(c.key));
+    const tableColumns = canBulk ? [selectionColumn(sel, companies.data?.data), ...visibleColumns] : visibleColumns;
 
     return (
         <Page>
@@ -92,8 +96,9 @@ export default function CompaniesPage() {
                     <SelectContent>{ArchivedFilterOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                 </Select>
             </TableToolbar>
+            <BulkActionBar entity="CRM_COMPANY" sel={sel} archived={filters.archived === "true"} />
             <DataTable
-                columns={visibleColumns}
+                columns={tableColumns}
                 data={companies.data?.data}
                 rowKey={(c) => c.id}
                 loading={companies.isFetching}

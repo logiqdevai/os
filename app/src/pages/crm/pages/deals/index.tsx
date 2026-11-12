@@ -21,6 +21,7 @@ import { ExportButton } from "../../components/crm-actions";
 import { DealFormDialog, type DealFormDefaults } from "../../components/deal-form-dialog";
 import { DealBoard } from "./components/deal-board";
 import { SavedViewsMenu, useHiddenColumns } from "../../components/saved-views-menu";
+import { BulkActionBar, selectionColumn, useCanBulk, useRowSelection } from "../../components/bulk-actions";
 
 /**
  * Deals — board and list (mockup `deals`, `deals-list`).
@@ -33,6 +34,8 @@ export default function DealsPage() {
     const navigate = useNavigate();
     const { params, setPage, search, setSearch, filters, setFilter } = useListParams({ limit: 50 });
     const hidden = useHiddenColumns();
+    const sel = useRowSelection(JSON.stringify(params));
+    const canBulk = useCanBulk("CRM_DEAL");
     const view = filters.view === "list" ? "list" : "board";
     const pipelines = usePipelines();
     const pipelineId = filters.pipeline_id ?? pipelines.data?.find((p) => p.is_default)?.id ?? pipelines.data?.[0]?.id;
@@ -76,6 +79,7 @@ export default function DealsPage() {
     ];
 
     const visibleColumns = columns.filter((c) => !hidden.has(c.key));
+    const tableColumns = canBulk ? [selectionColumn(sel, list.data?.data), ...visibleColumns] : visibleColumns;
 
     return (
         <Page>
@@ -135,8 +139,9 @@ export default function DealsPage() {
                             {list.data.summary.count} deals · total <Money value={list.data.summary.total_value} currency={pipeline?.currency} className="font-medium text-foreground" />
                         </div>
                     )}
+                    <BulkActionBar entity="CRM_DEAL" sel={sel} archived={filters.archived === "true"} />
                     <DataTable
-                        columns={visibleColumns}
+                        columns={tableColumns}
                         data={list.data?.data}
                         rowKey={(d) => d.id}
                         loading={list.isFetching || pipelines.isPending}
