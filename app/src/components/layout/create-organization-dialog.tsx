@@ -7,8 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCreateOrganization } from "@/features/session/hooks/use-session";
 import { createOrganizationSchema, type CreateOrganizationFormValues } from "@/features/session/validation-schemas/session.schema";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 export function CreateOrganizationDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
     const create = useCreateOrganization();
@@ -17,13 +15,12 @@ export function CreateOrganizationDialog({ open, onOpenChange }: { open: boolean
 
     const submit = form.handleSubmit((values) =>
         create.mutate(values.name, {
+            // The new organization opens (no success toast); a failure is toasted once by the global MutationCache.
             onSuccess: () => {
                 onOpenChange(false);
                 form.reset();
-                toast({ title: "Organization created" });
                 navigate("/home");
             },
-            onError: (e) => toast({ variant: "destructive", title: "Could not create organization", description: getApiErrorMessage(e) }),
         })
     );
 

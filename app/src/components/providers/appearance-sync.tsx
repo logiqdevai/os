@@ -1,8 +1,6 @@
 import { useEffect } from "react";
 import { useSessionData, useUpdateAppearance } from "@/features/session/hooks/use-session";
 import { applyAppearance, registerAppearanceSaver } from "@/hooks/use-theme";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 /**
  * Keeps <html> in step with the signed-in person's appearance for the active organization (01 §127):
@@ -22,9 +20,8 @@ export function AppearanceSync() {
     const { mutate } = save;
     useEffect(() => {
         if (!orgId) return registerAppearanceSaver(null);
-        registerAppearanceSaver((patch) =>
-            mutate(patch, { onError: (e) => toast({ variant: "destructive", title: "Appearance saved on this device only", description: getApiErrorMessage(e) }) })
-        );
+        // The theme is already applied locally; a failed save is toasted once by the global MutationCache.
+        registerAppearanceSaver((patch) => mutate(patch));
         return () => registerAppearanceSaver(null);
     }, [orgId, mutate]);
 
