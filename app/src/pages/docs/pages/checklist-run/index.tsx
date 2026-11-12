@@ -8,8 +8,6 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { WikiChecklistAssigneeFormOptions } from "@/config/constants/dropdowns/docs/docs.options";
@@ -34,7 +32,6 @@ export default function ChecklistRunPage() {
     if (run.error) return <Page><ErrorState error={run.error} onRetry={() => run.refetch()} /></Page>;
     const r = run.data;
     const open = r.status !== "COMPLETED" && r.status !== "CANCELLED";
-    const fail = (e: unknown) => toast({ variant: "destructive", title: "Could not update the item", description: getApiErrorMessage(e) });
 
     return (
         <Page width="narrow">
@@ -57,8 +54,8 @@ export default function ChecklistRunPage() {
                         <li key={it.id} className="flex items-start gap-3 rounded-lg border border-border bg-card p-3">
                             <button
                                 type="button"
-                                disabled={!open || skipped || item.isPending}
-                                onClick={() => item.mutate({ id, itemId: it.id, action: done ? "reopen" : "complete" }, { onError: fail })}
+                                disabled={!open || skipped}
+                                onClick={() => item.mutate({ id, itemId: it.id, action: done ? "reopen" : "complete" })}
                                 className="mt-0.5 shrink-0 disabled:opacity-50"
                                 aria-label={done ? `Reopen ${it.checklist_item.title}` : `Complete ${it.checklist_item.title}`}
                             >
@@ -80,17 +77,17 @@ export default function ChecklistRunPage() {
                     );
                 })}
             </ol>
-            <Dialog open={!!skipping} onOpenChange={(o) => !item.isPending && !o && setSkipping(null)}>
+            <Dialog open={!!skipping} onOpenChange={(o) => !o && setSkipping(null)}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader><DialogTitle>Skip this item?</DialogTitle><DialogDescription>Give a reason so the history stays clear.</DialogDescription></DialogHeader>
                     <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Not needed for contractors" aria-label="Reason" autoFocus />
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setSkipping(null)} disabled={item.isPending}>Cancel</Button>
-                        <Button disabled={!reason.trim()} loading={item.isPending} onClick={() => skipping && item.mutate({ id, itemId: skipping, action: "skip", reason: reason.trim() }, { onSuccess: () => setSkipping(null), onError: fail })}>Skip item</Button>
+                        <Button variant="ghost" onClick={() => setSkipping(null)}>Cancel</Button>
+                        <Button disabled={!reason.trim()} onClick={() => { if (skipping) item.mutate({ id, itemId: skipping, action: "skip", reason: reason.trim() }); setSkipping(null); }}>Skip item</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            <ConfirmationDialog isOpen={cancelling} onClose={() => setCancelling(false)} title="Cancel this run?" description="Open items are closed. Completed items stay in the history." confirmText="Cancel run" variant="destructive" isLoading={cancel.isPending} onConfirm={() => cancel.mutate(id, { onSuccess: () => { toast({ title: "Run cancelled" }); setCancelling(false); }, onError: fail })} />
+            <ConfirmationDialog isOpen={cancelling} onClose={() => setCancelling(false)} title="Cancel this run?" description="Open items are closed. Completed items stay in the history." confirmText="Cancel run" variant="destructive" onConfirm={() => { cancel.mutate(id); setCancelling(false); }} />
         </Page>
     );
 }

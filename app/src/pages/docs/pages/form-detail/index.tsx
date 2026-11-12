@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowDown, ArrowUp, Copy, Lock, Plus, Rocket, Save, Trash2, Unlock } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Copy, Lock, Plus, Rocket, Save, Trash2, Unlock } from "lucide-react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,8 @@ import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState, ErrorState, ListSkeleton, NoAccessState, PageSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useAutosave } from "@/hooks/use-autosave";
 import { formatDate, formatDateTime, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { CustomFormFieldTypeOptions, CustomFormKindFormOptions, FormSubmissionStatusOptions } from "@/config/constants/dropdowns/docs/docs.options";
@@ -24,10 +24,22 @@ import type { CustomFormFieldType, CustomFormKind, FormField, FormSubmission } f
 import { DocsMemberPicker, DocsStatusBadge } from "../../components/docs-ui";
 
 const CHOICE: CustomFormFieldType[] = ["SINGLE_CHOICE", "MULTI_CHOICE"];
+type FormDto = { name: string; description?: string; kind: CustomFormKind; is_anonymous: boolean; allow_multiple_submissions: boolean; requires_review: boolean; confirmation_message?: string; fields_schema: FormField[] };
+/** First problem that blocks saving, shown inline (no toast). */
+const formProblem = (d: FormDto): string | null => {
+    if (!d.name) return "Give the form a name";
+    const keys = d.fields_schema.map((x) => x.key);
+    if (new Set(keys).size !== keys.length) return "Two questions have the same key";
+    if (d.fields_schema.some((x) => !x.label.trim())) return "Every question needs a label";
+    if (d.fields_schema.some((x) => CHOICE.includes(x.type) && !(x.options?.length))) return "Choice questions need options";
+    return null;
+};
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").replace(/^(\d)/, "f_$1").slice(0, 60) || "field";
 
 /**
  * /docs/forms/new · /docs/forms/:id?tab=build|responses|share — form builder, responses, assignment and public link (15 §8)
+ * New: explicit "Create form". Existing: the builder autosaves every valid change (<SaveStatus />); Publish stays explicit.
  * @perm read docs.forms.read · build docs.forms.create/update · assign docs.forms.assign · review docs.forms.review · delete docs.forms.delete
  * @api POST/PATCH /docs/forms · POST publish|close|reopen · GET responses|summary · POST assignments · PATCH responses/:id
  */
@@ -52,31 +64,50 @@ export default function FormDetailPage() {
     const [fields, setFields] = useState<FormField[]>([]);
     const [deleting, setDeleting] = useState(false);
 
+    // Load the form once per id: refetches after an autosave must not overwrite what is being edited.
+    const loadedId = useRef<string | null>(null);
     useEffect(() => {
-        if (form.data) {
+        if (form.data && loadedId.current !== form.data.id) {
+            loadedId.current = form.data.id;
             const f = form.data;
             setName(f.name); setDescription(f.description ?? ""); setKind(f.kind); setAnonymous(f.is_anonymous); setMultiple(f.allow_multiple_submissions);
             setReview(f.requires_review); setConfirmation(f.confirmation_message ?? ""); setFields(f.fields_schema ?? []);
         }
     }, [form.data]);
+    const [showProblem, setShowProblem] = useState(false);
+
+    const dto: FormDto = useMemo(() => ({ name: name.trim(), description: description || undefined, kind, is_anonymous: anonymous, allow_multiple_submissions: multiple, requires_review: review, confirmation_message: confirmation || undefined, fields_schema: fields }), [name, description, kind, anonymous, multiple, review, confirmation, fields]);
+    // What the server has, in the same shape: autosave only runs when the builder differs from it.
+    const serverDto: FormDto | null = useMemo(() => {
+        const s = form.data;
+        return s ? { name: s.name.trim(), description: s.description || undefined, kind: s.kind, is_anonymous: s.is_anonymous, allow_multiple_submissions: s.allow_multiple_submissions, requires_review: s.requires_review, confirmation_message: s.confirmation_message || undefined, fields_schema: s.fields_schema ?? [] } : null;
+    }, [form.data]);
+    const problem = formProblem(dto);
+    const changed = !!serverDto && loadedId.current === id && !same(dto, serverDto);
+    const autosave = useAutosave({ value: dto, enabled: !!id && p.can("docs.forms.update") && changed && !problem, save: (v) => update.mutateAsync({ id: id as string, ...v }) });
 
     if (!(id ? p.can("docs.forms.read") : p.can("docs.forms.create"))) return <Page><NoAccessState /></Page>;
     if (id && form.isPending) return <PageSkeleton />;
     if (form.error) return <Page><ErrorState error={form.error} onRetry={() => form.refetch()} /></Page>;
     const f = form.data;
     const canEdit = id ? p.can("docs.forms.update") : true;
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
     const editField = (i: number, patch: Partial<FormField>) => setFields((list) => list.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
 
-    const save = (then?: () => void) => {
-        if (!name.trim()) return toast({ variant: "destructive", title: "Give the form a name" });
-        const keys = fields.map((x) => x.key);
-        if (new Set(keys).size !== keys.length) return toast({ variant: "destructive", title: "Two questions have the same key" });
-        if (fields.some((x) => !x.label.trim())) return toast({ variant: "destructive", title: "Every question needs a label" });
-        if (fields.some((x) => CHOICE.includes(x.type) && !(x.options?.length))) return toast({ variant: "destructive", title: "Choice questions need options" });
-        const dto = { name: name.trim(), description: description || undefined, kind, is_anonymous: anonymous, allow_multiple_submissions: multiple, requires_review: review, confirmation_message: confirmation || undefined, fields_schema: fields };
-        if (id) update.mutate({ id, ...dto }, { onSuccess: () => { toast({ title: "Form saved" }); then?.(); }, onError: fail("Could not save") });
-        else create.mutate(dto, { onSuccess: (c) => { toast({ title: "Form created" }); navigate(`/docs/forms/${c.id}`); }, onError: fail("Could not create") });
+    const createForm = () => {
+        setShowProblem(true);
+        if (problem) return;
+        create.mutate(dto, { onSuccess: (c) => navigate(`/docs/forms/${c.id}`) });
+    };
+    /** Publish is explicit (outward): save any unsaved change first, then publish it as a new version. */
+    const publish = async () => {
+        setShowProblem(true);
+        if (problem || !id) return;
+        try {
+            if (changed) await update.mutateAsync({ id, ...dto });
+        } catch {
+            return; // shown by <SaveStatus /> on the next autosave attempt
+        }
+        action.mutate({ id, action: "publish" });
     };
     const publicUrl = id ? `${window.location.origin}/f/${id}` : "";
 
@@ -89,9 +120,10 @@ export default function FormDetailPage() {
                 actions={f && (
                     <>
                         <Button variant="outline" asChild><Link to={`/docs/forms/${f.id}/fill`}>Preview</Link></Button>
-                        {p.can("docs.forms.update") && f.status === "PUBLISHED" && <Button variant="outline" onClick={() => action.mutate({ id: f.id, action: "close" }, { onSuccess: () => toast({ title: "Form closed" }), onError: fail("Could not close") })}><Lock /> Close</Button>}
-                        {p.can("docs.forms.update") && f.status === "CLOSED" && <Button variant="outline" onClick={() => action.mutate({ id: f.id, action: "reopen" }, { onSuccess: () => toast({ title: "Form reopened" }), onError: fail("Could not reopen") })}><Unlock /> Reopen</Button>}
-                        {p.can("docs.forms.update") && f.status !== "ARCHIVED" && <Button onClick={() => save(() => action.mutate({ id: f.id, action: "publish" }, { onSuccess: () => toast({ title: "Published as a new version" }), onError: fail("Could not publish") }))} loading={action.isPending}><Rocket /> Publish</Button>}
+                        {p.can("docs.forms.update") && <SaveStatus state={autosave} />}
+                        {p.can("docs.forms.update") && f.status === "PUBLISHED" && <Button variant="outline" onClick={() => action.mutate({ id: f.id, action: "close" })}><Lock /> Close</Button>}
+                        {p.can("docs.forms.update") && f.status === "CLOSED" && <Button variant="outline" onClick={() => action.mutate({ id: f.id, action: "reopen" })}><Unlock /> Reopen</Button>}
+                        {p.can("docs.forms.update") && f.status !== "ARCHIVED" && <Button onClick={() => void publish()} loading={action.isPending && action.variables?.action === "publish"}><Rocket /> Publish</Button>}
                         {p.can("docs.forms.delete") && <Button variant="outline" size="icon" aria-label="Delete form" onClick={() => setDeleting(true)}><Trash2 /></Button>}
                     </>
                 )}
@@ -162,7 +194,8 @@ export default function FormDetailPage() {
                             </ol>
                         )}
                     </Section>
-                    {canEdit && <div className="flex justify-end"><Button onClick={() => save()} loading={create.isPending || update.isPending}><Save /> {id ? "Save draft" : "Create form"}</Button></div>}
+                    {canEdit && problem && (showProblem || !!id) && <p role="alert" className="text-xs text-warning">{problem}{id ? " — changes are saved once this is fixed." : ""}</p>}
+                    {canEdit && !id && <div className="flex justify-end"><Button onClick={createForm} loading={create.isPending}><Save /> Create form</Button></div>}
                 </TabsContent>
                 {id && <TabsContent value="responses"><ResponsesTab formId={id} /></TabsContent>}
                 {id && f && (
@@ -171,7 +204,7 @@ export default function FormDetailPage() {
                             {f.public_link_enabled ? (
                                 <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 sm:flex-row sm:items-center">
                                     <code className="min-w-0 flex-1 break-all font-mono text-xs">{publicUrl}</code>
-                                    <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(publicUrl).then(() => toast({ title: "Link copied" }))}><Copy /> Copy</Button>
+                                    <CopyLinkButton url={publicUrl} />
                                 </div>
                             ) : <p className="text-[13px] text-muted-foreground">Make the form anonymous and publish it to get a public link.</p>}
                         </Section>
@@ -179,7 +212,7 @@ export default function FormDetailPage() {
                     </TabsContent>
                 )}
             </Tabs>
-            <ConfirmationDialog isOpen={deleting} onClose={() => setDeleting(false)} title="Delete this form?" description="The form, its versions and all responses are deleted permanently." confirmText="Delete" variant="destructive" isLoading={remove.isPending} onConfirm={() => id && remove.mutate(id, { onSuccess: () => { toast({ title: "Form deleted" }); navigate("/docs/forms"); }, onError: fail("Could not delete") })} />
+            <ConfirmationDialog isOpen={deleting} onClose={() => setDeleting(false)} title="Delete this form?" description="The form, its versions and all responses are deleted permanently." confirmText="Delete" variant="destructive" onConfirm={() => { if (id) remove.mutate(id); navigate("/docs/forms"); }} />
         </Page>
     );
 }
@@ -208,7 +241,7 @@ function ResponsesTab({ formId }: { formId: string }) {
             key: "review",
             header: <span className="sr-only">Review</span>,
             cell: (s) => canReview && s.status !== "REVIEWED" && (
-                <Select value="" onValueChange={(v) => reviewMut.mutate({ id: formId, submissionId: s.id, status: v }, { onSuccess: () => toast({ title: "Response updated" }), onError: (e) => toast({ variant: "destructive", title: "Could not update", description: getApiErrorMessage(e) }) })}>
+                <Select value="" onValueChange={(v) => reviewMut.mutate({ id: formId, submissionId: s.id, status: v })}>
                     <SelectTrigger className="h-8 w-28" aria-label="Review response"><SelectValue placeholder="Review" /></SelectTrigger>
                     <SelectContent>{FormSubmissionStatusOptions.filter((o) => ["UNDER_REVIEW", "REVIEWED", "REJECTED"].includes(o.id)).map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                 </Select>
@@ -272,10 +305,11 @@ function AssignSection({ formId, published }: { formId: string; published: boole
                 <Button
                     disabled={!published || (target === "MEMBERSHIP" && !member)}
                     loading={create.isPending}
-                    onClick={() => create.mutate({ id: formId, target_type: target, target_id: target === "MEMBERSHIP" ? member : undefined, due_at: due ? new Date(due).toISOString() : undefined, message: message || undefined }, { onSuccess: (a) => toast({ title: `Assigned to ${a.recipient_count} people` }), onError: (e) => toast({ variant: "destructive", title: "Could not assign", description: getApiErrorMessage(e) }) })}
+                    onClick={() => create.mutate({ id: formId, target_type: target, target_id: target === "MEMBERSHIP" ? member : undefined, due_at: due ? new Date(due).toISOString() : undefined, message: message || undefined }, { onSuccess: () => { setMessage(""); setDue(""); } })}
                 >
                     Assign
                 </Button>
+                {create.data && <p role="status" className="text-xs text-muted-foreground">Assigned to {create.data.recipient_count} people.</p>}
                 {!!assignments.data?.length && (
                     <ul className="divide-y divide-border rounded-md border border-border text-[13px]">
                         {assignments.data.map((a) => <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"><span>{a.target_type === "ORGANIZATION" ? "Everyone" : a.target_type.toLowerCase()} · {a.submitted_count}/{a.recipient_count} submitted</span><span className="text-xs text-muted-foreground">{a.due_at ? `due ${formatDate(a.due_at)}` : ""}{a.cancelled_at ? " · cancelled" : ""}</span></li>)}
@@ -283,5 +317,20 @@ function AssignSection({ formId, published }: { formId: string; published: boole
                 )}
             </div>
         </Section>
+    );
+}
+
+/** Copies the public link; the button shows "Copied" for a moment instead of a toast. */
+function CopyLinkButton({ url }: { url: string }) {
+    const [copied, setCopied] = useState(false);
+    useEffect(() => {
+        if (!copied) return;
+        const t = setTimeout(() => setCopied(false), 1600);
+        return () => clearTimeout(t);
+    }, [copied]);
+    return (
+        <Button size="sm" variant="outline" aria-label={copied ? "Copied" : "Copy link"} onClick={() => void navigator.clipboard.writeText(url).then(() => setCopied(true))}>
+            {copied ? <><Check /> Copied</> : <><Copy /> Copy</>}
+        </Button>
     );
 }

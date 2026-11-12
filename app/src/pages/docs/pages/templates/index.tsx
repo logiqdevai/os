@@ -17,8 +17,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { WikiPageTypeFormOptions } from "@/config/constants/dropdowns/docs/docs.options";
 import { useArchiveDocTemplate, useCreateDocTemplate, useDocTemplates, useUpdateDocTemplate } from "@/features/docs/hooks/use-docs";
@@ -84,8 +84,7 @@ export default function DocTemplatesPage() {
                 description="Existing pages keep their content; the template is no longer offered."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate(archiving.id, { onSuccess: () => { toast({ title: "Template archived" }); setArchiving(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (archiving) archive.mutate(archiving.id); setArchiving(null); }}
             />
         </Page>
     );
@@ -100,26 +99,30 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
+/** New template: explicit "Create template". Edit: valid changes autosave (optimistic, <SaveStatus />); "Done" closes. */
 function TemplateDialog({ open, onOpenChange, template }: { open: boolean; onOpenChange: (o: boolean) => void; template: WikiTemplate | null }) {
     const create = useCreateDocTemplate();
     const update = useUpdateDocTemplate();
     const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { name: "", icon: "", description: "", page_type: "GENERAL", content_markdown: "" } });
+    // Reset when the dialog opens or another template is opened — not when the (optimistically patched) template changes.
+    const templateId = template?.id ?? null;
     useEffect(() => {
         if (open) form.reset({ name: template?.name ?? "", icon: template?.icon ?? "", description: template?.description ?? "", page_type: template?.page_type ?? "GENERAL", content_markdown: template?.content_markdown ?? "" });
-    }, [open, template, form]);
-    const pending = create.isPending || update.isPending;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, templateId, form]);
+    const pending = create.isPending;
+    const toDto = (v: Values) => ({ ...v, page_type: v.page_type as WikiPageType, icon: v.icon || undefined, description: v.description || undefined });
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: templateId as string, ...toDto(v) }), { enabled: open && !!templateId });
     const submit = form.handleSubmit((v) => {
-        const dto = { ...v, page_type: v.page_type as WikiPageType, icon: v.icon || undefined, description: v.description || undefined };
-        const onError = (e: unknown) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) });
-        if (template) update.mutate({ id: template.id, ...dto }, { onSuccess: () => { toast({ title: "Template updated" }); onOpenChange(false); }, onError });
-        else create.mutate(dto, { onSuccess: () => { toast({ title: "Template created" }); onOpenChange(false); }, onError });
+        if (template) { autosave.flush(); onOpenChange(false); return; }
+        create.mutate(toDto(v), { onSuccess: () => onOpenChange(false) });
     });
     return (
         <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
-                        <DialogHeader><DialogTitle>{template ? "Edit template" : "New template"}</DialogTitle><DialogDescription>Markdown content copied into new pages.</DialogDescription></DialogHeader>
+                        <DialogHeader><DialogTitle>{template ? "Edit template" : "New template"}</DialogTitle><DialogDescription>Markdown content copied into new pages.{template ? " Changes save automatically." : ""}</DialogDescription></DialogHeader>
                         <div className="grid grid-cols-[72px_1fr] gap-3">
                             <FormField control={form.control} name="icon" render={({ field }) => (<FormItem><FormLabel>Icon</FormLabel><FormControl><Input maxLength={8} {...field} /></FormControl></FormItem>)} />
                             <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input autoFocus {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -135,10 +138,17 @@ function TemplateDialog({ open, onOpenChange, template }: { open: boolean; onOpe
                         )} />
                         <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                         <FormField control={form.control} name="content_markdown" render={({ field }) => (<FormItem><FormLabel>Content</FormLabel><FormControl><Textarea rows={12} className="font-mono text-xs" placeholder={"## Purpose\n\n## Steps\n1. "} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{template ? "Save" : "Create template"}</Button>
-                        </DialogFooter>
+                        {template ? (
+                            <DialogFooter className="items-center sm:justify-between">
+                                <SaveStatus state={autosave} />
+                                <Button type="submit" variant="outline">Done</Button>
+                            </DialogFooter>
+                        ) : (
+                            <DialogFooter>
+                                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                                <Button type="submit" loading={pending}>Create template</Button>
+                            </DialogFooter>
+                        )}
                     </form>
                 </Form>
             </DialogContent>

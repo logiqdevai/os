@@ -3,8 +3,6 @@ import { useParams } from "react-router-dom";
 import { CheckCircle2, FileQuestion } from "lucide-react";
 import { EmptyState, PageSkeleton } from "@/components/ui/states";
 import { usePageMetadata } from "@/hooks/use-page-metadata";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate } from "@/lib/format";
 import { usePublicForm, useSubmitPublicForm } from "@/features/docs/hooks/use-docs";
 import { FormRenderer } from "../components/form-renderer";
@@ -37,7 +35,7 @@ export default function PublicFormPage() {
                             <FormRenderer
                                 fields={form.data.fields}
                                 pending={submit.isPending}
-                                onSubmit={(answers) => submit.mutate({ id: formId, answers }, { onSuccess: (r) => setDone(r?.confirmation_message ?? form.data.confirmation_message ?? ""), onError: (e) => toast({ variant: "destructive", title: "Could not submit", description: getApiErrorMessage(e) }) })}
+                                onSubmit={(answers) => submit.mutate({ id: formId, answers }, { onSuccess: (r) => setDone(r?.confirmation_message ?? form.data.confirmation_message ?? "") })}
                             />
                         </div>
                     </div>

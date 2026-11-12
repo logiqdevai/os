@@ -17,8 +17,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { WikiChecklistKindFilterOptions, WikiChecklistKindFormOptions, WikiChecklistRunStatusFilterOptions } from "@/config/constants/dropdowns/docs/docs.options";
@@ -94,8 +92,7 @@ function NewChecklistDialog({ open, onOpenChange, onCreated }: { open: boolean; 
     const create = useCreateChecklist();
     const form = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues: { name: "", kind: "ONBOARDING", description: "" } });
     const submit = form.handleSubmit((v) => create.mutate({ name: v.name, kind: v.kind as WikiChecklistKind, description: v.description || undefined, items: [] }, {
-        onSuccess: (c) => { toast({ title: "Checklist created — add its items" }); onOpenChange(false); form.reset(); onCreated(c.id); },
-        onError: (e) => toast({ variant: "destructive", title: "Could not create", description: getApiErrorMessage(e) }),
+        onSuccess: (c) => { onOpenChange(false); form.reset(); onCreated(c.id); },
     }));
     return (
         <Dialog open={open} onOpenChange={(o) => !create.isPending && onOpenChange(o)}>

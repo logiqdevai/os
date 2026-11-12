@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Archive, ArrowDown, ArrowUp, Play, Plus, Save, Trash2 } from "lucide-react";
+import { Archive, ArrowDown, ArrowUp, Play, Plus, Trash2 } from "lucide-react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,16 +12,23 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useAutosave } from "@/hooks/use-autosave";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { WikiChecklistAssigneeFormOptions, WikiChecklistKindFormOptions } from "@/config/constants/dropdowns/docs/docs.options";
 import { useArchiveChecklist, useChecklist, useReplaceChecklistItems, useStartChecklistRun, useUpdateChecklist } from "@/features/docs/hooks/use-docs";
 import type { ChecklistItemInput, WikiChecklistAssigneeKind } from "@/features/docs/interfaces/docs.interfaces";
 import { DocsMemberPicker } from "../../components/docs-ui";
 
+/** An item being edited: `_key` is a client-only key so new items keep their identity until the server gives them an id. */
+type DraftItem = ChecklistItemInput & { _key: string };
+let keySeq = 0;
+const newKey = () => `k${++keySeq}`;
+const toInput = ({ _key: _k, ...it }: DraftItem): ChecklistItemInput => ({ ...it, title: it.title.trim() });
+
 /**
  * /docs/checklists/:id — edit items, start a run for a member (15 §7)
+ * Items autosave (PUT replaces the list; no Save button); items without a title wait until they get one.
  * @perm VIEW docs.pages.read · edit/start docs.checklists.manage
  * @api GET /docs/checklists/:id · PATCH · PUT /docs/checklists/:id/items · POST /docs/checklists/:id/runs · POST …/archive
  */
@@ -34,31 +41,47 @@ export default function ChecklistDetailPage() {
     const update = useUpdateChecklist();
     const start = useStartChecklistRun();
     const archive = useArchiveChecklist();
-    const [items, setItems] = useState<ChecklistItemInput[]>([]);
+    const [items, setItems] = useState<DraftItem[]>([]);
     const [dirty, setDirty] = useState(false);
+    const itemsRef = useRef(items);
+    itemsRef.current = items;
     const [startOpen, setStartOpen] = useState(false);
     const [subject, setSubject] = useState<string[]>([]);
     const [dueAt, setDueAt] = useState("");
     const [archiving, setArchiving] = useState(false);
 
+    // Load the items once per checklist: refetches after an autosave must not overwrite what is being edited.
+    const loadedId = useRef<string | null>(null);
     useEffect(() => {
-        if (checklist.data?.items) {
-            setItems(checklist.data.items.map((i) => ({ id: i.id, title: i.title, description: i.description ?? undefined, page_id: i.page_id ?? undefined, form_id: i.form_id ?? undefined, due_offset_days: i.due_offset_days ?? undefined, assignee_kind: i.assignee_kind, assignee_membership_id: i.assignee_membership_id ?? undefined, is_required: i.is_required, requires_acknowledgement: i.requires_acknowledgement })));
-            setDirty(false);
-        }
+        const data = checklist.data;
+        if (!data?.items || loadedId.current === data.id) return;
+        loadedId.current = data.id;
+        setItems(data.items.map((i) => ({ _key: i.id, id: i.id, title: i.title, description: i.description ?? undefined, page_id: i.page_id ?? undefined, form_id: i.form_id ?? undefined, due_offset_days: i.due_offset_days ?? undefined, assignee_kind: i.assignee_kind, assignee_membership_id: i.assignee_membership_id ?? undefined, is_required: i.is_required, requires_acknowledgement: i.requires_acknowledgement })));
+        setDirty(false);
     }, [checklist.data]);
+
+    // Autosave the list. The compared value leaves out server ids, so adopting the new ids does not trigger another save.
+    const untitled = items.some((i) => !i.title.trim());
+    const compared = useMemo(() => items.map(({ _key: _k, id: _id, ...it }) => it), [items]);
+    const autosave = useAutosave({
+        value: compared,
+        enabled: canManage && dirty && !untitled,
+        save: async () => {
+            const sent = itemsRef.current;
+            const saved = await replace.mutateAsync({ id, items: sent.map(toInput) });
+            // New items get their server id (matched by position in the list that was sent).
+            const ids = new Map(sent.map((it, i) => [it._key, it.id ?? saved.items?.[i]?.id]));
+            setItems((list) => (list.some((it) => !it.id && ids.get(it._key)) ? list.map((it) => (it.id ? it : { ...it, id: ids.get(it._key) })) : list));
+        },
+    });
+    const saving = autosave.status === "pending" || autosave.status === "saving";
 
     if (checklist.isPending) return <PageSkeleton />;
     if (checklist.error) return <Page><ErrorState error={checklist.error} onRetry={() => checklist.refetch()} /></Page>;
     const c = checklist.data;
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
     const edit = (i: number, patch: Partial<ChecklistItemInput>) => { setItems((list) => list.map((it, idx) => (idx === i ? { ...it, ...patch } : it))); setDirty(true); };
     const move = (i: number, d: -1 | 1) => { setItems((list) => { const n = [...list]; [n[i], n[i + d]] = [n[i + d], n[i]]; return n; }); setDirty(true); };
 
-    const save = () => {
-        if (items.some((i) => !i.title.trim())) return toast({ variant: "destructive", title: "Every item needs a title" });
-        replace.mutate({ id, items: items.map((i) => ({ ...i, title: i.title.trim() })) }, { onSuccess: () => { toast({ title: "Checklist saved" }); setDirty(false); }, onError: fail("Could not save") });
-    };
 
     return (
         <Page width="narrow">
@@ -70,23 +93,23 @@ export default function ChecklistDetailPage() {
                 actions={canManage && !c.archived_at && (
                     <>
                         <Button variant="outline" onClick={() => setArchiving(true)}><Archive /> Archive</Button>
-                        <Button onClick={() => { setSubject([]); setDueAt(""); setStartOpen(true); }} disabled={!items.length || dirty}><Play /> Start for a member</Button>
+                        <Button onClick={() => { setSubject([]); setDueAt(""); setStartOpen(true); }} disabled={!items.length || untitled || saving}><Play /> Start for a member</Button>
                     </>
                 )}
             />
             {canManage && (
                 <div className="mb-6 flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-3">
                     <div><div className="text-[13px] text-foreground">Active</div><div className="text-xs text-muted-foreground">Inactive checklists cannot be started.</div></div>
-                    <Switch checked={c.is_active} onCheckedChange={(v) => update.mutate({ id, is_active: v }, { onError: fail("Could not update") })} aria-label="Active" />
+                    <Switch checked={c.is_active} onCheckedChange={(v) => update.mutate({ id, is_active: v })} aria-label="Active" />
                 </div>
             )}
-            <Section title="Items" description="Each run copies these items; due dates count from the run start." actions={canManage && <Button size="sm" variant="outline" onClick={() => { setItems((l) => [...l, { title: "", assignee_kind: "SUBJECT", is_required: true }]); setDirty(true); }}><Plus /> Add item</Button>}>
+            <Section title="Items" description="Each run copies these items; due dates count from the run start. Changes save automatically." actions={canManage && <><SaveStatus state={autosave} /><Button size="sm" variant="outline" onClick={() => { setItems((l) => [...l, { _key: newKey(), title: "", assignee_kind: "SUBJECT", is_required: true }]); setDirty(true); }}><Plus /> Add item</Button></>}>
                 {!items.length ? (
                     <div className="rounded-lg border border-border bg-card"><EmptyState compact title="No items yet" description="Add the steps a new member (or their manager) completes." /></div>
                 ) : (
                     <ol className="space-y-2">
                         {items.map((it, i) => (
-                            <li key={it.id ?? `new-${i}`} className="space-y-3 rounded-lg border border-border bg-card p-3">
+                            <li key={it._key} className="space-y-3 rounded-lg border border-border bg-card p-3">
                                 <div className="flex items-center gap-2">
                                     <span className="grid size-6 shrink-0 place-items-center rounded-full bg-secondary text-xs tabular">{i + 1}</span>
                                     <Input value={it.title} onChange={(e) => edit(i, { title: e.target.value })} placeholder="Set up laptop and accounts" disabled={!canManage} aria-label={`Item ${i + 1} title`} />
@@ -119,7 +142,7 @@ export default function ChecklistDetailPage() {
                         ))}
                     </ol>
                 )}
-                {canManage && dirty && <div className="mt-3 flex justify-end"><Button onClick={save} loading={replace.isPending}><Save /> Save items</Button></div>}
+                {canManage && untitled && <p role="alert" className="mt-3 text-xs text-warning">Every item needs a title — changes are saved once it has one.</p>}
             </Section>
 
             <Dialog open={startOpen} onOpenChange={(o) => !start.isPending && setStartOpen(o)}>
@@ -131,11 +154,11 @@ export default function ChecklistDetailPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setStartOpen(false)} disabled={start.isPending}>Cancel</Button>
-                        <Button disabled={!subject.length} loading={start.isPending} onClick={() => start.mutate({ id, subject_membership_id: subject[0], due_at: dueAt ? new Date(dueAt).toISOString() : undefined }, { onSuccess: (r) => { toast({ title: "Checklist started" }); navigate(`/docs/checklist-runs/${r.id}`); }, onError: fail("Could not start") })}>Start</Button>
+                        <Button disabled={!subject.length} loading={start.isPending} onClick={() => start.mutate({ id, subject_membership_id: subject[0], due_at: dueAt ? new Date(dueAt).toISOString() : undefined }, { onSuccess: (r) => navigate(`/docs/checklist-runs/${r.id}`) })}>Start</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            <ConfirmationDialog isOpen={archiving} onClose={() => setArchiving(false)} title={`Archive ${c.name}?`} description="Running checklists continue; it can no longer be started." confirmText="Archive" variant="destructive" isLoading={archive.isPending} onConfirm={() => archive.mutate(id, { onSuccess: () => { toast({ title: "Checklist archived" }); setArchiving(false); }, onError: fail("Could not archive") })} />
+            <ConfirmationDialog isOpen={archiving} onClose={() => setArchiving(false)} title={`Archive ${c.name}?`} description="Running checklists continue; it can no longer be started." confirmText="Archive" variant="destructive" onConfirm={() => { archive.mutate(id); setArchiving(false); }} />
         </Page>
     );
 }

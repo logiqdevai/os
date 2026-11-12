@@ -8,8 +8,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
 import { useDeletePage, useDocsTrash, usePageAction } from "@/features/docs/hooks/use-docs";
 import type { WikiPageListItem } from "@/features/docs/interfaces/docs.interfaces";
@@ -28,7 +26,6 @@ export default function DocsTrashPage() {
     const remove = useDeletePage();
     const p = usePermissions();
     const [deleting, setDeleting] = useState<WikiPageListItem | null>(null);
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
     const columns: DataTableColumn<WikiPageListItem>[] = [
         { key: "title", header: "Page", cell: (pg) => <div className="flex min-w-0 items-center gap-2"><DocIcon icon={pg.icon} /><div className="min-w-0"><div className="truncate font-medium text-foreground">{pg.title}</div><div className="truncate text-xs text-muted-foreground">{pg.space.name}</div></div></div> },
@@ -38,7 +35,7 @@ export default function DocsTrashPage() {
             header: <span className="sr-only">Actions</span>,
             cell: (pg) => (
                 <div className="flex justify-end gap-1.5">
-                    {p.can("docs.pages.archive") && <Button size="sm" variant="outline" onClick={() => action.mutate({ id: pg.id, action: tab === "deleted" ? "restore" : "unarchive" }, { onSuccess: () => toast({ title: "Page restored" }), onError: fail("Could not restore") })}><ArchiveRestore /> Restore</Button>}
+                    {p.can("docs.pages.archive") && <Button size="sm" variant="outline" onClick={() => action.mutate({ id: pg.id, action: tab === "deleted" ? "restore" : "unarchive" })}><ArchiveRestore /> Restore</Button>}
                     {p.can("docs.pages.delete") && <Button size="sm" variant="outline" className="text-danger" onClick={() => setDeleting(pg)}><Trash2 /> Delete</Button>}
                 </div>
             ),
@@ -60,8 +57,7 @@ export default function DocsTrashPage() {
                 description="The page, its versions and comments are removed permanently. This cannot be undone."
                 confirmText="Delete forever"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => { toast({ title: "Page deleted" }); setDeleting(null); }, onError: fail("Could not delete") })}
+                onConfirm={() => { if (deleting) remove.mutate(deleting.id); setDeleting(null); }}
             />
         </Page>
     );

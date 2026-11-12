@@ -7,8 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EntityPicker } from "@/components/ui/entity-picker";
 import { ErrorState, ListSkeleton } from "@/components/ui/states";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useAutosave } from "@/hooks/use-autosave";
 import { personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { WikiAccessModeOptions, WikiPermissionLevelFormOptions, WikiPrincipalTypeFormOptions } from "@/config/constants/dropdowns/docs/docs.options";
@@ -29,6 +29,8 @@ const ADDABLE: WikiPrincipalType[] = ["MEMBERSHIP", "TEAM", "BRANCH"];
 /**
  * Page permissions (15 §5, WikiPagePermission): who may view / comment / edit / manage this page.
  * @perm read the list: page VIEW · change: page MANAGE level (+ docs.pages.update), server-checked
+ * Every change autosaves (no Save button, <SaveStatus /> in the footer); a restricted page with no grants is not saved
+ * until someone is added.
  * @api GET /docs/pages/:id/permissions · PUT /docs/pages/:id/permissions (replaces visibility + grants)
  * @audit wiki_page.permissions_changed @states loading · error · read-only (not MANAGE) · empty grants
  */
@@ -50,6 +52,12 @@ export function PermissionsPanel({ page }: { page: WikiPageDetail }) {
         setGrants(perms.data.grants.map((g) => ({ principal_type: g.principal_type, principal_id: g.principal_id, principal_label: g.principal_label, level: g.level, inherit: g.inherit })));
     }, [perms.data, dirty]);
 
+    // Autosave: only after the user changed something, and never a restricted page that nobody could open.
+    const visibility: WikiVisibility = mode === "ORGANIZATION" ? "ORGANIZATION" : restrictedAs;
+    const needsGrant = mode === "RESTRICTED" && !grants.length;
+    const payload = useMemo(() => ({ visibility, grants: grants.map(({ principal_label: _label, ...g }) => g) }), [visibility, grants]);
+    const autosave = useAutosave({ value: payload, enabled: canManage && dirty && !needsGrant, save: (v) => save.mutateAsync({ id: page.id, ...v }) });
+
     const candidates = useMemo(() => {
         const d = directory.data;
         if (!d) return [];
@@ -66,20 +74,6 @@ export function PermissionsPanel({ page }: { page: WikiPageDetail }) {
     if (perms.error) return <ErrorState error={perms.error} onRetry={() => perms.refetch()} />;
 
     const change = (fn: (g: DraftGrant[]) => DraftGrant[]) => { setGrants(fn); setDirty(true); };
-    const submit = () => {
-        const visibility: WikiVisibility = mode === "ORGANIZATION" ? "ORGANIZATION" : restrictedAs;
-        if (mode === "RESTRICTED" && !grants.length) {
-            toast({ variant: "destructive", title: "Add at least one person or group", description: "Otherwise only you (the owner) and Docs managers can open a restricted page." });
-            return;
-        }
-        save.mutate(
-            { id: page.id, visibility, grants: grants.map(({ principal_label: _label, ...g }) => g) },
-            {
-                onSuccess: () => { setDirty(false); toast({ title: "Permissions saved" }); },
-                onError: (e) => toast({ variant: "destructive", title: "Could not save permissions", description: getApiErrorMessage(e) }),
-            },
-        );
-    };
 
     return (
         <div className="space-y-5">
@@ -150,9 +144,11 @@ export function PermissionsPanel({ page }: { page: WikiPageDetail }) {
                         </div>
                         {directory.isError && <p className="text-xs text-danger">The member directory could not be loaded.</p>}
                     </div>
-                    <div className="flex justify-end gap-2 border-t border-border pt-3">
-                        {dirty && <Button type="button" variant="ghost" onClick={() => setDirty(false)} disabled={save.isPending}>Reset</Button>}
-                        <Button type="button" onClick={submit} loading={save.isPending} disabled={!dirty}>Save permissions</Button>
+                    <div className="flex min-h-8 items-center justify-between gap-2 border-t border-border pt-3">
+                        {needsGrant && dirty
+                            ? <p role="alert" className="text-xs text-warning">Add at least one person or group — otherwise only you (the owner) and Docs managers can open a restricted page. Not saved yet.</p>
+                            : <span className="text-xs text-muted-foreground">Changes save automatically.</span>}
+                        <SaveStatus state={autosave} />
                     </div>
                 </>
             ) : (

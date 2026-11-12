@@ -7,8 +7,6 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { WikiSpaceKindFormOptions } from "@/config/constants/dropdowns/docs/docs.options";
@@ -90,8 +88,7 @@ export default function SpaceDetailPage() {
                 description="The space and its pages become read-only and are hidden from Docs home."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archive.mutate(s.id, { onSuccess: () => { toast({ title: "Space archived" }); setArchiving(false); navigate("/docs/spaces"); }, onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { archive.mutate(s.id); setArchiving(false); navigate("/docs/spaces"); }}
             />
         </SpaceLayout>
     );

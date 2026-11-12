@@ -19,7 +19,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { ListSkeleton } from "@/components/ui/states";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { CustomFormStatusOptions, FormSubmissionStatusOptions, WikiChecklistItemStatusOptions, WikiChecklistRunStatusOptions, WikiPageStatusOptions, WikiSpaceKindFormOptions } from "@/config/constants/dropdowns/docs/docs.options";
@@ -143,19 +144,23 @@ const spaceSchema = z.object({
 });
 type SpaceValues = z.infer<typeof spaceSchema>;
 
+/** New space: explicit "Create space". Edit: valid changes autosave (optimistic, <SaveStatus />); "Done" closes. */
 export function SpaceFormDialog({ open, onOpenChange, space, onCreated }: { open: boolean; onOpenChange: (o: boolean) => void; space?: WikiSpace | null; onCreated?: (s: WikiSpace) => void }) {
     const create = useCreateSpace();
     const update = useUpdateSpace();
     const form = useForm<SpaceValues>({ resolver: zodResolver(spaceSchema), defaultValues: { name: "", icon: "", description: "", kind: "TOPIC", is_private: false, require_review_before_publish: false } });
+    // Reset when the dialog opens or another space is opened — not when the (optimistically patched) space changes.
+    const spaceId = space?.id ?? null;
     useEffect(() => {
         if (open) form.reset({ name: space?.name ?? "", icon: space?.icon ?? "", description: space?.description ?? "", kind: space?.kind ?? "TOPIC", is_private: space?.is_private ?? false, require_review_before_publish: space?.require_review_before_publish ?? false });
-    }, [open, space, form]);
-    const pending = create.isPending || update.isPending;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, spaceId, form]);
+    const pending = create.isPending;
+    const toDto = (v: SpaceValues) => ({ ...v, icon: v.icon || undefined, description: v.description || undefined });
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: spaceId as string, ...toDto(v) }), { enabled: open && !!spaceId });
     const submit = form.handleSubmit((v) => {
-        const dto = { ...v, icon: v.icon || undefined, description: v.description || undefined };
-        const onError = (e: unknown) => toast({ variant: "destructive", title: "Could not save the space", description: getApiErrorMessage(e) });
-        if (space) update.mutate({ id: space.id, ...dto }, { onSuccess: () => { toast({ title: "Space updated" }); onOpenChange(false); }, onError });
-        else create.mutate(dto, { onSuccess: (s) => { toast({ title: "Space created" }); onOpenChange(false); onCreated?.(s); }, onError });
+        if (space) { autosave.flush(); onOpenChange(false); return; }
+        create.mutate(toDto(v), { onSuccess: (s) => { onOpenChange(false); onCreated?.(s); } });
     });
     return (
         <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
@@ -164,7 +169,7 @@ export function SpaceFormDialog({ open, onOpenChange, space, onCreated }: { open
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
                             <DialogTitle>{space ? "Edit space" : "New space"}</DialogTitle>
-                            <DialogDescription>Spaces group pages by department, team or topic.</DialogDescription>
+                            <DialogDescription>Spaces group pages by department, team or topic.{space ? " Changes save automatically." : ""}</DialogDescription>
                         </DialogHeader>
                         <div className="grid grid-cols-[72px_1fr] gap-3">
                             <FormField control={form.control} name="icon" render={({ field }) => (<FormItem><FormLabel>Icon</FormLabel><FormControl><Input placeholder="📘" maxLength={8} {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -187,10 +192,17 @@ export function SpaceFormDialog({ open, onOpenChange, space, onCreated }: { open
                         <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="is_private" render={({ field }) => (<FormItem className="flex items-center justify-between gap-4"><div><FormLabel>Private</FormLabel><FormDescription>Only space members can see its pages.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
                         <FormField control={form.control} name="require_review_before_publish" render={({ field }) => (<FormItem className="flex items-center justify-between gap-4"><div><FormLabel>Review before publishing</FormLabel><FormDescription>Pages go to “Needs review” before they are published.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{space ? "Save" : "Create space"}</Button>
-                        </DialogFooter>
+                        {space ? (
+                            <DialogFooter className="items-center sm:justify-between">
+                                <SaveStatus state={autosave} />
+                                <Button type="submit" variant="outline">Done</Button>
+                            </DialogFooter>
+                        ) : (
+                            <DialogFooter>
+                                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                                <Button type="submit" loading={pending}>Create space</Button>
+                            </DialogFooter>
+                        )}
                     </form>
                 </Form>
             </DialogContent>

@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { DocsExportScopeOptions } from "@/config/constants/dropdowns/docs/docs.options";
 import { useExportDocs, useImportDocs } from "@/features/docs/hooks/use-docs";
@@ -41,8 +40,7 @@ export function ImportDocsDialog({ open, onOpenChange, spaceId, parentPageId, pa
     const submit = () => {
         if (!file) return;
         importDocs.mutate({ file, space_id: spaceId, parent_page_id: parentPageId, publish: canPublish && publish }, {
-            onSuccess: (r) => { setResult(r); toast({ title: `${r.page_count} page(s) imported` }); },
-            onError: (e) => toast({ variant: "destructive", title: "Import failed", description: getApiErrorMessage(e) }),
+            onSuccess: (r) => setResult(r),
         });
     };
 
@@ -80,6 +78,7 @@ export function ImportDocsDialog({ open, onOpenChange, spaceId, parentPageId, pa
                                 <Switch id="import-publish" checked={publish} onCheckedChange={setPublish} />
                             </div>
                         )}
+                        {importDocs.error && <p role="alert" className="text-xs text-danger">Import failed: {getApiErrorMessage(importDocs.error)}</p>}
                     </div>
                 )}
                 <DialogFooter>
@@ -119,8 +118,7 @@ export function ExportDocsDialog({ open, onOpenChange, spaceId, pageId }: Export
 
     const submit = () =>
         exportDocs.mutate({ scope, ...(scope === "SPACE" ? { space_id: spaceId } : { page_id: pageId }) }, {
-            onSuccess: (name) => { toast({ title: "Export downloaded", description: name }); onOpenChange(false); },
-            onError: (e) => toast({ variant: "destructive", title: "Export failed", description: getApiErrorMessage(e) }),
+            onSuccess: () => onOpenChange(false),
         });
 
     return (

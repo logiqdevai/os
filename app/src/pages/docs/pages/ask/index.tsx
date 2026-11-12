@@ -8,8 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
 import { useAskDocs, useDocsAiStatus, useReindexDocsAi, useSpaces } from "@/features/docs/hooks/use-docs";
 import type { DocsAiAnswer } from "@/features/docs/interfaces/docs.interfaces";
@@ -51,14 +49,16 @@ export default function DocsAskPage() {
                 description="Ask a question in plain language. Answers come only from pages you can open, with links to the sources."
                 actions={
                     <Can permission="docs.spaces.manage">
-                        <Button variant="outline" size="sm" loading={reindex.isPending} onClick={() => reindex.mutate(undefined, {
-                            onSuccess: (r) => toast({ title: "Index rebuilt", description: `${r.pages} pages · ${r.chunks} passages${r.ai_configured ? ` · ${r.embedded} embedded` : " · keyword mode"}` }),
-                            onError: (err) => toast({ variant: "destructive", title: "Could not rebuild the index", description: getApiErrorMessage(err) }),
-                        })}><RefreshCw /> Rebuild index</Button>
+                        <Button variant="outline" size="sm" loading={reindex.isPending} onClick={() => reindex.mutate()}><RefreshCw /> Rebuild index</Button>
                     </Can>
                 }
             />
 
+            {reindex.data && (
+                <p role="status" className="-mt-2 mb-4 text-xs text-muted-foreground">
+                    Index rebuilt · {reindex.data.pages} pages · {reindex.data.chunks} passages{reindex.data.ai_configured ? ` · ${reindex.data.embedded} embedded` : " · keyword mode"}
+                </p>
+            )}
             {status.data && !status.data.ai_configured && (
                 <div className="mb-4 flex items-start gap-2 rounded-lg border border-border bg-card p-3 text-[13px] text-muted-foreground">
                     <Info className="mt-0.5 size-4 shrink-0" />
