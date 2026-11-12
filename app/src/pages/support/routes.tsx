@@ -13,6 +13,10 @@ const MacrosPage = lazy(() => import("./pages/macros"));
 const ChannelsPage = lazy(() => import("./pages/channels"));
 const AnalyticsPage = lazy(() => import("./pages/analytics"));
 const SettingsPage = lazy(() => import("./pages/settings"));
+const IncidentsPage = lazy(() => import("./pages/incidents"));
+const IncidentPage = lazy(() => import("./pages/incident"));
+const AutomationPage = lazy(() => import("./pages/automation"));
+const AiReviewPage = lazy(() => import("./pages/ai-review"));
 
 /** The Support app fills the main area (three-pane inbox); every other screen scrolls inside this wrapper. */
 function Scroll({ children }: { children: ReactNode }) {
@@ -35,6 +39,10 @@ export default function SupportRoutes() {
             <Route path="macros" element={<Scroll><RequirePermission anyOf={["support.conversations.reply", "support.canned_responses.manage"]}><MacrosPage /></RequirePermission></Scroll>} />
             <Route path="channels" element={<Scroll><RequirePermission anyOf={["support.inboxes.read", "support.inboxes.manage"]}><ChannelsPage /></RequirePermission></Scroll>} />
             <Route path="analytics" element={<Scroll><RequirePermission permission="support.analytics.read"><AnalyticsPage /></RequirePermission></Scroll>} />
+            <Route path="incidents" element={<Scroll><RequirePermission permission="support.tickets.read"><IncidentsPage /></RequirePermission></Scroll>} />
+            <Route path="incidents/:id" element={<Scroll><RequirePermission permission="support.tickets.read"><IncidentPage /></RequirePermission></Scroll>} />
+            <Route path="automation" element={<Scroll><RequirePermission permission="automation.rules.read"><AutomationPage /></RequirePermission></Scroll>} />
+            <Route path="ai-review" element={<Scroll><RequirePermission permission="support.ai.use"><AiReviewPage /></RequirePermission></Scroll>} />
             <Route path="settings" element={<Scroll><RequirePermission permission="support.settings.manage"><SettingsPage /></RequirePermission></Scroll>} />
             <Route path="*" element={<Scroll><RequirePermission permission="support.tickets.read"><TicketsPage /></RequirePermission></Scroll>} />
         </Routes>

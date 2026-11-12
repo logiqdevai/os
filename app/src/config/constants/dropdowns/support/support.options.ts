@@ -1,7 +1,11 @@
 import type { DropdownOption } from "@/lib/dropdown-option-label.utils";
 import type { BadgeVariant } from "@/components/ui/badge";
 import type {
+    AiSuggestionStatus,
     CannedScope,
+    IncidentSeverity,
+    IncidentStatus,
+    IncidentUpdateStatus,
     ConversationStatus,
     KnowledgeArticleStatus,
     KnowledgeVisibility,
@@ -178,3 +182,55 @@ export const WidgetPositionOptions: DropdownOption<"right" | "left">[] = [
     { id: "right", label: "Bottom right" },
     { id: "left", label: "Bottom left" },
 ];
+
+export const IncidentStatusOptions: DropdownOption<IncidentStatus>[] = [
+    { id: "DETECTED", label: "Detected" },
+    { id: "CONFIRMED", label: "Confirmed" },
+    { id: "RESOLVED", label: "Resolved" },
+    { id: "DISMISSED", label: "Dismissed" },
+];
+export const IncidentStatusFilterOptions: DropdownOption<IncidentStatus | "all">[] = [{ id: "all", label: "Any status" }, ...IncidentStatusOptions];
+export const IncidentStatusTone: Record<IncidentStatus, BadgeVariant> = { DETECTED: "warning", CONFIRMED: "danger", RESOLVED: "success", DISMISSED: "neutral" };
+
+export const IncidentSeverityOptions: DropdownOption<IncidentSeverity>[] = [
+    { id: "MINOR", label: "Minor" },
+    { id: "MAJOR", label: "Major" },
+    { id: "CRITICAL", label: "Critical" },
+];
+export const IncidentSeverityFilterOptions: DropdownOption<IncidentSeverity | "all">[] = [{ id: "all", label: "Any severity" }, ...IncidentSeverityOptions];
+export const IncidentSeverityTone: Record<IncidentSeverity, BadgeVariant> = { MINOR: "info", MAJOR: "warning", CRITICAL: "danger" };
+
+export const IncidentUpdateStatusOptions: DropdownOption<IncidentUpdateStatus>[] = [
+    { id: "INVESTIGATING", label: "Investigating" },
+    { id: "IDENTIFIED", label: "Identified" },
+    { id: "MONITORING", label: "Monitoring" },
+    { id: "RESOLVED", label: "Resolved" },
+];
+
+export const AiSuggestionStatusFilterOptions: DropdownOption<AiSuggestionStatus>[] = [
+    { id: "PENDING", label: "Waiting for review" },
+    { id: "ACCEPTED", label: "Accepted" },
+    { id: "REJECTED", label: "Rejected" },
+    { id: "AUTO_APPLIED", label: "Applied automatically" },
+    { id: "EXPIRED", label: "Expired" },
+];
+export const AiSuggestionKindOptions: DropdownOption<string>[] = [
+    { id: "REPLY", label: "Reply draft" },
+    { id: "REWRITE", label: "Rewrite" },
+    { id: "SUMMARY", label: "Summary" },
+    { id: "TRANSLATION", label: "Translation" },
+    { id: "CLASSIFICATION", label: "Classification" },
+    { id: "PRIORITY", label: "Priority" },
+    { id: "ASSIGNMENT", label: "Assignment" },
+    { id: "ARTICLE_RECOMMENDATION", label: "Article recommendation" },
+    { id: "FOLLOW_UP_QUESTION", label: "Follow-up question" },
+    { id: "TROUBLESHOOTING", label: "Troubleshooting steps" },
+    { id: "ACTION_ITEMS", label: "Action items" },
+    { id: "DUPLICATE_TICKET", label: "Duplicate ticket" },
+    { id: "TASK_CREATION", label: "Task proposal" },
+    { id: "KNOWLEDGE_GAP", label: "Knowledge gap" },
+    { id: "ARTICLE_DRAFT", label: "Article draft" },
+    { id: "INCIDENT_GROUPING", label: "Incident grouping" },
+    { id: "FEEDBACK_EXTRACTION", label: "Feedback" },
+];
+export const AiSuggestionKindFilterOptions: DropdownOption<string>[] = [{ id: "all", label: "Any kind" }, ...AiSuggestionKindOptions];

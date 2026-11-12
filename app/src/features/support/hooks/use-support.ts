@@ -102,3 +102,19 @@ export const useSupportAnalytics = (params: Record<string, unknown>) => useQuery
 export const useCsatSummary = (params: Record<string, unknown>, enabled = true) => useQuery({ queryKey: k("csat", params), queryFn: () => s.getCsatSummary(params), enabled });
 export const useSuggestReply = () => useMutation({ mutationFn: s.suggestReply });
 export const useSummarizeConversation = () => useSupportMutation(s.summarizeConversation);
+export const useReorderKnowledgeCategories = () => useSupportMutation(s.reorderKnowledgeCategories);
+
+// Incidents
+export const useIncidents = (params: Record<string, unknown>) => useQuery({ queryKey: k("incidents", params), queryFn: () => s.getIncidents(params), placeholderData: keepPreviousData });
+export const useIncident = (id: string | undefined) => useQuery({ queryKey: k("incident", id), queryFn: () => s.getIncident(id as string), enabled: !!id });
+export const useCreateIncident = () => useSupportMutation(s.createIncident);
+export const useUpdateIncident = () => useSupportMutation(s.updateIncident);
+export const useAttachIncidentTickets = () => useSupportMutation(s.attachIncidentTickets);
+export const useDetachIncidentTicket = () => useSupportMutation(s.detachIncidentTicket);
+export const usePostIncidentUpdate = () => useSupportMutation(s.postIncidentUpdate);
+
+// AI review queue
+export const useAiStatus = (enabled = true) => useQuery({ queryKey: k("ai-status"), queryFn: s.getAiStatus, enabled, staleTime: 30_000 });
+export const useAiSuggestions = (params: Record<string, unknown>) => useQuery({ queryKey: k("ai-suggestions", params), queryFn: () => s.getAiSuggestions(params), placeholderData: keepPreviousData });
+export const useAcceptAiSuggestion = () => useSupportMutation(s.acceptAiSuggestion);
+export const useRejectAiSuggestion = () => useSupportMutation(s.rejectAiSuggestion);

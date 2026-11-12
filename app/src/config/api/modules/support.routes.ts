@@ -51,6 +51,7 @@ export const SupportApiRoutes = {
         categories: "/support/knowledge/categories",
         category: (id: string) => `/support/knowledge/categories/${id}`,
         categoryArchive: (id: string) => `/support/knowledge/categories/${id}/archive`,
+        categoriesReorder: "/support/knowledge/categories/reorder",
         articles: "/support/knowledge/articles",
         article: (id: string) => `/support/knowledge/articles/${id}`,
         publish: (id: string) => `/support/knowledge/articles/${id}/publish`,
@@ -60,9 +61,19 @@ export const SupportApiRoutes = {
     },
     csat: { summary: "/support/csat/summary", ratings: "/support/csat/ratings" },
     analytics: { overview: "/support/analytics/overview" },
+    incidents: {
+        list: "/support/incidents",
+        detail: (id: string) => `/support/incidents/${id}`,
+        tickets: (id: string) => `/support/incidents/${id}/tickets`,
+        ticket: (id: string, ticketId: string) => `/support/incidents/${id}/tickets/${ticketId}`,
+        updates: (id: string) => `/support/incidents/${id}/updates`,
+    },
     ai: {
         status: "/support/ai/status",
         suggestReply: (conversationId: string) => `/support/ai/conversations/${conversationId}/suggest-reply`,
         summarize: (conversationId: string) => `/support/ai/conversations/${conversationId}/summarize`,
+        suggestions: "/support/ai/suggestions",
+        accept: (id: string) => `/support/ai/suggestions/${id}/accept`,
+        reject: (id: string) => `/support/ai/suggestions/${id}/reject`,
     },
 };

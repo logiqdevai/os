@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, FolderPlus, Plus } from "lucide-react";
+import { BookOpen, FolderPlus, ListOrdered, Plus } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -19,10 +19,11 @@ import { KnowledgeStatusFilterOptions, KnowledgeStatusOptions, KnowledgeStatusTo
 import { useArticles, useCreateKnowledgeCategory, useKnowledgeCategories } from "@/features/support/hooks/use-support";
 import type { ArticleListItem } from "@/features/support/interfaces/support.interfaces";
 import { SUPPORT_PATHS } from "../../support-paths";
+import { CategoriesSheet } from "./components/categories-sheet";
 
 /**
  * Help center articles — /support/knowledge (mockup 13-support `knowledge`).
- * @perm VIEW support.knowledge.read · create .create · categories .update
+ * @perm VIEW support.knowledge.read · create .create · categories + order .update
  */
 export default function KnowledgePage() {
     const { params, setPage, search, setSearch, filters, setFilter } = useListParams();
@@ -30,6 +31,8 @@ export default function KnowledgePage() {
     const categories = useKnowledgeCategories();
     const canCreate = usePermission("support.knowledge.create");
     const [catOpen, setCatOpen] = useState(false);
+    const [orderOpen, setOrderOpen] = useState(false);
+    const canEditCategories = usePermission("support.knowledge.update");
 
     const columns: DataTableColumn<ArticleListItem>[] = [
         {
@@ -56,6 +59,7 @@ export default function KnowledgePage() {
                 description="Articles for the public help center, the client portal and your agents."
                 actions={
                     <>
+                        <Button variant="outline" onClick={() => setOrderOpen(true)}><ListOrdered /> Categories</Button>
                         <Can permission="support.knowledge.update">
                             <Button variant="outline" onClick={() => setCatOpen(true)}><FolderPlus /> Category</Button>
                         </Can>
@@ -95,6 +99,7 @@ export default function KnowledgePage() {
                 empty={{ icon: BookOpen, title: search ? "No articles match" : "Write your first article", description: "Answers your clients can find themselves, in the help center and the portal.", action: canCreate && !search ? <Button size="sm" asChild><Link to={SUPPORT_PATHS.newArticle}><Plus /> New article</Link></Button> : undefined }}
             />
             <CategoryDialog open={catOpen} onOpenChange={setCatOpen} />
+            <CategoriesSheet open={orderOpen} onOpenChange={setOrderOpen} canEdit={canEditCategories} />
         </Page>
     );
 }

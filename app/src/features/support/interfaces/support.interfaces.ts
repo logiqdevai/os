@@ -461,3 +461,80 @@ export interface AiReplySuggestion {
     suggestion: { id: string; body: string } | null;
     articles: { id: string; title: string; slug: string; summary: string | null; visibility: KnowledgeVisibility }[];
 }
+
+// --- Incidents (13 §3, §5) -----------------------------------------------------------------------
+
+export type IncidentStatus = "DETECTED" | "CONFIRMED" | "RESOLVED" | "DISMISSED";
+export type IncidentSeverity = "MINOR" | "MAJOR" | "CRITICAL";
+export type IncidentUpdateStatus = "INVESTIGATING" | "IDENTIFIED" | "MONITORING" | "RESOLVED";
+
+export interface IncidentUpdate {
+    id: string;
+    status: IncidentUpdateStatus;
+    body: string;
+    customer_visible: boolean;
+    created_at: string;
+    author?: MemberRef | null;
+}
+
+export interface IncidentListItem {
+    id: string;
+    title: string;
+    description: string | null;
+    status: IncidentStatus;
+    severity: IncidentSeverity;
+    affected_services: string[];
+    detected_by_ai: boolean;
+    ticket_count: number;
+    first_reported_at: string | null;
+    resolved_at: string | null;
+    created_at: string;
+    updated_at: string;
+    updates: IncidentUpdate[];
+    _count?: { tickets: number };
+}
+
+export interface IncidentDetail extends IncidentListItem {
+    owner: MemberRef | null;
+    tickets: { id: string; reference: string; subject: string; priority: TicketPriority; created_at: string; company: { id: string; name: string } | null; status: { name: string; category: TicketStatusCategory; color: string | null } | null }[];
+}
+
+export interface IncidentDto {
+    title?: string;
+    description?: string;
+    severity?: IncidentSeverity;
+    affected_services?: string[];
+    ticket_ids?: string[];
+    status?: IncidentStatus;
+}
+
+// --- AI review queue (13 §3) ---------------------------------------------------------------------
+
+export type AiSuggestionStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "AUTO_APPLIED" | "EXPIRED";
+
+export interface AiSuggestion {
+    id: string;
+    kind: string;
+    status: AiSuggestionStatus;
+    conversation_id: string | null;
+    ticket_id: string | null;
+    model: string;
+    payload: { body?: string; text?: string; summary?: string; edited_body?: string; article_ids?: string[]; [key: string]: unknown };
+    explanation: string | null;
+    confidence: number | null;
+    review_note: string | null;
+    reviewed_at: string | null;
+    was_correct: boolean | null;
+    created_at: string;
+    expires_at: string | null;
+    conversation: { id: string; subject: string | null; customer_name: string | null; customer_email: string | null; channel_type: SupportChannelType; status: ConversationStatus } | null;
+    ticket: { id: string; reference: string; subject: string } | null;
+    reviewed_by: MemberRef | null;
+}
+
+export interface AiStatus {
+    configured: boolean;
+    agent_enabled: boolean;
+    require_reply_approval: boolean;
+    pending_suggestions: number;
+}

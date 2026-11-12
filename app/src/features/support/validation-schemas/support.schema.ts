@@ -77,3 +77,18 @@ export const widgetAppearanceSchema = z.object({
     allowed_origins: z.string().optional(),
 });
 export type WidgetAppearanceValues = z.infer<typeof widgetAppearanceSchema>;
+
+export const incidentFormSchema = z.object({
+    title: z.string().trim().min(1, "Enter a title").max(200),
+    description: z.string().trim().max(10000).optional(),
+    severity: z.enum(["MINOR", "MAJOR", "CRITICAL"]),
+    affected_services: z.string().max(1000).optional(),
+});
+export type IncidentFormValues = z.infer<typeof incidentFormSchema>;
+
+export const incidentUpdateFormSchema = z.object({
+    status: z.enum(["INVESTIGATING", "IDENTIFIED", "MONITORING", "RESOLVED"]),
+    body: z.string().trim().min(1, "Write the update").max(10000),
+    customer_visible: z.boolean(),
+});
+export type IncidentUpdateFormValues = z.infer<typeof incidentUpdateFormSchema>;

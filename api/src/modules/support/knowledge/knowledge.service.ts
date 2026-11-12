@@ -68,6 +68,7 @@ export class KnowledgeService {
         const rows = await this.prisma.knowledgeCategory.findMany({ where: { id: { in: ids }, organization_id: ctx.organization_id }, select: { id: true } });
         if (rows.length !== ids.length) throw new NotFoundException({ message: 'Category not found', code: 'knowledge_category_not_found' });
         await this.prisma.$transaction(ids.map((id, i) => this.prisma.knowledgeCategory.update({ where: { id }, data: { sort_order: i } })));
+        await this.audit.record(ctx, 'knowledge_category.reordered', { resource_type: 'knowledge_category', resource_id: ids[0] ?? null, metadata: { order: ids } });
         return this.categories(ctx);
     }
 

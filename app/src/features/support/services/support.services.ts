@@ -3,6 +3,12 @@ import { ApiRoutes } from "@/config/api/routes";
 import type {
     Agent,
     AiReplySuggestion,
+    AiStatus,
+    AiSuggestion,
+    IncidentDetail,
+    IncidentDto,
+    IncidentListItem,
+    IncidentUpdateStatus,
     ArticleDetail,
     ArticleDto,
     ArticleListItem,
@@ -121,3 +127,20 @@ export const getSupportAnalytics = async (params: Params): Promise<SupportAnalyt
 export const getCsatSummary = async (params: Params): Promise<CsatSummary> => (await axiosInstance.get(R().csat.summary, { params })).data;
 export const suggestReply = async (conversationId: string): Promise<AiReplySuggestion> => (await axiosInstance.post(R().ai.suggestReply(conversationId))).data;
 export const summarizeConversation = async (conversationId: string): Promise<{ available: boolean; reason?: string; summary: string | null }> => (await axiosInstance.post(R().ai.summarize(conversationId))).data;
+
+export const reorderKnowledgeCategories = async (ids: string[]): Promise<KnowledgeCategory[]> => (await axiosInstance.post(R().knowledge.categoriesReorder, { ids })).data;
+
+// Incidents
+export const getIncidents = async (params: Params): Promise<Paginated<IncidentListItem>> => (await axiosInstance.get(R().incidents.list, { params })).data;
+export const getIncident = async (id: string): Promise<IncidentDetail> => (await axiosInstance.get(R().incidents.detail(id))).data;
+export const createIncident = async (dto: IncidentDto): Promise<IncidentDetail> => (await axiosInstance.post(R().incidents.list, dto)).data;
+export const updateIncident = async ({ id, ...dto }: IncidentDto & { id: string }): Promise<IncidentDetail> => (await axiosInstance.patch(R().incidents.detail(id), dto)).data;
+export const attachIncidentTickets = async ({ id, ticket_ids }: { id: string; ticket_ids: string[] }): Promise<IncidentDetail> => (await axiosInstance.post(R().incidents.tickets(id), { ticket_ids })).data;
+export const detachIncidentTicket = async ({ id, ticket_id }: { id: string; ticket_id: string }): Promise<IncidentDetail> => (await axiosInstance.delete(R().incidents.ticket(id, ticket_id))).data;
+export const postIncidentUpdate = async ({ id, ...dto }: { id: string; status: IncidentUpdateStatus; body: string; customer_visible?: boolean }) => (await axiosInstance.post(R().incidents.updates(id), dto)).data;
+
+// AI review queue
+export const getAiStatus = async (): Promise<AiStatus> => (await axiosInstance.get(R().ai.status)).data;
+export const getAiSuggestions = async (params: Params): Promise<Paginated<AiSuggestion>> => (await axiosInstance.get(R().ai.suggestions, { params })).data;
+export const acceptAiSuggestion = async ({ id, ...dto }: { id: string; body?: string; as?: "AGENT" | "INTERNAL_NOTE"; note?: string }): Promise<AiSuggestion> => (await axiosInstance.post(R().ai.accept(id), dto)).data;
+export const rejectAiSuggestion = async ({ id, note }: { id: string; note?: string }): Promise<AiSuggestion> => (await axiosInstance.post(R().ai.reject(id), { note })).data;

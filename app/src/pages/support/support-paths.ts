@@ -13,4 +13,8 @@ export const SUPPORT_PATHS = {
     channels: "/support/channels",
     analytics: "/support/analytics",
     settings: "/support/settings",
+    incidents: "/support/incidents",
+    incident: (id: string) => `/support/incidents/${id}`,
+    automation: "/support/automation",
+    aiQueue: "/support/ai-review",
 } as const;

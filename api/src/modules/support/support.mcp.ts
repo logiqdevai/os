@@ -9,6 +9,10 @@ import { CreateTicketSchema, TicketQuerySchema, UpdateTicketSchema } from './tic
 import { KnowledgeService } from './knowledge/knowledge.service';
 import { ArticleQuerySchema, CreateArticleSchema } from './knowledge/dto/knowledge.dto';
 import { SupportAnalyticsService, AnalyticsQuerySchema } from './analytics/analytics.service';
+import { AcceptSuggestionSchema, RejectSuggestionSchema, SuggestionQuerySchema, SupportAiService } from './ai/support-ai.service';
+import { IncidentsService } from './incidents/incidents.service';
+import { IncidentQuerySchema } from './incidents/dto/incident.dto';
+import { SupportEmailService } from './email/support-email.service';
 
 const id = z.object({ id: z.string().uuid() });
 const M = ModuleKey.SUPPORT;
@@ -22,6 +26,9 @@ export class SupportMcp implements OnModuleInit {
         private readonly tickets: TicketsService,
         private readonly knowledge: KnowledgeService,
         private readonly analytics: SupportAnalyticsService,
+        private readonly ai: SupportAiService,
+        private readonly incidents: IncidentsService,
+        private readonly email: SupportEmailService,
     ) { }
 
     onModuleInit() {
@@ -116,6 +123,24 @@ export class SupportMcp implements OnModuleInit {
             { name: 'support_knowledge_get', description: 'Get an article with its body and versions.', permission: 'support.knowledge.read', module: M, resource_type: 'knowledge_article', input: id, handler: (ctx, a) => this.knowledge.findOne(ctx, a.id) },
             { name: 'support_knowledge_create', description: 'Create a draft help-center article (e.g. from a resolved ticket).', permission: 'support.knowledge.create', module: M, resource_type: 'knowledge_article', input: CreateArticleSchema, handler: (ctx, a) => this.knowledge.create(ctx, a) },
             { name: 'support_knowledge_publish', description: 'Publish an article to the help center.', permission: 'support.knowledge.publish', module: M, resource_type: 'knowledge_article', sensitive: true, input: id, handler: (ctx, a) => this.knowledge.publish(ctx, a.id) },
+            // --- AI review queue -----------------------------------------------------------------
+            { name: 'support_ai_suggestions_list', description: 'AI suggestion review queue (status PENDING by default; filter by kind, conversation, ticket).', permission: 'support.ai.use', module: M, resource_type: 'support_ai_suggestion', input: SuggestionQuerySchema, handler: (ctx, a) => this.ai.list(ctx, a) },
+            {
+                name: 'support_ai_suggestions_accept',
+                description: 'Accept an AI suggestion, optionally with edited text. Reply suggestions are sent to the customer (as=AGENT) or kept as an internal note.',
+                permission: 'support.ai.use',
+                module: M,
+                resource_type: 'support_ai_suggestion',
+                sensitive: true,
+                input: AcceptSuggestionSchema.extend({ id: z.string().uuid() }),
+                handler: (ctx, { id: sid, ...dto }) => this.ai.accept(ctx, sid, dto),
+            },
+            { name: 'support_ai_suggestions_reject', description: 'Reject an AI suggestion with an optional note.', permission: 'support.ai.use', module: M, resource_type: 'support_ai_suggestion', input: RejectSuggestionSchema.extend({ id: z.string().uuid() }), handler: (ctx, { id: sid, note }) => this.ai.reject(ctx, sid, note) },
+            // --- Incidents -----------------------------------------------------------------------
+            { name: 'support_incidents_list', description: 'List incidents (status DETECTED|CONFIRMED|RESOLVED|DISMISSED, severity).', permission: 'support.tickets.read', module: M, resource_type: 'support_incident', input: IncidentQuerySchema, handler: (ctx, a) => this.incidents.findAll(ctx, a) },
+            { name: 'support_incidents_get', description: 'Get an incident with its timeline and affected tickets.', permission: 'support.tickets.read', module: M, resource_type: 'support_incident', input: id, handler: (ctx, a) => this.incidents.findOne(ctx, a.id) },
+            // --- Email channels ------------------------------------------------------------------
+            { name: 'support_channels_email_setup', description: 'Inbound webhook URL, secret status and sending connection of an email channel.', permission: 'support.inboxes.read', module: M, resource_type: 'support_channel', input: id, handler: (ctx, a) => this.email.setup(ctx, a.id) },
             // --- Analytics ---------------------------------------------------------------------
             { name: 'support_analytics_read', description: 'Support KPIs: volume, first response and resolution time, SLA compliance, CSAT, backlog.', permission: 'support.analytics.read', module: M, input: AnalyticsQuerySchema, handler: (ctx, a) => this.analytics.overview(ctx, a) },
         ]);
