@@ -9,6 +9,11 @@ import { MEMBERSHIP_PERSON_SELECT, MessagingAccessService } from './messaging-ac
 import { MessagesService } from './messages.service';
 import { MessagingRealtimeService } from './messaging-realtime.service';
 
+/** WebRTC mesh: every peer sends its media to every other peer, so the media part of a call is capped (12 §44). */
+export const MAX_MEDIA_PEERS = 6;
+/** Public STUN only; there is no TURN configuration in the schema, so peers behind symmetric NATs fall back to "who is in the call". */
+export const CALL_ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+
 export const StartCallSchema = z.object({
     kind: z.nativeEnum(ChannelCallKind).default(ChannelCallKind.HUDDLE),
     title: z.string().trim().max(120).optional(),
@@ -34,8 +39,10 @@ const CALL_INCLUDE = {
 
 /**
  * Huddles and calls (12 §44). The platform models the session — who started it, who is in it, when it ended — and
- * announces it in the channel. Audio / video media is NOT hosted here: an optional meeting_url (Meet, Zoom, Teams)
- * carries the media; otherwise the huddle is a presence session ("who is talking now").
+ * announces it in the channel. Media is peer-to-peer WebRTC (audio, optional camera) for up to MAX_MEDIA_PEERS people,
+ * signaled over the `/messaging` socket (MessagingGateway `call.media.*`, same membership checks as REST); the server
+ * never sees audio or video. An optional meeting_url (Meet, Zoom, Teams) still works for larger meetings, and when media
+ * fails the huddle degrades to a presence session ("who is in the call"). Participant rows stay the source of truth.
  */
 @Injectable()
 export class ChannelCallsService {
@@ -85,7 +92,7 @@ export class ChannelCallsService {
             take: query.limit,
         });
         const settings = await this.access.settings(ctx.organization_id);
-        return { calls_enabled: !!settings.calls_enabled, provider: settings.call_provider ?? 'internal', data: rows.map((r) => this.serialize(r)) };
+        return { calls_enabled: !!settings.calls_enabled, provider: settings.call_provider ?? 'internal', media: { kind: 'webrtc_mesh', max_peers: MAX_MEDIA_PEERS }, data: rows.map((r) => this.serialize(r)) };
     }
 
     async get(ctx: OrgContext, callId: string) {
@@ -134,6 +141,8 @@ export class ChannelCallsService {
         const call = await this.load(ctx, callId);
         if (!LIVE.includes(call.status)) throw new ConflictException({ message: 'This call has ended', code: 'call_ended' });
         await this.access.channelForMember(ctx, call.channel_id);
+        // Already in (e.g. the starter connecting media, or a second tab): nothing to record.
+        if (call.participants.some((p) => p.membership_id === me && p.joined_at && !p.left_at)) return this.serialize(call);
         const now = new Date();
         await this.prisma.channelCallParticipant.upsert({
             where: { call_id_membership_id: { call_id: callId, membership_id: me } },
@@ -150,6 +159,7 @@ export class ChannelCallsService {
         const call = await this.load(ctx, callId);
         if (!LIVE.includes(call.status)) return this.serialize(call);
         await this.prisma.channelCallParticipant.updateMany({ where: { call_id: callId, membership_id: me, left_at: null }, data: { left_at: new Date(), state: 'left' } });
+        this.realtime.leaveCall([me], callId);
         const remaining = await this.recount(callId);
         this.audit.recordAsync(ctx, 'messaging.call.left', { resource_type: 'channel_call', resource_id: callId, metadata: { channel_id: call.channel_id } });
         if (remaining === 0) return this.finish(ctx, call, 'last_participant_left');
@@ -182,6 +192,7 @@ export class ChannelCallsService {
             const mins = Math.max(1, Math.round(duration / 60));
             await this.messages.postSystem(ctx, call.channel_id, 'call_ended', `${call.kind === ChannelCallKind.HUDDLE ? 'Huddle' : 'Call'} ended · ${mins} min`);
             await this.audit.record(ctx, 'messaging.call.ended', { resource_type: 'channel_call', resource_id: call.id, metadata: { channel_id: call.channel_id, duration_seconds: duration, reason } });
+            this.realtime.endCall(call.id);
             this.events.publish(ctx, { event_key: 'messaging.call.ended', module: ModuleKey.MESSAGING, entity_type: RecordEntityType.CHANNEL, entity_id: call.channel_id, payload: { call_id: call.id, duration_seconds: duration } });
         }
         return this.broadcast(call.id);

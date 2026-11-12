@@ -11,6 +11,8 @@ const TYPING_TTL_MS = 6000;
 
 export interface MessagingSocketState {
     connected: boolean;
+    /** The live socket (null until created) — used by call media for WebRTC signaling. */
+    socket: Socket | null;
     /** channel id (or `channel:threadRoot`) → people typing. */
     typing: Record<string, TypingEvent[]>;
     /** membership id → presence. */
@@ -37,6 +39,7 @@ export function useMessagingSocket(myMembershipId: string | undefined): Messagin
     const activeRef = useRef<string | null>(null);
     const lastTypingRef = useRef<Record<string, number>>({});
     const [connected, setConnected] = useState(false);
+    const [socketState, setSocketState] = useState<Socket | null>(null);
     const [typing, setTyping] = useState<Record<string, TypingEvent[]>>({});
     const [presence, setPresence] = useState<Record<string, Presence>>({});
 
@@ -54,6 +57,7 @@ export function useMessagingSocket(myMembershipId: string | undefined): Messagin
 
         socket.on("connect", () => {
             setConnected(true);
+            setSocketState(socket);
             if (!firstConnect) qc.invalidateQueries({ queryKey: MESSAGING_KEY });
             firstConnect = false;
             if (activeRef.current) socket.emit("channel.watch", { channel_id: activeRef.current });
@@ -134,6 +138,7 @@ export function useMessagingSocket(myMembershipId: string | undefined): Messagin
             socket.removeAllListeners();
             socket.disconnect();
             socketRef.current = null;
+            setSocketState(null);
             setConnected(false);
         };
     }, [token, organizationId, myMembershipId, qc]);
@@ -156,5 +161,5 @@ export function useMessagingSocket(myMembershipId: string | undefined): Messagin
         socketRef.current?.emit("channel.watch", { channel_id: channelId });
     }, []);
 
-    return { connected, typing, presence, setActiveChannel, sendTyping, watchChannel };
+    return { connected, socket: socketState, typing, presence, setActiveChannel, sendTyping, watchChannel };
 }

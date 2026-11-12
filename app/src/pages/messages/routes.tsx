@@ -5,6 +5,7 @@ import { usePermission } from "@/hooks/use-permission";
 import { cn } from "@/lib/utils";
 import { MessagingProvider } from "./components/messaging-context";
 import { ChannelSidebar } from "./components/channel-sidebar";
+import { OngoingCallStrip } from "./components/call-bar";
 import { CreateChannelDialog, NewDmDialog } from "./components/messaging-dialogs";
 import ConversationPage, { ConversationNotSelected } from "./pages/conversation";
 import { BrowseChannelsPage, MentionsPage, SavedPage, SearchPage, ThreadsInboxPage } from "./pages/inbox";
@@ -57,6 +58,7 @@ function MessagesLayout() {
                     </Routes>
                 </main>
             </div>
+            <OngoingCallStrip />
             <NewDmDialog open={dmOpen} onOpenChange={setDmOpen} />
             {canCreate && <CreateChannelDialog open={creating} onOpenChange={(o) => !o && navigate(MessagesPaths.browse, { replace: true })} />}
         </MessagingProvider>

@@ -7,7 +7,8 @@ import { CredentialsService } from '@/shared/authorization/credentials.service';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { parseCorsUrls, resolveCorsOrigins } from '@/shared/config/cors';
 import { ACTIVE_MEMBER, MessagingAccessService, personName } from './services/messaging-access.service';
-import { MessagingRealtimeService, channelRoom, memberRoom, orgRoom } from './services/messaging-realtime.service';
+import { MessagingRealtimeService, callRoom, channelRoom, memberRoom, orgRoom } from './services/messaging-realtime.service';
+import { CALL_ICE_SERVERS, ChannelCallsService, MAX_MEDIA_PEERS } from './services/calls.service';
 import { PresenceService } from './services/presence.service';
 
 /** Same origins as the HTTP CORS config in main.ts (evaluated per handshake, so env is always loaded). */
@@ -19,7 +20,14 @@ interface SocketData {
     ctx: OrgContext;
     membership_id: string;
     name: string;
+    /** Call whose media (WebRTC) this socket is connected to. */
+    call_id?: string | null;
+    media?: { muted: boolean; camera: boolean };
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Upper bound for one relayed SDP / ICE payload (a normal SDP is 2–8 kB). */
+const MAX_SIGNAL_BYTES = 64_000;
 
 /**
  * Realtime for Messaging (namespace `/messaging`). Handshake: `auth.token` (user JWT or API key) or `Authorization: Bearer`,
@@ -31,6 +39,16 @@ interface SocketData {
  *   · read {channel_id, last_read_message_id} (own devices) · channel.created / channel.removed / channel.updated {channel_id} · member.updated {channel_id}
  *   · mention.created {channel_id, message_id} · saved.updated {message_id, is_saved} · presence {membership_id, state, status_text, status_emoji}
  * Client → server: typing {channel_id, thread_root_id?} · channel.watch {channel_id} (open channel you are not a member of) · channel.unwatch {channel_id}
+ *
+ * Calls (12 §44, WebRTC mesh, max MAX_MEDIA_PEERS media peers; the server only relays signaling, never media):
+ *   → call.media.join {call_id} — needs messaging.calls.start + channel membership + live call (same checks as POST /messaging/calls/:id/join,
+ *     which it runs: the participant row is created if missing). Ack {ok, peer_id, peers: [{peer_id, membership_id, name, media}], ice_servers, max_peers}
+ *     or {ok: false, code: calls_disabled | call_ended | channel_not_member | call_full | permission_denied, message}. The newcomer sends the offers.
+ *   → call.signal {call_id, to: peer_id, description?, candidate?} — relayed only between sockets in the same call room.
+ *   → call.media.state {call_id, muted, camera} · call.media.leave {call_id} (closing the tab = leave; the participant row is closed when
+ *     the member has no other socket in the call).
+ *   ← call.peer.joined {call_id, peer_id, membership_id, name, media} · call.peer.left {call_id, peer_id | null, membership_id}
+ *   · call.peer.state {call_id, peer_id, membership_id, muted, camera} · call.signal {call_id, from, membership_id, description?, candidate?} · call.ended {call_id}
  */
 @WebSocketGateway({
     namespace: '/messaging',
@@ -50,6 +68,7 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection, OnG
         private readonly access: MessagingAccessService,
         private readonly realtime: MessagingRealtimeService,
         private readonly presence: PresenceService,
+        private readonly calls: ChannelCallsService,
     ) { }
 
     afterInit(server: Namespace) {
@@ -91,6 +110,7 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection, OnG
     async handleDisconnect(client: Socket) {
         const data = client.data as SocketData | undefined;
         if (!data?.ctx) return;
+        if (data.call_id) await this.leaveMedia(client, data.call_id, true);
         try {
             const view = await this.presence.connection(data.ctx.organization_id, data.membership_id, -1);
             this.realtime.toOrganization(data.ctx.organization_id, 'presence', view);
@@ -119,6 +139,91 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection, OnG
             return { ok: true };
         } catch {
             return { ok: false };
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Calls — WebRTC signaling (12 §44)
+    // ---------------------------------------------------------------------------------------------
+
+    @SubscribeMessage('call.media.join')
+    async mediaJoin(@ConnectedSocket() client: Socket, @MessageBody() body: { call_id?: string; muted?: boolean; camera?: boolean }) {
+        const data = client.data as SocketData | undefined;
+        if (!data?.ctx || typeof body?.call_id !== 'string' || !UUID.test(body.call_id)) return { ok: false, code: 'invalid_request', message: 'call_id is required' };
+        const callId = body.call_id;
+        if (!data.ctx.can('messaging.calls.start')) return { ok: false, code: 'permission_denied', message: 'Joining calls needs messaging.calls.start' };
+        try {
+            // Same checks and participant row as REST join (calls enabled, channel member, call still live).
+            await this.calls.join(data.ctx, callId);
+        } catch (error) {
+            const res = (error as { response?: { message?: string; code?: string } })?.response;
+            return { ok: false, code: res?.code ?? 'call_join_failed', message: res?.message ?? (error as Error).message };
+        }
+        if (data.call_id && data.call_id !== callId) await this.leaveMedia(client, data.call_id, true);
+        const room = callRoom(callId);
+        const sockets = (await this.server.in(room).fetchSockets()).filter((s) => s.id !== client.id);
+        if (sockets.length >= MAX_MEDIA_PEERS) {
+            return { ok: false, code: 'call_full', message: `Audio is limited to ${MAX_MEDIA_PEERS} people in a huddle. You are listed in the call; use a meeting link for bigger groups.` };
+        }
+        data.call_id = callId;
+        data.media = { muted: body.muted === true, camera: body.camera === true };
+        await client.join(room);
+        client.to(room).emit('call.peer.joined', { call_id: callId, peer_id: client.id, membership_id: data.membership_id, name: data.name, media: data.media });
+        return {
+            ok: true,
+            peer_id: client.id,
+            max_peers: MAX_MEDIA_PEERS,
+            ice_servers: CALL_ICE_SERVERS,
+            peers: sockets.map((s) => {
+                const d = s.data as SocketData;
+                return { peer_id: s.id, membership_id: d.membership_id, name: d.name, media: d.media ?? { muted: false, camera: false } };
+            }),
+        };
+    }
+
+    @SubscribeMessage('call.signal')
+    signal(@ConnectedSocket() client: Socket, @MessageBody() body: { call_id?: string; to?: string; description?: unknown; candidate?: unknown }) {
+        const data = client.data as SocketData | undefined;
+        if (!data?.ctx || !body || typeof body.call_id !== 'string' || typeof body.to !== 'string' || data.call_id !== body.call_id) return;
+        const room = callRoom(body.call_id);
+        if (!client.rooms.has(room)) return;
+        const target = this.server.sockets.get(body.to);
+        if (!target || !target.rooms.has(room)) return;
+        const payload = { description: body.description ?? null, candidate: body.candidate ?? null };
+        if (JSON.stringify(payload).length > MAX_SIGNAL_BYTES) return;
+        target.emit('call.signal', { call_id: body.call_id, from: client.id, membership_id: data.membership_id, ...payload });
+    }
+
+    @SubscribeMessage('call.media.state')
+    mediaState(@ConnectedSocket() client: Socket, @MessageBody() body: { call_id?: string; muted?: boolean; camera?: boolean }) {
+        const data = client.data as SocketData | undefined;
+        if (!data?.ctx || typeof body?.call_id !== 'string' || data.call_id !== body.call_id || !client.rooms.has(callRoom(body.call_id))) return;
+        data.media = { muted: body.muted === true, camera: body.camera === true };
+        client.to(callRoom(body.call_id)).emit('call.peer.state', { call_id: body.call_id, peer_id: client.id, membership_id: data.membership_id, ...data.media });
+    }
+
+    /** Stop media in this tab. The participant row is closed by REST leave (the client calls it) or when the last tab of the member goes. */
+    @SubscribeMessage('call.media.leave')
+    async mediaLeave(@ConnectedSocket() client: Socket, @MessageBody() body: { call_id?: string }) {
+        const data = client.data as SocketData | undefined;
+        if (!data?.ctx || typeof body?.call_id !== 'string' || data.call_id !== body.call_id) return { ok: false };
+        await this.leaveMedia(client, body.call_id, false);
+        return { ok: true };
+    }
+
+    private async leaveMedia(client: Socket, callId: string, syncParticipant: boolean) {
+        const data = client.data as SocketData;
+        const room = callRoom(callId);
+        data.call_id = null;
+        try {
+            await client.leave(room);
+            this.server.to(room).emit('call.peer.left', { call_id: callId, peer_id: client.id, membership_id: data.membership_id });
+            if (!syncParticipant) return;
+            // Closing the last tab of this member in the call = leaving the call (keeps ChannelCallParticipant rows in sync).
+            const others = (await this.server.in(room).fetchSockets()).some((s) => (s.data as SocketData).membership_id === data.membership_id);
+            if (!others) await this.calls.leave(data.ctx, callId);
+        } catch (error) {
+            this.logger.warn(`call media leave failed: ${(error as Error).message}`);
         }
     }
 

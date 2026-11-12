@@ -4,6 +4,8 @@ import type { Namespace } from 'socket.io';
 export const channelRoom = (channelId: string) => `c:${channelId}`;
 export const memberRoom = (membershipId: string) => `m:${membershipId}`;
 export const orgRoom = (organizationId: string) => `o:${organizationId}`;
+/** Sockets with live media (WebRTC) in a call — signaling is relayed only between sockets of this room. */
+export const callRoom = (callId: string) => `call:${callId}`;
 
 /**
  * Server → client push for the Messaging socket namespace (`/messaging`). Services call this after a write committed;
@@ -41,6 +43,23 @@ export class MessagingRealtimeService {
     leaveChannel(membershipIds: string[], channelId: string) {
         if (!membershipIds.length) return;
         this.safe(() => this.server?.in(membershipIds.map(memberRoom)).socketsLeave(channelRoom(channelId)));
+    }
+
+    /** A member left a call (REST / MCP / other tab): drop their media sockets and tell the remaining peers. */
+    leaveCall(membershipIds: string[], callId: string) {
+        if (!membershipIds.length) return;
+        this.safe(() => {
+            this.server?.in(membershipIds.map(memberRoom)).socketsLeave(callRoom(callId));
+            for (const membership_id of membershipIds) this.server?.to(callRoom(callId)).emit('call.peer.left', { call_id: callId, membership_id, peer_id: null });
+        });
+    }
+
+    /** The call ended for everyone: close every media connection. */
+    endCall(callId: string) {
+        this.safe(() => {
+            this.server?.to(callRoom(callId)).emit('call.ended', { call_id: callId });
+            this.server?.in(callRoom(callId)).socketsLeave(callRoom(callId));
+        });
     }
 
     private safe(fn: () => unknown) {

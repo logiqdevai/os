@@ -34,8 +34,38 @@ export interface ChannelCall {
 export interface CallList {
     calls_enabled: boolean;
     provider: string;
+    /** In-app media: WebRTC mesh between up to `max_peers` people (more join as "listed only"). */
+    media?: { kind: "webrtc_mesh"; max_peers: number };
     data: ChannelCall[];
 }
+
+// ---------------------------------------------------------------- call media (WebRTC over the /messaging socket)
+
+/** Why in-app audio is not running; the call then works as "who is in the call" only. */
+export type CallMediaErrorCode = "permission_denied" | "no_device" | "device_busy" | "unsupported" | "insecure_context" | "call_full" | "join_failed" | "disconnected";
+
+export interface CallMediaError {
+    code: CallMediaErrorCode;
+    message: string;
+}
+
+export type CallMediaStatus = "idle" | "connecting" | "connected" | "listen_only" | "presence_only";
+
+export interface CallPeer {
+    peer_id: string;
+    membership_id: string;
+    name: string;
+    muted: boolean;
+    camera: boolean;
+    stream: MediaStream | null;
+    /** RTCPeerConnection.connectionState */
+    connection: string;
+}
+
+/** Ack of `call.media.join`. */
+export type CallMediaJoinAck =
+    | { ok: true; peer_id: string; max_peers: number; ice_servers: RTCIceServer[]; peers: { peer_id: string; membership_id: string; name: string; media: { muted: boolean; camera: boolean } }[] }
+    | { ok: false; code: string; message: string };
 
 // ---------------------------------------------------------------- moderation
 

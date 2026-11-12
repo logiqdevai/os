@@ -69,7 +69,7 @@ export class MessagingWorkspaceController {
 
     @Post('channels/:id/calls')
     @RequirePermission('messaging.calls.start')
-    @ApiOperation({ summary: 'Start a huddle / call in a channel (or join the running one). Media is not hosted: pass meeting_url for an external meeting.' })
+    @ApiOperation({ summary: 'Start a huddle / call in a channel (or join the running one). Media: WebRTC over the /messaging socket (call.media.join), or pass meeting_url for an external meeting.' })
     startCall(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body(ZBody(StartCallSchema)) dto: StartCallInput) {
         return this.calls.start(ctx, id, dto);
     }
