@@ -20,16 +20,17 @@ interface PermissionPickerProps {
 export function PermissionPicker({ value, onChange, onlyHeld, className }: PermissionPickerProps) {
     const [open, setOpen] = useState(false);
     const catalog = useCatalog({}, open || !!value);
+    const perms = catalog.data?.data;
     const groups = useMemo(() => {
-        const map = new Map<string, NonNullable<typeof catalog.data>["data"]>();
-        for (const p of catalog.data?.data ?? []) {
+        const map = new Map<string, NonNullable<typeof perms>>();
+        for (const p of perms ?? []) {
             if (onlyHeld && !p.held) continue;
             const list = map.get(p.module) ?? [];
             list.push(p);
             map.set(p.module, list);
         }
         return [...map.entries()];
-    }, [catalog.data, onlyHeld]);
+    }, [perms, onlyHeld]);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>

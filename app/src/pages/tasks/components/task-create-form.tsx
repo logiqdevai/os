@@ -62,7 +62,7 @@ export function TaskCreateForm({ defaults, onCreated, onCancel, allowCreateMore,
 
     const teamId = form.watch("team_id");
     const workflow = workflows.data?.find((w) => (w.team?.id ?? NO_TEAM) === teamId);
-    const statuses = workflow?.statuses ?? [];
+    const statuses = useMemo(() => workflow?.statuses ?? [], [workflow]);
     const statusId = form.watch("status_id");
     useEffect(() => {
         if (statuses.length && !statuses.some((s) => s.id === statusId)) {

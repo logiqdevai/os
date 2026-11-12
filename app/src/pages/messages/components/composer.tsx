@@ -92,8 +92,8 @@ export function Composer({ channelId, threadRootId, placeholder, disabled, disab
         const q = query.toLowerCase();
         return directory.filter((m) => !m.is_me && (m.name.toLowerCase().includes(q) || m.email.toLowerCase().startsWith(q))).slice(0, 8);
     }, [query, directory]);
-    const broadcasts = query === null ? [] : BROADCASTS.filter((b) => b.key.startsWith(query.toLowerCase()));
-    const options = [...suggestions.map((s) => s.membership_id), ...broadcasts.map((b) => `@${b.key}`)];
+    const broadcasts = useMemo(() => (query === null ? [] : BROADCASTS.filter((b) => b.key.startsWith(query.toLowerCase()))), [query]);
+    const options = useMemo(() => [...suggestions.map((s) => s.membership_id), ...broadcasts.map((b) => `@${b.key}`)], [suggestions, broadcasts]);
     const open = query !== null && options.length > 0;
 
     useEffect(() => {

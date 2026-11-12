@@ -39,7 +39,6 @@ export function useCustomFieldValues(entityType: CustomFieldEntity, open: boolea
         setError(null);
         if (initial) setValues({ ...initial });
         else setValues(Object.fromEntries((defs.data ?? []).filter((d) => !isEmpty(d.default_value)).map((d) => [d.key, d.default_value])));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, initial, defs.data]);
 
     const definitions = useMemo(() => (mode === "off" ? [] : defs.data ?? []), [defs.data, mode]);

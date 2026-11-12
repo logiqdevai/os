@@ -29,12 +29,13 @@ export default function LeaveCalendarPage() {
     const days = useMemo(() => eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) }), [from]); // eslint-disable-line react-hooks/exhaustive-deps
     const go = (n: number) => setSp((prev) => { const next = new URLSearchParams(prev); next.set("month", format(addMonths(month, n), "yyyy-MM")); return next; });
 
+    const data = q.data;
     const byKey = useMemo(() => {
-        const m = new Map<string, NonNullable<typeof q.data>["days"][number]>();
-        q.data?.days.forEach((d) => m.set(`${d.employee_id}|${d.date}`, d));
+        const m = new Map<string, NonNullable<typeof data>["days"][number]>();
+        data?.days.forEach((d) => m.set(`${d.employee_id}|${d.date}`, d));
         return m;
-    }, [q.data]);
-    const holidays = useMemo(() => new Map(q.data?.holidays.map((h) => [h.date, h.name]) ?? []), [q.data]);
+    }, [data]);
+    const holidays = useMemo(() => new Map(data?.holidays.map((h) => [h.date, h.name]) ?? []), [data]);
     const outPerDay = (iso: string) => q.data?.days.filter((d) => d.date === iso && d.status === "APPROVED").length ?? 0;
 
     return (

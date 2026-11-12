@@ -42,7 +42,7 @@ export function TaskList({ query, groupBy = "status", onPageChange, empty, hideP
     const canBulk = p.can("tasks.bulk.execute");
     const [selected, setSelected] = useState<string[]>([]);
     const [peek, setPeek] = useState<string | null>(null);
-    const tasks = query.data?.data ?? [];
+    const tasks = useMemo(() => query.data?.data ?? [], [query.data]);
 
     const groups = useMemo(() => {
         if (groupBy === "none") return [{ key: "all", label: "", sort: 0, icon: null as ReactNode, tasks }];
