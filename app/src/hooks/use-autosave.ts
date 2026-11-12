@@ -61,8 +61,14 @@ export function useAutosave<T>({ value, save, delay = 700, enabled = true }: { v
     useEffect(() => {
         // While disabled (data still loading, form untouched, invalid…) the current value is the baseline, so turning
         // autosave on never re-saves what the server already has.
+        if (same(value, saved.current)) {
+            // Back to what the server has (e.g. the user reverted a refused change): nothing to save, clear the error.
+            if (failed.current && !running.current) { failed.current = false; setError(null); setStatus("idle"); }
+            if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+            if (!running.current) setStatus((st) => (st === "pending" ? "idle" : st));
+            return;
+        }
         if (!enabled) { if (!running.current && !failed.current) saved.current = value; return; } // a failed save keeps its Retry
-        if (same(value, saved.current)) return;
         setStatus((s) => (s === "saving" ? s : "pending"));
         if (timer.current) clearTimeout(timer.current);
         timer.current = setTimeout(() => void run(), delay);

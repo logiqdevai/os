@@ -85,6 +85,12 @@ DB facts: staging DB was wiped and rebuilt from the repo migrations on 2026-11-1
   selects/switches/date pickers: save on change through an optimistic mutation; settings forms (react-hook-form):
   `useFormAutosave(form, (v) => mutation.mutateAsync(v))` + `<SaveStatus state={…} />` in the header (invalid fields
   keep inline errors and are not sent). Creation flows (new X dialogs/pages) keep an explicit Create button.
+- More helpers: `appendEntity(qc, root, temp, field?)` + `tempId()` / `isTempId()` for rows added at the end (comments,
+  checklist items, messages — show "Sending…", keep failed ones with Retry); `patchEntity` also patches arrays inside a
+  detail object (grants, items…). Copy actions use `<CopyButton>` / `useCopyFeedback()` from `components/ui/copy-button`
+  (shows "Copied", never a toast). Edit dialogs: autosave while open, primary button "Done" (flushes, then closes).
+- Server side: docs pages and help articles merge consecutive saves by the same editor within 10 minutes into one history
+  version (the page version number still advances, so 409 conflict detection is unchanged).
 - Reference implementation: Tasks (`features/tasks/hooks/use-tasks.ts`, `pages/tasks/components/task-detail-view.tsx`).
 
 ### Notifications payload contract (14 fan-out)
@@ -158,6 +164,14 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | T | Chrome testing pass (functionality, responsiveness, both themes) | ✅ | 🟡 | 2026-11-11: automated sweep of all 175 nav routes + ~31 detail pages at 1280px and 390px (crashes, load errors, overflow); manual flows verified (see Log). Left: drag-and-drop (not automatable here), remaining manual flows listed in Log. |
 
 ## Log
+
+- 2026-11-12 — **Linear-style mutations across the whole app.** Infrastructure (46b8d70, 5bee5f9) + six module passes
+  (CRM/Proposals/Contracts, Projects/Tasks/Time/Calendar, People/Admin/Settings, Billing/Expenses/Files/Docs,
+  Support/Portals/Campaigns/Messages, Notifications/Automation/Home/shared): no success toasts anywhere (only failures, once,
+  from the MutationCache), optimistic updates with rollback, autosave instead of Save buttons on edit screens. Kept explicit
+  buttons for create, destructive confirms, send/publish/approve/sign, and the calendar event edit (it notifies attendees).
+  Verified in Chrome: autosave + persistence (task description, org profile), refused save shown inline with Retry/Revert
+  (security IP lock-out), forced network failure rolls back the optimistic change with one error toast, all 206 screens render.
 
 - 2026-11-12 — **Coordinator: live feature test pass on the user's account.** ~330 checks across AI (proposal draft, contract review/obligations,
   support suggest/summarize/auto-answer grounded in a published article, comm AI x5, docs Q&A, status update, release notes), MFA (TOTP, recovery
