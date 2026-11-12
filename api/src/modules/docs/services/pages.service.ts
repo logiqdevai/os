@@ -55,6 +55,9 @@ const LIST_SELECT = {
 
 const DAY = 86_400_000;
 
+/** Autosave: saves by the same editor within this window share one history entry. */
+const VERSION_COALESCE_MS = 10 * 60_000;
+
 /**
  * Wiki pages (15 §2): tree, content + versions, publishing, permissions, comments, favorites,
  * acknowledgements, review cadence, record links / backlinks, search, views, archive and trash.
@@ -337,9 +340,20 @@ export class DocsPagesService {
             });
             if (!row) throw await this.versionConflict(id, base_version_number ?? page.current_version_number);
             if (contentChanged) {
-                await tx.wikiPageVersion.create({
+                // Autosave sends many small saves: consecutive saves by the same editor within a short window update one
+                // history entry (renumbered to the new version) instead of creating a version per keystroke pause.
+                // The page's version number still increases on every save, so concurrent-edit detection is unchanged.
+                const latest = await tx.wikiPageVersion.findFirst({ where: { page_id: id }, orderBy: { version_number: 'desc' } });
+                const coalesce = !!latest && !change_summary && !latest.is_published_snapshot && !latest.restored_from_version_id && !latest.ai_suggestion_id
+                    && latest.version_number === page.current_version_number && latest.created_by_membership_id === ctx.membership_id
+                    && latest.created_at.getTime() > now.getTime() - VERSION_COALESCE_MS;
+                if (coalesce) {
+                    await tx.wikiPageVersion.update({ where: { id: latest.id }, data: { version_number: row.current_version_number, title: row.title, content_markdown: row.content_markdown } });
+                } else {
+                    await tx.wikiPageVersion.create({
                     data: { page_id: id, version_number: row.current_version_number, title: row.title, content: { format: 'markdown' }, content_markdown: row.content_markdown, change_summary: change_summary ?? null, created_by_membership_id: ctx.membership_id },
-                });
+                    });
+                }
                 if (dto.content_markdown !== undefined) await this.syncPageRefs(tx, ctx, id, row.content_markdown);
             }
             if (reviewer_ids) {

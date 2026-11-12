@@ -15,6 +15,9 @@ const PUBLIC_ARTICLE_SELECT = {
     category: { select: { id: true, name: true, slug: true } },
 } as const;
 
+/** Autosave: edits by the same author within this window share one article version. */
+const VERSION_COALESCE_MS = 10 * 60_000;
+
 /**
  * Customer-facing knowledge base and help center (13 §6). Every content change writes an immutable version.
  * PUBLIC articles are served without login per organization slug; CUSTOMERS articles only in the portal;
@@ -171,11 +174,17 @@ export class KnowledgeService {
         const { change_note, seo, keywords, ...rest } = dto;
         try {
             const article = await this.prisma.$transaction(async (tx) => {
-                const version = contentChanged ? before.current_version + 1 : before.current_version;
+                // Autosaved drafts: consecutive edits by the same author within a short window update the latest version
+                // instead of adding one per pause in typing (an explicit change note always starts a new version).
+                const latest = contentChanged ? await tx.knowledgeArticleVersion.findFirst({ where: { article_id: id }, orderBy: { version: 'desc' } }) : null;
+                const coalesce = !!latest && !change_note && !latest.change_note && !latest.ai_generated && latest.version === before.current_version
+                    && latest.author_membership_id === ctx.membership_id && latest.created_at.getTime() > Date.now() - VERSION_COALESCE_MS
+                    && before.status !== 'PUBLISHED';
+                const version = contentChanged && !coalesce ? before.current_version + 1 : before.current_version;
                 if (contentChanged) {
-                    await tx.knowledgeArticleVersion.create({
-                        data: { article_id: id, version, title: dto.title ?? before.title, summary: dto.summary ?? before.summary, body: dto.body ?? before.body, change_note: change_note ?? null, author_membership_id: ctx.membership_id },
-                    });
+                    const content = { title: dto.title ?? before.title, summary: dto.summary ?? before.summary, body: dto.body ?? before.body };
+                    if (coalesce) await tx.knowledgeArticleVersion.update({ where: { id: latest.id }, data: content });
+                    else await tx.knowledgeArticleVersion.create({ data: { article_id: id, version, ...content, change_note: change_note ?? null, author_membership_id: ctx.membership_id } });
                 }
                 return tx.knowledgeArticle.update({
                     where: { id },
