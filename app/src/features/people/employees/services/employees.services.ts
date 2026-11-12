@@ -1,7 +1,7 @@
 import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
 import type {
-    ChangeRequest, Compensation, CompensationDto, CreateEmployeeDto, DirectoryCard, DocumentDto, EmergencyContactDto, Employee, EmployeeDetail, EmployeeDocument,
+    AvailableChecklist, ChangeRequest, ChecklistKind, EmployeeChecklistRun, Compensation, CompensationDto, CreateEmployeeDto, DirectoryCard, DocumentDto, EmergencyContactDto, Employee, EmployeeDetail, EmployeeDocument,
     Equipment, EquipmentDto, HrNote, HrNoteDto, MemberCandidate, OffboardingDto, OrgChartNode, Paginated, UpdateEmployeeDto, WorkScheduleDto,
 } from "../interfaces/employees.interfaces";
 
@@ -39,6 +39,12 @@ export const setWorkSchedule = async ({ id, ...dto }: WorkScheduleDto & { id: st
 export const getChangeRequests = async (params: Record<string, unknown>): Promise<Paginated<ChangeRequest>> => (await axiosInstance.get(ApiRoutes.people.changeRequests.list, { params })).data;
 export const decideChangeRequest = async ({ id, approve, decision_note }: { id: string; approve: boolean; decision_note?: string }) =>
     (await axiosInstance.post(approve ? ApiRoutes.people.changeRequests.approve(id) : ApiRoutes.people.changeRequests.reject(id), { decision_note })).data;
+
+export const getChecklistRuns = async (id: string): Promise<EmployeeChecklistRun[]> => (await axiosInstance.get(R.checklistRuns(id))).data;
+export const getAvailableChecklists = async (kind: ChecklistKind): Promise<AvailableChecklist[]> => (await axiosInstance.get(ApiRoutes.people.checklists, { params: { kind } })).data;
+export const startChecklist = async ({ id, checklist_id, due_at }: { id: string; checklist_id: string; due_at?: string }) => (await axiosInstance.post(R.checklistRuns(id), { checklist_id, due_at })).data;
+export const setChecklistItem = async ({ id, runId, itemId, done }: { id: string; runId: string; itemId: string; done: boolean }): Promise<EmployeeChecklistRun> =>
+    (await axiosInstance.post(R.checklistItem(id, runId, itemId, done ? "complete" : "reopen"))).data;
 
 /** Downloads the employee CSV export (sensitive, audited by the API). */
 export async function downloadEmployeesCsv(params: Record<string, unknown>) {

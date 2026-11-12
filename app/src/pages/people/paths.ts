@@ -8,6 +8,8 @@ export const PeoplePaths = {
     employee: (id: string, tab?: string) => `/people/employees/${id}${tab ? `?tab=${tab}` : ""}`,
     me: "/people/me",
     changes: "/people/changes",
+    settings: "/people/settings",
+    import: "/people/import",
     leave: "/people/leave",
     leaveCalendar: "/people/leave/calendar",
     balances: "/people/leave/balances",

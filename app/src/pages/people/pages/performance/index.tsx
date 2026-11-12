@@ -30,11 +30,14 @@ import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { PersonCell } from "../../components/person";
 import { PeoplePaths } from "../../paths";
+import { PlansTab } from "./components/plans-tab";
+import { RequestsTab } from "./components/requests-tab";
+import { CalibrationTab } from "./components/calibration-tab";
 
 const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 /**
- * /people/performance — reviews, cycles (performance.manage), goals and feedback.
+ * /people/performance — reviews, cycles (performance.manage), goals, feedback, feedback requests, improvement plans and calibration.
  * @perm employees.performance.read_own / read_all (scope) / manage · @api /people/performance/*
  */
 export default function PerformancePage() {
@@ -45,6 +48,9 @@ export default function PerformancePage() {
         ...(p.canAny("employees.performance.read_all", "employees.performance.manage") ? [{ id: "cycles", label: "Cycles" }] : []),
         { id: "goals", label: "Goals" },
         { id: "feedback", label: "Feedback" },
+        { id: "requests", label: "Feedback requests" },
+        { id: "plans", label: "Improvement plans" },
+        ...(p.can("employees.performance.manage") ? [{ id: "calibration", label: "Calibration" }] : []),
     ];
     const tab = tabs.find((t) => t.id === filters.tab)?.id ?? "reviews";
     return (
@@ -57,6 +63,9 @@ export default function PerformancePage() {
             {tab === "cycles" && <CyclesTab />}
             {tab === "goals" && <GoalsTab />}
             {tab === "feedback" && <FeedbackTab />}
+            {tab === "requests" && <RequestsTab />}
+            {tab === "plans" && <PlansTab />}
+            {tab === "calibration" && <CalibrationTab />}
         </Page>
     );
 }

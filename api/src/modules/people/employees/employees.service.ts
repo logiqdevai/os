@@ -10,6 +10,7 @@ import { OrgContext } from '@/shared/authorization/interfaces/org-context.interf
 import { orderBy, paginate, skipTake } from '@/shared/utils/pagination/pagination.utils';
 import { NumberingService } from '@/modules/numbering/numbering.service';
 import { PeopleAccessService } from '../common/people-access.service';
+import { EmployeeChecklistsService } from '../lifecycle/employee-checklists.service';
 import { DIRECTORY_FIELDS, P, PERSONAL_FIELDS, SELF_SERVICE_FIELDS, dates, defined, personName, toDay, today, userSelect } from '../common/people.utils';
 import {
     ChangePositionDto, CreateEmployeeDto, DecideChangeRequestDto, SetAvailabilityDto, StartOffboardingDto, UpdateEmployeeDto, UpdateOwnProfileDto,
@@ -40,6 +41,7 @@ export class EmployeesService {
         private readonly access: PeopleAccessService,
         private readonly numbering: NumberingService,
         private readonly authorization: AuthorizationService,
+        private readonly lifecycle: EmployeeChecklistsService,
     ) { }
 
     // ------------------------------------------------------------------ reads
@@ -124,20 +126,22 @@ export class EmployeesService {
         return paginate(data, total, query);
     }
 
-    /** Org chart nodes (directory-level fields). The client builds the tree from manager_employee_id. */
+    /** Org chart nodes (directory-level fields + status for the offboarding flag). The client builds the tree from manager_employee_id. */
     async orgChart(ctx: OrgContext) {
         const rows = await this.prisma.employee.findMany({
             where: { organization_id: ctx.organization_id, archived_at: null, employment_status: { not: EmploymentStatus.TERMINATED } },
             select: {
                 id: true, preferred_name: true, legal_first_name: true, legal_last_name: true, job_title: true, manager_employee_id: true, availability_status: true,
+                employment_status: true, employee_number: true,
                 department: { select: { id: true, name: true } },
+                primary_branch: { select: { id: true, name: true } },
                 membership: { select: { id: true, user: { select: userSelect } } },
             },
             orderBy: { employee_number: 'asc' },
         });
         return rows.map((r) => ({
             id: r.id, name: personName(r), job_title: r.job_title, manager_employee_id: r.manager_employee_id, availability_status: r.availability_status,
-            department: r.department, photo_url: r.membership.user.profile_photo_url, is_me: this.access.isOwn(ctx, { membership_id: r.membership.id }),
+            employment_status: r.employment_status, employee_number: r.employee_number, membership_id: r.membership.id, department: r.department, primary_branch: r.primary_branch, photo_url: r.membership.user.profile_photo_url, is_me: this.access.isOwn(ctx, { membership_id: r.membership.id }),
         }));
     }
 
@@ -257,6 +261,8 @@ export class EmployeesService {
             payload: { employee_number: employee.employee_number, owner_membership_id: employee.membership_id, manager_membership_id: manager?.membership_id ?? null, employment_status: employee.employment_status },
             activity: { summary: `Added employee ${employee.employee_number}`, entity_label: employee.preferred_name ?? employee.employee_number, branch_id: employee.primary_branch_id },
         });
+        // 15 checklists: start the matching onboarding checklists for a new hire (never blocks the create).
+        if (employee.employment_status === EmploymentStatus.ONBOARDING) void this.lifecycle.autoStart(ctx, employee, 'ONBOARDING');
         return this.findOne(ctx, employee.id);
     }
 
@@ -398,6 +404,7 @@ export class EmployeesService {
             event_key: 'employees.employee.offboarding_started', module: ModuleKey.EMPLOYEES, entity_type: RecordEntityType.EMPLOYEE, entity_id: id,
             payload: { owner_membership_id: e.membership_id, termination_date: dto.termination_date, termination_kind: dto.termination_kind },
         });
+        void this.lifecycle.autoStart(ctx, updated, 'OFFBOARDING');
         return updated;
     }
 
@@ -457,11 +464,16 @@ export class EmployeesService {
         const [items, total] = await Promise.all([
             this.prisma.employeeProfileChangeRequest.findMany({
                 where, ...skipTake(query), orderBy: { created_at: 'desc' },
-                include: { employee: { select: { id: true, employee_number: true, preferred_name: true, membership: { select: { user: { select: userSelect } } } } } },
+                include: { employee: { select: { id: true, employee_number: true, preferred_name: true, membership_id: true, membership: { select: { user: { select: userSelect } } } } } },
             }),
             this.prisma.employeeProfileChangeRequest.count({ where }),
         ]);
-        return paginate(items.map((r) => ({ ...r, employee: { ...r.employee, name: personName(r.employee) } })), total, query);
+        return paginate(items.map((r) => {
+            const own = !!ctx.membership_id && r.employee.membership_id === ctx.membership_id;
+            // Personal values stay masked for callers without the field key (01 §60); the field names are always shown.
+            const changes = ctx.can(P.personalRead) || own ? r.changes : this.maskChanges(r.changes as Record<string, { from: unknown; to: unknown }>);
+            return { ...r, changes, is_mine: own, employee: { ...r.employee, name: personName(r.employee) } };
+        }), total, query);
     }
 
     async decideChangeRequest(ctx: OrgContext, requestId: string, approve: boolean, dto: DecideChangeRequestDto) {
@@ -573,6 +585,12 @@ export class EmployeesService {
         await this.audit.record(ctx, 'membership.created', { resource_type: 'membership', resource_id: membership.id, metadata: { source: 'employee_new_hire', email } }, tx);
         setImmediate(() => this.authorization.invalidate(ctx.organization_id).catch(() => undefined));
         return membership.id;
+    }
+
+    private maskChanges(changes: Record<string, { from: unknown; to: unknown }>) {
+        const out: Record<string, { from: unknown; to: unknown; masked?: boolean }> = {};
+        for (const [k, v] of Object.entries(changes)) out[k] = (PERSONAL_FIELDS as readonly string[]).includes(k) ? { from: null, to: null, masked: true } : v;
+        return out;
     }
 
     private auditSafe(dto: Record<string, any>) {

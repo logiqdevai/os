@@ -18,14 +18,22 @@ import { HrSettingsController, HrSettingsService } from './settings/hr-settings.
 import { PeopleReportsController } from './reports/people-reports.controller';
 import { PeopleReportsService } from './reports/people-reports.service';
 import { PeopleMcp } from './people.mcp';
+import { DocsModule } from '@/modules/docs/docs.module';
+import { FilesModule } from '@/modules/files/files.module';
+import { EmployeeImportController } from './imports/employee-import.controller';
+import { EmployeeImportService } from './imports/employee-import.service';
+import { PerformancePlansController } from './performance/performance-plans.controller';
+import { PerformancePlansService } from './performance/performance-plans.service';
+import { EmployeeChecklistsController } from './lifecycle/employee-checklists.controller';
+import { EmployeeChecklistsService } from './lifecycle/employee-checklists.service';
 
 /** 10 Employee Management (People / HR) — docs/features/10-employee-management-system.md. REST under /people/*. */
 @Module({
-    imports: [NumberingModule],
-    controllers: [EmployeesController, LeaveController, AttendanceController, SkillsController, PerformanceController, HrSettingsController, PeopleReportsController],
+    imports: [NumberingModule, DocsModule, FilesModule],
+    controllers: [EmployeesController, LeaveController, AttendanceController, SkillsController, PerformanceController, HrSettingsController, PeopleReportsController, EmployeeChecklistsController, EmployeeImportController, PerformancePlansController],
     providers: [
         PeopleAccessService, EmployeesService, EmployeeRecordsService, LeaveService, LeaveConfigService, AttendanceService, CapacityService, SkillsService,
-        PerformanceService, HrSettingsService, PeopleReportsService, PeopleMcp,
+        PerformanceService, HrSettingsService, PeopleReportsService, EmployeeChecklistsService, EmployeeImportService, PerformancePlansService, PeopleMcp,
     ],
     exports: [PeopleAccessService, EmployeesService, LeaveService, CapacityService],
 })

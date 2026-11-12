@@ -59,6 +59,16 @@ export class HolidayDto {
     @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray() @IsUUID('all', { each: true }) applies_to_branch_ids?: string[];
 }
 
+export class UpdateHolidayDto extends PartialType(HolidayDto) { }
+
+/** 01 §122 — a branch-specific holiday (BranchHoliday); reduces capacity and leave days of that branch only. */
+export class BranchHolidayDto {
+    @ApiProperty() @IsUUID() branch_id: string;
+    @ApiProperty() @IsString() @MinLength(1) @MaxLength(120) name: string;
+    @ApiProperty() @IsDateString() date: string;
+    @ApiPropertyOptional() @IsOptional() @IsBoolean() recurring?: boolean;
+}
+
 export class LeaveRequestDto {
     @ApiPropertyOptional({ description: 'On behalf of another employee (employees.leave.manage_balances). Omit for yourself.' }) @IsOptional() @IsUUID() employee_id?: string;
     @ApiProperty() @IsUUID() leave_type_id: string;
@@ -111,7 +121,7 @@ export const LeaveCalendarQuerySchema = z.object({
 });
 export type LeaveCalendarQuery = z.infer<typeof LeaveCalendarQuerySchema>;
 
-export const HolidayQuerySchema = z.object({ year: z.coerce.number().int().min(2000).max(2100).optional() });
+export const HolidayQuerySchema = z.object({ year: z.coerce.number().int().min(2000).max(2100).optional(), branch_id: z.string().uuid().optional() });
 
 /** Zod twin of LeaveRequestDto for the MCP tool. */
 export const LeaveRequestSchema = z.object({

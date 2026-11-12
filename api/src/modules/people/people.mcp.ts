@@ -14,6 +14,9 @@ import { SkillSearchSchema, SkillsService } from './skills/skills.service';
 import { PerformanceService } from './performance/performance.service';
 import { GoalQuerySchema, ReviewQuerySchema } from './performance/performance.dto';
 import { PeopleReportsService } from './reports/people-reports.service';
+import { EmployeeChecklistsService } from './lifecycle/employee-checklists.service';
+import { PerformancePlansService } from './performance/performance-plans.service';
+import { CalibrateSchema, FeedbackRequestSchema, PipSchema } from './performance/performance-plans.dto';
 
 const id = z.object({ id: z.string().uuid() });
 const decide = z.object({ id: z.string().uuid(), note: z.string().max(1000).optional() });
@@ -30,6 +33,8 @@ export class PeopleMcp implements OnModuleInit {
         private readonly skills: SkillsService,
         private readonly performance: PerformanceService,
         private readonly reports: PeopleReportsService,
+        private readonly checklists: EmployeeChecklistsService,
+        private readonly plans: PerformancePlansService,
     ) { }
 
     onModuleInit() {
@@ -54,6 +59,16 @@ export class PeopleMcp implements OnModuleInit {
             { name: 'employees_skills_search', description: 'Find people with given skills (skill_ids, min_proficiency, match all|any) for staffing.', permission: P.skillsRead, module: m, resource_type: 'skill', input: SkillSearchSchema, handler: (ctx, a) => this.skills.search(ctx, a) },
             { name: 'employees_performance_reviews_list', description: 'List performance reviews visible to the caller.', permission: P.perfReadAll, module: m, resource_type: 'performance_review', input: ReviewQuerySchema, handler: (ctx, a) => this.performance.reviews(ctx, a) },
             { name: 'employees_performance_goals_list', description: 'List goals and key results visible to the caller.', permission: P.perfReadOwn, module: m, resource_type: 'performance_goal', input: GoalQuerySchema, handler: (ctx, a) => this.performance.goals(ctx, a) },
+            { name: 'employees_change_requests_list', description: 'Profile change requests (status PENDING = waiting for HR); personal values are masked without the key.', permission: P.update, module: m, resource_type: 'employee_change_request', input: z.object({ status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']).optional(), page: z.number().int().min(1).optional() }), handler: (ctx, a) => this.employees.listChangeRequests(ctx, { page: a.page ?? 1, limit: 25, status: a.status } as any) },
+            { name: 'employees_change_requests_decide', description: 'Approve (applies every change) or reject a profile change request.', permission: P.update, module: m, resource_type: 'employee_change_request', sensitive: true, input: z.object({ id: z.string().uuid(), approve: z.boolean(), decision_note: z.string().max(1000).optional() }), handler: (ctx, a) => this.employees.decideChangeRequest(ctx, a.id, a.approve, { decision_note: a.decision_note }) },
+            { name: 'employees_org_chart_read', description: 'Org chart nodes (id, name, title, manager_employee_id, department, branch, status).', permission: P.directoryRead, module: m, resource_type: 'employee', input: z.object({}), handler: (ctx) => this.employees.orgChart(ctx) },
+            { name: 'employees_checklists_list', description: 'Onboarding / offboarding checklist runs of an employee with progress and items.', permission: P.read, module: m, resource_type: 'wiki_checklist_run', input: id, handler: (ctx, a) => this.checklists.list(ctx, a.id) },
+            { name: 'employees_checklists_start', description: 'Start an onboarding / offboarding checklist (15) for an employee.', permission: P.update, module: m, resource_type: 'wiki_checklist_run', input: z.object({ employee_id: z.string().uuid(), checklist_id: z.string().uuid(), due_at: z.string().date().optional() }), handler: (ctx, a) => this.checklists.start(ctx, a.employee_id, { checklist_id: a.checklist_id, due_at: a.due_at }) },
+            { name: 'employees_improvement_plans_list', description: 'Improvement plans (PIP) visible to the caller.', permission: P.perfReadAll, module: m, resource_type: 'performance_improvement_plan', input: z.object({ employee_id: z.string().uuid().optional(), page: z.number().int().min(1).optional() }), handler: (ctx, a) => this.plans.plans(ctx, { page: a.page ?? 1, limit: 25, employee_id: a.employee_id } as any) },
+            { name: 'employees_improvement_plans_create', description: 'Open a draft improvement plan with measurable items.', permission: P.perfManage, module: m, resource_type: 'performance_improvement_plan', sensitive: true, input: PipSchema, handler: (ctx, a) => this.plans.createPlan(ctx, a as any) },
+            { name: 'employees_feedback_requests_list', description: 'Feedback requests: box inbox (asked of me), sent, or all in scope.', permission: P.perfReadOwn, module: m, resource_type: 'performance_feedback_request', input: z.object({ box: z.enum(['inbox', 'sent', 'all']).optional() }), handler: (ctx, a) => this.plans.requests(ctx, { page: 1, limit: 50, box: a.box ?? 'inbox' } as any) },
+            { name: 'employees_feedback_requests_create', description: 'Ask colleagues (membership ids) for feedback about an employee.', permission: P.perfReadOwn, module: m, resource_type: 'performance_feedback_request', input: FeedbackRequestSchema, handler: (ctx, a) => this.plans.createRequests(ctx, a as any) },
+            { name: 'employees_reviews_calibrate', description: 'Calibrate a cycle review rating with a reason (original kept).', permission: P.perfManage, module: m, resource_type: 'performance_review', sensitive: true, input: CalibrateSchema, handler: (ctx, a) => this.plans.calibrate(ctx, a.review_id, { calibrated_rating: a.calibrated_rating, reason: a.reason }) },
             { name: 'employees_reports_read', description: 'People dashboard numbers (headcount, leave, attendance, capacity, performance) the caller may read.', permission: P.read, module: m, resource_type: 'employee', input: z.object({}), handler: (ctx) => this.reports.overview(ctx) },
         ]);
     }

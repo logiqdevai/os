@@ -32,6 +32,7 @@ import { AvailabilityBadge, EmploymentStatusBadge, Panel, PersonCell, Restricted
 import { PeoplePaths } from "../../paths";
 import { AvailabilityDialog, CompensationDialog, DocumentDialog, EmergencyContactDialog, EquipmentDialog, HrNoteDialog, OffboardingDialog } from "./components/profile-dialogs";
 import { RequestLeaveDialog } from "../leave/components/request-leave-dialog";
+import { ChecklistsTab } from "./components/checklists-tab";
 
 type DialogKey = "availability" | "offboarding" | "compensation" | "equipment" | "document" | "note" | "contact" | "leave" | null;
 
@@ -77,6 +78,7 @@ function Profile({ employee: e }: { employee: EmployeeDetail }) {
         { id: "documents", label: "Documents", show: own || p.can("employees.documents.read") },
         { id: "equipment", label: "Equipment", show: own || p.can("employees.equipment.read") },
         { id: "notes", label: "HR notes", show: p.can("employees.hr_notes.read") },
+        { id: "onboarding", label: "Onboarding", show: own || p.can("employees.employees.read") },
     ].filter((t) => t.show);
     const tab = tabs.some((t) => t.id === sp.get("tab")) ? (sp.get("tab") as string) : "overview";
     const done = (title: string) => ({ onSuccess: () => { toast({ title }); setConfirm(null); }, onError: (err: unknown) => toast({ variant: "destructive", title: "Action failed", description: getApiErrorMessage(err) }) });
@@ -121,6 +123,7 @@ function Profile({ employee: e }: { employee: EmployeeDetail }) {
                 <TabsContent value="documents" className="mt-4"><DocumentsTab e={e} onAdd={() => setDialog("document")} /></TabsContent>
                 <TabsContent value="equipment" className="mt-4"><EquipmentTab e={e} onAdd={() => setDialog("equipment")} /></TabsContent>
                 <TabsContent value="notes" className="mt-4"><NotesTab e={e} onAdd={() => setDialog("note")} /></TabsContent>
+                {tab === "onboarding" && <TabsContent value="onboarding" className="mt-4"><ChecklistsTab e={e} /></TabsContent>}
             </Tabs>
 
             <AvailabilityDialog open={dialog === "availability"} onOpenChange={(o) => setDialog(o ? "availability" : null)} employee={e} />

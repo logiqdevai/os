@@ -18,6 +18,11 @@ export const useCompensation = (id: string | undefined, enabled = true) =>
 export const useChangeRequests = (params: Record<string, unknown>, enabled = true) =>
     useQuery({ queryKey: [...KEY, "change-requests", params], queryFn: () => service.getChangeRequests(params), placeholderData: keepPreviousData, enabled });
 
+export const useChecklistRuns = (id: string | undefined, enabled = true) =>
+    useQuery({ queryKey: [...KEY, "checklist-runs", id], queryFn: () => service.getChecklistRuns(id as string), enabled: !!id && enabled });
+export const useAvailableChecklists = (kind: "ONBOARDING" | "OFFBOARDING", enabled = true) =>
+    useQuery({ queryKey: [...KEY, "available-checklists", kind], queryFn: () => service.getAvailableChecklists(kind), enabled });
+
 function useMutate<A, R>(fn: (a: A) => Promise<R>) {
     const qc = useQueryClient();
     return useMutation({ mutationFn: fn, onSuccess: () => qc.invalidateQueries({ queryKey: PEOPLE_KEY }) });
@@ -42,3 +47,5 @@ export const useRemoveEmergencyContact = () => useMutate(service.removeEmergency
 export const useSetWorkSchedule = () => useMutate(service.setWorkSchedule);
 export const useDecideChangeRequest = () => useMutate(service.decideChangeRequest);
 export const useDownloadEmployeesCsv = () => useMutation({ mutationFn: service.downloadEmployeesCsv });
+export const useStartChecklist = () => useMutate(service.startChecklist);
+export const useSetChecklistItem = () => useMutate(service.setChecklistItem);

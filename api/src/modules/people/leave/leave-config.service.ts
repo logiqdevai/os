@@ -4,8 +4,8 @@ import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { AuditService } from '@/shared/audit/audit.service';
 import { EventsService } from '@/shared/events/events.service';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
-import { dates, defined, toDay } from '../common/people.utils';
-import { AssignPolicyDto, HolidayDto, LeavePolicyDto, LeaveTypeDto, UpdateLeavePolicyDto, UpdateLeaveTypeDto } from './dto/leave.dto';
+import { dates, defined, personName, toDay } from '../common/people.utils';
+import { AssignPolicyDto, BranchHolidayDto, HolidayDto, LeavePolicyDto, LeaveTypeDto, UpdateHolidayDto, UpdateLeavePolicyDto, UpdateLeaveTypeDto } from './dto/leave.dto';
 
 /** Sensible defaults created the first time an organization opens Leave (10 "Leave Management"). */
 const DEFAULT_TYPES = [
@@ -136,6 +136,17 @@ export class LeaveConfigService {
         return row;
     }
 
+    /** Employees explicitly assigned to a policy (EmployeeLeavePolicy), newest first. */
+    async policyAssignments(ctx: OrgContext, id: string) {
+        await this.policy(ctx, id);
+        const rows = await this.prisma.employeeLeavePolicy.findMany({
+            where: { leave_policy_id: id },
+            orderBy: { effective_from: 'desc' },
+            include: { employee: { select: { id: true, employee_number: true, preferred_name: true, legal_first_name: true, legal_last_name: true, membership: { select: { user: { select: { display_name: true, first_name: true, last_name: true, email: true } } } } } } },
+        });
+        return rows.map((r) => ({ ...r, employee: { id: r.employee.id, employee_number: r.employee.employee_number, name: personName(r.employee) } }));
+    }
+
     // ------------------------------------------------------------ company holidays
 
     listHolidays(ctx: OrgContext, year?: number) {
@@ -149,6 +160,44 @@ export class LeaveConfigService {
         await this.audit.record(ctx, 'company_holiday.created', { resource_type: 'company_holiday', resource_id: row.id, metadata: { after: dto } });
         this.events.publish(ctx, { event_key: 'employees.holiday.created', module: ModuleKey.EMPLOYEES, entity_kind: 'company_holiday', entity_id: row.id, payload: { name: row.name, date: dto.date } });
         return row;
+    }
+
+    async updateHoliday(ctx: OrgContext, id: string, dto: UpdateHolidayDto) {
+        const before = await this.prisma.companyHoliday.findFirst({ where: { id, organization_id: ctx.organization_id } });
+        if (!before) throw new NotFoundException({ message: 'Holiday not found', code: 'holiday_not_found' });
+        if (dto.applies_to_branch_ids?.length) {
+            const n = await this.prisma.branch.count({ where: { id: { in: dto.applies_to_branch_ids }, organization_id: ctx.organization_id } });
+            if (n !== dto.applies_to_branch_ids.length) throw new NotFoundException({ message: 'Branch not found', code: 'branch_not_found' });
+        }
+        const row = await this.prisma.companyHoliday.update({ where: { id }, data: dates(defined(dto), ['date']) as Prisma.CompanyHolidayUpdateInput }).catch((e) => this.rethrow(e, 'This holiday already exists'));
+        await this.audit.record(ctx, 'company_holiday.updated', { resource_type: 'company_holiday', resource_id: id, metadata: { before: { name: before.name, date: before.date, is_half_day: before.is_half_day }, after: dto } });
+        this.events.publish(ctx, { event_key: 'employees.holiday.updated', module: ModuleKey.EMPLOYEES, entity_kind: 'company_holiday', entity_id: id, payload: { name: row.name }, changes: dto as Record<string, unknown> });
+        return row;
+    }
+
+    // ------------------------------------------------------------ branch holidays (BranchHoliday, 01 §122)
+
+    listBranchHolidays(ctx: OrgContext, year?: number, branchId?: string) {
+        const where: Prisma.BranchHolidayWhereInput = { branch: { organization_id: ctx.organization_id }, ...(branchId && { branch_id: branchId }) };
+        if (year) where.OR = [{ date: { gte: new Date(Date.UTC(year, 0, 1)), lte: new Date(Date.UTC(year, 11, 31)) } }, { recurring: true }];
+        return this.prisma.branchHoliday.findMany({ where, orderBy: { date: 'asc' }, include: { branch: { select: { id: true, name: true } } } });
+    }
+
+    async createBranchHoliday(ctx: OrgContext, dto: BranchHolidayDto) {
+        await this.assertBranch(ctx, dto.branch_id);
+        const row = await this.prisma.branchHoliday.create({ data: { branch_id: dto.branch_id, name: dto.name, date: toDay(dto.date), recurring: dto.recurring ?? false }, include: { branch: { select: { id: true, name: true } } } })
+            .catch((e) => this.rethrow(e, 'This holiday already exists for the branch'));
+        await this.audit.record(ctx, 'branch_holiday.created', { resource_type: 'branch_holiday', resource_id: row.id, branch_id: dto.branch_id, metadata: { after: dto } });
+        this.events.publish(ctx, { event_key: 'employees.holiday.created', module: ModuleKey.EMPLOYEES, entity_kind: 'branch_holiday', entity_id: row.id, payload: { name: row.name, date: dto.date, branch_id: dto.branch_id } });
+        return row;
+    }
+
+    async removeBranchHoliday(ctx: OrgContext, id: string) {
+        const row = await this.prisma.branchHoliday.findFirst({ where: { id, branch: { organization_id: ctx.organization_id } } });
+        if (!row) throw new NotFoundException({ message: 'Holiday not found', code: 'holiday_not_found' });
+        await this.prisma.branchHoliday.delete({ where: { id } });
+        await this.audit.record(ctx, 'branch_holiday.deleted', { resource_type: 'branch_holiday', resource_id: id, branch_id: row.branch_id, metadata: { name: row.name } });
+        return { success: true };
     }
 
     async removeHoliday(ctx: OrgContext, id: string) {

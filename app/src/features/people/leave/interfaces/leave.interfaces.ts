@@ -17,6 +17,9 @@ export interface LeaveType {
     deducts_balance: boolean;
     min_notice_days: number | null;
     max_consecutive_days: number | null;
+    attachment_after_days: number | null;
+    applies_to_types: string[];
+    sort_order: number;
     archived_at: string | null;
     policies: { id: string; name: string; annual_entitlement_days: string; is_default: boolean; branch_id: string | null }[];
 }
@@ -115,6 +118,89 @@ export interface CompanyHoliday {
     kind: "PUBLIC" | "COMPANY";
     is_half_day: boolean;
     recurring: boolean;
+    country_code: string | null;
+    applies_to_branch_ids: string[];
+}
+
+export interface BranchHoliday {
+    id: string;
+    branch_id: string;
+    name: string;
+    date: string;
+    recurring: boolean;
+    branch: Ref;
+}
+
+export type LeaveAccrualMethod = "NONE" | "ANNUAL_UPFRONT" | "MONTHLY" | "PER_HOURS_WORKED";
+
+export interface LeavePolicy {
+    id: string;
+    leave_type_id: string;
+    branch_id: string | null;
+    name: string;
+    accrual_method: LeaveAccrualMethod;
+    annual_entitlement_days: string;
+    prorate_first_year: boolean;
+    seniority_bonus_days_per_year: string | null;
+    max_entitlement_days: string | null;
+    carry_over_max_days: string | null;
+    carry_over_expiry_months: number | null;
+    allow_negative_balance: boolean;
+    max_negative_days: string | null;
+    period_start_month: number;
+    period_start_day: number;
+    applies_to_types: string[];
+    is_default: boolean;
+    leave_type: { id: string; name: string; code: string; color: string | null };
+    branch: Ref | null;
+    _count: { assignments: number };
+}
+
+export interface LeaveTypeDto {
+    name: string;
+    code: string;
+    category: LeaveCategory;
+    color?: string;
+    is_paid?: boolean;
+    requires_approval?: boolean;
+    requires_attachment?: boolean;
+    attachment_after_days?: number;
+    allows_half_day?: boolean;
+    deducts_balance?: boolean;
+    min_notice_days?: number;
+    max_consecutive_days?: number;
+}
+
+export interface LeavePolicyDto {
+    leave_type_id: string;
+    branch_id?: string;
+    name: string;
+    accrual_method?: LeaveAccrualMethod;
+    annual_entitlement_days: number;
+    prorate_first_year?: boolean;
+    carry_over_max_days?: number;
+    carry_over_expiry_months?: number;
+    allow_negative_balance?: boolean;
+    max_negative_days?: number;
+    period_start_month?: number;
+    period_start_day?: number;
+    is_default?: boolean;
+}
+
+export interface PolicyAssignment {
+    id: string;
+    effective_from: string;
+    effective_to: string | null;
+    employee: { id: string; employee_number: string; name: string };
+}
+
+export interface HolidayDto {
+    name: string;
+    date: string;
+    kind?: "PUBLIC" | "COMPANY";
+    is_half_day?: boolean;
+    recurring?: boolean;
+    applies_to_branch_ids?: string[];
 }
 
 export type { Paginated };

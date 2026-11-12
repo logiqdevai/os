@@ -134,7 +134,8 @@ export class DocsChecklistsService {
 
     // --- Runs ----------------------------------------------------------------------------
 
-    async startRun(ctx: OrgContext, checklistId: string, dto: StartChecklistRunDto, trigger: WikiChecklistTrigger = WikiChecklistTrigger.MANUAL) {
+    /** `employeeId`: the subject's Employee (10) when People starts the run on hire / offboarding; stored as WikiChecklistRun.employee_id. */
+    async startRun(ctx: OrgContext, checklistId: string, dto: StartChecklistRunDto, trigger: WikiChecklistTrigger = WikiChecklistTrigger.MANUAL, employeeId?: string) {
         const checklist = await this.findOne(ctx, checklistId);
         if (checklist.archived_at || !checklist.is_active) throw new BadRequestException({ message: 'This checklist is not active', code: 'wiki_checklist_inactive' });
         if (!checklist.items.length) throw new BadRequestException({ message: 'Add items before starting a run', code: 'wiki_checklist_empty' });
@@ -150,6 +151,7 @@ export class DocsChecklistsService {
                     organization_id: ctx.organization_id,
                     checklist_id: checklistId,
                     subject_membership_id: subject.id,
+                    employee_id: employeeId ?? null,
                     status: WikiChecklistRunStatus.IN_PROGRESS,
                     triggered_by: trigger,
                     started_at: now,

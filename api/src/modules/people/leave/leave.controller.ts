@@ -9,8 +9,8 @@ import { P } from '../common/people.utils';
 import { LeaveService } from './leave.service';
 import { LeaveConfigService } from './leave-config.service';
 import {
-    AdjustBalanceDto, AssignPolicyDto, CancelLeaveDto, DecideLeaveDto, HolidayDto, HolidayQuerySchema, LeaveBalanceQuery, LeaveBalanceQuerySchema, LeaveCalendarQuery,
-    LeaveCalendarQuerySchema, LeavePolicyDto, LeaveRequestDto, LeaveRequestQuery, LeaveRequestQuerySchema, LeaveTypeDto, UpdateLeavePolicyDto, UpdateLeaveTypeDto,
+    AdjustBalanceDto, AssignPolicyDto, BranchHolidayDto, CancelLeaveDto, DecideLeaveDto, HolidayDto, HolidayQuerySchema, LeaveBalanceQuery, LeaveBalanceQuerySchema, LeaveCalendarQuery,
+    LeaveCalendarQuerySchema, LeavePolicyDto, LeaveRequestDto, LeaveRequestQuery, LeaveRequestQuerySchema, LeaveTypeDto, UpdateHolidayDto, UpdateLeavePolicyDto, UpdateLeaveTypeDto,
 } from './dto/leave.dto';
 
 const uuid = new ParseUUIDPipe();
@@ -174,6 +174,37 @@ export class LeaveController {
     @RequirePermission(P.leavePolicies)
     createHoliday(@CurrentOrg() ctx: OrgContext, @Body() dto: HolidayDto) {
         return this.config.createHoliday(ctx, dto);
+    }
+
+    @Patch('holidays/:id')
+    @RequirePermission(P.leavePolicies)
+    updateHoliday(@CurrentOrg() ctx: OrgContext, @Param('id', uuid) id: string, @Body() dto: UpdateHolidayDto) {
+        return this.config.updateHoliday(ctx, id, dto);
+    }
+
+    @Get('leave-policies/:id/assignments')
+    @RequireAnyPermission(P.leavePolicies, P.leaveBalances)
+    policyAssignments(@CurrentOrg() ctx: OrgContext, @Param('id', uuid) id: string) {
+        return this.config.policyAssignments(ctx, id);
+    }
+
+    @Get('branch-holidays')
+    @RequireAnyPermission(...LEAVE_READ, P.attReadOwn, P.attReadAll, P.capacity)
+    @ApiOperation({ summary: 'Branch-specific holidays (BranchHoliday, 01 §122)' })
+    branchHolidays(@CurrentOrg() ctx: OrgContext, @Query(new ZodValidationPipe(HolidayQuerySchema)) query: { year?: number; branch_id?: string }) {
+        return this.config.listBranchHolidays(ctx, query.year, query.branch_id);
+    }
+
+    @Post('branch-holidays')
+    @RequirePermission(P.leavePolicies)
+    createBranchHoliday(@CurrentOrg() ctx: OrgContext, @Body() dto: BranchHolidayDto) {
+        return this.config.createBranchHoliday(ctx, dto);
+    }
+
+    @Delete('branch-holidays/:id')
+    @RequirePermission(P.leavePolicies)
+    removeBranchHoliday(@CurrentOrg() ctx: OrgContext, @Param('id', uuid) id: string) {
+        return this.config.removeBranchHoliday(ctx, id);
     }
 
     @Delete('holidays/:id')

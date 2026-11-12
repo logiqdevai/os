@@ -1,8 +1,9 @@
 import type {
-    AvailabilityStatus, DocumentCategory, DocumentStatus, EmploymentStatus, EmploymentType, EquipmentCondition, EquipmentType, HrNoteCategory, HrNoteVisibility, PayType,
+    AvailabilityStatus, ChecklistKind, ChecklistRunStatus, DocumentCategory, DocumentStatus, EmploymentStatus, EmploymentType, EquipmentCondition, EquipmentType, HrNoteCategory, HrNoteVisibility, PayType,
     SeniorityLevel, TerminationKind, WorkLocation,
 } from "@/features/people/employees/interfaces/employees.interfaces";
 import type { BadgeVariant } from "@/components/ui/badge";
+import type { EmployeeImportStatus } from "@/features/people/imports/interfaces/imports.interfaces";
 import type { DropdownOption } from "@/lib/dropdown-option-label.utils";
 
 /** Canonical labels for module 10 employee enums (schema: Employee, EmployeeEquipment, EmployeeDocument, EmployeeHrNote). */
@@ -143,3 +144,62 @@ export const WeekdayOptions: DropdownOption<string>[] = [
     { id: "6", label: "Saturday" },
     { id: "0", label: "Sunday" },
 ];
+
+export type ChangeRequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+export const ChangeRequestStatusFormOptions: DropdownOption<ChangeRequestStatus>[] = [
+    { id: "PENDING", label: "Pending" },
+    { id: "APPROVED", label: "Approved" },
+    { id: "REJECTED", label: "Rejected" },
+    { id: "CANCELLED", label: "Cancelled" },
+];
+export const ChangeRequestStatusFilterOptions: DropdownOption<ChangeRequestStatus | "all">[] = [...ChangeRequestStatusFormOptions, { id: "all", label: "All statuses" }];
+export const ChangeRequestStatusTone: Record<ChangeRequestStatus, BadgeVariant> = { PENDING: "warning", APPROVED: "success", REJECTED: "danger", CANCELLED: "neutral" };
+
+/** Self-service profile fields (api people.utils SELF_SERVICE_FIELDS) and directory fields (DIRECTORY_FIELDS). */
+export const ProfileFieldFormOptions: DropdownOption<string>[] = [
+    { id: "preferred_name", label: "Preferred name" },
+    { id: "work_phone", label: "Work phone" },
+    { id: "personal_email", label: "Personal email" },
+    { id: "personal_phone", label: "Personal phone" },
+    { id: "address", label: "Address" },
+    { id: "bio", label: "Bio" },
+    { id: "timezone", label: "Timezone" },
+    { id: "areas_of_expertise", label: "Areas of expertise" },
+    { id: "technical_stack", label: "Technical stack" },
+    { id: "availability_note", label: "Availability note" },
+    { id: "bank_details", label: "Bank details" },
+    { id: "nationality", label: "Nationality" },
+    { id: "gender", label: "Gender" },
+    { id: "job_title", label: "Job title" },
+    { id: "work_email", label: "Work email" },
+    { id: "availability_status", label: "Availability" },
+    { id: "work_location", label: "Work location" },
+];
+
+export const ChecklistKindFormOptions: DropdownOption<ChecklistKind>[] = [
+    { id: "ONBOARDING", label: "Onboarding" },
+    { id: "OFFBOARDING", label: "Offboarding" },
+];
+export const ChecklistRunStatusFormOptions: DropdownOption<ChecklistRunStatus>[] = [
+    { id: "NOT_STARTED", label: "Not started" },
+    { id: "IN_PROGRESS", label: "In progress" },
+    { id: "COMPLETED", label: "Completed" },
+    { id: "CANCELLED", label: "Cancelled" },
+];
+export const ChecklistRunStatusTone: Record<ChecklistRunStatus, BadgeVariant> = { NOT_STARTED: "neutral", IN_PROGRESS: "info", COMPLETED: "success", CANCELLED: "neutral" };
+export const ChecklistAssigneeFormOptions: DropdownOption<string>[] = [
+    { id: "SUBJECT", label: "Employee" },
+    { id: "MANAGER", label: "Manager" },
+    { id: "CHECKLIST_OWNER", label: "Checklist owner" },
+    { id: "SPECIFIC_MEMBER", label: "Assigned person" },
+];
+
+export const ImportStatusFormOptions: DropdownOption<EmployeeImportStatus>[] = [
+    { id: "PENDING", label: "Uploaded" },
+    { id: "VALIDATING", label: "Checking" },
+    { id: "PREVIEW", label: "Ready to import" },
+    { id: "IMPORTING", label: "Importing" },
+    { id: "COMPLETED", label: "Completed" },
+    { id: "FAILED", label: "Failed" },
+];
+export const ImportStatusTone: Record<EmployeeImportStatus, BadgeVariant> = { PENDING: "neutral", VALIDATING: "info", PREVIEW: "info", IMPORTING: "warning", COMPLETED: "success", FAILED: "danger" };

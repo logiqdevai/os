@@ -11,6 +11,7 @@ export const P = {
     archive: 'employees.employees.archive',
     export: 'employees.employees.export',
     offboard: 'employees.employees.offboard',
+    import: 'employees.employees.import',
     compRead: 'employees.compensation.read',
     compManage: 'employees.compensation.manage',
     personalRead: 'employees.personal_data.read',

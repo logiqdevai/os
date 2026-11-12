@@ -133,6 +133,16 @@ export class PeopleAccessService {
             for (const d of schedule.days) hours[((d.weekday % 7) + 6) % 7] = num(d.hours); // weekday stored 0=Sun..6=Sat or 1..7
             return hours;
         }
+        if (!schedule) {
+            // No personal schedule: the organization's default schedule (EmployeeHrSettings.default_schedule) when set.
+            const org = await this.prisma.employee.findUnique({ where: { id: employeeId }, select: { organization_id: true } });
+            const settings = org ? await this.settings(org.organization_id) : null;
+            const days = Array.isArray(settings?.default_schedule) ? (settings!.default_schedule as { weekday: number; hours: number }[]) : [];
+            if (days.length && fallbackWeekly === undefined) {
+                for (const d of days) hours[((d.weekday % 7) + 6) % 7] = num(d.hours);
+                return hours;
+            }
+        }
         const weekly = schedule ? num(schedule.weekly_hours) : fallbackWeekly ?? 40;
         for (let i = 0; i < 5; i++) hours[i] = round2(weekly / 5);
         return hours;
@@ -163,7 +173,7 @@ export class PeopleAccessService {
     async calendar(employee: { id: string; organization_id: string; primary_branch_id: string | null; weekly_capacity_hours?: Prisma.Decimal | null }, from: Date, to: Date): Promise<DayInfo[]> {
         const settings = await this.settings(employee.organization_id);
         const [hours, holidays] = await Promise.all([
-            this.weekdayHours(employee.id, from, employee.weekly_capacity_hours ? num(employee.weekly_capacity_hours) : num(settings.default_weekly_hours)),
+            this.weekdayHours(employee.id, from, employee.weekly_capacity_hours ? num(employee.weekly_capacity_hours) : Array.isArray(settings.default_schedule) && settings.default_schedule.length ? undefined : num(settings.default_weekly_hours)),
             this.holidays(employee.organization_id, employee.primary_branch_id, from, to),
         ]);
         const out: DayInfo[] = [];

@@ -15,7 +15,10 @@ export const useLeaveCalendar = (params: { from: string; to: string; team_id?: s
 export const useLeaveBalances = (params: Record<string, unknown>, enabled = true) =>
     useQuery({ queryKey: [...KEY, "balances", params], queryFn: () => service.getLeaveBalances(params), placeholderData: keepPreviousData, enabled });
 export const useLeaveTransactions = (id: string | undefined) => useQuery({ queryKey: [...KEY, "transactions", id], queryFn: () => service.getLeaveTransactions(id as string), enabled: !!id });
-export const useLeaveTypes = (enabled = true) => useQuery({ queryKey: [...KEY, "types"], queryFn: service.getLeaveTypes, enabled, staleTime: 60_000 });
+export const useLeaveTypes = (enabled = true, archived = false) => useQuery({ queryKey: [...KEY, "types", archived], queryFn: () => service.getLeaveTypes(archived), enabled, staleTime: 60_000 });
+export const useLeavePolicies = (enabled = true) => useQuery({ queryKey: [...KEY, "policies"], queryFn: service.getLeavePolicies, enabled });
+export const usePolicyAssignments = (id: string | undefined) => useQuery({ queryKey: [...KEY, "policy-assignments", id], queryFn: () => service.getPolicyAssignments(id as string), enabled: !!id });
+export const useBranchHolidays = (year?: number, enabled = true) => useQuery({ queryKey: [...KEY, "branch-holidays", year], queryFn: () => service.getBranchHolidays(year), enabled });
 export const useHolidays = (year?: number, enabled = true) => useQuery({ queryKey: [...KEY, "holidays", year], queryFn: () => service.getHolidays(year), enabled });
 
 function useMutate<A, R>(fn: (a: A) => Promise<R>) {
@@ -29,3 +32,13 @@ export const useCancelLeave = () => useMutate(service.cancelLeave);
 export const useAdjustBalance = () => useMutate(service.adjustBalance);
 export const useCreateHoliday = () => useMutate(service.createHoliday);
 export const useRemoveHoliday = () => useMutate(service.removeHoliday);
+export const useCreateLeaveType = () => useMutate(service.createLeaveType);
+export const useUpdateLeaveType = () => useMutate(service.updateLeaveType);
+export const useSetLeaveTypeArchived = () => useMutate(service.setLeaveTypeArchived);
+export const useCreateLeavePolicy = () => useMutate(service.createLeavePolicy);
+export const useUpdateLeavePolicy = () => useMutate(service.updateLeavePolicy);
+export const useArchiveLeavePolicy = () => useMutate(service.archiveLeavePolicy);
+export const useAssignLeavePolicy = () => useMutate(service.assignLeavePolicy);
+export const useUpdateHoliday = () => useMutate(service.updateHoliday);
+export const useCreateBranchHoliday = () => useMutate(service.createBranchHoliday);
+export const useRemoveBranchHoliday = () => useMutate(service.removeBranchHoliday);

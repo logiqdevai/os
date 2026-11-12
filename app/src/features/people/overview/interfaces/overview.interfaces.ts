@@ -48,13 +48,44 @@ export interface CapacityReport {
     rows: { employee: { id: string; name: string; photo_url: string | null; job_title: string | null; department: Ref | null; availability_status: AvailabilityStatus }; periods: CapacityPeriod[] }[];
 }
 
+export type AttendanceSource = "WEB" | "MOBILE" | "MANUAL" | "IMPORT" | "SYSTEM";
+export type LeaveApproverStrategy = "DIRECT_MANAGER" | "HR" | "MANAGER_THEN_HR" | "CUSTOM";
+
+export interface DefaultScheduleDay {
+    weekday: number;
+    start: string | null;
+    end: string | null;
+    break_minutes: number;
+    hours: number;
+}
+
 export interface HrSettings {
     default_weekly_hours: string;
-    leave_approver_strategy: "DIRECT_MANAGER" | "HR" | "MANAGER_THEN_HR" | "CUSTOM";
-    profile_changes_require_approval: boolean;
+    default_schedule: DefaultScheduleDay[] | null;
+    leave_approver_strategy: LeaveApproverStrategy;
+    leave_conflict_threshold_percent: string | null;
+    attendance_required: boolean;
+    allowed_clock_sources: AttendanceSource[];
+    late_tolerance_minutes: number;
+    overtime_threshold_minutes: number;
+    overtime_requires_approval: boolean;
+    prefill_time_entries_from_attendance: boolean;
     target_utilization_percent: string;
     overload_threshold_percent: string;
     underutilized_threshold_percent: string;
-    late_tolerance_minutes: number;
-    overtime_threshold_minutes: number;
+    self_service_editable_fields: string[];
+    profile_changes_require_approval: boolean;
+    directory_visible_fields: string[];
+    notify_birthdays: boolean;
+    notify_anniversaries: boolean;
+    options: { self_service_fields: string[]; directory_fields: string[]; branches: { id: string; name: string }[] };
 }
+
+export type UpdateHrSettingsDto = Partial<Omit<HrSettings, "options" | "default_weekly_hours" | "leave_conflict_threshold_percent" | "target_utilization_percent" | "overload_threshold_percent" | "underutilized_threshold_percent" | "default_schedule">> & {
+    default_weekly_hours?: number;
+    leave_conflict_threshold_percent?: number;
+    target_utilization_percent?: number;
+    overload_threshold_percent?: number;
+    underutilized_threshold_percent?: number;
+    default_schedule?: { weekday: number; start?: string; end?: string; break_minutes?: number }[];
+};

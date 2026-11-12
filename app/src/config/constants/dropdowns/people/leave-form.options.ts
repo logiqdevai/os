@@ -1,7 +1,7 @@
 import type { BadgeVariant } from "@/components/ui/badge";
-import type { LeaveDayPart, LeaveRequestStatus } from "@/features/people/leave/interfaces/leave.interfaces";
+import type { LeaveAccrualMethod, LeaveCategory, LeaveDayPart, LeaveRequestStatus } from "@/features/people/leave/interfaces/leave.interfaces";
 import type { BoardState } from "@/features/people/attendance/interfaces/attendance.interfaces";
-import type { CapacityStatus } from "@/features/people/overview/interfaces/overview.interfaces";
+import type { AttendanceSource, CapacityStatus, LeaveApproverStrategy } from "@/features/people/overview/interfaces/overview.interfaces";
 import type { DropdownOption } from "@/lib/dropdown-option-label.utils";
 
 export const LeaveStatusFormOptions: DropdownOption<LeaveRequestStatus>[] = [
@@ -39,3 +39,54 @@ export const CapacityStatusFilterOptions: DropdownOption<CapacityStatus | "all">
 export const CapacityStatusTone: Record<CapacityStatus, BadgeVariant> = { UNDERUTILIZED: "info", BALANCED: "success", OVERLOADED: "danger" };
 
 export const LeaveTypeColorTone: Record<string, BadgeVariant> = { info: "info", success: "success", warning: "warning", danger: "danger", violet: "violet", neutral: "neutral" };
+
+export const LeaveCategoryFormOptions: DropdownOption<LeaveCategory>[] = [
+    { id: "VACATION", label: "Vacation" },
+    { id: "SICK", label: "Sick" },
+    { id: "PERSONAL", label: "Personal" },
+    { id: "MATERNITY", label: "Maternity" },
+    { id: "PATERNITY", label: "Paternity" },
+    { id: "PARENTAL", label: "Parental" },
+    { id: "UNPAID", label: "Unpaid" },
+    { id: "PUBLIC_HOLIDAY", label: "Public holiday" },
+    { id: "COMPANY_HOLIDAY", label: "Company holiday" },
+    { id: "TIME_OFF", label: "Time off in lieu" },
+    { id: "OTHER", label: "Other" },
+];
+
+export const LeaveAccrualFormOptions: DropdownOption<LeaveAccrualMethod>[] = [
+    { id: "ANNUAL_UPFRONT", label: "Annual, up front" },
+    { id: "MONTHLY", label: "Monthly" },
+    { id: "PER_HOURS_WORKED", label: "Per hours worked" },
+    { id: "NONE", label: "No accrual" },
+];
+
+/** LeaveType.color stores a semantic tone name (never a hex colour). */
+export const LeaveTypeColorFormOptions: DropdownOption<string>[] = [
+    { id: "info", label: "Blue" },
+    { id: "success", label: "Green" },
+    { id: "warning", label: "Amber" },
+    { id: "danger", label: "Red" },
+    { id: "violet", label: "Violet" },
+    { id: "neutral", label: "Grey" },
+];
+
+export const LeaveApproverStrategyFormOptions: DropdownOption<LeaveApproverStrategy>[] = [
+    { id: "DIRECT_MANAGER", label: "Direct manager" },
+    { id: "HR", label: "HR" },
+    { id: "MANAGER_THEN_HR", label: "Manager, then HR" },
+    { id: "CUSTOM", label: "Custom workflow (Automation)" },
+];
+
+export const AttendanceSourceFormOptions: DropdownOption<AttendanceSource>[] = [
+    { id: "WEB", label: "Web" },
+    { id: "MOBILE", label: "Mobile" },
+    { id: "MANUAL", label: "Manual" },
+    { id: "IMPORT", label: "Import" },
+    { id: "SYSTEM", label: "System" },
+];
+
+export const HolidayKindFormOptions: DropdownOption<"PUBLIC" | "COMPANY">[] = [
+    { id: "PUBLIC", label: "Public holiday" },
+    { id: "COMPANY", label: "Company holiday" },
+];

@@ -224,7 +224,11 @@ export interface OrgChartNode {
     job_title: string | null;
     manager_employee_id: string | null;
     availability_status: AvailabilityStatus;
+    employment_status: EmploymentStatus;
+    employee_number: string;
+    membership_id: string;
     department: Ref | null;
+    primary_branch: Ref | null;
     photo_url: string | null;
     is_me: boolean;
 }
@@ -239,10 +243,12 @@ export interface MemberCandidate {
 export interface ChangeRequest {
     id: string;
     status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
-    changes: Record<string, { from: unknown; to: unknown }>;
+    changes: Record<string, { from: unknown; to: unknown; masked?: boolean }>;
     employee_note: string | null;
     decision_note: string | null;
     created_at: string;
+    decided_at: string | null;
+    is_mine: boolean;
     employee: { id: string; employee_number: string; name: string };
 }
 
@@ -331,4 +337,44 @@ export interface EmergencyContactDto {
 export interface WorkScheduleDto {
     effective_from: string;
     days: { weekday: number; starts_at?: string; ends_at?: string; break_minutes?: number; hours: number }[];
+}
+
+export type ChecklistKind = "ONBOARDING" | "OFFBOARDING";
+export type ChecklistRunStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type ChecklistItemStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
+
+/** WikiChecklistRun (15) of an employee, as returned by GET /people/employees/:id/checklist-runs. */
+export interface EmployeeChecklistRun {
+    id: string;
+    status: ChecklistRunStatus;
+    triggered_by: "MEMBER_ONBOARDING" | "MEMBER_OFFBOARDING" | "MANUAL" | "AUTOMATION";
+    progress_percent: number;
+    started_at: string | null;
+    due_at: string | null;
+    completed_at: string | null;
+    cancelled_at: string | null;
+    checklist: { id: string; name: string; kind: ChecklistKind; description: string | null };
+    done_count: number;
+    total_count: number;
+    overdue_count: number;
+    items: {
+        id: string;
+        status: ChecklistItemStatus;
+        completed_at: string | null;
+        skipped_reason: string | null;
+        task_id: string | null;
+        due_on: string | null;
+        overdue: boolean;
+        can_complete: boolean;
+        checklist_item: { id: string; title: string; description: string | null; is_required: boolean; assignee_kind: "SUBJECT" | "MANAGER" | "CHECKLIST_OWNER" | "SPECIFIC_MEMBER"; page_id: string | null; form_id: string | null };
+    }[];
+}
+
+export interface AvailableChecklist {
+    id: string;
+    name: string;
+    description: string | null;
+    kind: ChecklistKind;
+    auto_assign: boolean;
+    _count: { items: number };
 }

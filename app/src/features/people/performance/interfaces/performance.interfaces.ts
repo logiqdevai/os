@@ -83,3 +83,77 @@ export interface Feedback {
     employee: ReviewEmployee;
     author: { id: string; user: PersonUser } | null;
 }
+
+export type PipStatus = "DRAFT" | "ACTIVE" | "COMPLETED_SUCCESSFUL" | "COMPLETED_UNSUCCESSFUL" | "CANCELLED";
+export type PipItemStatus = "OPEN" | "MET" | "NOT_MET";
+
+export interface ImprovementPlan {
+    id: string;
+    status: PipStatus;
+    title: string;
+    reason: string | null;
+    objectives: string | null;
+    start_date: string;
+    end_date: string;
+    check_in_frequency_days: number | null;
+    next_check_in_on: string | null;
+    manager_membership_id: string | null;
+    hr_membership_id: string | null;
+    outcome_note: string | null;
+    closed_at: string | null;
+    employee: ReviewEmployee;
+    review: { id: string; title: string | null } | null;
+    items: { id: string; title: string; description: string | null; due_date: string | null; status: PipItemStatus; evaluated_at: string | null; note: string | null }[];
+    is_mine: boolean;
+    met_count: number;
+    check_in_due: boolean;
+}
+
+export interface PipDto {
+    employee_id: string;
+    title: string;
+    reason?: string;
+    objectives?: string;
+    start_date: string;
+    end_date: string;
+    check_in_frequency_days?: number;
+    items?: { title: string; due_date?: string }[];
+}
+
+export type FeedbackRequestStatus = "PENDING" | "SUBMITTED" | "DECLINED" | "EXPIRED" | "CANCELLED";
+
+export interface FeedbackRequest {
+    id: string;
+    status: FeedbackRequestStatus;
+    due_date: string | null;
+    message: string | null;
+    is_anonymous: boolean;
+    decline_reason: string | null;
+    responded_at: string | null;
+    created_at: string;
+    employee: ReviewEmployee;
+    requested_by: { id: string; user: PersonUser } | null;
+    requested_from: { id: string; user: PersonUser };
+    review: { id: string; title: string | null } | null;
+    cycle: { id: string; name: string } | null;
+    is_recipient: boolean;
+    is_requester: boolean;
+    overdue: boolean;
+    feedback_id: string | null;
+}
+
+export interface CalibrationView {
+    cycle: { id: string; name: string; status: CycleStatus; rating_scale_max: number };
+    distribution: { rating: number; count: number }[];
+    average: number | null;
+    reviews: {
+        id: string;
+        status: ReviewStatus;
+        overall_rating: string | null;
+        rating_scale_max: number;
+        employee: ReviewEmployee & { department: { id: string; name: string } | null };
+        reviewer: { id: string; user: PersonUser } | null;
+        calibrations: { id: string; original_rating: string | null; calibrated_rating: string; reason: string; calibrated_by_membership_id: string | null; created_at: string }[];
+        can_calibrate: boolean;
+    }[];
+}

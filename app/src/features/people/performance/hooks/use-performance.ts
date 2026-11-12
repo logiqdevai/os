@@ -14,6 +14,12 @@ export const useGoals = (params: Record<string, unknown>, enabled = true) =>
 export const useFeedback = (params: Record<string, unknown>, enabled = true) =>
     useQuery({ queryKey: [...KEY, "feedback", params], queryFn: () => service.getFeedback(params), placeholderData: keepPreviousData, enabled });
 
+export const usePlans = (params: Record<string, unknown>, enabled = true) =>
+    useQuery({ queryKey: [...KEY, "plans", params], queryFn: () => service.getPlans(params), placeholderData: keepPreviousData, enabled });
+export const useFeedbackRequests = (params: Record<string, unknown>, enabled = true) =>
+    useQuery({ queryKey: [...KEY, "requests", params], queryFn: () => service.getFeedbackRequests(params), placeholderData: keepPreviousData, enabled });
+export const useCalibration = (cycleId: string | undefined) => useQuery({ queryKey: [...KEY, "calibration", cycleId], queryFn: () => service.getCalibration(cycleId as string), enabled: !!cycleId });
+
 function useMutate<A, R>(fn: (a: A) => Promise<R>) {
     const qc = useQueryClient();
     return useMutation({ mutationFn: fn, onSuccess: () => qc.invalidateQueries({ queryKey: KEY }) });
@@ -25,3 +31,13 @@ export const useReviewAction = () => useMutate(service.reviewAction);
 export const useCreateGoal = () => useMutate(service.createGoal);
 export const useAddGoalUpdate = () => useMutate(service.addGoalUpdate);
 export const useAddFeedback = () => useMutate(service.addFeedback);
+export const useCreatePlan = () => useMutate(service.createPlan);
+export const useActivatePlan = () => useMutate(service.activatePlan);
+export const useClosePlan = () => useMutate(service.closePlan);
+export const useAddPlanItem = () => useMutate(service.addPlanItem);
+export const useUpdatePlanItem = () => useMutate(service.updatePlanItem);
+export const useCreateFeedbackRequests = () => useMutate(service.createFeedbackRequests);
+export const useSubmitFeedbackRequest = () => useMutate(service.submitFeedbackRequest);
+export const useDeclineFeedbackRequest = () => useMutate(service.declineFeedbackRequest);
+export const useCancelFeedbackRequest = () => useMutate(service.cancelFeedbackRequest);
+export const useCalibrateReview = () => useMutate(service.calibrateReview);

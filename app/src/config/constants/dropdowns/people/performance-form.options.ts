@@ -1,5 +1,7 @@
 import type { BadgeVariant } from "@/components/ui/badge";
-import type { CycleStatus, FeedbackKind, FeedbackVisibility, GoalStatus, ReviewStatus, ReviewType } from "@/features/people/performance/interfaces/performance.interfaces";
+import type {
+    CycleStatus, FeedbackKind, FeedbackRequestStatus, FeedbackVisibility, GoalStatus, PipItemStatus, PipStatus, ReviewStatus, ReviewType,
+} from "@/features/people/performance/interfaces/performance.interfaces";
 import type { SkillCategory, SkillProficiency } from "@/features/people/skills/interfaces/skills.interfaces";
 import type { DropdownOption } from "@/lib/dropdown-option-label.utils";
 
@@ -81,3 +83,36 @@ export const SkillProficiencyFormOptions: DropdownOption<SkillProficiency>[] = [
     { id: "EXPERT", label: "Expert" },
 ];
 export const SkillProficiencyFilterOptions: DropdownOption<SkillProficiency | "all">[] = [{ id: "all", label: "Any level" }, ...SkillProficiencyFormOptions];
+
+export const PipStatusFormOptions: DropdownOption<PipStatus>[] = [
+    { id: "DRAFT", label: "Draft" },
+    { id: "ACTIVE", label: "Active" },
+    { id: "COMPLETED_SUCCESSFUL", label: "Completed: successful" },
+    { id: "COMPLETED_UNSUCCESSFUL", label: "Completed: unsuccessful" },
+    { id: "CANCELLED", label: "Cancelled" },
+];
+export const PipStatusTone: Record<PipStatus, BadgeVariant> = { DRAFT: "neutral", ACTIVE: "info", COMPLETED_SUCCESSFUL: "success", COMPLETED_UNSUCCESSFUL: "danger", CANCELLED: "neutral" };
+export const PipCloseOutcomeOptions: DropdownOption<"COMPLETED_SUCCESSFUL" | "COMPLETED_UNSUCCESSFUL" | "CANCELLED">[] = [
+    { id: "COMPLETED_SUCCESSFUL", label: "Completed: successful" },
+    { id: "COMPLETED_UNSUCCESSFUL", label: "Completed: unsuccessful" },
+    { id: "CANCELLED", label: "Cancelled" },
+];
+export const PipItemStatusFormOptions: DropdownOption<PipItemStatus>[] = [
+    { id: "OPEN", label: "Open" },
+    { id: "MET", label: "Met" },
+    { id: "NOT_MET", label: "Not met" },
+];
+export const PipItemStatusTone: Record<PipItemStatus, BadgeVariant> = { OPEN: "info", MET: "success", NOT_MET: "danger" };
+export const FeedbackRequestStatusFormOptions: DropdownOption<FeedbackRequestStatus>[] = [
+    { id: "PENDING", label: "Pending" },
+    { id: "SUBMITTED", label: "Answered" },
+    { id: "DECLINED", label: "Declined" },
+    { id: "EXPIRED", label: "Expired" },
+    { id: "CANCELLED", label: "Cancelled" },
+];
+export const FeedbackRequestStatusTone: Record<FeedbackRequestStatus, BadgeVariant> = { PENDING: "warning", SUBMITTED: "success", DECLINED: "neutral", EXPIRED: "neutral", CANCELLED: "neutral" };
+export const FeedbackRequestBoxOptions: DropdownOption<"inbox" | "sent" | "all">[] = [
+    { id: "inbox", label: "Asked of me" },
+    { id: "sent", label: "Sent by me" },
+    { id: "all", label: "All in my scope" },
+];
