@@ -7,6 +7,12 @@ import { parseCorsUrls, resolveCorsOrigins } from './shared/config/cors';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
+  // Profile photo URLs are stored absolute from API_URL, which is often the public URL behind a proxy that adds `/api`.
+  // Serve them with or without that prefix so stored URLs keep working locally and behind the proxy.
+  app.use((req: { url: string }, _res: unknown, next: () => void) => {
+    if (req.url.startsWith('/api/auth/photos/')) req.url = req.url.slice(4);
+    next();
+  });
   app.set('trust proxy', 1);
   app.useBodyParser('json', { limit: '10mb' });
 

@@ -35,6 +35,12 @@ export function buildWidgetScript(apiBase: string, key: string): string {
         });
       });
   }
+  // The agent's profile photo (or their first letter) next to the name on human replies.
+  function agentAvatar(m) {
+    if (m.is_ai) return "";
+    if (m.author_photo_url && /^https?:\\/\\//i.test(m.author_photo_url)) return "<img class='av' alt='' src='" + esc(m.author_photo_url) + "'>";
+    return "<span class='av avi' aria-hidden='true'>" + esc(String(m.author_name || "S").charAt(0).toUpperCase()) + "</span>";
+  }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function linkify(s) { return s.replace(/(https?:\\/\\/[^\\s<&]+[^\\s<&.,;:!?)])/g, function (u) { return "<a href='" + u + "' target='_blank' rel='noopener noreferrer'>" + u + "</a>"; }); }
   function time(iso) { try { return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } catch (e) { return ""; } }
@@ -61,6 +67,8 @@ export function buildWidgetScript(apiBase: string, key: string): string {
       ".body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;font-size:14px}" +
       ".m{max-width:82%;padding:8px 12px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word;line-height:1.4}" +
       ".m small{display:block;font-size:11px;opacity:.7;margin-top:3px}" +
+      ".av{width:16px;height:16px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:5px;display:inline-block}" +
+      ".avi{background:var(--line);color:var(--fg);font-size:9px;line-height:16px;text-align:center;font-weight:600}" +
       ".team{align-self:flex-start;background:var(--bubble);color:var(--fg);border-bottom-left-radius:4px}" +
       ".visitor{align-self:flex-end;background:var(--c);color:#fff;border-bottom-right-radius:4px}" +
       ".note{font-size:12px;color:var(--muted);text-align:center;padding:4px}" +
@@ -96,7 +104,7 @@ export function buildWidgetScript(apiBase: string, key: string): string {
       if (!state.token && offline()) h += "<div class='notice' role='status'>" + esc(c.office_hours.offline_message) + "</div>";
       if (c.ai_assistant && c.ai_assistant.enabled && !state.messages.length) h += "<div class='notice'>An AI assistant may answer first using our help articles. " + esc("Reply 'human' at any time to talk to a person.") + "</div>";
       state.messages.forEach(function (m) {
-        h += "<div class='m " + (m.from === "visitor" ? "visitor" : "team") + "'>" + linkify(esc(m.body)) + "<small>" + (m.from === "team" ? (m.is_ai ? "<span class='ai'>AI</span>" : "") + esc(m.author_name) + " · " : "") + time(m.created_at) + "</small></div>";
+        h += "<div class='m " + (m.from === "visitor" ? "visitor" : "team") + "'>" + linkify(esc(m.body)) + "<small>" + (m.from === "team" ? (m.is_ai ? "<span class='ai'>AI</span>" : agentAvatar(m)) + esc(m.author_name) + " · " : "") + time(m.created_at) + "</small></div>";
       });
       if (state.replyByEmail) h += "<div class='note'>Thanks! We are offline right now and will reply by email.</div>";
       if (state.status === "RESOLVED") h += "<div class='note'>This conversation was resolved. Write again to reopen it.</div>";
