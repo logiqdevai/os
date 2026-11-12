@@ -188,6 +188,8 @@ export interface Release {
     target_date: string | null;
     released_at: string | null;
     notes: string | null;
+    /** Set when a person published the notes; editing them afterwards makes them a draft again. */
+    notes_published_at?: string | null;
     customer_visible: boolean;
     team: { id: string; name: string } | null;
     project: { id: string; name: string; color: string | null } | null;

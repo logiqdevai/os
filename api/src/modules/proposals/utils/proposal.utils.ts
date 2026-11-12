@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'crypto';
+import { Prisma, ProposalAccessTokenSource } from 'generated/prisma';
 
 export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 export const num = (v: unknown): number => (v === null || v === undefined || v === '' ? 0 : Number(v));
@@ -75,6 +76,22 @@ export function newToken() {
     return { token, hash: hashToken(token) };
 }
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
+
+type TokenDb = { proposalAccessToken: Prisma.TransactionClient['proposalAccessToken'] };
+
+/**
+ * 03/07 — issue one more public link for a proposal (send, reminder, portal, rotation). Earlier links keep working until
+ * they are revoked (rotation, cancel, marked lost) or the proposal stops being valid. Returns the raw token once.
+ */
+export async function issueAccessToken(db: TokenDb, data: { organization_id: string; proposal_id: string; source: ProposalAccessTokenSource; recipient_email?: string | null; portal_membership_id?: string | null }) {
+    const t = newToken();
+    await db.proposalAccessToken.create({ data: { ...data, recipient_email: data.recipient_email?.toLowerCase() ?? null, token_hash: t.hash } });
+    return t;
+}
+
+/** Revoke every live public link of a proposal. */
+export const revokeAccessTokens = (db: TokenDb, proposalId: string) =>
+    db.proposalAccessToken.updateMany({ where: { proposal_id: proposalId, revoked_at: null }, data: { revoked_at: new Date() } });
 export const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 
 /** 6-digit one-time code. */

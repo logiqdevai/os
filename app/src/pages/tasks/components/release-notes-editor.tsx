@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { FileText, ListPlus, Pencil, Send, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/ui/page";
 import { Markdown } from "@/components/ui/markdown";
@@ -68,7 +69,12 @@ export function ReleaseNotesEditor({ release }: { release: Release }) {
                     </div>
                 </div>
             ) : release.notes ? (
-                <div className="rounded-lg border border-border bg-card p-3"><Markdown source={release.notes} className="text-[13px]" /></div>
+                <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+                    {release.notes_published_at
+                        ? <Badge variant="success">Published {new Date(release.notes_published_at).toLocaleDateString()}</Badge>
+                        : <Badge variant="warning">Draft · not published</Badge>}
+                    <Markdown source={release.notes} className="text-[13px]" />
+                </div>
             ) : (
                 <div className="rounded-lg border border-border bg-card"><EmptyState compact icon={FileText} title="No release notes yet" description={canManage ? "Draft them from the release's tasks." : undefined} /></div>
             )}

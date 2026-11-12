@@ -68,7 +68,7 @@ export class ReleaseNotesService {
     /** A person publishes the (edited) notes: saved on the release, audited, and announced (customer-visible releases show in the portal feed). */
     async publish(ctx: OrgContext, id: string, dto: PublishReleaseNotesInput) {
         const release = await this.releases.get(ctx, id);
-        const updated = await this.prisma.release.update({ where: { id }, data: { notes: dto.notes } });
+        const updated = await this.prisma.release.update({ where: { id }, data: { notes: dto.notes, notes_published_at: new Date(), notes_published_by_membership_id: ctx.membership_id } });
         await this.audit.record(ctx, 'release.notes_published', {
             resource_type: 'release', resource_id: id,
             metadata: { before: { length: release.notes?.length ?? 0 }, after: { length: dto.notes.length }, customer_visible: release.customer_visible },

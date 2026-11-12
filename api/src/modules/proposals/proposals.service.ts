@@ -8,7 +8,7 @@ import { orderBy, paginate, skipTake } from '@/shared/utils/pagination/paginatio
 import { NumberingService } from '@/modules/numbering/numbering.service';
 import { CreateProposalDto, CreateVersionDto, MarkLostDto, SaveProposalContentDto, UpdateProposalDto } from './dto/proposal.dto';
 import { LookupQuery, ProposalQuery } from './dto/proposal-query.schema';
-import { computeLine, computeTotals, num } from './utils/proposal.utils';
+import { computeLine, computeTotals, num, revokeAccessTokens } from './utils/proposal.utils';
 
 export const PROPOSAL_READ = 'proposals.proposals.read';
 export const INTERNAL_COMMENTS = 'proposals.comments.internal.read';
@@ -518,7 +518,8 @@ export class ProposalsService {
         const p = await this.getRecord(ctx, id, 'proposals.proposals.cancel');
         if (CLOSED_STATUSES.includes(p.status)) throw new ConflictException({ message: `The proposal is already ${p.status.toLowerCase()}`, code: 'proposal_closed' });
         const updated = await this.prisma.$transaction(async (tx) => {
-            const u = await tx.proposal.update({ where: { id }, data: { status: ProposalStatus.CANCELLED, cancelled_at: new Date(), public_token_hash: null } });
+            const u = await tx.proposal.update({ where: { id }, data: { status: ProposalStatus.CANCELLED, cancelled_at: new Date() } });
+            await revokeAccessTokens(tx, id);
             await tx.proposalApproval.updateMany({ where: { version: { proposal_id: id }, decision: 'PENDING' }, data: { decision: 'REJECTED', comment: 'Proposal cancelled', decided_at: new Date() } });
             await tx.proposalEvent.create({ data: { proposal_id: id, type: ProposalEventType.CANCELLED, actor_user_id: ctx.user_id } });
             await this.audit.record(ctx, 'proposal.cancelled', { resource_type: 'proposal', resource_id: id, branch_id: p.branch_id, metadata: { before: { status: p.status } } }, tx);
@@ -534,8 +535,9 @@ export class ProposalsService {
         if (p.status === ProposalStatus.ACCEPTED || p.status === ProposalStatus.CANCELLED) throw new ConflictException({ message: `A ${p.status.toLowerCase()} proposal cannot be marked lost`, code: 'proposal_closed' });
         const updated = await this.prisma.proposal.update({
             where: { id },
-            data: { lost_reason: dto.lost_reason, ...(p.status !== ProposalStatus.EXPIRED && { status: ProposalStatus.REJECTED, rejected_at: new Date() }), public_token_hash: null },
+            data: { lost_reason: dto.lost_reason, ...(p.status !== ProposalStatus.EXPIRED && { status: ProposalStatus.REJECTED, rejected_at: new Date() }) },
         });
+        await revokeAccessTokens(this.prisma, id);
         await this.prisma.proposalEvent.create({ data: { proposal_id: id, type: ProposalEventType.REJECTED, actor_user_id: ctx.user_id, metadata: { lost_reason: dto.lost_reason, note: dto.note ?? null, recorded_by: 'staff' } } });
         await this.audit.record(ctx, 'proposal.marked_lost', { resource_type: 'proposal', resource_id: id, metadata: { lost_reason: dto.lost_reason, before: { status: p.status } } });
         this.events.publish(ctx, { event_key: 'proposals.proposal.lost', module: ModuleKey.PROPOSALS, entity_kind: 'proposal', entity_id: id, payload: { number: p.number, lost_reason: dto.lost_reason, owner_membership_id: p.owner_membership_id, deal_id: p.deal_id } });

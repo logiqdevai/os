@@ -23,34 +23,34 @@
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Configuration** | | | |
-| `DocumentSettings` | `document_settings` | [L18029](../../api/prisma/schema.prisma#L18029) | 17 §5, §8, §9, §13 — organization-level document settings: file type / size limits, scanning, public links, watermarking, soft-delete recovery window, folder… |
-| `DocumentCategory` | `document_categories` | [L18071](../../api/prisma/schema.prisma#L18071) | 17 §4 — configurable document categories (contract, proposal, deliverable, design, specification, invoice, receipt, HR document, policy, other). System categ… |
-| `DocumentStorageConnection` | `document_storage_connections` | [L18105](../../api/prisma/schema.prisma#L18105) | 17 §16 — external storage provider connection (Google Drive, Microsoft 365, S3-compatible) behind the storage abstraction. The Document record stays in this … |
-| `DocumentRetentionPolicy` | `document_retention_policies` | [L18137](../../api/prisma/schema.prisma#L18137) | 17 §13 — retention policies per category and scope (04 §84 contract retention is enforced here). |
+| `DocumentSettings` | `document_settings` | [L18063](../../api/prisma/schema.prisma#L18063) | 17 §5, §8, §9, §13 — organization-level document settings: file type / size limits, scanning, public links, watermarking, soft-delete recovery window, folder… |
+| `DocumentCategory` | `document_categories` | [L18105](../../api/prisma/schema.prisma#L18105) | 17 §4 — configurable document categories (contract, proposal, deliverable, design, specification, invoice, receipt, HR document, policy, other). System categ… |
+| `DocumentStorageConnection` | `document_storage_connections` | [L18139](../../api/prisma/schema.prisma#L18139) | 17 §16 — external storage provider connection (Google Drive, Microsoft 365, S3-compatible) behind the storage abstraction. The Document record stays in this … |
+| `DocumentRetentionPolicy` | `document_retention_policies` | [L18171](../../api/prisma/schema.prisma#L18171) | 17 §13 — retention policies per category and scope (04 §84 contract retention is enforced here). |
 | **Folders** | | | |
-| `FolderTemplate` | `folder_templates` | [L18172](../../api/prisma/schema.prisma#L18172) | 17 §7 — default folder structures per project type (05 §36), per customer, per employee or organization. |
-| `Folder` | `folders` | [L18198](../../api/prisma/schema.prisma#L18198) | 17 §2, §3, §7 — hierarchical container scoped to an organization, branch, team, project, customer or employee. Moving / renaming / archiving a folder never c… |
+| `FolderTemplate` | `folder_templates` | [L18206](../../api/prisma/schema.prisma#L18206) | 17 §7 — default folder structures per project type (05 §36), per customer, per employee or organization. |
+| `Folder` | `folders` | [L18232](../../api/prisma/schema.prisma#L18232) | 17 §2, §3, §7 — hierarchical container scoped to an organization, branch, team, project, customer or employee. Moving / renaming / archiving a folder never c… |
 | **Documents** | | | |
-| `Document` | `documents` | [L18273](../../api/prisma/schema.prisma#L18273) | 17 §2, §3, §4 — the Document record: a logical document with one or more immutable file versions, a title, category, scope, status, owner, retention policy a… |
-| `DocumentVersion` | `document_versions` | [L18431](../../api/prisma/schema.prisma#L18431) | 17 §2 File, §6 Versioning — an immutable file snapshot inside a Document, with author, timestamp, change note, scan result and lock. Re-uploads create a new … |
-| `DocumentUploadJob` | `document_upload_jobs` | [L18501](../../api/prisma/schema.prisma#L18501) | 17 §5 — upload / intake job: drag-and-drop and multi-file uploads, upload from URL, portal uploads, email captures (13), OCR intake (09) and generated PDFs (… |
-| `DocumentPreview` | `document_previews` | [L18564](../../api/prisma/schema.prisma#L18564) | 17 §8 — generated preview rendition of a version (thumbnail, image pages, PDF rendition, text extract, transcoded media). Served through signed URLs only. |
-| `DocumentAttachment` | `document_attachments` | [L18593](../../api/prisma/schema.prisma#L18593) | 17 §2 Attachment, §11 — polymorphic link between a Document and a business record (task, ticket, message, financial record, CRM record, employee …). Modules … |
-| `DocumentFavorite` | `document_favorites` | [L18617](../../api/prisma/schema.prisma#L18617) | 17 §7 — favorites per member (document or folder). |
-| `DocumentRecentAccess` | `document_recent_accesses` | [L18637](../../api/prisma/schema.prisma#L18637) | 17 §7 — "recent" list per member; one row per member + document, bumped on each open. Download / preview audit for sensitive categories goes to audit_events … |
+| `Document` | `documents` | [L18307](../../api/prisma/schema.prisma#L18307) | 17 §2, §3, §4 — the Document record: a logical document with one or more immutable file versions, a title, category, scope, status, owner, retention policy a… |
+| `DocumentVersion` | `document_versions` | [L18465](../../api/prisma/schema.prisma#L18465) | 17 §2 File, §6 Versioning — an immutable file snapshot inside a Document, with author, timestamp, change note, scan result and lock. Re-uploads create a new … |
+| `DocumentUploadJob` | `document_upload_jobs` | [L18535](../../api/prisma/schema.prisma#L18535) | 17 §5 — upload / intake job: drag-and-drop and multi-file uploads, upload from URL, portal uploads, email captures (13), OCR intake (09) and generated PDFs (… |
+| `DocumentPreview` | `document_previews` | [L18598](../../api/prisma/schema.prisma#L18598) | 17 §8 — generated preview rendition of a version (thumbnail, image pages, PDF rendition, text extract, transcoded media). Served through signed URLs only. |
+| `DocumentAttachment` | `document_attachments` | [L18627](../../api/prisma/schema.prisma#L18627) | 17 §2 Attachment, §11 — polymorphic link between a Document and a business record (task, ticket, message, financial record, CRM record, employee …). Modules … |
+| `DocumentFavorite` | `document_favorites` | [L18651](../../api/prisma/schema.prisma#L18651) | 17 §7 — favorites per member (document or folder). |
+| `DocumentRecentAccess` | `document_recent_accesses` | [L18671](../../api/prisma/schema.prisma#L18671) | 17 §7 — "recent" list per member; one row per member + document, bumped on each open. Download / preview audit for sensitive categories goes to audit_events … |
 | **Sharing** | | | |
-| `DocumentShare` | `document_shares` | [L18656](../../api/prisma/schema.prisma#L18656) | 17 §2, §9 — explicit grant of access to a Document or Folder for a Member, Team, Customer Portal user, external collaborator (email) or public link. Public l… |
+| `DocumentShare` | `document_shares` | [L18690](../../api/prisma/schema.prisma#L18690) | 17 §2, §9 — explicit grant of access to a Document or Folder for a Member, Team, Customer Portal user, external collaborator (email) or public link. Public l… |
 | **Approvals** | | | |
-| `DocumentApproval` | `document_approvals` | [L18723](../../api/prisma/schema.prisma#L18723) | 17 §10 — document-level approval request bound to an exact version (deliverables, specifications, HR documents). Shown as a pending approval in the Customer … |
-| `DocumentApprover` | `document_approvers` | [L18760](../../api/prisma/schema.prisma#L18760) | 17 §10 — one approver (member or Customer Portal user) on an approval request and their decision. |
+| `DocumentApproval` | `document_approvals` | [L18757](../../api/prisma/schema.prisma#L18757) | 17 §10 — document-level approval request bound to an exact version (deliverables, specifications, HR documents). Shown as a pending approval in the Customer … |
+| `DocumentApprover` | `document_approvers` | [L18794](../../api/prisma/schema.prisma#L18794) | 17 §10 — one approver (member or Customer Portal user) on an approval request and their decision. |
 | **Retention & deletion** | | | |
-| `DocumentDeletionRequest` | `document_deletion_requests` | [L18790](../../api/prisma/schema.prisma#L18790) | 17 §13 — restricted, audited deletion workflow: soft delete with recovery window, retention-driven deletion and permanent deletion that requires approval. Le… |
-| `DocumentTemplate` | `document_templates` | [L18824](../../api/prisma/schema.prisma#L18824) | 17 §4, §5 — reusable document template (letters, policies, NDAs, reports ...). The body is a stored DocumentVersion; generating fills `variables` into a copy… |
+| `DocumentDeletionRequest` | `document_deletion_requests` | [L18824](../../api/prisma/schema.prisma#L18824) | 17 §13 — restricted, audited deletion workflow: soft delete with recovery window, retention-driven deletion and permanent deletion that requires approval. Le… |
+| `DocumentTemplate` | `document_templates` | [L18858](../../api/prisma/schema.prisma#L18858) | 17 §4, §5 — reusable document template (letters, policies, NDAs, reports ...). The body is a stored DocumentVersion; generating fills `variables` into a copy… |
 | **Secure Credential Vault** | | | |
-| `VaultKey` | `vault_keys` | [L18863](../../api/prisma/schema.prisma#L18863) | 17 §12 — per-organization encryption key metadata (the key material lives in the KMS / secret manager; only its reference is stored). Rotations create a new … |
-| `VaultEntry` | `vault_entries` | [L18887](../../api/prisma/schema.prisma#L18887) | 17 §12 — an encrypted credential (hosting login, API key, service account, domain registrar, third-party credential) scoped to the organization, a customer o… |
-| `VaultEntryGrant` | `vault_entry_grants` | [L18944](../../api/prisma/schema.prisma#L18944) | 17 §12 — explicit access grant on a vault entry for a member, team or Customer Portal user. Vault permissions (documents.vault.read / reveal / manage) are se… |
-| `VaultAccessLog` | `vault_access_logs` | [L18975](../../api/prisma/schema.prisma#L18975) | 17 §12, §15 — queryable access log for vault entries (reveal / copy are explicit, logged actions). Mirrored to audit_events; this table backs the per-entry "… |
+| `VaultKey` | `vault_keys` | [L18897](../../api/prisma/schema.prisma#L18897) | 17 §12 — per-organization encryption key metadata (the key material lives in the KMS / secret manager; only its reference is stored). Rotations create a new … |
+| `VaultEntry` | `vault_entries` | [L18921](../../api/prisma/schema.prisma#L18921) | 17 §12 — an encrypted credential (hosting login, API key, service account, domain registrar, third-party credential) scoped to the organization, a customer o… |
+| `VaultEntryGrant` | `vault_entry_grants` | [L18978](../../api/prisma/schema.prisma#L18978) | 17 §12 — explicit access grant on a vault entry for a member, team or Customer Portal user. Vault permissions (documents.vault.read / reveal / manage) are se… |
+| `VaultAccessLog` | `vault_access_logs` | [L19009](../../api/prisma/schema.prisma#L19009) | 17 §12, §15 — queryable access log for vault entries (reveal / copy are explicit, logged actions). Mirrored to audit_events; this table backs the per-entry "… |
 
 **Owned enums (26):** `DocumentStatus`, `DocumentScope`, `DocumentSource`, `DocumentVersionStatus`, `DocumentScanStatus`, `DocumentStorageProvider`, `DocumentStorageConnectionStatus`, `DocumentUploadJobStatus`, `DocumentPreviewKind`, `DocumentPreviewStatus`, `DocumentShareSubjectType`, `DocumentSharePermission`, `DocumentShareStatus`, `DocumentApprovalStatus`, `DocumentApprovalDecision`, `DocumentApproverKind`, `FolderTemplateTarget`, `DocumentRetentionAnchor`, `DocumentRetentionAction`, `DocumentDeletionKind`, `DocumentDeletionStatus`, `VaultEntryType`, `VaultScope`, `VaultGrantSubjectType`, `VaultAccessAction`, `VaultKeyStatus`
 
@@ -84,58 +84,58 @@
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `CrmActivity.recording_document_id` ([02](./02-crm-sales-management.md), [L3235](../../api/prisma/schema.prisma#L3235)) — 02 §13 — CALL: recording stored in Documents (17), sensitive; id only.
-- `CrmImportJob.document_id` ([02](./02-crm-sales-management.md), [L3464](../../api/prisma/schema.prisma#L3464)) — Uploaded file (17 Documents); id only.
+- `CrmActivity.recording_document_id` ([02](./02-crm-sales-management.md), [L3236](../../api/prisma/schema.prisma#L3236)) — 02 §13 — CALL: recording stored in Documents (17), sensitive; id only.
+- `CrmImportJob.document_id` ([02](./02-crm-sales-management.md), [L3465](../../api/prisma/schema.prisma#L3465)) — Uploaded file (17 Documents); id only.
 - `ProposalVersion.pdf_document_id` ([03](./03-proposal-quotation-generator.md), [L3988](../../api/prisma/schema.prisma#L3988)) — Generated PDF stored in 17 Documents; id only.
-- `ContractVersion.document_id` ([04](./04-contracts.md), [L4913](../../api/prisma/schema.prisma#L4913)) — Rendered document in 17 Documents (draft artifact); id only.
-- `ContractVersion.signed_document_id` ([04](./04-contracts.md), [L4913](../../api/prisma/schema.prisma#L4913)) — Final signed artifact in 17 Documents (04 §41); id only.
-- `SignatureRequest.package_documents` ([04](./04-contracts.md), [L5139](../../api/prisma/schema.prisma#L5139)) — 04 §78 — package of document ids (17) in locked order: [{ document_id, title, sort_order }].
-- `SignatureRequest.signed_document_id` ([04](./04-contracts.md), [L5139](../../api/prisma/schema.prisma#L5139)) — Signed artifact (17) and the audit certificate (17) generated by the platform; ids only.
-- `ContractTermination.document_id` ([04](./04-contracts.md), [L5343](../../api/prisma/schema.prisma#L5343)) — Supporting document (17); id only.
-- `ProjectDeliverable.document_ids` ([05](./05-project-management.md), [L6018](../../api/prisma/schema.prisma#L6018)) — Document ids (17) delivered.
-- `ProjectHandover.details` ([05](./05-project-management.md), [L6419](../../api/prisma/schema.prisma#L6419)) — Checklist, documentation ids (17), open items, support references, contacts, notes.
-- `ProjectDeliverableReview.document_version_ids` ([05](./05-project-management.md), [L6503](../../api/prisma/schema.prisma#L6503)) — Document version ids (17) that were reviewed, for traceability of which submission was decided.
-- `PaymentMethod.bank_details` ([08](./08-financial-management-stripe-integration.md), [L7375](../../api/prisma/schema.prisma#L7375)) — Bank details for transfers (IBAN masked, bank name) when provider is BANK. Encrypted at the application layer (envelope encryption with the organization Vaul…
-- `Invoice.pdf_document_id` ([08](./08-financial-management-stripe-integration.md), [L7552](../../api/prisma/schema.prisma#L7552)) — Generated PDF (17); id only.
-- `Payment.receipt_document_id` ([08](./08-financial-management-stripe-integration.md), [L7719](../../api/prisma/schema.prisma#L7719)) — Receipt document (17); id only.
-- `FinanceReportSchedule.last_document_id` ([08](./08-financial-management-stripe-integration.md), [L8336](../../api/prisma/schema.prisma#L8336)) — Last generated file (17); id only.
-- `LedgerSupplierProfile.bank_details` ([09](./09-income-expense-management.md), [L8683](../../api/prisma/schema.prisma#L8683)) — Supplier's bank details for paying their invoices (IBAN masked in the UI). Encrypted at the application layer (envelope encryption with the organization Vaul…
-- `LedgerSettlement.document_id` ([09](./09-income-expense-management.md), [L8853](../../api/prisma/schema.prisma#L8853)) — 17 Document — payment confirmation; id only.
-- `LedgerAttachment.document_id` ([09](./09-income-expense-management.md), [L8889](../../api/prisma/schema.prisma#L8889)) — 17 Document; id only.
-- `LedgerInvoiceImport.document_id` ([09](./09-income-expense-management.md), [L8913](../../api/prisma/schema.prisma#L8913)) — 17 Document — the uploaded file; id only.
-- `PayrollEntry.document_id` ([09](./09-income-expense-management.md), [L9130](../../api/prisma/schema.prisma#L9130)) — 17 Document — payslip / payment confirmation; id only.
-- `VatReturn.document_id` ([09](./09-income-expense-management.md), [L9471](../../api/prisma/schema.prisma#L9471)) — 17 Document — filed return / proof of submission; id only.
-- `ExpenseClaimLine.document_id` ([09](./09-income-expense-management.md), [L9538](../../api/prisma/schema.prisma#L9538)) — 17 Document — receipt; id only.
-- `Employee.bank_details` ([10](./10-employee-management-system.md), [L10019](../../api/prisma/schema.prisma#L10019)) — Sensitive; consumed by 09 payroll. Encrypted at the application layer (envelope encryption with the organization VaultKey, 17 §12); never returned in list en…
-- `Employee.photo_document_id` ([10](./10-employee-management-system.md), [L10019](../../api/prisma/schema.prisma#L10019)) — 17 Document — profile photo override; falls back to User.profile_photo_url.
-- `Employee.resume_document_id` ([10](./10-employee-management-system.md), [L10019](../../api/prisma/schema.prisma#L10019)) — 17 Document — resume / CV.
-- `EmployeeCertification.document_id` ([10](./10-employee-management-system.md), [L10323](../../api/prisma/schema.prisma#L10323)) — 17 Document — certificate file.
-- `EmployeeTraining.document_id` ([10](./10-employee-management-system.md), [L10348](../../api/prisma/schema.prisma#L10348)) — 17 Document — completion certificate / material.
-- `LeaveRequest.attachment_document_id` ([10](./10-employee-management-system.md), [L10617](../../api/prisma/schema.prisma#L10617)) — 17 Document — e.g. medical certificate.
-- `PerformanceReview.document_id` ([10](./10-employee-management-system.md), [L10905](../../api/prisma/schema.prisma#L10905)) — 17 Document — exported / signed review.
-- `PerformanceImprovementPlan.document_id` ([10](./10-employee-management-system.md), [L11062](../../api/prisma/schema.prisma#L11062)) — 17 Document — signed plan.
-- `EmployeeDocument.document_id` ([10](./10-employee-management-system.md), [L11122](../../api/prisma/schema.prisma#L11122)) — 17 Document — the stored file; null while REQUESTED.
-- `EmployeeHrNote.attachment_document_ids` ([10](./10-employee-management-system.md), [L11167](../../api/prisma/schema.prisma#L11167)) — 17 Document ids attached (signed warning letter, meeting minutes).
-- `EmployeeEquipment.document_id` ([10](./10-employee-management-system.md), [L11256](../../api/prisma/schema.prisma#L11256)) — 17 Document — signed handover form; id only.
-- `EmployeeImportJob.document_id` ([10](./10-employee-management-system.md), [L11396](../../api/prisma/schema.prisma#L11396)) — 17 Document — the uploaded file; id only.
-- `EmployeeImportJob.error_report_document_id` ([10](./10-employee-management-system.md), [L11396](../../api/prisma/schema.prisma#L11396)) — 17 Document — downloadable error report; id only.
-- `CommTemplateVersion.attachment_document_ids` ([11](./11-communication-center.md), [L11891](../../api/prisma/schema.prisma#L11891)) — Document ids (17) of attachments bundled with the template; ids only.
-- `CommMessageAttachment.document_id` ([11](./11-communication-center.md), [L12189](../../api/prisma/schema.prisma#L12189)) — 17 Document; id only.
-- `Campaign.attachment_document_ids` ([11](./11-communication-center.md), [L12450](../../api/prisma/schema.prisma#L12450)) — Attachment Document ids (17); ids only.
-- `MessagingRetentionPolicy.applies_to_attachments` ([12](./12-messaging-team-communication.md), [L13189](../../api/prisma/schema.prisma#L13189)) — 12 §54 — the policy also applies to attachments (17 Documents are notified), reactions and metadata.
-- `MessageAttachment.document_id` ([12](./12-messaging-team-communication.md), [L13659](../../api/prisma/schema.prisma#L13659)) — 17 Document — the stored file.
-- `MessageDraft.attachment_document_ids` ([12](./12-messaging-team-communication.md), [L13876](../../api/prisma/schema.prisma#L13876)) — 17 Document ids already uploaded for this draft.
-- `MessagingExportJob.result_document_id` ([12](./12-messaging-team-communication.md), [L14053](../../api/prisma/schema.prisma#L14053)) — 17 Document holding the export archive; id only.
-- `ChannelCall.recording_document_id` ([12](./12-messaging-team-communication.md), [L14132](../../api/prisma/schema.prisma#L14132)) — 17 Document holding the recording, if any; id only.
-- `SupportMessageAttachment.document_id` ([13](./13-customer-support-communication-hub.md), [L14879](../../api/prisma/schema.prisma#L14879)) — 17 Document.
-- `TicketAttachment.document_id` ([13](./13-customer-support-communication-hub.md), [L15299](../../api/prisma/schema.prisma#L15299)) — 17 Document.
-- `KnowledgeArticle.attachment_document_ids` ([13](./13-customer-support-communication-hub.md), [L15453](../../api/prisma/schema.prisma#L15453)) — 17 Document ids for images/videos/attachments.
-- `WikiPage.cover_document_id` ([15](./15-notion-business-docs.md), [L16952](../../api/prisma/schema.prisma#L16952)) — Cover image Document (17); id only.
-- `WikiTransferJob.source_document_ids` ([15](./15-notion-business-docs.md), [L17708](../../api/prisma/schema.prisma#L17708)) — 17 Documents uploaded as import source; ids only.
-- `WikiTransferJob.result_document_id` ([15](./15-notion-business-docs.md), [L17708](../../api/prisma/schema.prisma#L17708)) — 17 Document holding the export archive; id only.
-- `TimeImportJob.file_document_id` ([18](./18-time-tracking.md), [L19519](../../api/prisma/schema.prisma#L19519)) — Uploaded file (17 Document); id only.
-- `TimeExport.file_document_id` ([18](./18-time-tracking.md), [L19786](../../api/prisma/schema.prisma#L19786)) — 17 Document holding the file; id only.
-- `CalendarEventAttachment.document_id` ([19](./19-calendar.md), [L20433](../../api/prisma/schema.prisma#L20433)) — 19 §3 — the attachment is a 17 Document.
+- `ContractVersion.document_id` ([04](./04-contracts.md), [L4944](../../api/prisma/schema.prisma#L4944)) — Rendered document in 17 Documents (draft artifact); id only.
+- `ContractVersion.signed_document_id` ([04](./04-contracts.md), [L4944](../../api/prisma/schema.prisma#L4944)) — Final signed artifact in 17 Documents (04 §41); id only.
+- `SignatureRequest.package_documents` ([04](./04-contracts.md), [L5170](../../api/prisma/schema.prisma#L5170)) — 04 §78 — package of document ids (17) in locked order: [{ document_id, title, sort_order }].
+- `SignatureRequest.signed_document_id` ([04](./04-contracts.md), [L5170](../../api/prisma/schema.prisma#L5170)) — Signed artifact (17) and the audit certificate (17) generated by the platform; ids only.
+- `ContractTermination.document_id` ([04](./04-contracts.md), [L5374](../../api/prisma/schema.prisma#L5374)) — Supporting document (17); id only.
+- `ProjectDeliverable.document_ids` ([05](./05-project-management.md), [L6049](../../api/prisma/schema.prisma#L6049)) — Document ids (17) delivered.
+- `ProjectHandover.details` ([05](./05-project-management.md), [L6450](../../api/prisma/schema.prisma#L6450)) — Checklist, documentation ids (17), open items, support references, contacts, notes.
+- `ProjectDeliverableReview.document_version_ids` ([05](./05-project-management.md), [L6534](../../api/prisma/schema.prisma#L6534)) — Document version ids (17) that were reviewed, for traceability of which submission was decided.
+- `PaymentMethod.bank_details` ([08](./08-financial-management-stripe-integration.md), [L7409](../../api/prisma/schema.prisma#L7409)) — Bank details for transfers (IBAN masked, bank name) when provider is BANK. Encrypted at the application layer (envelope encryption with the organization Vaul…
+- `Invoice.pdf_document_id` ([08](./08-financial-management-stripe-integration.md), [L7586](../../api/prisma/schema.prisma#L7586)) — Generated PDF (17); id only.
+- `Payment.receipt_document_id` ([08](./08-financial-management-stripe-integration.md), [L7753](../../api/prisma/schema.prisma#L7753)) — Receipt document (17); id only.
+- `FinanceReportSchedule.last_document_id` ([08](./08-financial-management-stripe-integration.md), [L8370](../../api/prisma/schema.prisma#L8370)) — Last generated file (17); id only.
+- `LedgerSupplierProfile.bank_details` ([09](./09-income-expense-management.md), [L8717](../../api/prisma/schema.prisma#L8717)) — Supplier's bank details for paying their invoices (IBAN masked in the UI). Encrypted at the application layer (envelope encryption with the organization Vaul…
+- `LedgerSettlement.document_id` ([09](./09-income-expense-management.md), [L8887](../../api/prisma/schema.prisma#L8887)) — 17 Document — payment confirmation; id only.
+- `LedgerAttachment.document_id` ([09](./09-income-expense-management.md), [L8923](../../api/prisma/schema.prisma#L8923)) — 17 Document; id only.
+- `LedgerInvoiceImport.document_id` ([09](./09-income-expense-management.md), [L8947](../../api/prisma/schema.prisma#L8947)) — 17 Document — the uploaded file; id only.
+- `PayrollEntry.document_id` ([09](./09-income-expense-management.md), [L9164](../../api/prisma/schema.prisma#L9164)) — 17 Document — payslip / payment confirmation; id only.
+- `VatReturn.document_id` ([09](./09-income-expense-management.md), [L9505](../../api/prisma/schema.prisma#L9505)) — 17 Document — filed return / proof of submission; id only.
+- `ExpenseClaimLine.document_id` ([09](./09-income-expense-management.md), [L9572](../../api/prisma/schema.prisma#L9572)) — 17 Document — receipt; id only.
+- `Employee.bank_details` ([10](./10-employee-management-system.md), [L10053](../../api/prisma/schema.prisma#L10053)) — Sensitive; consumed by 09 payroll. Encrypted at the application layer (envelope encryption with the organization VaultKey, 17 §12); never returned in list en…
+- `Employee.photo_document_id` ([10](./10-employee-management-system.md), [L10053](../../api/prisma/schema.prisma#L10053)) — 17 Document — profile photo override; falls back to User.profile_photo_url.
+- `Employee.resume_document_id` ([10](./10-employee-management-system.md), [L10053](../../api/prisma/schema.prisma#L10053)) — 17 Document — resume / CV.
+- `EmployeeCertification.document_id` ([10](./10-employee-management-system.md), [L10357](../../api/prisma/schema.prisma#L10357)) — 17 Document — certificate file.
+- `EmployeeTraining.document_id` ([10](./10-employee-management-system.md), [L10382](../../api/prisma/schema.prisma#L10382)) — 17 Document — completion certificate / material.
+- `LeaveRequest.attachment_document_id` ([10](./10-employee-management-system.md), [L10651](../../api/prisma/schema.prisma#L10651)) — 17 Document — e.g. medical certificate.
+- `PerformanceReview.document_id` ([10](./10-employee-management-system.md), [L10939](../../api/prisma/schema.prisma#L10939)) — 17 Document — exported / signed review.
+- `PerformanceImprovementPlan.document_id` ([10](./10-employee-management-system.md), [L11096](../../api/prisma/schema.prisma#L11096)) — 17 Document — signed plan.
+- `EmployeeDocument.document_id` ([10](./10-employee-management-system.md), [L11156](../../api/prisma/schema.prisma#L11156)) — 17 Document — the stored file; null while REQUESTED.
+- `EmployeeHrNote.attachment_document_ids` ([10](./10-employee-management-system.md), [L11201](../../api/prisma/schema.prisma#L11201)) — 17 Document ids attached (signed warning letter, meeting minutes).
+- `EmployeeEquipment.document_id` ([10](./10-employee-management-system.md), [L11290](../../api/prisma/schema.prisma#L11290)) — 17 Document — signed handover form; id only.
+- `EmployeeImportJob.document_id` ([10](./10-employee-management-system.md), [L11430](../../api/prisma/schema.prisma#L11430)) — 17 Document — the uploaded file; id only.
+- `EmployeeImportJob.error_report_document_id` ([10](./10-employee-management-system.md), [L11430](../../api/prisma/schema.prisma#L11430)) — 17 Document — downloadable error report; id only.
+- `CommTemplateVersion.attachment_document_ids` ([11](./11-communication-center.md), [L11925](../../api/prisma/schema.prisma#L11925)) — Document ids (17) of attachments bundled with the template; ids only.
+- `CommMessageAttachment.document_id` ([11](./11-communication-center.md), [L12223](../../api/prisma/schema.prisma#L12223)) — 17 Document; id only.
+- `Campaign.attachment_document_ids` ([11](./11-communication-center.md), [L12484](../../api/prisma/schema.prisma#L12484)) — Attachment Document ids (17); ids only.
+- `MessagingRetentionPolicy.applies_to_attachments` ([12](./12-messaging-team-communication.md), [L13223](../../api/prisma/schema.prisma#L13223)) — 12 §54 — the policy also applies to attachments (17 Documents are notified), reactions and metadata.
+- `MessageAttachment.document_id` ([12](./12-messaging-team-communication.md), [L13693](../../api/prisma/schema.prisma#L13693)) — 17 Document — the stored file.
+- `MessageDraft.attachment_document_ids` ([12](./12-messaging-team-communication.md), [L13910](../../api/prisma/schema.prisma#L13910)) — 17 Document ids already uploaded for this draft.
+- `MessagingExportJob.result_document_id` ([12](./12-messaging-team-communication.md), [L14087](../../api/prisma/schema.prisma#L14087)) — 17 Document holding the export archive; id only.
+- `ChannelCall.recording_document_id` ([12](./12-messaging-team-communication.md), [L14166](../../api/prisma/schema.prisma#L14166)) — 17 Document holding the recording, if any; id only.
+- `SupportMessageAttachment.document_id` ([13](./13-customer-support-communication-hub.md), [L14913](../../api/prisma/schema.prisma#L14913)) — 17 Document.
+- `TicketAttachment.document_id` ([13](./13-customer-support-communication-hub.md), [L15333](../../api/prisma/schema.prisma#L15333)) — 17 Document.
+- `KnowledgeArticle.attachment_document_ids` ([13](./13-customer-support-communication-hub.md), [L15487](../../api/prisma/schema.prisma#L15487)) — 17 Document ids for images/videos/attachments.
+- `WikiPage.cover_document_id` ([15](./15-notion-business-docs.md), [L16986](../../api/prisma/schema.prisma#L16986)) — Cover image Document (17); id only.
+- `WikiTransferJob.source_document_ids` ([15](./15-notion-business-docs.md), [L17742](../../api/prisma/schema.prisma#L17742)) — 17 Documents uploaded as import source; ids only.
+- `WikiTransferJob.result_document_id` ([15](./15-notion-business-docs.md), [L17742](../../api/prisma/schema.prisma#L17742)) — 17 Document holding the export archive; id only.
+- `TimeImportJob.file_document_id` ([18](./18-time-tracking.md), [L19553](../../api/prisma/schema.prisma#L19553)) — Uploaded file (17 Document); id only.
+- `TimeExport.file_document_id` ([18](./18-time-tracking.md), [L19820](../../api/prisma/schema.prisma#L19820)) — 17 Document holding the file; id only.
+- `CalendarEventAttachment.document_id` ([19](./19-calendar.md), [L20467](../../api/prisma/schema.prisma#L20467)) — 19 §3 — the attachment is a 17 Document.
 
 <!-- schema-refs:end -->
 
@@ -188,7 +188,7 @@ Core rule:
 ## 2. Core Concepts
 
 <!-- schema-section:start -->
-> **Schema:** `Document` ([documents](../../api/prisma/schema.prisma#L18273)): `external_url`, `mimetype` · `DocumentAttachment` ([document_attachments](../../api/prisma/schema.prisma#L18593)) · `DocumentShare` ([document_shares](../../api/prisma/schema.prisma#L18656)) · `DocumentVersion` ([document_versions](../../api/prisma/schema.prisma#L18431)) · `Folder` ([folders](../../api/prisma/schema.prisma#L18198)) — other modules: `SupportMessageAttachment` ([support_message_attachments](../../api/prisma/schema.prisma#L14879)) ([13](./13-customer-support-communication-hub.md)) · `TaskAttachment` ([task_attachments](../../api/prisma/schema.prisma#L6940)) ([06](./06-task-management.md)) · enum `DocumentType` ([L322](../../api/prisma/schema.prisma#L322)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** `Document` ([documents](../../api/prisma/schema.prisma#L18307)): `external_url`, `mimetype` · `DocumentAttachment` ([document_attachments](../../api/prisma/schema.prisma#L18627)) · `DocumentShare` ([document_shares](../../api/prisma/schema.prisma#L18690)) · `DocumentVersion` ([document_versions](../../api/prisma/schema.prisma#L18465)) · `Folder` ([folders](../../api/prisma/schema.prisma#L18232)) — other modules: `SupportMessageAttachment` ([support_message_attachments](../../api/prisma/schema.prisma#L14913)) ([13](./13-customer-support-communication-hub.md)) · `TaskAttachment` ([task_attachments](../../api/prisma/schema.prisma#L6971)) ([06](./06-task-management.md)) · enum `DocumentType` ([L322](../../api/prisma/schema.prisma#L322)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 ### File
@@ -218,7 +218,7 @@ An explicit grant of access to a Document or Folder for a Member, Team, Customer
 ## 3. Scope & Ownership
 
 <!-- schema-section:start -->
-> **Schema:** `Document` ([documents](../../api/prisma/schema.prisma#L18273)) · `Folder` ([folders](../../api/prisma/schema.prisma#L18198)) · enum `DocumentScope` ([L17811](../../api/prisma/schema.prisma#L17811)) — other modules: `EmployeeDocument` ([employee_documents](../../api/prisma/schema.prisma#L11122)) ([10](./10-employee-management-system.md))
+> **Schema:** `Document` ([documents](../../api/prisma/schema.prisma#L18307)) · `Folder` ([folders](../../api/prisma/schema.prisma#L18232)) · enum `DocumentScope` ([L17845](../../api/prisma/schema.prisma#L17845)) — other modules: `EmployeeDocument` ([employee_documents](../../api/prisma/schema.prisma#L11156)) ([10](./10-employee-management-system.md))
 <!-- schema-section:end -->
 
 Every Document belongs to exactly one Organization (01 §9) and declares a scope (01 §39, §85):
@@ -236,7 +236,7 @@ Scope drives default visibility. Explicit shares extend it. Sharing never crosse
 ## 4. Document Record
 
 <!-- schema-section:start -->
-> **Schema:** `Document` ([documents](../../api/prisma/schema.prisma#L18273)): `template_id` · `DocumentCategory` ([document_categories](../../api/prisma/schema.prisma#L18071)) · `DocumentTemplate` ([document_templates](../../api/prisma/schema.prisma#L18824)) · enum `DocumentStatus` ([L17802](../../api/prisma/schema.prisma#L17802)) — other modules: enum `DocumentType` ([L322](../../api/prisma/schema.prisma#L322)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** `Document` ([documents](../../api/prisma/schema.prisma#L18307)): `template_id` · `DocumentCategory` ([document_categories](../../api/prisma/schema.prisma#L18105)) · `DocumentTemplate` ([document_templates](../../api/prisma/schema.prisma#L18858)) · enum `DocumentStatus` ([L17836](../../api/prisma/schema.prisma#L17836)) — other modules: enum `DocumentType` ([L322](../../api/prisma/schema.prisma#L322)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 * Document ID
@@ -254,7 +254,7 @@ Scope drives default visibility. Explicit shares extend it. Sharing never crosse
 ## 5. Upload & Intake
 
 <!-- schema-section:start -->
-> **Schema:** `Document` ([documents](../../api/prisma/schema.prisma#L18273)): `template_id`, `uploaded_via_portal` · `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L18029)): `allowed_mime_types`, `max_file_size_bytes`, `portal_upload_enabled`, `virus_scan_required` · `DocumentTemplate` ([document_templates](../../api/prisma/schema.prisma#L18824)) · `DocumentUploadJob` ([document_upload_jobs](../../api/prisma/schema.prisma#L18501)): `source_url` · enum `DocumentScanStatus` ([L17843](../../api/prisma/schema.prisma#L17843)) · enum `DocumentSource` ([L17822](../../api/prisma/schema.prisma#L17822)) · enum `DocumentUploadJobStatus` ([L17869](../../api/prisma/schema.prisma#L17869)) · enum `DocumentVersionStatus` ([L17834](../../api/prisma/schema.prisma#L17834))
+> **Schema:** `Document` ([documents](../../api/prisma/schema.prisma#L18307)): `template_id`, `uploaded_via_portal` · `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L18063)): `allowed_mime_types`, `max_file_size_bytes`, `portal_upload_enabled`, `virus_scan_required` · `DocumentTemplate` ([document_templates](../../api/prisma/schema.prisma#L18858)) · `DocumentUploadJob` ([document_upload_jobs](../../api/prisma/schema.prisma#L18535)): `source_url` · enum `DocumentScanStatus` ([L17877](../../api/prisma/schema.prisma#L17877)) · enum `DocumentSource` ([L17856](../../api/prisma/schema.prisma#L17856)) · enum `DocumentUploadJobStatus` ([L17903](../../api/prisma/schema.prisma#L17903)) · enum `DocumentVersionStatus` ([L17868](../../api/prisma/schema.prisma#L17868))
 <!-- schema-section:end -->
 
 * Drag-and-drop and multi-file upload
@@ -270,7 +270,7 @@ Scope drives default visibility. Explicit shares extend it. Sharing never crosse
 ## 6. Versioning
 
 <!-- schema-section:start -->
-> **Schema:** `DocumentShare` ([document_shares](../../api/prisma/schema.prisma#L18656)): `pinned_version_id` · `DocumentVersion` ([document_versions](../../api/prisma/schema.prisma#L18431)): `restored_from_version_id` · enum `DocumentVersionStatus` ([L17834](../../api/prisma/schema.prisma#L17834))
+> **Schema:** `DocumentShare` ([document_shares](../../api/prisma/schema.prisma#L18690)): `pinned_version_id` · `DocumentVersion` ([document_versions](../../api/prisma/schema.prisma#L18465)): `restored_from_version_id` · enum `DocumentVersionStatus` ([L17868](../../api/prisma/schema.prisma#L17868))
 <!-- schema-section:end -->
 
 * Every re-upload creates a new Version; versions are immutable.
@@ -281,7 +281,7 @@ Scope drives default visibility. Explicit shares extend it. Sharing never crosse
 ## 7. Folders & Organization
 
 <!-- schema-section:start -->
-> **Schema:** `DocumentFavorite` ([document_favorites](../../api/prisma/schema.prisma#L18617)) · `DocumentRecentAccess` ([document_recent_accesses](../../api/prisma/schema.prisma#L18637)) · `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L18029)): `folder_max_depth` · `Folder` ([folders](../../api/prisma/schema.prisma#L18198)): `template_id` · `FolderTemplate` ([folder_templates](../../api/prisma/schema.prisma#L18172)) · enum `FolderTemplateTarget` ([L17944](../../api/prisma/schema.prisma#L17944))
+> **Schema:** `DocumentFavorite` ([document_favorites](../../api/prisma/schema.prisma#L18651)) · `DocumentRecentAccess` ([document_recent_accesses](../../api/prisma/schema.prisma#L18671)) · `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L18063)): `folder_max_depth` · `Folder` ([folders](../../api/prisma/schema.prisma#L18232)): `template_id` · `FolderTemplate` ([folder_templates](../../api/prisma/schema.prisma#L18206)) · enum `FolderTemplateTarget` ([L17978](../../api/prisma/schema.prisma#L17978))
 <!-- schema-section:end -->
 
 * Folder hierarchy per scope with configurable depth
@@ -292,7 +292,7 @@ Scope drives default visibility. Explicit shares extend it. Sharing never crosse
 ## 8. Preview & Access
 
 <!-- schema-section:start -->
-> **Schema:** `Document` ([documents](../../api/prisma/schema.prisma#L18273)): `is_sensitive`, `url`, `watermark_enabled` · `DocumentCategory` ([document_categories](../../api/prisma/schema.prisma#L18071)): `customer_visible_default`, `is_sensitive` · `DocumentPreview` ([document_previews](../../api/prisma/schema.prisma#L18564)): `watermarked` · `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L18029)): `signed_url_ttl_seconds`, `watermark_customer_documents` · `DocumentShare` ([document_shares](../../api/prisma/schema.prisma#L18656)): `watermark` · `DocumentVersion` ([document_versions](../../api/prisma/schema.prisma#L18431)): `storage_key` · enum `DocumentPreviewKind` ([L17880](../../api/prisma/schema.prisma#L17880)) · enum `DocumentPreviewStatus` ([L17890](../../api/prisma/schema.prisma#L17890))
+> **Schema:** `Document` ([documents](../../api/prisma/schema.prisma#L18307)): `is_sensitive`, `url`, `watermark_enabled` · `DocumentCategory` ([document_categories](../../api/prisma/schema.prisma#L18105)): `customer_visible_default`, `is_sensitive` · `DocumentPreview` ([document_previews](../../api/prisma/schema.prisma#L18598)): `watermarked` · `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L18063)): `signed_url_ttl_seconds`, `watermark_customer_documents` · `DocumentShare` ([document_shares](../../api/prisma/schema.prisma#L18690)): `watermark` · `DocumentVersion` ([document_versions](../../api/prisma/schema.prisma#L18465)): `storage_key` · enum `DocumentPreviewKind` ([L17914](../../api/prisma/schema.prisma#L17914)) · enum `DocumentPreviewStatus` ([L17924](../../api/prisma/schema.prisma#L17924))
 <!-- schema-section:end -->
 
 * Inline previews for images, PDFs, office documents, text, code, video and audio where supported
@@ -303,7 +303,7 @@ Scope drives default visibility. Explicit shares extend it. Sharing never crosse
 ## 9. Sharing
 
 <!-- schema-section:start -->
-> **Schema:** `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L18029)): `default_share_expiry_days`, `public_links_enabled` · `DocumentShare` ([document_shares](../../api/prisma/schema.prisma#L18656)): `expires_at`, `link_token`, `max_download_count` · enum `DocumentSharePermission` ([L17907](../../api/prisma/schema.prisma#L17907)) · enum `DocumentShareStatus` ([L17915](../../api/prisma/schema.prisma#L17915)) · enum `DocumentShareSubjectType` ([L17898](../../api/prisma/schema.prisma#L17898))
+> **Schema:** `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L18063)): `default_share_expiry_days`, `public_links_enabled` · `DocumentShare` ([document_shares](../../api/prisma/schema.prisma#L18690)): `expires_at`, `link_token`, `max_download_count` · enum `DocumentSharePermission` ([L17941](../../api/prisma/schema.prisma#L17941)) · enum `DocumentShareStatus` ([L17949](../../api/prisma/schema.prisma#L17949)) · enum `DocumentShareSubjectType` ([L17932](../../api/prisma/schema.prisma#L17932))
 <!-- schema-section:end -->
 
 * Share with Members, Teams, Customer Portal users, external collaborators
@@ -316,7 +316,7 @@ Scope drives default visibility. Explicit shares extend it. Sharing never crosse
 ## 10. Document Approval
 
 <!-- schema-section:start -->
-> **Schema:** `DocumentApproval` ([document_approvals](../../api/prisma/schema.prisma#L18723)) · `DocumentApprover` ([document_approvers](../../api/prisma/schema.prisma#L18760)) · enum `DocumentApprovalDecision` ([L17931](../../api/prisma/schema.prisma#L17931)) · enum `DocumentApprovalStatus` ([L17922](../../api/prisma/schema.prisma#L17922)) · enum `DocumentApproverKind` ([L17938](../../api/prisma/schema.prisma#L17938))
+> **Schema:** `DocumentApproval` ([document_approvals](../../api/prisma/schema.prisma#L18757)) · `DocumentApprover` ([document_approvers](../../api/prisma/schema.prisma#L18794)) · enum `DocumentApprovalDecision` ([L17965](../../api/prisma/schema.prisma#L17965)) · enum `DocumentApprovalStatus` ([L17956](../../api/prisma/schema.prisma#L17956)) · enum `DocumentApproverKind` ([L17972](../../api/prisma/schema.prisma#L17972))
 <!-- schema-section:end -->
 
 Simple approval workflow for documents that need sign-off (deliverables, specifications, HR documents):
@@ -330,7 +330,7 @@ Contract approval and signature remain in 04. Deliverable acceptance criteria re
 ## 11. Search
 
 <!-- schema-section:start -->
-> **Schema:** `Document` ([documents](../../api/prisma/schema.prisma#L18273)): `search_vector` · `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L18029)): `full_text_extraction_enabled` · `DocumentVersion` ([document_versions](../../api/prisma/schema.prisma#L18431)): `extracted_text`
+> **Schema:** `Document` ([documents](../../api/prisma/schema.prisma#L18307)): `search_vector` · `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L18063)): `full_text_extraction_enabled` · `DocumentVersion` ([document_versions](../../api/prisma/schema.prisma#L18465)): `extracted_text`
 <!-- schema-section:end -->
 
 Search by title, content (full-text where extractable), category, scope, owner, tags, custom fields, date and related record. Results respect permissions. Document search feeds the platform global search (see `docs/Product_Specification.md` §4).
@@ -338,7 +338,7 @@ Search by title, content (full-text where extractable), category, scope, owner, 
 ## 12. Secure Credential Vault
 
 <!-- schema-section:start -->
-> **Schema:** `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L18029)): `vault_portal_sharing_enabled`, `vault_reveal_reauth_minutes` · `VaultAccessLog` ([vault_access_logs](../../api/prisma/schema.prisma#L18975)) · `VaultEntry` ([vault_entries](../../api/prisma/schema.prisma#L18887)): `portal_visible` · `VaultEntryGrant` ([vault_entry_grants](../../api/prisma/schema.prisma#L18944)): `portal_user_id` · `VaultKey` ([vault_keys](../../api/prisma/schema.prisma#L18863)) · enum `VaultAccessAction` ([L18006](../../api/prisma/schema.prisma#L18006)) · enum `VaultEntryType` ([L17983](../../api/prisma/schema.prisma#L17983)) · enum `VaultGrantSubjectType` ([L17999](../../api/prisma/schema.prisma#L17999)) · enum `VaultKeyStatus` ([L18019](../../api/prisma/schema.prisma#L18019)) · enum `VaultScope` ([L17992](../../api/prisma/schema.prisma#L17992)) — other modules: `Employee` ([employees](../../api/prisma/schema.prisma#L10019)): `bank_details` ([10](./10-employee-management-system.md)) · `IntegrationConnection` ([integration_connections](../../api/prisma/schema.prisma#L1865)) ([01](./01-users-organizations-permissions.md)) · `LedgerSupplierProfile` ([ledger_supplier_profiles](../../api/prisma/schema.prisma#L8683)): `bank_details` ([09](./09-income-expense-management.md)) · `MessageAttachment` ([message_attachments](../../api/prisma/schema.prisma#L13659)) ([12](./12-messaging-team-communication.md)) · `PaymentMethod` ([payment_methods](../../api/prisma/schema.prisma#L7375)): `bank_details` ([08](./08-financial-management-stripe-integration.md)) · `PaymentProviderConnection` ([payment_provider_connections](../../api/prisma/schema.prisma#L7985)) ([08](./08-financial-management-stripe-integration.md))
+> **Schema:** `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L18063)): `vault_portal_sharing_enabled`, `vault_reveal_reauth_minutes` · `VaultAccessLog` ([vault_access_logs](../../api/prisma/schema.prisma#L19009)) · `VaultEntry` ([vault_entries](../../api/prisma/schema.prisma#L18921)): `portal_visible` · `VaultEntryGrant` ([vault_entry_grants](../../api/prisma/schema.prisma#L18978)): `portal_user_id` · `VaultKey` ([vault_keys](../../api/prisma/schema.prisma#L18897)) · enum `VaultAccessAction` ([L18040](../../api/prisma/schema.prisma#L18040)) · enum `VaultEntryType` ([L18017](../../api/prisma/schema.prisma#L18017)) · enum `VaultGrantSubjectType` ([L18033](../../api/prisma/schema.prisma#L18033)) · enum `VaultKeyStatus` ([L18053](../../api/prisma/schema.prisma#L18053)) · enum `VaultScope` ([L18026](../../api/prisma/schema.prisma#L18026)) — other modules: `Employee` ([employees](../../api/prisma/schema.prisma#L10053)): `bank_details` ([10](./10-employee-management-system.md)) · `IntegrationConnection` ([integration_connections](../../api/prisma/schema.prisma#L1866)) ([01](./01-users-organizations-permissions.md)) · `LedgerSupplierProfile` ([ledger_supplier_profiles](../../api/prisma/schema.prisma#L8717)): `bank_details` ([09](./09-income-expense-management.md)) · `MessageAttachment` ([message_attachments](../../api/prisma/schema.prisma#L13693)) ([12](./12-messaging-team-communication.md)) · `PaymentMethod` ([payment_methods](../../api/prisma/schema.prisma#L7409)): `bank_details` ([08](./08-financial-management-stripe-integration.md)) · `PaymentProviderConnection` ([payment_provider_connections](../../api/prisma/schema.prisma#L8019)) ([08](./08-financial-management-stripe-integration.md))
 <!-- schema-section:end -->
 
 The vault stores secrets that belong to customers and projects (hosting logins, API keys, service accounts, domain registrars, third-party credentials).
@@ -358,7 +358,7 @@ The vault is **not** where the organization's own provider keys (OpenAI, Resend,
 ## 13. Retention & Deletion
 
 <!-- schema-section:start -->
-> **Schema:** `DocumentCategory` ([document_categories](../../api/prisma/schema.prisma#L18071)): `default_retention_policy_id` · `DocumentDeletionRequest` ([document_deletion_requests](../../api/prisma/schema.prisma#L18790)) · `DocumentRetentionPolicy` ([document_retention_policies](../../api/prisma/schema.prisma#L18137)) · `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L18029)): `soft_delete_recovery_days` · `Folder` ([folders](../../api/prisma/schema.prisma#L18198)): `legal_hold` · enum `DocumentDeletionKind` ([L17967](../../api/prisma/schema.prisma#L17967)) · enum `DocumentDeletionStatus` ([L17974](../../api/prisma/schema.prisma#L17974)) · enum `DocumentRetentionAction` ([L17960](../../api/prisma/schema.prisma#L17960)) · enum `DocumentRetentionAnchor` ([L17952](../../api/prisma/schema.prisma#L17952))
+> **Schema:** `DocumentCategory` ([document_categories](../../api/prisma/schema.prisma#L18105)): `default_retention_policy_id` · `DocumentDeletionRequest` ([document_deletion_requests](../../api/prisma/schema.prisma#L18824)) · `DocumentRetentionPolicy` ([document_retention_policies](../../api/prisma/schema.prisma#L18171)) · `DocumentSettings` ([document_settings](../../api/prisma/schema.prisma#L18063)): `soft_delete_recovery_days` · `Folder` ([folders](../../api/prisma/schema.prisma#L18232)): `legal_hold` · enum `DocumentDeletionKind` ([L18001](../../api/prisma/schema.prisma#L18001)) · enum `DocumentDeletionStatus` ([L18008](../../api/prisma/schema.prisma#L18008)) · enum `DocumentRetentionAction` ([L17994](../../api/prisma/schema.prisma#L17994)) · enum `DocumentRetentionAnchor` ([L17986](../../api/prisma/schema.prisma#L17986))
 <!-- schema-section:end -->
 
 * Retention policies per category and scope, configured by organization (04 §84 contract retention is enforced here)
@@ -370,7 +370,7 @@ The vault is **not** where the organization's own provider keys (OpenAI, Resend,
 ## 14. Permissions
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1611)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1612)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 * `documents.documents.read / create / update / delete / share / approve`
@@ -384,7 +384,7 @@ Permission keys follow 01 §46. Field-level and resource-level rules follow 01 �
 ## 15. Audit
 
 <!-- schema-section:start -->
-> **Schema:** `Document` ([documents](../../api/prisma/schema.prisma#L18273)): `is_sensitive` · `DocumentCategory` ([document_categories](../../api/prisma/schema.prisma#L18071)): `is_sensitive` · `DocumentRecentAccess` ([document_recent_accesses](../../api/prisma/schema.prisma#L18637)) · `VaultAccessLog` ([vault_access_logs](../../api/prisma/schema.prisma#L18975)) · enum `VaultAccessAction` ([L18006](../../api/prisma/schema.prisma#L18006)) — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L2268)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** `Document` ([documents](../../api/prisma/schema.prisma#L18307)): `is_sensitive` · `DocumentCategory` ([document_categories](../../api/prisma/schema.prisma#L18105)): `is_sensitive` · `DocumentRecentAccess` ([document_recent_accesses](../../api/prisma/schema.prisma#L18671)) · `VaultAccessLog` ([vault_access_logs](../../api/prisma/schema.prisma#L19009)) · enum `VaultAccessAction` ([L18040](../../api/prisma/schema.prisma#L18040)) — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L2269)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 Audit upload, new version, download of sensitive categories, share created or revoked, approval decisions, vault reveal, retention changes and deletion.
@@ -392,7 +392,7 @@ Audit upload, new version, download of sensitive categories, share created or re
 ## 16. Integrations
 
 <!-- schema-section:start -->
-> **Schema:** `DocumentStorageConnection` ([document_storage_connections](../../api/prisma/schema.prisma#L18105)) · enum `DocumentSource` ([L17822](../../api/prisma/schema.prisma#L17822)) · enum `DocumentStorageConnectionStatus` ([L17861](../../api/prisma/schema.prisma#L17861)) · enum `DocumentStorageProvider` ([L17853](../../api/prisma/schema.prisma#L17853))
+> **Schema:** `DocumentStorageConnection` ([document_storage_connections](../../api/prisma/schema.prisma#L18139)) · enum `DocumentSource` ([L17856](../../api/prisma/schema.prisma#L17856)) · enum `DocumentStorageConnectionStatus` ([L17895](../../api/prisma/schema.prisma#L17895)) · enum `DocumentStorageProvider` ([L17887](../../api/prisma/schema.prisma#L17887))
 <!-- schema-section:end -->
 
 * External storage providers (Google Drive, Microsoft 365, S3-compatible) behind a storage provider abstraction; the Document record stays in this module. A `DocumentStorageConnection` holds its own encrypted credentials reference (`credentials_ref`, §12) until storage providers join the Integrations page (01 §156). The platform's own bucket (`PLATFORM`) stays in the platform environment.
@@ -403,7 +403,7 @@ Audit upload, new version, download of sensitive categories, share created or re
 ## 17. API & Webhooks
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21879)) ([20](./20-automation-engine.md))
+> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21913)) ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 API: create document, upload version, get document, list by scope, move, share, approve, search, vault CRUD.

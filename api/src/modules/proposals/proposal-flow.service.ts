@@ -13,7 +13,7 @@ import { ProposalMailer } from './proposal-mailer.service';
 import { ProposalPdfService } from './proposal-pdf.service';
 import { ApprovalDecisionDto, ConvertProposalDto, CreateProposalCommentDto, SendProposalDto, SubmitForReviewDto } from './dto/proposal.dto';
 import { ProposalAnalyticsQuery } from './dto/proposal-query.schema';
-import { addDays, dateOnly, newToken, num, round2, sha256 } from './utils/proposal.utils';
+import { addDays, dateOnly, issueAccessToken, num, revokeAccessTokens, round2, sha256 } from './utils/proposal.utils';
 
 interface RuleCondition { field: string; operator: string; value: number | string | boolean }
 interface RuleStep { step: number; name?: string; approver_membership_id?: string; approver?: { membership_id?: string } }
@@ -286,8 +286,8 @@ export class ProposalFlowService {
         });
         const variables = await this.resolveVariables(ctx.organization_id, proposalId, validUntil);
         const contentHash = sha256(JSON.stringify({ s: full.sections.map((s) => [s.type, s.title, s.body, s.is_internal]), l: full.line_items.map((l) => [l.name, l.quantity, l.unit_price, l.discount_amount, l.tax_percent, l.is_optional]), p: full.payment_schedule.map((p) => [p.name, p.trigger, p.percentage, p.amount]), t: full.gross_total, variables }));
-        const { token, hash } = newToken();
         const now = new Date();
+        let token = '';
         const isResend = preview.is_resend;
 
         const deliveries = await this.prisma.$transaction(async (tx) => {
@@ -304,12 +304,13 @@ export class ProposalFlowService {
                     sent_version_id: versionId,
                     sent_at: now,
                     valid_until: validUntil,
-                    public_token_hash: hash,
                     ...(dto.reminder_days && { reminder_days: dto.reminder_days }),
                     ...(dto.link_access_mode && { link_access_mode: dto.link_access_mode }),
                     net_total: full.net_total, discount_total: full.discount_total, tax_total: full.tax_total, gross_total: full.gross_total, recurring_monthly: full.recurring_monthly, recurring_annual: full.recurring_annual,
                 },
             });
+            // One link per send; links from earlier sends keep working (rotate the link to cut them off).
+            token = (await issueAccessToken(tx, { organization_id: ctx.organization_id, proposal_id: proposalId, source: 'SEND', recipient_email: recipients.length === 1 ? recipients[0].email : null })).token;
             const rows: Prisma.ProposalDeliveryCreateManyInput[] = [];
             for (const channel of dto.channels) {
                 if (channel === ProposalDeliveryChannel.EMAIL) {
@@ -377,8 +378,10 @@ export class ProposalFlowService {
         if (!proposal.sent_version_id || !(LIVE_STATUSES.includes(proposal.status) || proposal.status === ProposalStatus.ACCEPTED)) {
             throw new ConflictException({ message: 'Only a sent proposal has a customer link', code: 'proposal_not_sent' });
         }
-        const { token, hash } = newToken();
-        await this.prisma.proposal.update({ where: { id: proposalId }, data: { public_token_hash: hash } });
+        const { token } = await this.prisma.$transaction(async (tx) => {
+            await revokeAccessTokens(tx, proposalId);
+            return issueAccessToken(tx, { organization_id: ctx.organization_id, proposal_id: proposalId, source: 'ROTATION' });
+        });
         await this.audit.record(ctx, 'proposal.link_rotated', { resource_type: 'proposal', resource_id: proposalId });
         return { public_url: this.mailer.appUrl(`/p/${token}`) };
     }
@@ -608,8 +611,8 @@ export class ProposalFlowService {
         if (!(LIVE_STATUSES.includes(p.status) || p.status === ProposalStatus.ACCEPTED || p.status === ProposalStatus.REJECTED)) {
             throw new ConflictException({ message: 'This proposal can no longer be opened', code: 'proposal_not_open' });
         }
-        const token = newToken();
-        await this.prisma.proposal.update({ where: { id: p.id }, data: { public_token_hash: token.hash } });
+        // A separate link for the portal user, so the links already emailed to the customer keep working.
+        const token = await issueAccessToken(this.prisma, { organization_id: input.organization_id, proposal_id: p.id, source: 'PORTAL', recipient_email: input.email });
         let access: string | null = null;
         if (p.link_access_mode === 'EMAIL_VERIFIED') {
             const row = await this.prisma.verificationCode.create({

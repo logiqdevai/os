@@ -23,30 +23,30 @@
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Organization settings** | | | |
-| `AutomationSettings` | `automation_settings` | [L21066](../../api/prisma/schema.prisma#L21066) | 20 §6, §8, §10 — per-organization engine guardrails: rate limits, loop depth, retention, destructive-action enablement and the default service account rules … |
+| `AutomationSettings` | `automation_settings` | [L21100](../../api/prisma/schema.prisma#L21100) | 20 §6, §8, §10 — per-organization engine guardrails: rate limits, loop depth, retention, destructive-action enablement and the default service account rules … |
 | **Trigger & action catalog** | | | |
-| `AutomationTriggerDefinition` | `automation_trigger_definitions` | [L21113](../../api/prisma/schema.prisma#L21113) | 20 §3, §12 — a trigger a module registers (platform-wide, not tenant-scoped). `key` is the stable event key modules publish, e.g. `crm.deal.stage_changed`, `… |
-| `AutomationActionDefinition` | `automation_action_definitions` | [L21150](../../api/prisma/schema.prisma#L21150) | 20 §4, §12 — an action a module exposes with its input schema and required permission. `key` e.g. `tasks.create`, `crm.deal.change_status`, `notifications.no… |
+| `AutomationTriggerDefinition` | `automation_trigger_definitions` | [L21147](../../api/prisma/schema.prisma#L21147) | 20 §3, §12 — a trigger a module registers (platform-wide, not tenant-scoped). `key` is the stable event key modules publish, e.g. `crm.deal.stage_changed`, `… |
+| `AutomationActionDefinition` | `automation_action_definitions` | [L21184](../../api/prisma/schema.prisma#L21184) | 20 §4, §12 — an action a module exposes with its input schema and required permission. `key` e.g. `tasks.create`, `crm.deal.change_status`, `notifications.no… |
 | **Rules** | | | |
-| `AutomationRuleTemplate` | `automation_rule_templates` | [L21192](../../api/prisma/schema.prisma#L21192) | 20 §5, §14 — rule templates / recipes library ("Deal won → create project from template"). organization_id null = system template shipped by the platform; ot… |
-| `AutomationRule` | `automation_rules` | [L21223](../../api/prisma/schema.prisma#L21223) | 20 §2, §5, §6 — a rule: trigger + conditions + ordered actions, owned by an organization, versioned, enabled/disabled, scoped. The live definition is on the … |
-| `AutomationRuleVersion` | `automation_rule_versions` | [L21350](../../api/prisma/schema.prisma#L21350) | 20 §5 — immutable snapshot of a rule at each publish; editing a live rule creates a new version. Runs reference the version they executed (20 §8). |
+| `AutomationRuleTemplate` | `automation_rule_templates` | [L21226](../../api/prisma/schema.prisma#L21226) | 20 §5, §14 — rule templates / recipes library ("Deal won → create project from template"). organization_id null = system template shipped by the platform; ot… |
+| `AutomationRule` | `automation_rules` | [L21257](../../api/prisma/schema.prisma#L21257) | 20 §2, §5, §6 — a rule: trigger + conditions + ordered actions, owned by an organization, versioned, enabled/disabled, scoped. The live definition is on the … |
+| `AutomationRuleVersion` | `automation_rule_versions` | [L21384](../../api/prisma/schema.prisma#L21384) | 20 §5 — immutable snapshot of a rule at each publish; editing a live rule creates a new version. Runs reference the version they executed (20 §8). |
 | **Event bus** | | | |
-| `PlatformEvent` | `platform_events` | [L21387](../../api/prisma/schema.prisma#L21387) | 20 §2, §6, §12 — the event bus log: a domain fact published by a module, the API, an inbound webhook or a scheduled job. Consumed by rules (20), 14 Notificat… |
+| `PlatformEvent` | `platform_events` | [L21421](../../api/prisma/schema.prisma#L21421) | 20 §2, §6, §12 — the event bus log: a domain fact published by a module, the API, an inbound webhook or a scheduled job. Consumed by rules (20), 14 Notificat… |
 | **Runs** | | | |
-| `AutomationRun` | `automation_runs` | [L21471](../../api/prisma/schema.prisma#L21471) | 20 §2, §6, §8 — one execution of a rule: trigger, inputs, conditions evaluated, status, duration, errors and retries. Steps hold each action result. |
-| `AutomationRunStep` | `automation_run_steps` | [L21569](../../api/prisma/schema.prisma#L21569) | 20 §4, §6, §8 — one action (step) inside a run with its inputs, result, retries and timing. |
-| `AutomationApproval` | `automation_approvals` | [L21618](../../api/prisma/schema.prisma#L21618) | 20 §4, §6, §9, §14 — human approval gate: a run pauses until a member approves or rejects. |
-| `AutomationApprovalPolicy` | `automation_approval_policies` | [L21663](../../api/prisma/schema.prisma#L21663) | 20 §4, §6 — reusable approver policy referenced by `approval.policy_id` in a rule step (e.g. "any of the finance leads, escalate to the CFO after 24 h, hand … |
-| `AutomationAiStep` | `automation_ai_steps` | [L21695](../../api/prisma/schema.prisma#L21695) | 20 §4, §9, §14 — AI step record: structured output with confidence, threshold gate and the approval it may require. Never executes irreversible actions by it… |
-| `AutomationRunLock` | `automation_run_locks` | [L21737](../../api/prisma/schema.prisma#L21737) | 20 §6 — serialization lock: runs for the same record are executed one at a time when the rule requires it. Rows are short-lived; expired locks are reclaimed … |
+| `AutomationRun` | `automation_runs` | [L21505](../../api/prisma/schema.prisma#L21505) | 20 §2, §6, §8 — one execution of a rule: trigger, inputs, conditions evaluated, status, duration, errors and retries. Steps hold each action result. |
+| `AutomationRunStep` | `automation_run_steps` | [L21603](../../api/prisma/schema.prisma#L21603) | 20 §4, §6, §8 — one action (step) inside a run with its inputs, result, retries and timing. |
+| `AutomationApproval` | `automation_approvals` | [L21652](../../api/prisma/schema.prisma#L21652) | 20 §4, §6, §9, §14 — human approval gate: a run pauses until a member approves or rejects. |
+| `AutomationApprovalPolicy` | `automation_approval_policies` | [L21697](../../api/prisma/schema.prisma#L21697) | 20 §4, §6 — reusable approver policy referenced by `approval.policy_id` in a rule step (e.g. "any of the finance leads, escalate to the CFO after 24 h, hand … |
+| `AutomationAiStep` | `automation_ai_steps` | [L21729](../../api/prisma/schema.prisma#L21729) | 20 §4, §9, §14 — AI step record: structured output with confidence, threshold gate and the approval it may require. Never executes irreversible actions by it… |
+| `AutomationRunLock` | `automation_run_locks` | [L21771](../../api/prisma/schema.prisma#L21771) | 20 §6 — serialization lock: runs for the same record are executed one at a time when the rule requires it. Rows are short-lived; expired locks are reclaimed … |
 | **Scheduled jobs** | | | |
-| `ScheduledJob` | `scheduled_jobs` | [L21767](../../api/prisma/schema.prisma#L21767) | 20 §7 — module-owned recurring job hosted by the engine (04 expiration monitoring, 08 billing/dunning, 09 recurring expenses, 12 channel archival, 13 SLA tim… |
-| `ScheduledJobRun` | `scheduled_job_runs` | [L21831](../../api/prisma/schema.prisma#L21831) | 20 §7, §8 — one execution of a scheduled job. |
+| `ScheduledJob` | `scheduled_jobs` | [L21801](../../api/prisma/schema.prisma#L21801) | 20 §7 — module-owned recurring job hosted by the engine (04 expiration monitoring, 08 billing/dunning, 09 recurring expenses, 12 channel archival, 13 SLA tim… |
+| `ScheduledJobRun` | `scheduled_job_runs` | [L21865](../../api/prisma/schema.prisma#L21865) | 20 §7, §8 — one execution of a scheduled job. |
 | **Webhooks** | | | |
-| `OutboundWebhook` | `outbound_webhooks` | [L21879](../../api/prisma/schema.prisma#L21879) | 20 §12 — outbound webhook endpoint subscribed to platform events (and the target of the CALL_WEBHOOK action). `secret` is stored encrypted and used for HMAC … |
-| `WebhookDelivery` | `webhook_deliveries` | [L21933](../../api/prisma/schema.prisma#L21933) | 20 §6, §12 — one delivery of an event (or a CALL_WEBHOOK step) to an endpoint, with attempts, response code and retry state. |
-| `AutomationInboundWebhook` | `automation_inbound_webhooks` | [L21977](../../api/prisma/schema.prisma#L21977) | 20 §12, §14 — inbound webhook endpoint: external systems trigger rules with a signed payload. The request is logged as a PlatformEvent (source INBOUND_WEBHOO… |
+| `OutboundWebhook` | `outbound_webhooks` | [L21913](../../api/prisma/schema.prisma#L21913) | 20 §12 — outbound webhook endpoint subscribed to platform events (and the target of the CALL_WEBHOOK action). `secret` is stored encrypted and used for HMAC … |
+| `WebhookDelivery` | `webhook_deliveries` | [L21967](../../api/prisma/schema.prisma#L21967) | 20 §6, §12 — one delivery of an event (or a CALL_WEBHOOK step) to an endpoint, with attempts, response code and retry state. |
+| `AutomationInboundWebhook` | `automation_inbound_webhooks` | [L22011](../../api/prisma/schema.prisma#L22011) | 20 §12, §14 — inbound webhook endpoint: external systems trigger rules with a signed payload. The request is logged as a PlatformEvent (source INBOUND_WEBHOO… |
 
 **Owned enums (18):** `AutomationTriggerKind`, `AutomationActionKind`, `AutomationAssignStrategy`, `AutomationRuleScopeType`, `AutomationRuleStatus`, `AutomationRunMode`, `AutomationRunStatus`, `AutomationStepStatus`, `AutomationApprovalDecision`, `AutomationAiStepKind`, `PlatformEventSource`, `ScheduledJobKind`, `ScheduledJobStatus`, `ScheduledJobRunStatus`, `OutboundWebhookStatus`, `WebhookDeliveryStatus`, `InboundWebhookStatus`, `InboundWebhookAuthScheme`
 
@@ -77,31 +77,31 @@
 
 Columns in other modules that point at this module by plain string id or JSON (no Prisma relation). Keep them consistent when changing this module.
 
-- `McpToolCall.automation_run_id` ([01](./01-users-organizations-permissions.md), [L2120](../../api/prisma/schema.prisma#L2120)) — 20 AutomationRun when an automation step invoked the tool; id only.
-- `CrmActivity.automation_rule_id` ([02](./02-crm-sales-management.md), [L3235](../../api/prisma/schema.prisma#L3235)) — Automation rule id (20) when created by a rule.
-- `Task.automation_rule_id` ([06](./06-task-management.md), [L6744](../../api/prisma/schema.prisma#L6744)) — Recurring task instance: schedule rule lives in the Automation Engine (20); the template task is linked.
-- `InvoiceReminder.automation_run_id` ([08](./08-financial-management-stripe-integration.md), [L7697](../../api/prisma/schema.prisma#L7697)) — 08 "Automation" — 20 AutomationRun / ScheduledJobRun that produced this reminder (null = sent manually); ids only.
-- `FinanceReportSchedule.scheduled_job_id` ([08](./08-financial-management-stripe-integration.md), [L8336](../../api/prisma/schema.prisma#L8336)) — 20 ScheduledJob that runs it; id only.
-- `LedgerRecord.automation_run_id` ([09](./09-income-expense-management.md), [L8719](../../api/prisma/schema.prisma#L8719)) — 20 AutomationRule / ScheduledJob that generated the record; id only.
-- `RecurringExpense.scheduled_job_id` ([09](./09-income-expense-management.md), [L9008](../../api/prisma/schema.prisma#L9008)) — 20 ScheduledJob registered for this template; id only.
-- `PayrollSchedule.scheduled_job_id` ([09](./09-income-expense-management.md), [L9083](../../api/prisma/schema.prisma#L9083)) — 20 ScheduledJob; id only.
-- `LeaveRequest.automation_run_id` ([10](./10-employee-management-system.md), [L10617](../../api/prisma/schema.prisma#L10617)) — 20 AutomationRun driving the approval workflow.
-- `CommMessage.automation_rule_id` ([11](./11-communication-center.md), [L11990](../../api/prisma/schema.prisma#L11990)) — 11 "Automation" — 20 AutomationRule / AutomationRun that triggered this send; ids only.
-- `CommMessage.scheduled_job_id` ([11](./11-communication-center.md), [L11990](../../api/prisma/schema.prisma#L11990)) — 20 ScheduledJob backing the schedule; id only.
-- `Campaign.scheduled_job_id` ([11](./11-communication-center.md), [L12450](../../api/prisma/schema.prisma#L12450)) — 20 ScheduledJob driving the schedule; id only.
-- `MessagingIntegration.automation_rule_id` ([12](./12-messaging-team-communication.md), [L14086](../../api/prisma/schema.prisma#L14086)) — 20 OutboundWebhook / AutomationRule backing this integration when managed by the Automation Engine; id only.
-- `SupportSettings.auto_close_after_days` ([13](./13-customer-support-communication-hub.md), [L14582](../../api/prisma/schema.prisma#L14582)) — 13 §7 — auto-close resolved tickets after N days (null = never); registered as a scheduled job (20).
-- `SupportInbox.routing_strategy` ([13](./13-customer-support-communication-hub.md), [L14635](../../api/prisma/schema.prisma#L14635)) — 13 §2 — routing strategy; LOAD_BALANCED / SKILL_BASED use SupportAgentProfile; automation rules (20) may override.
-- `SlaPolicy.escalation_rule_ids` ([13](./13-customer-support-communication-hub.md), [L14966](../../api/prisma/schema.prisma#L14966)) — 13 §7 — automation rules (20) run on at-risk / breach; ids only.
-- `Ticket.auto_close_at` ([13](./13-customer-support-communication-hub.md), [L15018](../../api/prisma/schema.prisma#L15018)) — 13 §7 — scheduled auto-close (20 ScheduledJob id).
-- `TicketSlaTimer.scheduled_job_id` ([13](./13-customer-support-communication-hub.md), [L15205](../../api/prisma/schema.prisma#L15205)) — 20 ScheduledJob id for the breach check; id only.
-- `NotificationEvent.platform_event_id` ([14](./14-notifications-activity-center.md), [L15908](../../api/prisma/schema.prisma#L15908)) — 20 PlatformEvent id when the event came from the event bus.
-- `NotificationEvent.automation_rule_id` ([14](./14-notifications-activity-center.md), [L15908](../../api/prisma/schema.prisma#L15908)) — 20 AutomationRule id when a rule published the event (14 §16).
-- `NotificationOrgSettings.webhook_events_enabled` ([14](./14-notifications-activity-center.md), [L16150](../../api/prisma/schema.prisma#L16150)) — 14 §14 — emit notification.* webhook events through 20 OutboundWebhook.
-- `NotificationDeliveryRule.automation_rule_id` ([14](./14-notifications-activity-center.md), [L16426](../../api/prisma/schema.prisma#L16426)) — 20 AutomationRule id when managed by the Automation Engine.
-- `WikiChecklistRun.automation_run_id` ([15](./15-notion-business-docs.md), [L17299](../../api/prisma/schema.prisma#L17299)) — Automation run (20) that started it; id only.
-- `FormAssignment.automation_rule_id` ([15](./15-notion-business-docs.md), [L17426](../../api/prisma/schema.prisma#L17426)) — Automation rule (20) that created the assignment; id only.
-- `CalendarEvent.automation_rule_id` ([19](./19-calendar.md), [L20219](../../api/prisma/schema.prisma#L20219)) — 20 AutomationRule when created by a rule.
+- `McpToolCall.automation_run_id` ([01](./01-users-organizations-permissions.md), [L2121](../../api/prisma/schema.prisma#L2121)) — 20 AutomationRun when an automation step invoked the tool; id only.
+- `CrmActivity.automation_rule_id` ([02](./02-crm-sales-management.md), [L3236](../../api/prisma/schema.prisma#L3236)) — Automation rule id (20) when created by a rule.
+- `Task.automation_rule_id` ([06](./06-task-management.md), [L6775](../../api/prisma/schema.prisma#L6775)) — Recurring task instance: schedule rule lives in the Automation Engine (20); the template task is linked.
+- `InvoiceReminder.automation_run_id` ([08](./08-financial-management-stripe-integration.md), [L7731](../../api/prisma/schema.prisma#L7731)) — 08 "Automation" — 20 AutomationRun / ScheduledJobRun that produced this reminder (null = sent manually); ids only.
+- `FinanceReportSchedule.scheduled_job_id` ([08](./08-financial-management-stripe-integration.md), [L8370](../../api/prisma/schema.prisma#L8370)) — 20 ScheduledJob that runs it; id only.
+- `LedgerRecord.automation_run_id` ([09](./09-income-expense-management.md), [L8753](../../api/prisma/schema.prisma#L8753)) — 20 AutomationRule / ScheduledJob that generated the record; id only.
+- `RecurringExpense.scheduled_job_id` ([09](./09-income-expense-management.md), [L9042](../../api/prisma/schema.prisma#L9042)) — 20 ScheduledJob registered for this template; id only.
+- `PayrollSchedule.scheduled_job_id` ([09](./09-income-expense-management.md), [L9117](../../api/prisma/schema.prisma#L9117)) — 20 ScheduledJob; id only.
+- `LeaveRequest.automation_run_id` ([10](./10-employee-management-system.md), [L10651](../../api/prisma/schema.prisma#L10651)) — 20 AutomationRun driving the approval workflow.
+- `CommMessage.automation_rule_id` ([11](./11-communication-center.md), [L12024](../../api/prisma/schema.prisma#L12024)) — 11 "Automation" — 20 AutomationRule / AutomationRun that triggered this send; ids only.
+- `CommMessage.scheduled_job_id` ([11](./11-communication-center.md), [L12024](../../api/prisma/schema.prisma#L12024)) — 20 ScheduledJob backing the schedule; id only.
+- `Campaign.scheduled_job_id` ([11](./11-communication-center.md), [L12484](../../api/prisma/schema.prisma#L12484)) — 20 ScheduledJob driving the schedule; id only.
+- `MessagingIntegration.automation_rule_id` ([12](./12-messaging-team-communication.md), [L14120](../../api/prisma/schema.prisma#L14120)) — 20 OutboundWebhook / AutomationRule backing this integration when managed by the Automation Engine; id only.
+- `SupportSettings.auto_close_after_days` ([13](./13-customer-support-communication-hub.md), [L14616](../../api/prisma/schema.prisma#L14616)) — 13 §7 — auto-close resolved tickets after N days (null = never); registered as a scheduled job (20).
+- `SupportInbox.routing_strategy` ([13](./13-customer-support-communication-hub.md), [L14669](../../api/prisma/schema.prisma#L14669)) — 13 §2 — routing strategy; LOAD_BALANCED / SKILL_BASED use SupportAgentProfile; automation rules (20) may override.
+- `SlaPolicy.escalation_rule_ids` ([13](./13-customer-support-communication-hub.md), [L15000](../../api/prisma/schema.prisma#L15000)) — 13 §7 — automation rules (20) run on at-risk / breach; ids only.
+- `Ticket.auto_close_at` ([13](./13-customer-support-communication-hub.md), [L15052](../../api/prisma/schema.prisma#L15052)) — 13 §7 — scheduled auto-close (20 ScheduledJob id).
+- `TicketSlaTimer.scheduled_job_id` ([13](./13-customer-support-communication-hub.md), [L15239](../../api/prisma/schema.prisma#L15239)) — 20 ScheduledJob id for the breach check; id only.
+- `NotificationEvent.platform_event_id` ([14](./14-notifications-activity-center.md), [L15942](../../api/prisma/schema.prisma#L15942)) — 20 PlatformEvent id when the event came from the event bus.
+- `NotificationEvent.automation_rule_id` ([14](./14-notifications-activity-center.md), [L15942](../../api/prisma/schema.prisma#L15942)) — 20 AutomationRule id when a rule published the event (14 §16).
+- `NotificationOrgSettings.webhook_events_enabled` ([14](./14-notifications-activity-center.md), [L16184](../../api/prisma/schema.prisma#L16184)) — 14 §14 — emit notification.* webhook events through 20 OutboundWebhook.
+- `NotificationDeliveryRule.automation_rule_id` ([14](./14-notifications-activity-center.md), [L16460](../../api/prisma/schema.prisma#L16460)) — 20 AutomationRule id when managed by the Automation Engine.
+- `WikiChecklistRun.automation_run_id` ([15](./15-notion-business-docs.md), [L17333](../../api/prisma/schema.prisma#L17333)) — Automation run (20) that started it; id only.
+- `FormAssignment.automation_rule_id` ([15](./15-notion-business-docs.md), [L17460](../../api/prisma/schema.prisma#L17460)) — Automation rule (20) that created the assignment; id only.
+- `CalendarEvent.automation_rule_id` ([19](./19-calendar.md), [L20253](../../api/prisma/schema.prisma#L20253)) — 20 AutomationRule when created by a rule.
 
 <!-- schema-refs:end -->
 
@@ -154,7 +154,7 @@ Core rule:
 ## 2. Core Concepts
 
 <!-- schema-section:start -->
-> **Schema:** `AutomationRule` ([automation_rules](../../api/prisma/schema.prisma#L21223)): `actions`, `conditions` · `AutomationRun` ([automation_runs](../../api/prisma/schema.prisma#L21471)) · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21066)): `event_retention_days` · `AutomationTriggerDefinition` ([automation_trigger_definitions](../../api/prisma/schema.prisma#L21113)): `notifiable` · `PlatformEvent` ([platform_events](../../api/prisma/schema.prisma#L21387)) · enum `AutomationTriggerKind` ([L20893](../../api/prisma/schema.prisma#L20893)) · enum `PlatformEventSource` ([L20996](../../api/prisma/schema.prisma#L20996))
+> **Schema:** `AutomationRule` ([automation_rules](../../api/prisma/schema.prisma#L21257)): `actions`, `conditions` · `AutomationRun` ([automation_runs](../../api/prisma/schema.prisma#L21505)) · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21100)): `event_retention_days` · `AutomationTriggerDefinition` ([automation_trigger_definitions](../../api/prisma/schema.prisma#L21147)): `notifiable` · `PlatformEvent` ([platform_events](../../api/prisma/schema.prisma#L21421)) · enum `AutomationTriggerKind` ([L20927](../../api/prisma/schema.prisma#L20927)) · enum `PlatformEventSource` ([L21030](../../api/prisma/schema.prisma#L21030))
 <!-- schema-section:end -->
 
 ### Event
@@ -184,7 +184,7 @@ One execution of a rule with its inputs, each action result, duration, status an
 ## 3. Trigger Catalog
 
 <!-- schema-section:start -->
-> **Schema:** `AutomationRule` ([automation_rules](../../api/prisma/schema.prisma#L21223)): `next_run_at`, `trigger_config` · `AutomationTriggerDefinition` ([automation_trigger_definitions](../../api/prisma/schema.prisma#L21113)): `config_schema`, `date_fields` · `ScheduledJob` ([scheduled_jobs](../../api/prisma/schema.prisma#L21767)): `rule_id` · enum `AutomationTriggerKind` ([L20893](../../api/prisma/schema.prisma#L20893))
+> **Schema:** `AutomationRule` ([automation_rules](../../api/prisma/schema.prisma#L21257)): `next_run_at`, `trigger_config` · `AutomationTriggerDefinition` ([automation_trigger_definitions](../../api/prisma/schema.prisma#L21147)): `config_schema`, `date_fields` · `ScheduledJob` ([scheduled_jobs](../../api/prisma/schema.prisma#L21801)): `rule_id` · enum `AutomationTriggerKind` ([L20927](../../api/prisma/schema.prisma#L20927))
 <!-- schema-section:end -->
 
 Triggers are declared by modules. Examples by module:
@@ -205,7 +205,7 @@ Triggers are declared by modules. Examples by module:
 ## 4. Action Catalog
 
 <!-- schema-section:start -->
-> **Schema:** `AutomationActionDefinition` ([automation_action_definitions](../../api/prisma/schema.prisma#L21150)): `input_schema`, `is_engine_builtin`, `output_schema`, `required_permission` · `AutomationAiStep` ([automation_ai_steps](../../api/prisma/schema.prisma#L21695)) · `AutomationApproval` ([automation_approvals](../../api/prisma/schema.prisma#L21618)): `policy_id` · `AutomationApprovalPolicy` ([automation_approval_policies](../../api/prisma/schema.prisma#L21663)) · `AutomationRule` ([automation_rules](../../api/prisma/schema.prisma#L21223)): `actions`, `run_as_service_account_id` · `AutomationRun` ([automation_runs](../../api/prisma/schema.prisma#L21471)): `output`, `run_as_service_account_id` · `AutomationRunStep` ([automation_run_steps](../../api/prisma/schema.prisma#L21569)) · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21066)): `default_service_account_id` · enum `AutomationActionKind` ([L20902](../../api/prisma/schema.prisma#L20902)) · enum `AutomationAiStepKind` ([L20988](../../api/prisma/schema.prisma#L20988)) · enum `AutomationApprovalDecision` ([L20979](../../api/prisma/schema.prisma#L20979)) · enum `AutomationAssignStrategy` ([L20922](../../api/prisma/schema.prisma#L20922))
+> **Schema:** `AutomationActionDefinition` ([automation_action_definitions](../../api/prisma/schema.prisma#L21184)): `input_schema`, `is_engine_builtin`, `output_schema`, `required_permission` · `AutomationAiStep` ([automation_ai_steps](../../api/prisma/schema.prisma#L21729)) · `AutomationApproval` ([automation_approvals](../../api/prisma/schema.prisma#L21652)): `policy_id` · `AutomationApprovalPolicy` ([automation_approval_policies](../../api/prisma/schema.prisma#L21697)) · `AutomationRule` ([automation_rules](../../api/prisma/schema.prisma#L21257)): `actions`, `run_as_service_account_id` · `AutomationRun` ([automation_runs](../../api/prisma/schema.prisma#L21505)): `output`, `run_as_service_account_id` · `AutomationRunStep` ([automation_run_steps](../../api/prisma/schema.prisma#L21603)) · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21100)): `default_service_account_id` · enum `AutomationActionKind` ([L20936](../../api/prisma/schema.prisma#L20936)) · enum `AutomationAiStepKind` ([L21022](../../api/prisma/schema.prisma#L21022)) · enum `AutomationApprovalDecision` ([L21013](../../api/prisma/schema.prisma#L21013)) · enum `AutomationAssignStrategy` ([L20956](../../api/prisma/schema.prisma#L20956))
 <!-- schema-section:end -->
 
 Actions are declared by modules with their input schema and required permission. Examples:
@@ -229,7 +229,7 @@ Actions execute with the permissions of the rule's owner or a designated service
 ## 5. Rule Builder
 
 <!-- schema-section:start -->
-> **Schema:** `AutomationRule` ([automation_rules](../../api/prisma/schema.prisma#L21223)): `current_version`, `enabled`, `imported_from` · `AutomationRuleTemplate` ([automation_rule_templates](../../api/prisma/schema.prisma#L21192)) · `AutomationRuleVersion` ([automation_rule_versions](../../api/prisma/schema.prisma#L21350)) · `AutomationTriggerDefinition` ([automation_trigger_definitions](../../api/prisma/schema.prisma#L21113)): `payload_schema`, `sample_payload` · enum `AutomationRuleScopeType` ([L20930](../../api/prisma/schema.prisma#L20930)) · enum `AutomationRuleStatus` ([L20939](../../api/prisma/schema.prisma#L20939)) · enum `AutomationRunMode` ([L20946](../../api/prisma/schema.prisma#L20946))
+> **Schema:** `AutomationRule` ([automation_rules](../../api/prisma/schema.prisma#L21257)): `current_version`, `enabled`, `imported_from` · `AutomationRuleTemplate` ([automation_rule_templates](../../api/prisma/schema.prisma#L21226)) · `AutomationRuleVersion` ([automation_rule_versions](../../api/prisma/schema.prisma#L21384)) · `AutomationTriggerDefinition` ([automation_trigger_definitions](../../api/prisma/schema.prisma#L21147)): `payload_schema`, `sample_payload` · enum `AutomationRuleScopeType` ([L20964](../../api/prisma/schema.prisma#L20964)) · enum `AutomationRuleStatus` ([L20973](../../api/prisma/schema.prisma#L20973)) · enum `AutomationRunMode` ([L20980](../../api/prisma/schema.prisma#L20980))
 <!-- schema-section:end -->
 
 * No-code builder with trigger, condition and action steps
@@ -244,7 +244,7 @@ Actions execute with the permissions of the rule's owner or a designated service
 ## 6. Execution Semantics
 
 <!-- schema-section:start -->
-> **Schema:** `AutomationActionDefinition` ([automation_action_definitions](../../api/prisma/schema.prisma#L21150)): `is_customer_facing`, `is_destructive`, `is_idempotent`, `retryable` · `AutomationApproval` ([automation_approvals](../../api/prisma/schema.prisma#L21618)) · `AutomationApprovalPolicy` ([automation_approval_policies](../../api/prisma/schema.prisma#L21663)) · `AutomationRule` ([automation_rules](../../api/prisma/schema.prisma#L21223)): `allow_destructive_actions`, `max_trigger_depth`, `rate_limit_per_hour`, `require_approval_for_destructive`, `serialize_per_record`, `timeout_seconds` · `AutomationRun` ([automation_runs](../../api/prisma/schema.prisma#L21471)): `idempotency_key`, `performed_destructive_action` · `AutomationRunLock` ([automation_run_locks](../../api/prisma/schema.prisma#L21737)) · `AutomationRunStep` ([automation_run_steps](../../api/prisma/schema.prisma#L21569)): `idempotency_key`, `is_destructive` · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21066)): `dead_letter_alert_membership_ids`, `dead_letter_alerts_enabled`, `default_max_retries`, `default_rule_rate_limit_per_hour`, `destructive_actions_enabled`, `destructive_requires_approval`, `max_trigger_depth`, `org_rate_limit_per_hour` · `PlatformEvent` ([platform_events](../../api/prisma/schema.prisma#L21387)): `trigger_depth` · `ScheduledJob` ([scheduled_jobs](../../api/prisma/schema.prisma#L21767)): `max_retries` · `WebhookDelivery` ([webhook_deliveries](../../api/prisma/schema.prisma#L21933)) · enum `AutomationApprovalDecision` ([L20979](../../api/prisma/schema.prisma#L20979)) · enum `AutomationRunStatus` ([L20953](../../api/prisma/schema.prisma#L20953)) · enum `AutomationStepStatus` ([L20967](../../api/prisma/schema.prisma#L20967)) · enum `WebhookDeliveryStatus` ([L21039](../../api/prisma/schema.prisma#L21039))
+> **Schema:** `AutomationActionDefinition` ([automation_action_definitions](../../api/prisma/schema.prisma#L21184)): `is_customer_facing`, `is_destructive`, `is_idempotent`, `retryable` · `AutomationApproval` ([automation_approvals](../../api/prisma/schema.prisma#L21652)) · `AutomationApprovalPolicy` ([automation_approval_policies](../../api/prisma/schema.prisma#L21697)) · `AutomationRule` ([automation_rules](../../api/prisma/schema.prisma#L21257)): `allow_destructive_actions`, `max_trigger_depth`, `rate_limit_per_hour`, `require_approval_for_destructive`, `serialize_per_record`, `timeout_seconds` · `AutomationRun` ([automation_runs](../../api/prisma/schema.prisma#L21505)): `idempotency_key`, `performed_destructive_action` · `AutomationRunLock` ([automation_run_locks](../../api/prisma/schema.prisma#L21771)) · `AutomationRunStep` ([automation_run_steps](../../api/prisma/schema.prisma#L21603)): `idempotency_key`, `is_destructive` · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21100)): `dead_letter_alert_membership_ids`, `dead_letter_alerts_enabled`, `default_max_retries`, `default_rule_rate_limit_per_hour`, `destructive_actions_enabled`, `destructive_requires_approval`, `max_trigger_depth`, `org_rate_limit_per_hour` · `PlatformEvent` ([platform_events](../../api/prisma/schema.prisma#L21421)): `trigger_depth` · `ScheduledJob` ([scheduled_jobs](../../api/prisma/schema.prisma#L21801)): `max_retries` · `WebhookDelivery` ([webhook_deliveries](../../api/prisma/schema.prisma#L21967)) · enum `AutomationApprovalDecision` ([L21013](../../api/prisma/schema.prisma#L21013)) · enum `AutomationRunStatus` ([L20987](../../api/prisma/schema.prisma#L20987)) · enum `AutomationStepStatus` ([L21001](../../api/prisma/schema.prisma#L21001)) · enum `WebhookDeliveryStatus` ([L21073](../../api/prisma/schema.prisma#L21073))
 <!-- schema-section:end -->
 
 * At-least-once event delivery with idempotent actions; each run carries an idempotency key.
@@ -260,7 +260,7 @@ Actions execute with the permissions of the rule's owner or a designated service
 ## 7. Scheduled Jobs
 
 <!-- schema-section:start -->
-> **Schema:** `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21066)): `job_run_retention_days` · `ScheduledJob` ([scheduled_jobs](../../api/prisma/schema.prisma#L21767)): `branch_id`, `max_retries` · `ScheduledJobRun` ([scheduled_job_runs](../../api/prisma/schema.prisma#L21831)) · enum `ScheduledJobKind` ([L21006](../../api/prisma/schema.prisma#L21006)) · enum `ScheduledJobRunStatus` ([L21021](../../api/prisma/schema.prisma#L21021)) · enum `ScheduledJobStatus` ([L21013](../../api/prisma/schema.prisma#L21013)) — other modules: `CrmReportSchedule` ([crm_report_schedules](../../api/prisma/schema.prisma#L3619)) ([02](./02-crm-sales-management.md))
+> **Schema:** `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21100)): `job_run_retention_days` · `ScheduledJob` ([scheduled_jobs](../../api/prisma/schema.prisma#L21801)): `branch_id`, `max_retries` · `ScheduledJobRun` ([scheduled_job_runs](../../api/prisma/schema.prisma#L21865)) · enum `ScheduledJobKind` ([L21040](../../api/prisma/schema.prisma#L21040)) · enum `ScheduledJobRunStatus` ([L21055](../../api/prisma/schema.prisma#L21055)) · enum `ScheduledJobStatus` ([L21047](../../api/prisma/schema.prisma#L21047)) — other modules: `CrmReportSchedule` ([crm_report_schedules](../../api/prisma/schema.prisma#L3620)) ([02](./02-crm-sales-management.md))
 <!-- schema-section:end -->
 
 The engine also hosts module-owned recurring jobs that are not user rules:
@@ -278,7 +278,7 @@ Modules register these jobs; the engine schedules, runs, retries and logs them.
 ## 8. Execution History
 
 <!-- schema-section:start -->
-> **Schema:** `AutomationRuleVersion` ([automation_rule_versions](../../api/prisma/schema.prisma#L21350)) · `AutomationRun` ([automation_runs](../../api/prisma/schema.prisma#L21471)): `conditions_result`, `input` · `AutomationRunStep` ([automation_run_steps](../../api/prisma/schema.prisma#L21569)) · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21066)): `run_retention_days` · `ScheduledJobRun` ([scheduled_job_runs](../../api/prisma/schema.prisma#L21831)) · enum `AutomationRunStatus` ([L20953](../../api/prisma/schema.prisma#L20953)) · enum `AutomationStepStatus` ([L20967](../../api/prisma/schema.prisma#L20967))
+> **Schema:** `AutomationRuleVersion` ([automation_rule_versions](../../api/prisma/schema.prisma#L21384)) · `AutomationRun` ([automation_runs](../../api/prisma/schema.prisma#L21505)): `conditions_result`, `input` · `AutomationRunStep` ([automation_run_steps](../../api/prisma/schema.prisma#L21603)) · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21100)): `run_retention_days` · `ScheduledJobRun` ([scheduled_job_runs](../../api/prisma/schema.prisma#L21865)) · enum `AutomationRunStatus` ([L20987](../../api/prisma/schema.prisma#L20987)) · enum `AutomationStepStatus` ([L21001](../../api/prisma/schema.prisma#L21001))
 <!-- schema-section:end -->
 
 Every run is stored with trigger, inputs, conditions evaluated, each action and result, actor, duration and status. History is searchable by rule, record, status and date. Retention is configurable.
@@ -286,7 +286,7 @@ Every run is stored with trigger, inputs, conditions evaluated, each action and 
 ## 9. AI in Automations
 
 <!-- schema-section:start -->
-> **Schema:** `AutomationActionDefinition` ([automation_action_definitions](../../api/prisma/schema.prisma#L21150)): `output_schema` · `AutomationAiStep` ([automation_ai_steps](../../api/prisma/schema.prisma#L21695)): `confidence_threshold` · `AutomationApproval` ([automation_approvals](../../api/prisma/schema.prisma#L21618)) · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21066)): `ai_default_confidence_threshold` · enum `AutomationAiStepKind` ([L20988](../../api/prisma/schema.prisma#L20988))
+> **Schema:** `AutomationActionDefinition` ([automation_action_definitions](../../api/prisma/schema.prisma#L21184)): `output_schema` · `AutomationAiStep` ([automation_ai_steps](../../api/prisma/schema.prisma#L21729)): `confidence_threshold` · `AutomationApproval` ([automation_approvals](../../api/prisma/schema.prisma#L21652)) · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21100)): `ai_default_confidence_threshold` · enum `AutomationAiStepKind` ([L21022](../../api/prisma/schema.prisma#L21022))
 <!-- schema-section:end -->
 
 AI steps use the shared AI integration layer (`docs/Product_Specification.md` §6). Output is structured, carries a confidence score and can gate the next step on a threshold or human approval. AI steps never execute irreversible actions on their own.
@@ -294,7 +294,7 @@ AI steps use the shared AI integration layer (`docs/Product_Specification.md` §
 ## 10. Permissions
 
 <!-- schema-section:start -->
-> **Schema:** `AutomationActionDefinition` ([automation_action_definitions](../../api/prisma/schema.prisma#L21150)): `required_permission` · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21066)): `destructive_actions_enabled` · `AutomationTriggerDefinition` ([automation_trigger_definitions](../../api/prisma/schema.prisma#L21113)): `required_permission` — other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1611)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** `AutomationActionDefinition` ([automation_action_definitions](../../api/prisma/schema.prisma#L21184)): `required_permission` · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21100)): `destructive_actions_enabled` · `AutomationTriggerDefinition` ([automation_trigger_definitions](../../api/prisma/schema.prisma#L21147)): `required_permission` — other modules: `Permission` ([permissions](../../api/prisma/schema.prisma#L1612)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 * `automation.rules.read / create / update / delete / enable`
@@ -309,7 +309,7 @@ A user can only build rules whose actions they are themselves permitted to perfo
 ## 11. Audit
 
 <!-- schema-section:start -->
-> **Schema:** `AutomationRun` ([automation_runs](../../api/prisma/schema.prisma#L21471)): `performed_destructive_action` — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L2268)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** `AutomationRun` ([automation_runs](../../api/prisma/schema.prisma#L21505)): `performed_destructive_action` — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L2269)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 Audit rule creation, edits, enable/disable, service account changes and every run that performs a destructive or customer-facing action.
@@ -317,7 +317,7 @@ Audit rule creation, edits, enable/disable, service account changes and every ru
 ## 12. API & Webhooks
 
 <!-- schema-section:start -->
-> **Schema:** `AutomationActionDefinition` ([automation_action_definitions](../../api/prisma/schema.prisma#L21150)) · `AutomationInboundWebhook` ([automation_inbound_webhooks](../../api/prisma/schema.prisma#L21977)) · `AutomationRun` ([automation_runs](../../api/prisma/schema.prisma#L21471)): `actor_membership_id` · `AutomationTriggerDefinition` ([automation_trigger_definitions](../../api/prisma/schema.prisma#L21113)) · `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21879)): `subscribed_events` · `PlatformEvent` ([platform_events](../../api/prisma/schema.prisma#L21387)): `webhooks_processed_at` · `WebhookDelivery` ([webhook_deliveries](../../api/prisma/schema.prisma#L21933)) · enum `InboundWebhookAuthScheme` ([L21055](../../api/prisma/schema.prisma#L21055)) · enum `InboundWebhookStatus` ([L21048](../../api/prisma/schema.prisma#L21048)) · enum `OutboundWebhookStatus` ([L21032](../../api/prisma/schema.prisma#L21032)) · enum `WebhookDeliveryStatus` ([L21039](../../api/prisma/schema.prisma#L21039)) — other modules: `McpToolCall` ([mcp_tool_calls](../../api/prisma/schema.prisma#L2120)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** `AutomationActionDefinition` ([automation_action_definitions](../../api/prisma/schema.prisma#L21184)) · `AutomationInboundWebhook` ([automation_inbound_webhooks](../../api/prisma/schema.prisma#L22011)) · `AutomationRun` ([automation_runs](../../api/prisma/schema.prisma#L21505)): `actor_membership_id` · `AutomationTriggerDefinition` ([automation_trigger_definitions](../../api/prisma/schema.prisma#L21147)) · `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21913)): `subscribed_events` · `PlatformEvent` ([platform_events](../../api/prisma/schema.prisma#L21421)): `webhooks_processed_at` · `WebhookDelivery` ([webhook_deliveries](../../api/prisma/schema.prisma#L21967)) · enum `InboundWebhookAuthScheme` ([L21089](../../api/prisma/schema.prisma#L21089)) · enum `InboundWebhookStatus` ([L21082](../../api/prisma/schema.prisma#L21082)) · enum `OutboundWebhookStatus` ([L21066](../../api/prisma/schema.prisma#L21066)) · enum `WebhookDeliveryStatus` ([L21073](../../api/prisma/schema.prisma#L21073)) — other modules: `McpToolCall` ([mcp_tool_calls](../../api/prisma/schema.prisma#L2121)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 API: publish event (internal and external), CRUD rules, run rule manually, list runs, register trigger and action schemas (modules).
@@ -345,7 +345,7 @@ Outbound: `automation.rule_run_started`, `automation.rule_run_completed`, `autom
 ## 14. Phase 2
 
 <!-- schema-section:start -->
-> **Schema:** `AutomationAiStep` ([automation_ai_steps](../../api/prisma/schema.prisma#L21695)) · `AutomationApproval` ([automation_approvals](../../api/prisma/schema.prisma#L21618)) · `AutomationInboundWebhook` ([automation_inbound_webhooks](../../api/prisma/schema.prisma#L21977)) · `AutomationRule` ([automation_rules](../../api/prisma/schema.prisma#L21223)): `run_as_service_account_id` · `AutomationRuleTemplate` ([automation_rule_templates](../../api/prisma/schema.prisma#L21192)) · `AutomationRun` ([automation_runs](../../api/prisma/schema.prisma#L21471)): `run_as_service_account_id` · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21066)): `default_service_account_id` · enum `InboundWebhookAuthScheme` ([L21055](../../api/prisma/schema.prisma#L21055)) · enum `InboundWebhookStatus` ([L21048](../../api/prisma/schema.prisma#L21048))
+> **Schema:** `AutomationAiStep` ([automation_ai_steps](../../api/prisma/schema.prisma#L21729)) · `AutomationApproval` ([automation_approvals](../../api/prisma/schema.prisma#L21652)) · `AutomationInboundWebhook` ([automation_inbound_webhooks](../../api/prisma/schema.prisma#L22011)) · `AutomationRule` ([automation_rules](../../api/prisma/schema.prisma#L21257)): `run_as_service_account_id` · `AutomationRuleTemplate` ([automation_rule_templates](../../api/prisma/schema.prisma#L21226)) · `AutomationRun` ([automation_runs](../../api/prisma/schema.prisma#L21505)): `run_as_service_account_id` · `AutomationSettings` ([automation_settings](../../api/prisma/schema.prisma#L21100)): `default_service_account_id` · enum `InboundWebhookAuthScheme` ([L21089](../../api/prisma/schema.prisma#L21089)) · enum `InboundWebhookStatus` ([L21082](../../api/prisma/schema.prisma#L21082))
 <!-- schema-section:end -->
 
 * Date-relative triggers

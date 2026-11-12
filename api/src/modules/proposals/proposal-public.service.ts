@@ -47,20 +47,28 @@ export class ProposalPublicService {
 
     private async load(token: string) {
         if (!token || token.length < 20) throw new NotFoundException({ message: 'This link is not valid', code: 'proposal_link_invalid' });
-        const p = await this.prisma.proposal.findUnique({
-            where: { public_token_hash: hashToken(token) },
+        const link = await this.prisma.proposalAccessToken.findUnique({
+            where: { token_hash: hashToken(token) },
             include: {
-                organization: { select: { id: true, display_name: true, logo_url: true } },
-                company: { select: { name: true } },
-                contact: { select: { id: true, first_name: true, last_name: true, email: true } },
+                proposal: {
+                    include: {
+                        organization: { select: { id: true, display_name: true, logo_url: true } },
+                        company: { select: { name: true } },
+                        contact: { select: { id: true, first_name: true, last_name: true, email: true } },
+                    },
+                },
             },
         });
+        const p = link && !link.revoked_at ? link.proposal : null;
         if (!p || !p.sent_version_id) throw new NotFoundException({ message: 'This link is not valid', code: 'proposal_link_invalid' });
         // Lazy expiry (the hourly job does the same for proposals nobody opens).
         if (LIVE_STATUSES.includes(p.status) && p.valid_until && p.valid_until < dateOnly(new Date())) {
             await this.prisma.proposal.update({ where: { id: p.id }, data: { status: ProposalStatus.EXPIRED, expired_at: new Date() } });
             await this.prisma.proposalEvent.create({ data: { proposal_id: p.id, type: ProposalEventType.EXPIRED, metadata: { by: 'system' } } });
             p.status = ProposalStatus.EXPIRED;
+        }
+        if (!link.last_used_at || link.last_used_at.getTime() < Date.now() - 60_000) {
+            await this.prisma.proposalAccessToken.update({ where: { id: link.id }, data: { last_used_at: new Date() } }).catch(() => undefined);
         }
         return p;
     }

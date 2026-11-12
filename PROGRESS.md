@@ -101,8 +101,8 @@ Parallel agents must NOT run migrations (shared DB). If a feature truly needs a 
 (`module — model/field — why`) and work around it with existing fields until the coordinator applies it.
 
 - (none yet)
-- 06 — `Release.notes_published_at DateTime?` (+ `notes_published_by_membership_id`) — release notes have no draft/published state; today "publish" saves `notes` and is recorded only as the `release.notes_published` audit event.
-- 03/07 — per-recipient proposal access tokens (e.g. `ProposalAccessToken { proposal_id, token_hash, contact_id?, portal_membership_id?, expires_at }`) — `Proposal.public_token_hash` is single, so opening a proposal from the portal rotates it and the emailed link stops working.
+- ✅ APPLIED (migration 20261112020000) 06 — `Release.notes_published_at DateTime?` (+ `notes_published_by_membership_id`) — release notes have no draft/published state; today "publish" saves `notes` and is recorded only as the `release.notes_published` audit event.
+- ✅ APPLIED (migration 20261112020000; `Proposal.public_token_hash` dropped, `issueAccessToken`/`revokeAccessTokens` in proposals utils) 03/07 — per-recipient proposal access tokens (e.g. `ProposalAccessToken { proposal_id, token_hash, contact_id?, portal_membership_id?, expires_at }`) — `Proposal.public_token_hash` is single, so opening a proposal from the portal rotates it and the emailed link stops working.
 - ✅ APPLIED (migration 20261111220000) 03 — `ProposalComment.author_name String?` — customers commenting on the public link are not always the CRM contact; today a non-matching name is prefixed into `body`.
 - ✅ DONE (code; column already existed) 04 — store drawn signatures as a Document (17) in `Signer.signature_document_id`; until Documents storage is wired the PNG data URL lives in the `SignatureEvent` payload (SIGNED).
 - ✅ APPLIED (migration 20261111220000) 06 — `Task @@unique([organization_id, number])` → `@@unique([team_id, number])` (+ per-team counter) — Linear numbers per team (WEB-1, APP-1). Today numbers are org-wide (NumberSequence `task`/`TASK`), so identifiers read WEB-12, APP-13. Workaround works; change only if per-team numbering is wanted.

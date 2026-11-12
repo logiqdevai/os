@@ -84,6 +84,8 @@ export class ReleasesService {
         const data = compact({ ...dto, target_date: toDate(dto.target_date) }) as Prisma.ReleaseUncheckedUpdateInput;
         if (released) data.released_at = new Date();
         if (dto.status && dto.status !== ReleaseStatus.RELEASED) data.released_at = null;
+        // Editing the notes outside "Publish" turns them back into a draft until someone publishes again.
+        if (dto.notes !== undefined && dto.notes !== before.notes) { data.notes_published_at = null; data.notes_published_by_membership_id = null; }
         const release = await this.prisma.release.update({ where: { id }, data });
         await this.audit.record(ctx, released ? 'release.released' : 'release.updated', {
             resource_type: 'release', resource_id: id, metadata: { before: { name: before.name, status: before.status, target_date: before.target_date }, after: dto },

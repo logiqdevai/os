@@ -841,6 +841,7 @@ model Organization {
   channel_invitations           ChannelInvitation[]
   channel_access_requests       ChannelAccessRequest[]
   messaging_legal_holds         MessagingLegalHold[]
+  proposal_access_tokens        ProposalAccessToken[]
 
   @@index([status])
   @@map("organizations")
@@ -3926,8 +3927,6 @@ model Proposal {
   recurring_annual     Decimal                @default(0) @db.Decimal(18, 2)
   /// Whether acceptance must produce a Contract before project/billing creation (03 "Conversion to Project").
   requires_contract    Boolean                @default(false)
-  /// Public web view (03 "Customer Delivery"): hashed token; expires with valid_until.
-  public_token_hash    String?                @unique
   /// 03 "Customer Delivery" — who may open the public link; EMAIL_VERIFIED asks for a one-time code (VerificationCode, purpose PROPOSAL_ACCESS).
   link_access_mode     ProposalLinkAccessMode @default(ANYONE_WITH_LINK)
   /// 03 "Proposal Tracking" — days before valid_until at which the customer gets a reminder, e.g. [7, 2].
@@ -3971,8 +3970,9 @@ model Proposal {
   comments           ProposalComment[]
   acceptances        ProposalAcceptance[]
   contracts          Contract[]
-  projects           Project[]            @relation("ProjectSourceProposal")
+  projects           Project[]             @relation("ProjectSourceProposal")
   verification_codes VerificationCode[]
+  access_tokens      ProposalAccessToken[]
 
   @@unique([organization_id, number])
   @@index([organization_id, status])
@@ -4236,6 +4236,37 @@ model ProposalDelivery {
 
   @@index([proposal_id, sent_at])
   @@map("proposal_deliveries")
+}
+
+/// 03 "Customer Delivery" — one public link per delivery (send, reminder, portal, rotation). Only the sha256 of the
+/// token is stored. Every live token opens the proposal until revoked; links expire with Proposal.valid_until.
+/// Rotating the link, cancelling or marking the proposal lost revokes them all.
+model ProposalAccessToken {
+  id                   String                    @id @default(uuid())
+  organization_id      String
+  proposal_id          String
+  token_hash           String                    @unique
+  source               ProposalAccessTokenSource
+  /// Who the link was issued to (email recipient or portal user's email), for the activity tab.
+  recipient_email      String?
+  /// 07 — set when issued to a signed-in portal user.
+  portal_membership_id String?
+  last_used_at         DateTime?
+  revoked_at           DateTime?
+  created_at           DateTime                  @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  proposal     Proposal     @relation(fields: [proposal_id], references: [id], onDelete: Cascade)
+
+  @@index([proposal_id, revoked_at])
+  @@map("proposal_access_tokens")
+}
+
+enum ProposalAccessTokenSource {
+  SEND
+  REMINDER
+  PORTAL
+  ROTATION
 }
 
 /// 03 "Proposal Tracking" — append-only event log of customer activity and lifecycle changes.
@@ -7012,25 +7043,28 @@ model TaskWatcher {
 
 /// 06 §9 — a shippable set of tasks. A Release may map to a Project Milestone (05).
 model Release {
-  id                   String        @id @default(uuid())
-  organization_id      String
-  team_id              String?
-  project_id           String?
-  milestone_id         String?
-  name                 String
-  version              String?
-  status               ReleaseStatus @default(PLANNED)
-  target_date          DateTime?     @db.Date
-  released_at          DateTime?
+  id                               String        @id @default(uuid())
+  organization_id                  String
+  team_id                          String?
+  project_id                       String?
+  milestone_id                     String?
+  name                             String
+  version                          String?
+  status                           ReleaseStatus @default(PLANNED)
+  target_date                      DateTime?     @db.Date
+  released_at                      DateTime?
   /// Release notes (markdown), publishable to the portal (07) and knowledge base (13 §6).
-  notes                String?
-  notes_document_id    String?
-  customer_visible     Boolean       @default(false)
+  notes                            String?
+  notes_document_id                String?
+  /// 06 — release notes are a draft until published (portal / knowledge base read only published notes).
+  notes_published_at               DateTime?
+  notes_published_by_membership_id String?
+  customer_visible                 Boolean       @default(false)
   /// Customers affected, derived from linked tickets (13 §4); CRM company ids.
-  affected_company_ids String[]      @default([])
-  created_by_user_id   String?
-  created_at           DateTime      @default(now())
-  updated_at           DateTime      @updatedAt
+  affected_company_ids             String[]      @default([])
+  created_by_user_id               String?
+  created_at                       DateTime      @default(now())
+  updated_at                       DateTime      @updatedAt
 
   organization   Organization        @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   team           Team?               @relation(fields: [team_id], references: [id], onDelete: SetNull)

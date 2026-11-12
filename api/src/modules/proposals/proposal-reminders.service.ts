@@ -8,7 +8,7 @@ import { AuthorizationService } from '@/shared/authorization/authorization.servi
 import { MessagesService } from '@/modules/communications/messages/messages.service';
 import { ProposalMailer } from './proposal-mailer.service';
 import { LIVE_STATUSES } from './proposals.service';
-import { dateOnly, escapeHtml, newToken } from './utils/proposal.utils';
+import { dateOnly, escapeHtml, issueAccessToken } from './utils/proposal.utils';
 
 const SEND = 'proposals.proposals.send';
 /** Marker in ProposalDelivery.message that makes each reminder idempotent per version and day offset. */
@@ -87,9 +87,8 @@ export class ProposalRemindersService {
             return false;
         }
 
-        // Fresh customer link: the raw token exists only in this email.
-        const { token, hash } = newToken();
-        await this.prisma.proposal.update({ where: { id: p.id }, data: { public_token_hash: hash } });
+        // An extra customer link for this email (the raw token exists only here); earlier links keep working.
+        const { token } = await issueAccessToken(this.prisma, { organization_id: p.organization_id, proposal_id: p.id, source: 'REMINDER', recipient_email: recipients.length === 1 ? recipients[0].email : null });
         const url = this.mailer.appUrl(`/p/${token}`);
         const until = (p.valid_until as Date).toISOString().slice(0, 10);
         const subject = days <= 1 ? `Reminder: proposal ${p.number} expires tomorrow` : `Reminder: proposal ${p.number} expires in ${days} days`;
