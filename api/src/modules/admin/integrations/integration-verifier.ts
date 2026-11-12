@@ -51,6 +51,10 @@ export async function verifyIntegration(provider: IntegrationProvider, secrets: 
             }
             case 'RESEND': {
                 const { status, body } = await call('https://api.resend.com/domains', { headers: { Authorization: `Bearer ${secrets.api_key}` } });
+                // A "sending access" key (the recommended least-privilege key) is refused here but can send mail: it is valid.
+                if (status === 401 && body?.name === 'restricted_api_key') {
+                    return { ok: true, verified: true, capabilities: { send_only: true, domains: null } };
+                }
                 if (status !== 200) return failed(status, body);
                 return { ok: true, verified: true, capabilities: { domains: (body?.data ?? []).map((d: { name: string; status: string }) => ({ name: d.name, status: d.status })) } };
             }
