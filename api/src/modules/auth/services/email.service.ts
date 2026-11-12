@@ -8,8 +8,7 @@ import { AuditService } from '@/shared/audit/audit.service';
 import { RegisterEmailDto } from '../dto/register-email.dto';
 import { LoginEmailDto } from '../dto/login-email.dto';
 import { OrganizationSetupService } from './organization-setup.service';
-
-const SESSION_DAYS = 30;
+import { SecurityPolicyService } from '../../admin/security/security-policy.service';
 
 export interface ClientMeta {
     ip_address?: string | null;
@@ -30,6 +29,7 @@ export class EmailAuthService {
         private readonly authorization: AuthorizationService,
         private readonly audit: AuditService,
         private readonly organizations: OrganizationSetupService,
+        private readonly securityPolicy: SecurityPolicyService,
     ) { }
 
     async registerWithEmail(dto: RegisterEmailDto, meta: ClientMeta) {
@@ -40,6 +40,8 @@ export class EmailAuthService {
             throw new BadRequestException({ message: 'Enter your agency name or use an invitation link', code: 'organization_required' });
         }
 
+        // Joining through an invitation follows that organization's password rules (01 §73); a new organization starts on defaults.
+        if (dto.invitation_token) this.securityPolicy.assertPassword(dto.password, await this.securityPolicy.passwordRulesForInvitation(dto.invitation_token));
         const password = await bcrypt.hash(dto.password, 10);
 
         const { user, organizationId } = await this.prisma.$transaction(async (tx) => {
@@ -68,7 +70,7 @@ export class EmailAuthService {
             activeOrg = activeOrg ?? accepted.organization_id;
         }
 
-        const session = await this.issueSession(user.id, user.role, activeOrg, meta);
+        const { password_max_age_days: _maxAge, ...session } = await this.issueSession(user.id, user.role, activeOrg, meta);
         await this.audit.record(null, 'user.registered', { resource_type: 'user', resource_id: user.id, metadata: { organization_id: activeOrg } });
         return { ...session, user: publicUser(user) };
     }
@@ -83,14 +85,21 @@ export class EmailAuthService {
         }
         if (user.status !== 'ACTIVE') throw new ForbiddenException({ message: 'This account is not active', code: 'user_inactive' });
 
-        await this.prisma.user.update({ where: { id: user.id }, data: { last_login_at: new Date() } });
         const session = await this.issueSession(user.id, user.role, user.default_organization_id, meta);
+        await this.prisma.user.update({ where: { id: user.id }, data: { last_login_at: new Date() } });
         await this.audit.record(null, 'user.login', { resource_type: 'user', resource_id: user.id, metadata: { ip: meta.ip_address } });
-        return { ...session, user: publicUser(user) };
+        // 01 §73 password max age: the app asks the user to choose a new password (sign-in still succeeds).
+        const maxAge = session.password_max_age_days;
+        const password_change_required = !!maxAge && (!user.password_changed_at || user.password_changed_at.getTime() < Date.now() - maxAge * 86400_000);
+        const { password_max_age_days: _maxAge, ...rest } = session;
+        return { ...rest, password_change_required, user: publicUser(user) };
     }
 
+    /** Session lifetime and IP allow-list come from the active organization's security policy (01 §72–73). */
     private async issueSession(userId: string, role: string, organizationId: string | null, meta: ClientMeta) {
-        const expires = new Date(Date.now() + SESSION_DAYS * 86400_000);
+        const policy = await this.securityPolicy.sessionPolicy(organizationId);
+        this.securityPolicy.assertIpAllowed(policy.allowed_ip_ranges, meta.ip_address);
+        const expires = new Date(Date.now() + policy.duration_minutes * 60_000);
         const session = await this.prisma.userSession.create({
             data: {
                 user_id: userId,
@@ -103,7 +112,7 @@ export class EmailAuthService {
             },
         });
         const access_token = await this.jwtService.signToken({ id: userId, role, sid: session.id });
-        return { access_token, expires_in: this.jwtService.getExpirationTime(access_token), session_id: session.id };
+        return { access_token, expires_in: this.jwtService.getExpirationTime(access_token), session_id: session.id, password_max_age_days: policy.password_max_age_days };
     }
 
     async logout(userId: string, sessionId: string | null) {
@@ -298,6 +307,7 @@ export class EmailAuthService {
     async changePassword(userId: string, current: string, next: string) {
         const user = await this.prisma.user.findUnique({ where: { id: userId } });
         if (!(await bcrypt.compare(current, user.password))) throw new BadRequestException({ message: 'Current password is incorrect', code: 'invalid_password' });
+        this.securityPolicy.assertPassword(next, await this.securityPolicy.passwordRulesForUser(userId));
         await this.prisma.user.update({ where: { id: userId }, data: { password: await bcrypt.hash(next, 10), password_changed_at: new Date() } });
         await this.audit.record(null, 'user.password_changed', { resource_type: 'user', resource_id: userId });
         return { success: true };

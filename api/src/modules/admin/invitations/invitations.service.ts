@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
 import { InvitationStatus, MembershipType, ModuleKey, Prisma, ScopeType } from 'generated/prisma';
@@ -71,6 +71,24 @@ export class InvitationsService {
         return paginate(items.map((i) => this.present(i)), total, query);
     }
 
+    /** 01 §73 — security policy: who may invite (ADMINS_ONLY = holders of users.members.manage) and allowed email domains for members. */
+    private async assertInvitationPolicy(ctx: OrgContext, type: MembershipType, emails: string[]) {
+        const policy = await this.prisma.organizationSecurityPolicy.findUnique({
+            where: { organization_id: ctx.organization_id },
+            select: { invitation_policy: true, restrict_invitations_to_domains: true, allowed_email_domains: true },
+        });
+        if (!policy) return;
+        if (policy.invitation_policy === 'ADMINS_ONLY' && !ctx.can('users.members.manage')) {
+            throw new ForbiddenException({ message: 'Only administrators can send invitations in this organization', code: 'invitation_policy_admins_only' });
+        }
+        if (type === MembershipType.INTERNAL && policy.restrict_invitations_to_domains && policy.allowed_email_domains.length) {
+            const outside = emails.filter((e) => !policy.allowed_email_domains.includes(e.split('@')[1] ?? ''));
+            if (outside.length) {
+                throw new BadRequestException({ message: `Members can only be invited from ${policy.allowed_email_domains.join(', ')}: ${outside.slice(0, 3).join(', ')}`, code: 'invitation_domain_not_allowed', emails: outside });
+            }
+        }
+    }
+
     async create(ctx: OrgContext, dto: CreateInvitationDto): Promise<{ results: InvitationSendResult[] }> {
         const type = dto.type ?? MembershipType.INTERNAL;
         if (type !== MembershipType.INTERNAL) this.access.assertHoldsAll(ctx, ['users.external_collaborators.manage']);
@@ -85,6 +103,7 @@ export class InvitationsService {
         const org = await this.prisma.organization.findUniqueOrThrow({ where: { id: ctx.organization_id }, select: { display_name: true } });
         const inviter = ctx.user_id ? await this.prisma.user.findUnique({ where: { id: ctx.user_id }, select: USER_SELECT }) : null;
         const emails = [...new Set(dto.emails.map((e) => e.trim().toLowerCase()))];
+        await this.assertInvitationPolicy(ctx, type, emails);
         const results: InvitationSendResult[] = [];
 
         for (const email of emails) {

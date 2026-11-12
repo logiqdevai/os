@@ -12,6 +12,7 @@ import { McpCallsModule } from './mcp-calls/mcp-calls.module';
 import { AuditLogModule } from './audit/audit-log.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { SecurityPolicyModule } from './security/security-policy.module';
 
 /**
  * Module 01 Administration (docs/features/01-users-organizations-permissions.md). Teams is registered on its own
@@ -32,6 +33,7 @@ import { SessionsModule } from './sessions/sessions.module';
         AuditLogModule,
         IntegrationsModule,
         SessionsModule,
+        SecurityPolicyModule,
     ],
 })
 export class AdminModule { }

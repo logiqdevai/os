@@ -105,7 +105,8 @@ export class CredentialsService {
     }
 }
 
-function ipMatches(ip: string, range: string): boolean {
+/** IPv4 address vs exact IP or CIDR range (also used by the organization security policy IP allow-list). */
+export function ipMatches(ip: string, range: string): boolean {
     const clean = ip.replace(/^::ffff:/, '');
     if (!range.includes('/')) return clean === range;
     const [base, bitsRaw] = range.split('/');

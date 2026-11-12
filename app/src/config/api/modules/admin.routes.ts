@@ -91,4 +91,5 @@ export const AdminApiRoutes = {
         revoke: (id: string) => `/sessions/${id}/revoke`,
         revokeAll: "/sessions/revoke-all",
     },
+    securityPolicy: "/security-policy",
 };

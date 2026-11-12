@@ -7,6 +7,7 @@ import { EmailConfig } from '@/shared/constants/email';
 import { AppUrls } from '@/shared/config/app-urls';
 import { ForgotPasswordDto } from '../dto/forgot-password.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
+import { SecurityPolicyService } from '../../admin/security/security-policy.service';
 
 const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000;
 
@@ -15,6 +16,7 @@ export class PasswordService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly mailService: ResendMailService,
+        private readonly securityPolicy: SecurityPolicyService,
     ) { }
 
     async forgotPassword(dto: ForgotPasswordDto) {
@@ -76,12 +78,14 @@ export class PasswordService {
             throw new BadRequestException('Invalid or expired reset token');
         }
 
+        // Strictest rules of the user's organizations (01 §73).
+        this.securityPolicy.assertPassword(dto.password, await this.securityPolicy.passwordRulesForUser(resetToken.user_uuid));
         const hashedPassword = await bcrypt.hash(dto.password, 10);
 
         await this.prisma.$transaction([
             this.prisma.user.update({
                 where: { id: resetToken.user_uuid },
-                data: { password: hashedPassword },
+                data: { password: hashedPassword, password_changed_at: new Date() },
             }),
             this.prisma.passwordResetToken.update({
                 where: { id: resetToken.id },
