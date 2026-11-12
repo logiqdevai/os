@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import * as service from "../services/tasks.services";
+import type { BoardData } from "../interfaces/tasks.interfaces";
 
 export const TASKS_KEY = ["tasks"] as const;
 type Params = Record<string, unknown>;
@@ -44,7 +45,46 @@ function useTaskMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>, 
 
 export const useCreateTask = () => useTaskMutation(service.createTask, null, "Could not create task");
 export const useUpdateTask = () => useTaskMutation(service.updateTask, null, "Could not update task");
-export const useMoveTask = () => useTaskMutation(service.moveTask, null, "Could not move task");
+type MoveVars = Parameters<typeof service.moveTask>[0];
+
+/** Place the task in its new status and position on every cached board, so a drop shows at once. */
+function moveOnBoard(data: BoardData | undefined, v: MoveVars): BoardData | undefined {
+    if (!data) return data;
+    const task = data.tasks.find((t) => t.id === v.id);
+    if (!task) return data;
+    const moved = { ...task, ...(v.status_id && { status_id: v.status_id }) };
+    const rest = data.tasks.filter((t) => t.id !== v.id);
+    let at = v.before_task_id ? rest.findIndex((t) => t.id === v.before_task_id) : -1;
+    if (at < 0 && v.after_task_id) {
+        const i = rest.findIndex((t) => t.id === v.after_task_id);
+        if (i >= 0) at = i + 1;
+    }
+    if (at < 0) at = rest.length;
+    return { ...data, tasks: [...rest.slice(0, at), moved, ...rest.slice(at)] };
+}
+
+/** Board drag and drop: optimistic move, rolled back if the API refuses (e.g. a completion gate). */
+export const useMoveTask = () => {
+    const qc = useQueryClient();
+    const boardKey = [...TASKS_KEY, "board"];
+    return useMutation({
+        mutationFn: service.moveTask,
+        onMutate: async (v: MoveVars) => {
+            await qc.cancelQueries({ queryKey: boardKey });
+            const previous = qc.getQueriesData<BoardData>({ queryKey: boardKey });
+            qc.setQueriesData<BoardData>({ queryKey: boardKey }, (d) => moveOnBoard(d, v));
+            return { previous };
+        },
+        onError: (e, _v, context) => {
+            for (const [key, data] of context?.previous ?? []) qc.setQueryData(key, data);
+            toast({ variant: "destructive", title: "Could not move task", description: getApiErrorMessage(e) });
+        },
+        onSettled: () => {
+            qc.invalidateQueries({ queryKey: TASKS_KEY });
+            qc.invalidateQueries({ queryKey: ["projects"] });
+        },
+    });
+};
 export const useDeleteTask = () => useTaskMutation(service.deleteTask, "Task deleted", "Could not delete task");
 export const useArchiveTask = () => useTaskMutation(service.archiveTask, "Task archived", "Could not archive task");
 export const useBulkTasks = () => useTaskMutation(service.bulkTasks, null, "Bulk update failed");

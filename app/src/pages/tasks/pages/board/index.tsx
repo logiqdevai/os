@@ -47,14 +47,16 @@ export default function BoardPage() {
         setOver(null);
         if (!taskId) return;
         const col = columns.find((c) => c.status.id === status.id)?.tasks.filter((t) => t.id !== taskId) ?? [];
-        const before = col[index] ?? null;
-        const after = index > 0 ? col[index - 1] : null;
         const task = board.data?.tasks.find((t) => t.id === taskId);
         if (task?.status_id === status.id) {
             const current = columns.find((c) => c.status.id === status.id)?.tasks ?? [];
             const from = current.findIndex((t) => t.id === taskId);
             if (from === index || from === index - 1) return;
+            // `index` counts the dragged card itself; `col` no longer contains it.
+            if (from < index) index -= 1;
         }
+        const before = col[index] ?? null;
+        const after = index > 0 ? col[index - 1] : null;
         move.mutate({ id: taskId, status_id: status.id, after_task_id: after?.id ?? null, before_task_id: before?.id ?? null });
     };
 
