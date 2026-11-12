@@ -12,6 +12,17 @@ import {
 } from './interfaces/org-context.interface';
 
 const CACHE_TTL_SECONDS = 300;
+
+/**
+ * Permissions a delegation (01 §94) can never pass on: Owner-only actions (01 §63 rule 3) and delegation management
+ * itself (a delegate cannot re-delegate). DelegationsService rejects them on create; compute() ignores them too.
+ */
+export const NON_DELEGABLE_PERMISSIONS = [
+    'users.members.transfer_ownership',
+    'organizations.organization.delete',
+    'organizations.billing.manage',
+    'users.delegations.manage',
+];
 const LOCAL_TTL_MS = 15_000;
 
 const emptyScope = (): PermissionScope => ({
@@ -184,7 +195,18 @@ export class AuthorizationService {
         return v;
     }
 
-    private async compute(input: { organization_id: string; membership_id?: string | null; service_account_id?: string | null }): Promise<EffectivePermissions> {
+    /**
+     * Effective permissions WITHOUT delegations received (uncached). Used to validate a new delegation, so a delegate can
+     * never re-delegate what was only delegated to them (01 §63 rule 5).
+     */
+    async baseEffectiveFor(input: { organization_id: string; membership_id: string }): Promise<EffectivePermissions> {
+        return this.compute(input, false);
+    }
+
+    private async compute(
+        input: { organization_id: string; membership_id?: string | null; service_account_id?: string | null },
+        withDelegations = true,
+    ): Promise<EffectivePermissions> {
         const now = new Date();
         const active = { revoked_at: null, valid_from: { lte: now }, OR: [{ valid_until: null }, { valid_until: { gt: now } }] };
 
@@ -248,6 +270,9 @@ export class AuthorizationService {
             if (disabled.has(g.permission.module)) continue;
             push(g.effect === PermissionEffect.DENY ? deny : allow, g.permission.key, { scope_type: g.scope_type, scope_id: g.scope_id });
         }
+        if (withDelegations && input.membership_id) {
+            for (const [key, src] of await this.delegatedSources(input.organization_id, input.membership_id, now, disabled)) push(allow, key, src);
+        }
 
         const permissions: Record<string, PermissionScope> = {};
         for (const [key, sources] of allow) {
@@ -264,6 +289,88 @@ export class AuthorizationService {
         }
 
         return { permissions, modules: enabledModules };
+    }
+
+    /**
+     * 01 §94 Delegation — extra ALLOW sources for a delegate, honoured only while the delegation is live
+     * (not revoked, starts_at <= now < ends_at; the status column is display only and kept in sync by a job).
+     * A delegated key counts only if the delegator STILL holds it through their own roles / grants (delegations
+     * are not chained: a delegate can never pass on what was only delegated to them), never for
+     * NON_DELEGABLE_PERMISSIONS (Owner-only actions, delegation management), and never wider than the delegator's
+     * scope: an ORGANIZATION delegation copies the delegator's scope, a narrower one applies only where the
+     * delegator's scope covers it. The delegate's own explicit denies still win (deny map is applied afterwards).
+     * Callers must `invalidate(orgId)` when a delegation is created or revoked (DelegationsService does).
+     */
+    private async delegatedSources(organizationId: string, membershipId: string, now: Date, disabled: Set<string>): Promise<[string, ScopedSource][]> {
+        const delegations = await this.prisma.delegation.findMany({
+            where: { organization_id: organizationId, delegate_membership_id: membershipId, revoked_at: null, status: { not: 'REVOKED' }, starts_at: { lte: now }, ends_at: { gt: now } },
+            select: { delegator_membership_id: true, permission_keys: true, role_ids: true, scope_type: true, scope_id: true },
+        });
+        if (!delegations.length) return [];
+
+        const roleIds = [...new Set(delegations.flatMap((d) => d.role_ids))];
+        const roleKeys = roleIds.length
+            ? await this.prisma.rolePermission.findMany({
+                where: { role_id: { in: roleIds }, effect: PermissionEffect.ALLOW, role: { OR: [{ organization_id: null }, { organization_id: organizationId }] } },
+                select: { role_id: true, permission: { select: { key: true } } },
+            })
+            : [];
+        const allKeys = [...new Set([...delegations.flatMap((d) => d.permission_keys), ...roleKeys.map((r) => r.permission.key)])];
+        const modules = new Map((await this.prisma.permission.findMany({ where: { key: { in: allKeys } }, select: { key: true, module: true } })).map((p) => [p.key, p.module as string]));
+
+        const delegatorBase = new Map<string, EffectivePermissions>();
+        const out: [string, ScopedSource][] = [];
+        for (const d of delegations) {
+            if (d.delegator_membership_id === membershipId) continue;
+            let base = delegatorBase.get(d.delegator_membership_id);
+            if (!base) {
+                base = await this.compute({ organization_id: organizationId, membership_id: d.delegator_membership_id }, false);
+                delegatorBase.set(d.delegator_membership_id, base);
+            }
+            const keys = new Set([...d.permission_keys, ...roleKeys.filter((r) => d.role_ids.includes(r.role_id)).map((r) => r.permission.key)]);
+            for (const key of keys) {
+                const module = modules.get(key);
+                const held = base.permissions[key];
+                if (!module || !held || disabled.has(module) || NON_DELEGABLE_PERMISSIONS.includes(key)) continue;
+                if (d.scope_type === ScopeType.ORGANIZATION) {
+                    for (const src of this.scopeToSources(held)) out.push([key, src]);
+                } else if (this.scopeCovers(held, d.scope_type, d.scope_id)) {
+                    out.push([key, { scope_type: d.scope_type, scope_id: d.scope_id }]);
+                }
+            }
+        }
+        return out;
+    }
+
+    private scopeToSources(scope: PermissionScope): ScopedSource[] {
+        if (scope.organization) return [{ scope_type: ScopeType.ORGANIZATION, scope_id: null }];
+        return [
+            ...scope.branch_ids.map((id) => ({ scope_type: ScopeType.BRANCH, scope_id: id })),
+            ...scope.team_ids.map((id) => ({ scope_type: ScopeType.TEAM, scope_id: id })),
+            ...scope.project_ids.map((id) => ({ scope_type: ScopeType.PROJECT, scope_id: id })),
+            ...scope.customer_ids.map((id) => ({ scope_type: ScopeType.CUSTOMER, scope_id: id })),
+            ...scope.resource_ids.map((id) => ({ scope_type: ScopeType.RESOURCE, scope_id: id })),
+        ];
+    }
+
+    private scopeCovers(scope: PermissionScope, type: ScopeType, id: string | null): boolean {
+        if (scope.organization) return true;
+        if (!id) return false;
+        switch (type) {
+            case ScopeType.BRANCH:
+            case ScopeType.BRANCH_HIERARCHY:
+                return scope.branch_ids.includes(id);
+            case ScopeType.TEAM:
+                return scope.team_ids.includes(id);
+            case ScopeType.PROJECT:
+                return scope.project_ids.includes(id);
+            case ScopeType.CUSTOMER:
+                return scope.customer_ids.includes(id);
+            case ScopeType.RESOURCE:
+                return scope.resource_ids.includes(id);
+            default:
+                return false;
+        }
     }
 
     private addScope(scope: PermissionScope, s: ScopedSource) {

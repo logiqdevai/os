@@ -103,4 +103,9 @@ export const AdminApiRoutes = {
         mappings: (id: string) => `/sso-configurations/${id}/group-mappings`,
         mapping: (id: string, mappingId: string) => `/sso-configurations/${id}/group-mappings/${mappingId}`,
     },
+    delegations: {
+        list: "/delegations",
+        detail: (id: string) => `/delegations/${id}`,
+        revoke: (id: string) => `/delegations/${id}/revoke`,
+    },
 };
