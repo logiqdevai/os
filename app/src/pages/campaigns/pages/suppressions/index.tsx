@@ -27,6 +27,8 @@ import { suppressionFormSchema, type SuppressionFormValues } from "@/features/co
 import { CommConsentStatusFilterOptions, CommConsentStatusFormOptions, CommSuppressionReasonFilterOptions, CommSuppressionReasonFormOptions } from "@/config/constants/dropdowns/communications/comm-compliance.options";
 import { CommChannelFilterOptions, CommChannelFormOptions } from "@/config/constants/dropdowns/communications/comm-channel-form.options";
 import { ChannelBadge } from "../../components/comm-badges";
+import { TopicsTab } from "./components/topics-tab";
+import { ContactTopicsSheet } from "./components/contact-topics-sheet";
 
 function AddSuppressionDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
     const add = useAddSuppression();
@@ -165,6 +167,7 @@ function ConsentTab() {
     const { params, setPage, search, setSearch, filters, setFilter } = useListParams();
     const { tab: _t, ...rest } = params as Record<string, string | number>;
     const consents = useConsents(rest);
+    const [contactId, setContactId] = useState<string | null>(null);
     const columns: DataTableColumn<Consent>[] = [
         {
             key: "contact",
@@ -202,15 +205,17 @@ function ConsentTab() {
                 onRetry={() => consents.refetch()}
                 pagination={consents.data?.pagination}
                 onPageChange={setPage}
+                onRowClick={(c) => setContactId(c.contact.id)}
                 empty={{ icon: ShieldCheck, title: "No consent records", description: "Consent is recorded when contacts opt in through forms, imports or the CRM, and when they unsubscribe." }}
             />
+            <ContactTopicsSheet contactId={contactId} onOpenChange={(o) => !o && setContactId(null)} />
         </>
     );
 }
 
 /**
- * /campaigns/suppressions?tab=suppressions|consent
- * @perm suppressions tab communications.suppressions.manage (sensitive) · consent tab communications.consents.read
+ * /campaigns/suppressions?tab=suppressions|consent|topics
+ * @perm suppressions tab communications.suppressions.manage (sensitive) · consent + topics tabs communications.consents.read
  * @api GET/POST /communications/suppressions · POST /suppressions/:id/remove · GET /communications/consents
  */
 export default function SuppressionsPage() {
@@ -221,14 +226,16 @@ export default function SuppressionsPage() {
     const tab = sp.get("tab") ?? (canSuppress ? "suppressions" : "consent");
     return (
         <Page>
-            <PageHeader title="Suppressions & consent" description="Who must not be contacted, and who agreed to marketing. Checked on every send." />
+            <PageHeader title="Suppressions & consent" description="Who must not be contacted, who agreed to marketing, and which topics they chose. Checked on every send." />
             <Tabs value={tab} onValueChange={(v) => setSp(new URLSearchParams({ tab: v }), { replace: true })}>
                 <TabsList>
                     {canSuppress && <TabsTrigger value="suppressions">Suppression list</TabsTrigger>}
                     {canConsent && <TabsTrigger value="consent">Consent</TabsTrigger>}
+                    {canConsent && <TabsTrigger value="topics">Topics</TabsTrigger>}
                 </TabsList>
                 {canSuppress && <TabsContent value="suppressions" className="pt-3">{tab === "suppressions" && <SuppressionsTab />}</TabsContent>}
                 {canConsent && <TabsContent value="consent" className="pt-3">{tab === "consent" && <ConsentTab />}</TabsContent>}
+                {canConsent && <TabsContent value="topics" className="pt-3">{tab === "topics" && <TopicsTab />}</TabsContent>}
             </Tabs>
         </Page>
     );

@@ -11,6 +11,7 @@ import { CampaignRunnerService } from '../campaigns/campaign-runner.service';
 import { SendersService } from '../senders/senders.service';
 import { TemplatesService } from '../templates/templates.service';
 import { MessageQuery, SendMessageDto } from './dto/message.dto';
+import { CommThreadsService } from '../threads/comm-threads.service';
 
 const READ = 'communications.messages.read';
 const SEND = 'communications.messages.send';
@@ -26,6 +27,7 @@ export class MessagesService {
         private readonly runner: CampaignRunnerService,
         private readonly senders: SendersService,
         private readonly templates: TemplatesService,
+        private readonly threads: CommThreadsService,
     ) { }
 
     private scope(ctx: OrgContext): Prisma.CommMessageWhereInput {
@@ -164,11 +166,14 @@ export class MessagesService {
         const toName = dto.to_name ?? (contact ? [contact.first_name, contact.last_name].filter(Boolean).join(' ') : null);
         const renderedHtml = body_html ? renderTemplate(body_html, context, 'html') : null;
 
+        const threadId = await this.threads.resolveFor(ctx, { channel: dto.channel, subject: subject ? renderTemplate(subject, context) : null, contact_id: contact?.id ?? null, company_id: dto.company_id ?? contact?.company?.id ?? null, project_id: dto.project_id ?? null, to_address: to, in_reply_to_message_id: dto.in_reply_to_message_id ?? null });
         const message = await this.prisma.commMessage.create({
             data: {
                 organization_id: ctx.organization_id,
                 branch_id: dto.branch_id ?? null,
                 channel: dto.channel,
+                thread_id: threadId,
+                in_reply_to_message_id: dto.in_reply_to_message_id ?? null,
                 kind,
                 source: ctx.channel === 'ui' ? CommMessageSource.MANUAL : ctx.channel === 'automation' ? CommMessageSource.AUTOMATION : CommMessageSource.API,
                 status,
@@ -277,6 +282,30 @@ export class MessagesService {
         await this.audit.record(ctx, archived ? 'communications.message.archived' : 'communications.message.restored', { resource_type: 'comm_message', resource_id: id });
         this.events.publish(ctx, { event_key: archived ? 'communications.message.archived' : 'communications.message.restored', module: ModuleKey.COMMUNICATION, entity_type: RecordEntityType.COMM_MESSAGE, entity_id: id, payload: {} });
         return this.findOne(ctx, id);
+    }
+
+    /** Follow-up in a conversation thread: same channel and recipient as the last message, "Re:" subject. */
+    async replyInThread(
+        ctx: OrgContext,
+        thread: { id: string; channel: CommChannel; subject: string | null; contact_id: string | null; company_id: string | null; project_id: string | null; messages: { id: string; to_address: string; to_name: string | null }[] },
+        dto: { subject?: string; body_html?: string; body_text?: string; sender_identity_id?: string },
+    ) {
+        const last = thread.messages[thread.messages.length - 1];
+        if (!last) throw notFound('Message', 'message_not_found');
+        const base = thread.subject ?? '';
+        return this.create(ctx, {
+            channel: thread.channel,
+            contact_id: thread.contact_id ?? undefined,
+            to_address: last.to_address,
+            to_name: last.to_name ?? undefined,
+            subject: thread.channel === CommChannel.EMAIL ? dto.subject ?? (/^re:/i.test(base) ? base : `Re: ${base}`.trim()) : undefined,
+            body_html: dto.body_html,
+            body_text: dto.body_text,
+            sender_identity_id: dto.sender_identity_id,
+            company_id: thread.company_id ?? undefined,
+            project_id: thread.project_id ?? undefined,
+            in_reply_to_message_id: last.id,
+        });
     }
 
     /** Ask the runner to pick up scheduled messages (used after creating scheduled sends via automation). */

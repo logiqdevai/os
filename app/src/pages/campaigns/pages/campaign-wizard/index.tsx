@@ -21,6 +21,10 @@ import { campaignFormSchema, type CampaignFormValues } from "@/features/communic
 import { CommChannelFormOptions } from "@/config/constants/dropdowns/communications/comm-channel-form.options";
 import { CampaignPaths } from "../../campaign-paths";
 import { AudienceStep } from "./components/audience-step";
+import { TopicField } from "./components/topic-field";
+import { AbTestSection } from "./components/ab-test-section";
+import { ScheduleOptions } from "./components/schedule-options";
+import { AiAssistant } from "../../components/ai-assistant";
 import { ContentStep } from "./components/content-step";
 import { ReviewStep } from "./components/review-step";
 
@@ -28,7 +32,7 @@ const STEPS = ["Audience", "Content", "Schedule", "Review"] as const;
 const STEP_FIELDS: (keyof CampaignFormValues)[][] = [
     ["name", "channel", "audiences"],
     ["subject", "preheader", "body_html", "body_text", "sender_identity_id", "from_name", "reply_to_address"],
-    ["send_mode", "scheduled_at", "send_rate_per_hour", "tracking_enabled", "require_consent"],
+    ["send_mode", "scheduled_at", "send_rate_per_hour", "tracking_enabled", "require_consent", "topic_id", "schedule_timezone", "send_in_recipient_timezone", "repeat", "repeat_interval", "repeat_days", "repeat_until"],
     [],
 ];
 
@@ -37,6 +41,27 @@ const toLocalInput = (iso: string | null) => {
     const d = new Date(iso);
     return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 };
+
+const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
+/** RRULE subset used by campaigns: FREQ=DAILY|WEEKLY|MONTHLY;INTERVAL=n;BYDAY=MO,TU. */
+function parseRule(rule: string | null): Pick<CampaignFormValues, "repeat" | "repeat_interval" | "repeat_days"> {
+    const map = new Map((rule ?? "").split(";").map((p) => p.split("=") as [string, string]));
+    const freq = map.get("FREQ");
+    return {
+        repeat: freq === "DAILY" || freq === "WEEKLY" || freq === "MONTHLY" ? freq : "NONE",
+        repeat_interval: map.get("INTERVAL") ?? "1",
+        repeat_days: (map.get("BYDAY") ?? "").split(",").filter(Boolean),
+    };
+}
+
+function buildRule(v: CampaignFormValues): string | null {
+    if (v.send_mode !== "later" || v.repeat === "NONE") return null;
+    const parts = [`FREQ=${v.repeat}`];
+    if (Number(v.repeat_interval) > 1) parts.push(`INTERVAL=${Number(v.repeat_interval)}`);
+    if (v.repeat === "WEEKLY" && v.repeat_days.length) parts.push(`BYDAY=${v.repeat_days.join(",")}`);
+    return parts.join(";");
+}
 
 function defaults(c?: CampaignDetail | null, channel: "EMAIL" | "SMS" = "EMAIL"): CampaignFormValues {
     return {
@@ -55,6 +80,11 @@ function defaults(c?: CampaignDetail | null, channel: "EMAIL" | "SMS" = "EMAIL")
         tracking_enabled: c?.tracking_enabled ?? true,
         require_consent: c?.require_consent ?? true,
         send_rate_per_hour: c?.send_rate_per_hour ? String(c.send_rate_per_hour) : "",
+        topic_id: c?.topic_id ?? "none",
+        schedule_timezone: c?.schedule_timezone ?? browserZone(),
+        send_in_recipient_timezone: c?.send_in_recipient_timezone ?? false,
+        ...parseRule(c?.recurrence_rule ?? null),
+        repeat_until: c?.recurrence_ends_at ? c.recurrence_ends_at.slice(0, 10) : "",
         send_mode: c?.scheduled_at ? "later" : "now",
         scheduled_at: toLocalInput(c?.scheduled_at ?? null),
     };
@@ -78,6 +108,11 @@ function toInput(v: CampaignFormValues, creating: boolean): CampaignInput {
         tracking_enabled: v.tracking_enabled,
         require_consent: v.require_consent,
         send_rate_per_hour: v.send_rate_per_hour ? Number(v.send_rate_per_hour) : undefined,
+        topic_id: v.topic_id && v.topic_id !== "none" ? v.topic_id : null,
+        schedule_timezone: v.schedule_timezone,
+        send_in_recipient_timezone: v.send_in_recipient_timezone,
+        recurrence_rule: buildRule(v),
+        recurrence_ends_at: v.repeat !== "NONE" && v.repeat_until ? new Date(`${v.repeat_until}T23:59:59`).toISOString() : null,
     };
 }
 
@@ -145,7 +180,7 @@ export default function CampaignWizardPage() {
     const finish = (verb: "schedule" | "submit" | "approve") => {
         if (!c) return;
         const body = verb === "schedule"
-            ? (values.send_mode === "later" && values.scheduled_at ? { scheduled_at: new Date(values.scheduled_at).toISOString() } : {})
+            ? { ...(values.send_mode === "later" && values.scheduled_at ? { scheduled_at: new Date(values.scheduled_at).toISOString() } : {}), schedule_timezone: values.schedule_timezone }
             : {};
         action.mutate({ id: c.id, action: verb, body }, {
             onSuccess: () => {
@@ -210,7 +245,19 @@ export default function CampaignWizardPage() {
                             <AudienceStep form={form} />
                         </div>
                     )}
-                    {step === 1 && <ContentStep form={form} />}
+                    {step === 1 && (
+                        <div className="space-y-6">
+                            <ContentStep form={form} />
+                            <AiAssistant
+                                channel={values.channel}
+                                subject={values.subject ?? ""}
+                                body={(values.channel === "EMAIL" ? values.body_html : values.body_text) ?? ""}
+                                campaignId={c?.id}
+                                onApply={(p) => (Object.entries(p) as [keyof typeof p, string | undefined][]).forEach(([k, v]) => v !== undefined && form.setValue(k, v, { shouldDirty: true }))}
+                            />
+                            {c && <AbTestSection key={c.id} campaign={c} />}
+                        </div>
+                    )}
                     {step === 2 && (
                         <div className="max-w-xl space-y-5">
                             <FormField control={form.control} name="send_mode" render={({ field }) => (
@@ -233,6 +280,7 @@ export default function CampaignWizardPage() {
                                     </FormItem>
                                 )} />
                             )}
+                            <ScheduleOptions form={form} />
                             <FormField control={form.control} name="send_rate_per_hour" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Throttle (messages per hour)</FormLabel>
@@ -250,6 +298,7 @@ export default function CampaignWizardPage() {
                                     <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} aria-label="Require consent" /></FormControl>
                                 </FormItem>
                             )} />
+                            <TopicField form={form} />
                             {values.channel === "EMAIL" && (
                                 <FormField control={form.control} name="tracking_enabled" render={({ field }) => (
                                     <FormItem className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-3">

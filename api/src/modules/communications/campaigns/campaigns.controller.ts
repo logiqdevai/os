@@ -5,10 +5,12 @@ import { PermissionsGuard } from '@/shared/authorization/guards/permissions.guar
 import { CurrentOrg, RequirePermission } from '@/shared/authorization/decorators/require-permission.decorator';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { ZodValidationPipe } from '@/shared/pipes/zod.validation.pipe';
+import { ZBody } from '@/modules/finance-shared/zod-body.pipe';
 import { CampaignsService } from './campaigns.service';
+import { CampaignVariantsService } from './campaign-variants.service';
 import {
     CampaignDecisionDto, CampaignQuery, CampaignQuerySchema, CampaignRecipientQuery, CampaignRecipientQuerySchema, CreateCampaignDto, ScheduleCampaignDto,
-    SetAudienceDto, SubmitCampaignDto, TestSendDto, UpdateCampaignDto,
+    SetAudienceDto, SetVariantsInput, SetVariantsSchema, SubmitCampaignDto, TestSendDto, UpdateCampaignDto,
 } from './dto/campaign.dto';
 
 @ApiTags('Communications · Campaigns')
@@ -16,7 +18,10 @@ import {
 @Controller('communications/campaigns')
 @UseGuards(JwtGuard, PermissionsGuard)
 export class CampaignsController {
-    constructor(private readonly campaigns: CampaignsService) { }
+    constructor(
+        private readonly campaigns: CampaignsService,
+        private readonly variantsService: CampaignVariantsService,
+    ) { }
 
     @Get()
     @RequirePermission('communications.campaigns.read')
@@ -44,6 +49,27 @@ export class CampaignsController {
     @ApiOperation({ summary: 'Resolved recipients with delivery status' })
     recipients(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Query(new ZodValidationPipe(CampaignRecipientQuerySchema)) query: CampaignRecipientQuery) {
         return this.campaigns.recipients(ctx, id, query);
+    }
+
+    @Get(':id/variants')
+    @RequirePermission('communications.campaigns.read')
+    @ApiOperation({ summary: 'A/B variants with sent / open / click counts and the winner state' })
+    variants(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string) {
+        return this.variantsService.list(ctx, id);
+    }
+
+    @Put(':id/variants')
+    @RequirePermission('communications.campaigns.update')
+    @ApiOperation({ summary: 'Replace the A/B variants (2–5; empty list turns the test off)' })
+    setVariants(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body(ZBody(SetVariantsSchema)) dto: SetVariantsInput) {
+        return this.variantsService.replace(ctx, id, dto);
+    }
+
+    @Post(':id/variants/:variantId/winner')
+    @RequirePermission('communications.campaigns.send')
+    @ApiOperation({ summary: 'Pick the A/B winner now; it is sent to the rest of the audience' })
+    chooseWinner(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Param('variantId', ParseUUIDPipe) variantId: string) {
+        return this.variantsService.chooseWinner(ctx, id, variantId);
     }
 
     @Post()

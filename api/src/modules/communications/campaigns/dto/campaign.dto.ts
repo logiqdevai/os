@@ -1,7 +1,7 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsObject, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
-import { CampaignAudienceMode, CampaignStatus, CommChannel } from 'generated/prisma';
+import { CampaignAbMetric, CampaignAudienceMode, CampaignStatus, CommChannel } from 'generated/prisma';
 import { z } from 'zod';
 import { BaseListQuerySchema, boolish, csv } from '@/shared/utils/pagination/pagination.utils';
 
@@ -136,6 +136,46 @@ export class CreateCampaignDto {
     @ValidateNested({ each: true })
     @Type(() => CampaignAudienceInputDto)
     audiences?: CampaignAudienceInputDto[];
+
+    @ApiProperty({ required: false, description: 'A/B test: variants in PUT /campaigns/:id/variants' })
+    @IsOptional()
+    @IsBoolean()
+    ab_test_enabled?: boolean;
+
+    @ApiProperty({ required: false, enum: CampaignAbMetric, description: 'Metric that picks the winner' })
+    @IsOptional()
+    @IsEnum(CampaignAbMetric)
+    ab_metric?: CampaignAbMetric;
+
+    @ApiProperty({ required: false, description: 'Share of the audience in the test (10–100); the winner goes to the rest after the test window. 100 = no winner phase.' })
+    @IsOptional()
+    @IsInt()
+    @Min(10)
+    @Max(100)
+    ab_test_percent?: number;
+
+    @ApiProperty({ required: false, description: 'Test window in hours before the winner is picked automatically' })
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    @Max(168)
+    ab_wait_hours?: number;
+
+    @ApiProperty({ required: false, description: 'Deliver at the scheduled local time in each recipient’s time zone' })
+    @IsOptional()
+    @IsBoolean()
+    send_in_recipient_timezone?: boolean;
+
+    @ApiProperty({ required: false, nullable: true, example: 'FREQ=WEEKLY;BYDAY=MO', description: 'RFC 5545 RRULE (DAILY / WEEKLY / MONTHLY, INTERVAL, BYDAY, COUNT, UNTIL); null = one-off' })
+    @IsOptional()
+    @IsString()
+    @MaxLength(200)
+    recurrence_rule?: string | null;
+
+    @ApiProperty({ required: false, nullable: true })
+    @IsOptional()
+    @IsDateString()
+    recurrence_ends_at?: string | null;
 }
 
 export class UpdateCampaignDto extends PartialType(CreateCampaignDto) { }
@@ -223,6 +263,26 @@ export const CreateCampaignSchema = z.object({
     require_consent: z.boolean().optional(),
     branch_id: z.string().uuid().optional(),
     send_rate_per_hour: z.number().int().min(10).optional(),
+    topic_id: z.string().uuid().nullable().optional(),
+    ab_test_enabled: z.boolean().optional(),
+    ab_metric: z.nativeEnum(CampaignAbMetric).optional(),
+    ab_test_percent: z.number().int().min(10).max(100).optional(),
+    ab_wait_hours: z.number().int().min(1).max(168).optional(),
+    send_in_recipient_timezone: z.boolean().optional(),
+    recurrence_rule: z.string().max(200).nullable().optional(),
+    recurrence_ends_at: z.string().datetime().nullable().optional(),
     audiences: z.array(AudienceInputSchema).max(50).optional(),
 });
 export const SetAudienceSchema = z.object({ id: z.string().uuid(), audiences: z.array(AudienceInputSchema).max(50) });
+
+/** A/B variants: the full list replaces the current one (2–5 variants; labels A, B, C … are assigned in order). */
+export const CampaignVariantInputSchema = z.object({
+    subject: z.string().max(300).optional().nullable(),
+    preheader: z.string().max(300).optional().nullable(),
+    body_html: z.string().max(500_000).optional().nullable(),
+    body_text: z.string().max(100_000).optional().nullable(),
+    /** Share of the test group; omitted shares are split equally. */
+    share_percent: z.number().int().min(1).max(100).optional().nullable(),
+});
+export const SetVariantsSchema = z.object({ variants: z.array(CampaignVariantInputSchema).max(5) });
+export type SetVariantsInput = z.infer<typeof SetVariantsSchema>;

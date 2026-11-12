@@ -55,3 +55,10 @@ export const CommSenderIdentityStatusOptions: { id: CommSenderIdentityStatus; la
     { id: "FAILED", label: "Failed" },
     { id: "DISABLED", label: "Disabled" },
 ];
+
+/** Topic channel restriction (CommTopic.channel; null = every channel). */
+export const CommTopicChannelFormOptions: { id: "ALL" | "EMAIL" | "SMS"; label: string }[] = [
+    { id: "ALL", label: "Email and SMS" },
+    { id: "EMAIL", label: "Email only" },
+    { id: "SMS", label: "SMS only" },
+];

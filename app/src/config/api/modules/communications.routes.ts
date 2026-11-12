@@ -15,6 +15,8 @@ export const CommunicationsApiRoutes = {
         resolve: (id: string) => `${base}/campaigns/${id}/audience/resolve`,
         preflight: (id: string) => `${base}/campaigns/${id}/preflight`,
         test: (id: string) => `${base}/campaigns/${id}/test`,
+        variants: (id: string) => `${base}/campaigns/${id}/variants`,
+        winner: (id: string, variantId: string) => `${base}/campaigns/${id}/variants/${variantId}/winner`,
         action: (id: string, action: "submit" | "approve" | "reject" | "schedule" | "unschedule" | "pause" | "resume" | "cancel" | "duplicate" | "archive" | "restore") =>
             `${base}/campaigns/${id}/${action}`,
     },
@@ -46,6 +48,23 @@ export const CommunicationsApiRoutes = {
         list: `${base}/consents`,
         contact: (contactId: string) => `${base}/consents/${contactId}`,
         set: (contactId: string, channel: string) => `${base}/consents/${contactId}/${channel}`,
+    },
+    topics: {
+        list: `${base}/topics`,
+        detail: (id: string) => `${base}/topics/${id}`,
+        action: (id: string, action: "archive" | "restore") => `${base}/topics/${id}/${action}`,
+        contact: (contactId: string) => `${base}/topics/contacts/${contactId}`,
+    },
+    ai: {
+        status: `${base}/ai/status`,
+        generate: `${base}/ai/generate`,
+        feedback: (id: string) => `${base}/ai/generations/${id}/feedback`,
+    },
+    threads: {
+        list: `${base}/threads`,
+        detail: (id: string) => `${base}/threads/${id}`,
+        reply: (id: string) => `${base}/threads/${id}/reply`,
+        action: (id: string, action: "archive" | "restore") => `${base}/threads/${id}/${action}`,
     },
     suppressions: {
         list: `${base}/suppressions`,

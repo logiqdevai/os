@@ -135,4 +135,5 @@ export const SAMPLE_CONTEXT: Record<string, unknown> = {
     company_name: 'Acme Corp',
     organization_name: 'Your agency',
     unsubscribe_url: '#unsubscribe',
+    preferences_url: '#preferences',
 };

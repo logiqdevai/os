@@ -67,6 +67,19 @@ export interface Campaign {
     scheduled_at: string | null;
     schedule_timezone: string | null;
     send_rate_per_hour: number | null;
+    topic_id: string | null;
+    /** A/B test (variants in CampaignVariant). */
+    ab_test_enabled: boolean;
+    ab_metric: CampaignAbMetric | null;
+    ab_test_percent: number | null;
+    ab_wait_hours: number | null;
+    ab_winner_selected_at: string | null;
+    /** Deliver at the scheduled local time in each recipient's time zone. */
+    send_in_recipient_timezone: boolean;
+    /** RFC 5545 RRULE; null = one-off. */
+    recurrence_rule: string | null;
+    recurrence_ends_at: string | null;
+    next_run_at: string | null;
     started_at: string | null;
     completed_at: string | null;
     cancelled_at: string | null;
@@ -109,8 +122,49 @@ export interface CampaignRun {
     failed_count: number;
 }
 
+export type CampaignAbMetric = "OPEN" | "CLICK";
+
+export interface CampaignVariant {
+    id: string;
+    label: string;
+    subject: string | null;
+    preheader: string | null;
+    body_html: string | null;
+    body_text: string | null;
+    share_percent: number | null;
+    is_winner: boolean;
+    sent_count: number;
+    delivered_count: number;
+    opened_count: number;
+    clicked_count: number;
+    sort_order: number;
+    open_rate?: number;
+    click_rate?: number;
+}
+
+export interface CampaignVariantsState {
+    ab_test_enabled: boolean;
+    ab_metric: CampaignAbMetric | null;
+    ab_test_percent: number | null;
+    ab_wait_hours: number | null;
+    ab_winner_selected_at: string | null;
+    winner_decides_at: string | null;
+    holdout_count: number;
+    variants: CampaignVariant[];
+}
+
+export interface CampaignVariantInput {
+    subject?: string | null;
+    preheader?: string | null;
+    body_html?: string | null;
+    body_text?: string | null;
+    share_percent?: number | null;
+}
+
 export interface CampaignDetail extends Campaign {
     approval_required: boolean;
+    variants: CampaignVariant[];
+    topic?: { id: string; name: string; default_opt_in: boolean } | null;
     branch?: { id: string; name: string } | null;
     sender_identity?: { id: string; address: string; display_name: string | null; status: CommSenderIdentityStatus } | null;
     audiences: CampaignAudience[];
@@ -142,6 +196,15 @@ export interface CampaignInput {
     tracking_enabled?: boolean;
     require_consent?: boolean;
     send_rate_per_hour?: number;
+    topic_id?: string | null;
+    ab_test_enabled?: boolean;
+    ab_metric?: CampaignAbMetric;
+    ab_test_percent?: number;
+    ab_wait_hours?: number;
+    send_in_recipient_timezone?: boolean;
+    schedule_timezone?: string;
+    recurrence_rule?: string | null;
+    recurrence_ends_at?: string | null;
     audiences?: AudienceInput[];
 }
 

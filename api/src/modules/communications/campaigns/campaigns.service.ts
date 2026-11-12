@@ -12,7 +12,11 @@ import { branchScopeWhere, extractVariables, htmlToText, normalizeAddress, notFo
 import { AudienceService } from '../audience/audience.service';
 import { CommProviderService } from '../delivery/comm-provider.service';
 import { CommDispatchService } from '../delivery/comm-dispatch.service';
-import { CampaignRunnerService } from './campaign-runner.service';
+import { CampaignRunnerService, claimTime } from './campaign-runner.service';
+import { parseRRule } from '@/modules/calendar/utils/recurrence.utils';
+import { DateTime } from 'luxon';
+
+const isValidZone = (zone: string) => DateTime.now().setZone(zone).isValid;
 import {
     CampaignAudienceInputDto, CampaignQuery, CampaignRecipientQuery, CreateCampaignDto, ScheduleCampaignDto, SubmitCampaignDto, UpdateCampaignDto,
 } from './dto/campaign.dto';
@@ -89,6 +93,8 @@ export class CampaignsService {
                 },
                 approvals: { orderBy: { requested_at: 'desc' }, include: { approver: PERSON } },
                 runs: { orderBy: { run_number: 'desc' }, take: 10 },
+                variants: { orderBy: { sort_order: 'asc' } },
+                topic: { select: { id: true, name: true, default_opt_in: true } },
             },
         });
         if (!campaign) throw notFound('Campaign', 'campaign_not_found');
@@ -118,6 +124,12 @@ export class CampaignsService {
     private async assertRefs(ctx: OrgContext, dto: UpdateCampaignDto, channel: CommChannel) {
         if (dto.branch_id && !(await this.prisma.branch.findFirst({ where: { id: dto.branch_id, organization_id: ctx.organization_id }, select: { id: true } }))) throw notFound('Branch', 'branch_not_found');
         if (dto.topic_id && !(await this.prisma.commTopic.findFirst({ where: { id: dto.topic_id, organization_id: ctx.organization_id }, select: { id: true } }))) throw notFound('Topic', 'topic_not_found');
+        if (dto.recurrence_rule) {
+            const rule = parseRRule(dto.recurrence_rule);
+            if (!rule) throw new BadRequestException({ message: 'Use a repeat rule like FREQ=WEEKLY;BYDAY=MO (DAILY, WEEKLY or MONTHLY)', code: 'recurrence_invalid' });
+            if (rule.freq === 'DAILY' && rule.interval < 1) throw new BadRequestException({ message: 'Invalid repeat interval', code: 'recurrence_invalid' });
+        }
+        if (dto.schedule_timezone && !isValidZone(dto.schedule_timezone)) throw new BadRequestException({ message: `Unknown time zone ${dto.schedule_timezone}`, code: 'timezone_invalid' });
         if (dto.sender_identity_id) {
             const s = await this.prisma.commSenderIdentity.findFirst({ where: { id: dto.sender_identity_id, organization_id: ctx.organization_id }, select: { channel: true } });
             if (!s) throw notFound('Sender identity', 'sender_identity_not_found');
@@ -183,7 +195,10 @@ export class CampaignsService {
         const templateChanged = dto.template_id && dto.template_id !== before.template_id && !dto.body_html && !dto.body_text;
         const fromTemplate = templateChanged ? await this.templateContent(ctx, dto.template_id!, before.channel) : null;
         const { audiences, utm, channel: _c, ...rest } = dto;
-        const contentChanged = ['subject', 'preheader', 'body_html', 'body_text', 'template_id', 'sender_identity_id'].some((k) => k in dto) || !!audiences;
+        if ((dto.ab_test_enabled ?? before.ab_test_enabled) && (dto.recurrence_rule !== undefined ? dto.recurrence_rule : before.recurrence_rule)) {
+            throw new BadRequestException({ message: 'A/B tests cannot run on recurring campaigns', code: 'ab_recurring' });
+        }
+        const contentChanged = ['subject', 'preheader', 'body_html', 'body_text', 'template_id', 'sender_identity_id', 'ab_test_enabled', 'ab_test_percent', 'recurrence_rule', 'topic_id'].some((k) => k in dto) || !!audiences;
         await this.prisma.$transaction(async (tx) => {
             await tx.campaign.update({
                 where: { id },
@@ -245,7 +260,21 @@ export class CampaignsService {
             const segments = smsSegments(campaign.body_text ?? '');
             if (segments > 3) issues.push({ kind: 'sms_length', severity: 'warning', message: `The message is ${segments} SMS segments long; each segment is billed.` });
         }
-        const variables = extractVariables(campaign.subject, campaign.body_html, campaign.body_text);
+        if (campaign.ab_test_enabled) {
+            if (campaign.variants.length < 2) issues.push({ kind: 'ab_variants', severity: 'error', message: 'An A/B test needs at least two variants.' });
+            if (campaign.recurrence_rule) issues.push({ kind: 'ab_recurring', severity: 'error', message: 'A/B tests cannot run on recurring campaigns. Turn off the test or the repeat.' });
+            for (const v of campaign.variants) {
+                if (campaign.channel === CommChannel.EMAIL && !v.subject && !campaign.subject) issues.push({ kind: 'ab_subject', severity: 'error', message: `Variant ${v.label} has no subject.` });
+                if (!v.body_html && !v.body_text && !campaign.body_html && !campaign.body_text) issues.push({ kind: 'ab_content', severity: 'error', message: `Variant ${v.label} has no content.` });
+            }
+            const testShare = campaign.ab_test_percent ?? 100;
+            if (resolved && testShare < 100 && Math.ceil((resolved.counts.included * testShare) / 100) < campaign.variants.length * 10) {
+                issues.push({ kind: 'ab_small', severity: 'warning', message: 'The test group is very small; the winner may be chosen by chance.' });
+            }
+        }
+        if (campaign.recurrence_rule) issues.push({ kind: 'recurring', severity: 'info', message: 'The campaign repeats; each run resolves the audience again and sends to the people who match at that time.' });
+        if (campaign.send_in_recipient_timezone) issues.push({ kind: 'timezone', severity: 'info', message: 'Contacts with a time zone get the message at the chosen local time; others at the campaign time.' });
+        const variables = extractVariables(campaign.subject, campaign.body_html, campaign.body_text, ...campaign.variants.flatMap((v) => [v.subject, v.body_html, v.body_text]));
         const unknown = variables.filter((v) => !(v in SAMPLE_CONTEXT));
         if (unknown.length) issues.push({ kind: 'variables', severity: 'warning', message: `Unknown variables will render empty: ${unknown.map((v) => `{{${v}}}`).join(', ')}` });
         const provider = await this.providers.status(ctx.organization_id);
@@ -326,7 +355,12 @@ export class CampaignsService {
         if (check.approval_required && campaign.status !== CampaignStatus.APPROVED) throw new ConflictException({ message: 'This campaign needs approval before it can be sent. Submit it for approval first.', code: 'campaign_approval_required' });
         const scheduledAt = dto.scheduled_at ? new Date(dto.scheduled_at) : new Date();
         if (scheduledAt.getTime() < Date.now() - 60_000) throw new BadRequestException({ message: 'The send time is in the past', code: 'schedule_in_past' });
-        await this.prisma.campaign.update({ where: { id }, data: { status: CampaignStatus.SCHEDULED, scheduled_at: scheduledAt, schedule_timezone: dto.schedule_timezone ?? campaign.schedule_timezone, next_run_at: scheduledAt } });
+        const zone = dto.schedule_timezone ?? campaign.schedule_timezone ?? 'UTC';
+        if (!isValidZone(zone)) throw new BadRequestException({ message: `Unknown time zone ${zone}`, code: 'timezone_invalid' });
+        await this.prisma.campaign.update({
+            where: { id },
+            data: { status: CampaignStatus.SCHEDULED, scheduled_at: scheduledAt, schedule_timezone: zone, next_run_at: claimTime(scheduledAt, campaign.send_in_recipient_timezone) },
+        });
         const now = !dto.scheduled_at;
         await this.audit.record(ctx, 'communications.campaign.scheduled', { resource_type: 'campaign', resource_id: id, branch_id: campaign.branch_id, metadata: { scheduled_at: scheduledAt.toISOString(), send_now: now, audience_count: check.counts?.included, sensitive: true } });
         this.events.publish(ctx, {
@@ -395,10 +429,17 @@ export class CampaignsService {
                     body_html: s.body_html, body_text: s.body_text, sender_identity_id: s.sender_identity_id, from_name: s.from_name, reply_to_address: s.reply_to_address,
                     tracking_enabled: s.tracking_enabled, utm: (s.utm ?? undefined) as Prisma.InputJsonValue, language: s.language, require_consent: s.require_consent,
                     topic_id: s.topic_id, send_rate_per_hour: s.send_rate_per_hour, schedule_timezone: s.schedule_timezone,
+                    send_in_recipient_timezone: s.send_in_recipient_timezone, recurrence_rule: s.recurrence_rule, recurrence_ends_at: s.recurrence_ends_at,
+                    ab_test_enabled: s.ab_test_enabled, ab_metric: s.ab_metric, ab_test_percent: s.ab_test_percent, ab_wait_hours: s.ab_wait_hours,
                     owner_membership_id: ctx.membership_id, created_by_membership_id: ctx.membership_id,
                 },
             });
             if (s.audiences.length) await tx.campaignAudience.createMany({ data: s.audiences.map((a) => ({ campaign_id: c.id, mode: a.mode, list_id: a.list_id, segment_id: a.segment_id, sort_order: a.sort_order })) });
+            if (s.variants.length) {
+                await tx.campaignVariant.createMany({
+                    data: s.variants.map((v) => ({ campaign_id: c.id, label: v.label, subject: v.subject, preheader: v.preheader, body_html: v.body_html, body_text: v.body_text, share_percent: v.share_percent, sort_order: v.sort_order })),
+                });
+            }
             return c;
         });
         await this.audit.record(ctx, 'communications.campaign.duplicated', { resource_type: 'campaign', resource_id: copy.id, metadata: { source_campaign_id: id } });

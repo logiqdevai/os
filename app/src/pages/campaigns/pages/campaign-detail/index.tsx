@@ -28,6 +28,8 @@ import { CampaignStatusBadge, ChannelBadge, RecipientStatusBadge, pct } from "..
 import { DailySendsChart } from "../../components/daily-sends-chart";
 import { ContentPreview } from "../../components/content-preview";
 import { CampaignPaths } from "../../campaign-paths";
+import { AbResults } from "./components/ab-results";
+import { describeRepeat } from "./components/describe-repeat";
 
 function RecipientsTab({ campaign }: { campaign: CampaignDetail }) {
     const { params, setPage, search, setSearch, filters, setFilter } = useListParams();
@@ -192,6 +194,7 @@ export default function CampaignDetailPage() {
                         <StatCard label={c.channel === "EMAIL" ? "Opened" : "Failed"} icon={c.channel === "EMAIL" ? Eye : TriangleAlert} tone="info" value={c.channel === "EMAIL" ? pct(s?.rates.open_rate) : formatNumber(c.failed_count)} hint={c.channel === "EMAIL" ? `${formatNumber(c.opened_count)} unique opens` : undefined} />
                         <StatCard label="Clicked" icon={MousePointerClick} value={pct(s?.rates.click_rate)} hint={`${pct(s?.rates.bounce_rate)} bounced · ${formatNumber(c.unsubscribed_count)} unsubscribed`} />
                     </StatGrid>
+                    {c.ab_test_enabled && <AbResults campaign={c} />}
                     {s && s.series.length > 0 ? (
                         <Section title="Activity" description={s.granularity === "hour" ? "Per hour" : "Per day"}>
                             <div className="rounded-lg border border-border bg-card p-3">
@@ -233,6 +236,10 @@ export default function CampaignDetailPage() {
                                     { label: "Only opted-in contacts", value: c.require_consent ? "Yes" : "No" },
                                     { label: "Tracking", value: c.tracking_enabled ? "Opens and clicks" : "Off" },
                                     { label: "Throttle", value: c.send_rate_per_hour ? `${formatNumber(c.send_rate_per_hour)} per hour` : "No limit" },
+                                    { label: "Topic", value: c.topic?.name ?? "None" },
+                                    { label: "Time zone", value: `${c.schedule_timezone ?? "UTC"}${c.send_in_recipient_timezone ? " · recipient's local time" : ""}` },
+                                    { label: "Repeats", value: describeRepeat(c.recurrence_rule, c.recurrence_ends_at) },
+                                    { label: "Next run", value: c.recurrence_rule && c.status === "SCHEDULED" && c.scheduled_at ? formatDateTime(c.scheduled_at) : null },
                                 ]}
                             />
                         </div>

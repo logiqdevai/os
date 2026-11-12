@@ -17,5 +17,7 @@ export const CampaignPaths = {
     suppressions: "/campaigns/suppressions",
     messages: "/campaigns/messages",
     message: (id: string) => `/campaigns/messages/${id}`,
+    threads: "/campaigns/threads",
+    thread: (id: string) => `/campaigns/threads/${id}`,
     senders: "/campaigns/senders",
 } as const;

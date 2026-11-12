@@ -3,7 +3,8 @@ import { CommChannel, CommConsentStatus, ModuleKey } from 'generated/prisma';
 import { z } from 'zod';
 import { McpRegistry } from '@/core/mcp/mcp.registry';
 import { CampaignsService } from './campaigns/campaigns.service';
-import { CampaignQuerySchema, CreateCampaignSchema, SetAudienceSchema } from './campaigns/dto/campaign.dto';
+import { CampaignQuerySchema, CreateCampaignSchema, SetAudienceSchema, SetVariantsSchema } from './campaigns/dto/campaign.dto';
+import { CampaignVariantsService } from './campaigns/campaign-variants.service';
 import { TemplatesService } from './templates/templates.service';
 import { CreateTemplateSchema, TemplateContentSchema, TemplateQuerySchema } from './templates/dto/template.dto';
 import { SegmentsService } from './audience/segments.service';
@@ -15,6 +16,10 @@ import { MessagesService } from './messages/messages.service';
 import { MessageQuerySchema, SendMessageSchema } from './messages/dto/message.dto';
 import { AnalyticsQuerySchema, AnalyticsService } from './analytics/analytics.service';
 import { SendersService } from './senders/senders.service';
+import { TopicsService } from './topics/topics.service';
+import { AiGenerateSchema, CommAiService } from './ai/comm-ai.service';
+import { CommThreadsService, ThreadQuerySchema } from './threads/comm-threads.service';
+import { CreateTopicSchema, SetSubscriptionsSchema, TopicQuerySchema } from './topics/dto/topic.dto';
 
 const M = ModuleKey.COMMUNICATION;
 const id = z.object({ id: z.string().uuid() });
@@ -25,6 +30,7 @@ export class CommunicationsMcp implements OnModuleInit {
     constructor(
         private readonly registry: McpRegistry,
         private readonly campaigns: CampaignsService,
+        private readonly variants: CampaignVariantsService,
         private readonly templates: TemplatesService,
         private readonly segments: SegmentsService,
         private readonly lists: ListsService,
@@ -32,6 +38,9 @@ export class CommunicationsMcp implements OnModuleInit {
         private readonly messages: MessagesService,
         private readonly analytics: AnalyticsService,
         private readonly senders: SendersService,
+        private readonly topics: TopicsService,
+        private readonly ai: CommAiService,
+        private readonly threads: CommThreadsService,
     ) { }
 
     onModuleInit() {
@@ -49,6 +58,9 @@ export class CommunicationsMcp implements OnModuleInit {
             { name: 'communications_campaigns_send', description: 'Send a campaign now, or schedule it with scheduled_at (ISO). Sends real email / SMS to customers.', permission: 'communications.campaigns.send', module: M, resource_type: 'campaign', sensitive: true, input: id.extend({ scheduled_at: z.string().datetime().optional() }), handler: (ctx, a) => this.campaigns.schedule(ctx, a.id, { scheduled_at: a.scheduled_at }) },
             { name: 'communications_campaigns_cancel', description: 'Cancel a scheduled, sending or paused campaign.', permission: 'communications.campaigns.send', module: M, resource_type: 'campaign', sensitive: true, input: id, handler: (ctx, a) => this.campaigns.cancel(ctx, a.id) },
             { name: 'communications_campaigns_archive', description: 'Archive a campaign.', permission: 'communications.campaigns.archive', module: M, resource_type: 'campaign', input: id, handler: (ctx, a) => this.campaigns.archive(ctx, a.id, true) },
+            { name: 'communications_campaigns_variants_read', description: 'A/B test variants of a campaign with sent / open / click rates and the winner.', permission: 'communications.campaigns.read', module: M, resource_type: 'campaign', input: id, handler: (ctx, a) => this.variants.list(ctx, a.id) },
+            { name: 'communications_campaigns_variants_set', description: 'Set the A/B variants of a draft campaign (2–5 { subject, preheader, body_html, body_text, share_percent }); configure ab_metric / ab_test_percent / ab_wait_hours with communications_campaigns_update.', permission: 'communications.campaigns.update', module: M, resource_type: 'campaign', input: SetVariantsSchema.extend({ id: z.string().uuid() }), handler: (ctx, { id: cid, ...a }) => this.variants.replace(ctx, cid, a) },
+            { name: 'communications_campaigns_pick_winner', description: 'Pick the A/B winner now; it is sent to the rest of the audience.', permission: 'communications.campaigns.send', module: M, resource_type: 'campaign', sensitive: true, input: id.extend({ variant_id: z.string().uuid() }), handler: (ctx, a) => this.variants.chooseWinner(ctx, a.id, a.variant_id) },
             // --- templates
             { name: 'communications_templates_list', description: 'List email / SMS templates.', permission: 'communications.templates.read', module: M, resource_type: 'comm_template', input: TemplateQuerySchema, handler: (ctx, a) => this.templates.findAll(ctx, a) },
             { name: 'communications_templates_get', description: 'Get a template with its versions.', permission: 'communications.templates.read', module: M, resource_type: 'comm_template', input: id, handler: (ctx, a) => this.templates.findOne(ctx, a.id) },
@@ -67,6 +79,16 @@ export class CommunicationsMcp implements OnModuleInit {
             { name: 'communications_consents_read', description: 'List consent records (filter by channel / status).', permission: 'communications.consents.read', module: M, resource_type: 'comm_consent', input: ConsentQuerySchema, handler: (ctx, a) => this.compliance.consents(ctx, a) },
             { name: 'communications_consents_manage', description: 'Set the consent of a contact on a channel.', permission: 'communications.consents.manage', module: M, resource_type: 'comm_consent', sensitive: true, input: z.object({ contact_id: z.string().uuid(), channel: z.nativeEnum(CommChannel), status: z.nativeEnum(CommConsentStatus), notes: z.string().max(2000).optional() }), handler: (ctx, a) => this.compliance.setConsent(ctx, a.contact_id, a.channel, { status: a.status, notes: a.notes, source: 'API' }) },
             { name: 'communications_suppressions_manage', description: 'Add an address to the suppression list.', permission: 'communications.suppressions.manage', module: M, resource_type: 'comm_suppression', sensitive: true, input: CreateSuppressionSchema, handler: (ctx, a) => this.compliance.addSuppression(ctx, a) },
+            // --- preference-center topics
+            { name: 'communications_topics_list', description: 'List preference-center topics (newsletter, product news …) with subscriber counts.', permission: 'communications.consents.read', module: M, resource_type: 'comm_topic', input: TopicQuerySchema, handler: (ctx, a) => this.topics.findAll(ctx, a) },
+            { name: 'communications_topics_create', description: 'Create a preference-center topic. Campaigns with a topic only reach contacts subscribed to it.', permission: 'communications.settings.manage', module: M, resource_type: 'comm_topic', sensitive: true, input: CreateTopicSchema, handler: (ctx, a) => this.topics.create(ctx, a) },
+            { name: 'communications_topic_subscriptions_read', description: 'Topic subscriptions of a contact.', permission: 'communications.consents.read', module: M, resource_type: 'comm_consent', input: z.object({ contact_id: z.string().uuid() }), handler: (ctx, a) => this.topics.contactSubscriptions(ctx, a.contact_id) },
+            { name: 'communications_topic_subscriptions_manage', description: 'Subscribe or unsubscribe a contact from topics (status OPTED_IN | OPTED_OUT).', permission: 'communications.consents.manage', module: M, resource_type: 'comm_consent', sensitive: true, input: SetSubscriptionsSchema.extend({ contact_id: z.string().uuid() }), handler: (ctx, { contact_id, ...a }) => this.topics.setSubscriptions(ctx, contact_id, a, 'API') },
+            // --- AI assistant
+            { name: 'communications_ai_generate', description: 'AI writing assistant (org OpenAI connection): task SUBJECT_LINES | WRITE_EMAIL | WRITE_SMS | IMPROVE_TONE | TRANSLATE with prompt / subject / body / tone / language. Returns available=false without a connection.', permission: 'communications.ai.use', module: M, resource_type: 'comm_ai_generation', input: AiGenerateSchema, handler: (ctx, a) => this.ai.generate(ctx, a) },
+            // --- threads
+            { name: 'communications_threads_list', description: 'Conversation threads of one-off email / SMS (filter by contact, company, project, channel, search).', permission: 'communications.messages.read', module: M, resource_type: 'comm_thread', input: ThreadQuerySchema, handler: (ctx, a) => this.threads.findAll(ctx, a) },
+            { name: 'communications_threads_get', description: 'One conversation thread with its messages, oldest first.', permission: 'communications.messages.read', module: M, resource_type: 'comm_thread', input: id, handler: (ctx, a) => this.threads.findOne(ctx, a.id) },
             // --- messages
             { name: 'communications_messages_read', description: 'Search the message log (email / SMS history).', permission: 'communications.messages.read', module: M, resource_type: 'comm_message', input: MessageQuerySchema, handler: (ctx, a) => this.messages.findAll(ctx, a) },
             { name: 'communications_messages_get', description: 'Get one message with delivery events.', permission: 'communications.messages.read', module: M, resource_type: 'comm_message', input: id, handler: (ctx, a) => this.messages.findOne(ctx, a.id) },

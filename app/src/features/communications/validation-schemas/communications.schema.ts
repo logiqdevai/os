@@ -20,6 +20,16 @@ export const campaignFormSchema = z
         require_consent: z.boolean(),
         /** Messages per hour as typed in the input; empty = no throttling. */
         send_rate_per_hour: z.string().regex(/^(|[1-9]\d{1,6})$/, "Enter a number of at least 10").optional(),
+        /** Preference-center topic ("none" = no topic). */
+        topic_id: z.string().optional(),
+        /** IANA zone the send time is expressed in. */
+        schedule_timezone: z.string().min(1),
+        send_in_recipient_timezone: z.boolean(),
+        repeat: z.enum(["NONE", "DAILY", "WEEKLY", "MONTHLY"]),
+        repeat_interval: z.string().regex(/^([1-9]|[1-9]\d)$/, "Enter 1–99"),
+        repeat_days: z.array(z.string()),
+        /** yyyy-mm-dd; empty = no end. */
+        repeat_until: z.string().optional(),
         send_mode: z.enum(["now", "later"]),
         scheduled_at: z.string().optional(),
     })
@@ -28,6 +38,8 @@ export const campaignFormSchema = z
             if (!v.scheduled_at) ctx.addIssue({ code: "custom", path: ["scheduled_at"], message: "Pick a date and time" });
             else if (new Date(v.scheduled_at).getTime() < Date.now()) ctx.addIssue({ code: "custom", path: ["scheduled_at"], message: "The time is in the past" });
         }
+        if (v.repeat !== "NONE" && v.send_mode !== "later") ctx.addIssue({ code: "custom", path: ["repeat"], message: "Pick the date of the first send to repeat a campaign" });
+        if (v.repeat === "WEEKLY" && !v.repeat_days.length) ctx.addIssue({ code: "custom", path: ["repeat_days"], message: "Pick at least one weekday" });
     });
 export type CampaignFormValues = z.infer<typeof campaignFormSchema>;
 

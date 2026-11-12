@@ -1,4 +1,4 @@
-import { Ban, BarChart3, FileText, Filter, Globe, Inbox, LayoutDashboard, Layers, List, Mail } from "lucide-react";
+import { Ban, BarChart3, FileText, Filter, Globe, Inbox, LayoutDashboard, Layers, List, Mail, MessagesSquare } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
 /** Module 11 Communication Center. Every key below exists in api/prisma/seed/permission-catalog.ts. */
@@ -19,11 +19,12 @@ export const campaignsApp: AppDefinition = {
         { label: "Audience", items: [
             { label: "Segments", to: "/campaigns/segments", icon: Filter, permissions: ["communications.segments.read"] },
             { label: "Recipient lists", to: "/campaigns/lists", icon: List, permissions: ["communications.recipient_lists.read"] },
-            { label: "Suppressions & consent", to: "/campaigns/suppressions", icon: Ban, permissions: ["communications.suppressions.manage", "communications.consents.read"] },
+            { label: "Suppressions, consent & topics", to: "/campaigns/suppressions", icon: Ban, permissions: ["communications.suppressions.manage", "communications.consents.read"] },
         ] },
         { label: "Content", items: [
             { label: "Templates", to: "/campaigns/templates", icon: FileText, permissions: ["communications.templates.read"] },
             { label: "Message log", to: "/campaigns/messages", icon: Inbox, permissions: ["communications.messages.read"] },
+            { label: "Threads", to: "/campaigns/threads", icon: MessagesSquare, permissions: ["communications.messages.read"] },
         ] },
         { label: "Setup", items: [
             { label: "Senders & settings", to: "/campaigns/senders", icon: Globe, permissions: ["communications.sender_identities.manage", "communications.settings.manage"] },

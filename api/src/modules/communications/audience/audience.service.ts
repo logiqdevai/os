@@ -11,6 +11,8 @@ export interface AudienceCandidate {
     contact_id: string | null;
     membership_id: string | null;
     language: string | null;
+    /** IANA time zone of the person (send in recipient time zone); null = campaign zone. */
+    timezone?: string | null;
     /** Personalization values ({{first_name}} …). */
     context: Record<string, unknown>;
     /** Segment with require_consent contributed this candidate. */
@@ -31,7 +33,7 @@ export interface ResolvedAudience {
 }
 
 const CONTACT_SELECT = {
-    id: true, first_name: true, last_name: true, email: true, mobile: true, phone: true, job_title: true, language: true,
+    id: true, first_name: true, last_name: true, email: true, mobile: true, phone: true, job_title: true, language: true, timezone: true,
     company: { select: { name: true } },
 } satisfies Prisma.CrmContactSelect;
 
@@ -156,6 +158,7 @@ export class AudienceService {
             contact_id: c.id,
             membership_id: null,
             language: c.language,
+            timezone: c.timezone,
             context: { first_name: c.first_name, last_name: c.last_name ?? '', full_name: full, email: c.email, phone: c.mobile ?? c.phone, job_title: c.job_title, company_name: c.company?.name ?? '', organization_name: orgName },
         };
     }
@@ -177,7 +180,7 @@ export class AudienceService {
                 ...(opts.search && { user: { OR: [{ email: { contains: opts.search, mode: 'insensitive' } }, { display_name: { contains: opts.search, mode: 'insensitive' } }] } }),
             };
             const [rows, total] = await Promise.all([
-                this.prisma.membership.findMany({ where, take: opts.limit, skip: opts.skip, orderBy: { joined_at: 'asc' }, select: { id: true, job_title: true, user: { select: { email: true, phone: true, first_name: true, last_name: true, display_name: true, locale: true } } } }),
+                this.prisma.membership.findMany({ where, take: opts.limit, skip: opts.skip, orderBy: { joined_at: 'asc' }, select: { id: true, job_title: true, user: { select: { email: true, phone: true, first_name: true, last_name: true, display_name: true, locale: true, timezone: true } } } }),
                 this.prisma.membership.count({ where }),
             ]);
             const candidates = rows.map<AudienceCandidate>((m) => {
@@ -189,6 +192,7 @@ export class AudienceService {
                     contact_id: null,
                     membership_id: m.id,
                     language: m.user.locale,
+                    timezone: m.user.timezone,
                     context: { first_name: m.user.first_name ?? name ?? '', last_name: m.user.last_name ?? '', full_name: name ?? '', email: m.user.email, phone: m.user.phone, job_title: m.job_title, organization_name: orgName },
                 };
             });
@@ -211,7 +215,7 @@ export class AudienceService {
             where: { list_id: listId },
             include: {
                 contact: { select: { ...CONTACT_SELECT, archived_at: true } },
-                membership: { select: { id: true, status: true, job_title: true, user: { select: { email: true, phone: true, first_name: true, last_name: true, display_name: true, locale: true } } } },
+                membership: { select: { id: true, status: true, job_title: true, user: { select: { email: true, phone: true, first_name: true, last_name: true, display_name: true, locale: true, timezone: true } } } },
             },
         });
         const out: AudienceCandidate[] = [];
@@ -224,7 +228,7 @@ export class AudienceService {
                 if (m.membership.status !== 'ACTIVE') continue;
                 const u = m.membership.user;
                 const name = u.display_name || [u.first_name, u.last_name].filter(Boolean).join(' ') || null;
-                out.push({ kind: m.kind, address: m.address ?? (channel === CommChannel.SMS ? u.phone : u.email), name, contact_id: null, membership_id: m.membership.id, language: u.locale, context: { first_name: u.first_name ?? '', last_name: u.last_name ?? '', full_name: name ?? '', email: u.email, job_title: m.membership.job_title, organization_name: orgName } });
+                out.push({ kind: m.kind, address: m.address ?? (channel === CommChannel.SMS ? u.phone : u.email), name, contact_id: null, membership_id: m.membership.id, language: u.locale, timezone: u.timezone, context: { first_name: u.first_name ?? '', last_name: u.last_name ?? '', full_name: name ?? '', email: u.email, job_title: m.membership.job_title, organization_name: orgName } });
             } else {
                 const [first, ...rest] = (m.name ?? '').split(' ');
                 out.push({ kind: CommRecipientKind.EXTERNAL, address: m.address, name: m.name, contact_id: null, membership_id: null, language: null, context: { first_name: first ?? '', last_name: rest.join(' '), full_name: m.name ?? '', email: m.address, organization_name: orgName } });

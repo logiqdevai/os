@@ -13,12 +13,20 @@ import { TemplatesService } from './templates/templates.service';
 import { TemplatesController } from './templates/templates.controller';
 import { CampaignsService } from './campaigns/campaigns.service';
 import { CampaignRunnerService } from './campaigns/campaign-runner.service';
+import { CampaignVariantsService } from './campaigns/campaign-variants.service';
 import { CampaignsController } from './campaigns/campaigns.controller';
 import { MessagesService } from './messages/messages.service';
 import { MessagesController } from './messages/messages.controller';
 import { AnalyticsService } from './analytics/analytics.service';
 import { AnalyticsController } from './analytics/analytics.controller';
 import { TrackingController } from './tracking/tracking.controller';
+import { TopicsService } from './topics/topics.service';
+import { TopicsController } from './topics/topics.controller';
+import { CommAiService } from './ai/comm-ai.service';
+import { CommAiController } from './ai/comm-ai.controller';
+import { AiIntegrationModule } from '@/integrations/ai/ai.module';
+import { CommThreadsService } from './threads/comm-threads.service';
+import { CommThreadsController } from './threads/comm-threads.controller';
 import { CommunicationsMcp } from './communications.mcp';
 
 /**
@@ -27,13 +35,14 @@ import { CommunicationsMcp } from './communications.mcp';
  * Other modules send through CommDispatchService / MessagesService (exported) so consent, suppression and history stay in one place.
  */
 @Module({
+    imports: [AiIntegrationModule],
     controllers: [
         AnalyticsController, CampaignsController, TemplatesController, ListsController, SegmentsController, ComplianceController,
-        MessagesController, SendersController, TrackingController,
+        MessagesController, SendersController, TrackingController, TopicsController, CommAiController, CommThreadsController,
     ],
     providers: [
         CommProviderService, CommStatsService, CommDispatchService, AudienceService, ListsService, SegmentsService, ComplianceService,
-        SendersService, TemplatesService, CampaignsService, CampaignRunnerService, MessagesService, AnalyticsService, CommunicationsMcp,
+        SendersService, TemplatesService, CampaignsService, CampaignRunnerService, CampaignVariantsService, MessagesService, AnalyticsService, TopicsService, CommAiService, CommThreadsService, CommunicationsMcp,
     ],
     exports: [MessagesService, CommDispatchService, TemplatesService],
 })

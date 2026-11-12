@@ -90,6 +90,11 @@ export class SendMessageDto {
     @IsDateString()
     scheduled_at?: string;
 
+    @ApiProperty({ required: false, description: 'Reply to this message: the new message joins its conversation thread' })
+    @IsOptional()
+    @IsUUID()
+    in_reply_to_message_id?: string;
+
     @ApiProperty({ required: false, default: true, description: 'false = save as draft' })
     @IsOptional()
     @IsBoolean()
@@ -135,5 +140,6 @@ export const SendMessageSchema = z.object({
     company_id: z.string().uuid().optional(),
     project_id: z.string().uuid().optional(),
     scheduled_at: z.string().datetime().optional(),
+    in_reply_to_message_id: z.string().uuid().optional(),
     send: z.boolean().optional(),
 });

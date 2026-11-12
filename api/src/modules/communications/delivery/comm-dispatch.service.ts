@@ -8,7 +8,7 @@ import { CommStatsService } from './comm-stats.service';
 
 const MAX_ATTEMPTS = 3;
 
-export type BlockReason = 'suppressed' | 'no_consent' | 'invalid_address';
+export type BlockReason = 'suppressed' | 'no_consent' | 'invalid_address' | 'topic_unsubscribed';
 
 /**
  * Sends one CommMessage through the organization's provider. Consent and suppression are enforced HERE, server-side,
@@ -31,6 +31,20 @@ export class CommDispatchService {
 
     unsubscribeUrl(token: string) {
         return `${this.apiBase}/communications/u/${token}`;
+    }
+
+    /** Public preference center (topics) for the recipient of a message. */
+    preferencesUrl(token: string) {
+        return `${this.apiBase}/communications/p/${token}`;
+    }
+
+    /** Topic subscription (11 preference center): an explicit choice wins, otherwise the topic default. */
+    async topicAllows(topicId: string, contactId: string) {
+        const [topic, sub] = await Promise.all([
+            this.prisma.commTopic.findUnique({ where: { id: topicId }, select: { default_opt_in: true, archived_at: true } }),
+            this.prisma.commTopicSubscription.findUnique({ where: { contact_id_topic_id: { contact_id: contactId, topic_id: topicId } }, select: { status: true } }),
+        ]);
+        return sub ? sub.status === 'OPTED_IN' : !!topic?.default_opt_in;
     }
 
     /** Active suppression for an address (marketing sends are blocked by every entry; transactional only by blocks_transactional). */
@@ -64,9 +78,12 @@ export class CommDispatchService {
         const suppression = await this.findSuppression(message.organization_id, message.channel, message.to_address, transactional);
         if (suppression) return { code: 'suppressed', detail: `Address is on the suppression list (${suppression.reason.toLowerCase().replace(/_/g, ' ')})` };
         if (message.kind === CommMessageKind.CAMPAIGN && message.campaign_id && message.recipient_contact_id) {
-            const campaign = await this.prisma.campaign.findUnique({ where: { id: message.campaign_id }, select: { require_consent: true } });
+            const campaign = await this.prisma.campaign.findUnique({ where: { id: message.campaign_id }, select: { require_consent: true, topic_id: true } });
             if (campaign?.require_consent && !(await this.hasConsent(message.recipient_contact_id, message.channel))) {
                 return { code: 'no_consent', detail: 'Contact has not opted in on this channel' };
+            }
+            if (campaign?.topic_id && !(await this.topicAllows(campaign.topic_id, message.recipient_contact_id))) {
+                return { code: 'topic_unsubscribed', detail: 'Contact is not subscribed to the topic of this campaign' };
             }
         }
         return null;
@@ -197,7 +214,8 @@ export class CommDispatchService {
             const url = this.unsubscribeUrl(message.unsubscribe_token);
             if (!html.includes(url)) {
                 const settings = await this.prisma.commSettings.findUnique({ where: { organization_id: message.organization_id }, select: { footer_address: true } });
-                const footer = `<p style="margin-top:32px;font-size:12px;color:#6b7280">${settings?.footer_address ? `${settings.footer_address.replace(/</g, '&lt;')}<br/>` : ''}You receive this email because you subscribed to our updates. <a href="${url}" style="color:#6b7280">Unsubscribe</a></p>`;
+                const prefs = this.preferencesUrl(message.unsubscribe_token);
+                const footer = `<p style="margin-top:32px;font-size:12px;color:#6b7280">${settings?.footer_address ? `${settings.footer_address.replace(/</g, '&lt;')}<br/>` : ''}You receive this email because you subscribed to our updates. <a href="${prefs}" style="color:#6b7280">Manage preferences</a> · <a href="${url}" style="color:#6b7280">Unsubscribe</a></p>`;
                 html = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${footer}</body>`) : `${html}${footer}`;
             }
         }

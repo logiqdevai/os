@@ -8,13 +8,19 @@ import { decryptJson } from '@/shared/utils/crypto/secret-box.utils';
 import { CommStatsService } from '../delivery/comm-stats.service';
 import { CommDispatchService } from '../delivery/comm-dispatch.service';
 import { CommProviderService } from '../delivery/comm-provider.service';
+import { TopicsService } from '../topics/topics.service';
 
 const PIXEL = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
 
 const page = (title: string, body: string) => `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${title}</title>
 <style>:root{color-scheme:light dark}body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:Canvas;color:CanvasText}
 main{max-width:420px;padding:32px 24px;text-align:center}h1{font-size:20px;font-weight:600;margin:0 0 8px}p{opacity:.75;font-size:14px;line-height:1.5}
-button{margin-top:16px;font:inherit;padding:10px 18px;border-radius:8px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer}</style></head><body><main>${body}</main></body></html>`;
+button{margin-top:16px;font:inherit;padding:10px 18px;border-radius:8px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer}
+a{color:inherit}form.prefs{text-align:left;margin-top:16px}label.topic{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid color-mix(in srgb,CanvasText 15%,transparent);font-size:14px;cursor:pointer}
+label.topic small{display:block;opacity:.7;font-size:12px;margin-top:2px}input[type=checkbox]{margin-top:3px;width:16px;height:16px}.row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}</style></head><body><main>${body}</main></body></html>`;
+
+/** API clients may post JSON with `json: true` to get a JSON answer instead of the redirect. */
+const wantsJson = (body: Record<string, unknown>) => body.json === true || body.json === 'true';
 
 const RESEND_EVENTS: Record<string, CommDeliveryEventType> = {
     'email.sent': CommDeliveryEventType.SENT,
@@ -50,6 +56,7 @@ export class TrackingController {
         private readonly stats: CommStatsService,
         private readonly dispatch: CommDispatchService,
         private readonly providers: CommProviderService,
+        private readonly topics: TopicsService,
     ) { }
 
     @Get('t/o/:messageId')
@@ -99,7 +106,7 @@ export class TrackingController {
             res.type('html').send(page('Unsubscribed', `<h1>You are unsubscribed</h1><p>${target.to_address.replace(/</g, '&lt;')} will no longer receive marketing email from ${org}.</p>`));
             return;
         }
-        res.type('html').send(page('Unsubscribe', `<h1>Unsubscribe from ${org}?</h1><p>${target.to_address.replace(/</g, '&lt;')} will stop receiving marketing messages. Service messages (invoices, contracts) still arrive.</p><form method="post"><button type="submit">Unsubscribe</button></form>`));
+        res.type('html').send(page('Unsubscribe', `<h1>Unsubscribe from ${org}?</h1><p>${target.to_address.replace(/</g, '&lt;')} will stop receiving marketing messages. Service messages (invoices, contracts) still arrive.</p><form method="post"><button type="submit">Unsubscribe</button></form><p><a href="../p/${encodeURIComponent(token)}">Choose which emails you get instead</a></p>`));
     }
 
     @Post('u/:token')
@@ -109,6 +116,38 @@ export class TrackingController {
         if (!target) throw new NotFoundException({ message: 'Link expired', code: 'unsubscribe_token_invalid' });
         await this.stats.record(target.id, { type: CommDeliveryEventType.UNSUBSCRIBED, reason: 'Unsubscribe link' });
         res.type('html').send(page('Unsubscribed', `<h1>You are unsubscribed</h1><p>${target.to_address.replace(/</g, '&lt;')} will no longer receive marketing messages from ${target.organization.display_name.replace(/</g, '&lt;')}.</p>`));
+    }
+
+    /** Public preference center (11 "Customer Communication"): choose topics, or unsubscribe from everything. */
+    @Get('p/:token')
+    async preferencesPage(@Param('token') token: string, @Query('saved') saved: string | undefined, @Res() res: Response) {
+        const view = await this.topics.preferenceCenter(token);
+        if (!view) {
+            res.status(404).type('html').send(page('Link expired', '<h1>This link has expired</h1><p>Open the preferences link in a more recent message.</p>'));
+            return;
+        }
+        const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        const org = esc(view.organization_name);
+        const topics = view.topics
+            .map((t) => `<label class="topic"><input type="checkbox" name="topic" value="${t.id}" ${t.subscribed && !view.unsubscribed ? 'checked' : ''}/><span>${esc(t.name)}${t.description ? `<small>${esc(t.description)}</small>` : ''}</span></label>`)
+            .join('');
+        const notice = saved === '1' ? '<p role="status"><strong>Your preferences were saved.</strong></p>' : view.unsubscribed ? '<p role="status">You are currently unsubscribed from all marketing messages. Pick topics below to subscribe again.</p>' : '';
+        res.type('html').send(page('Email preferences', `<h1>Your ${view.channel === 'SMS' ? 'SMS' : 'email'} preferences</h1><p>${esc(view.address)} · ${org}</p>${notice}
+<form class="prefs" method="post">${topics || '<p>There are no topics to choose from.</p>'}
+<div class="row">${topics ? '<button type="submit" name="action" value="save">Save preferences</button>' : ''}<button type="submit" name="action" value="unsubscribe_all">Unsubscribe from all</button></div></form>`));
+    }
+
+    @Post('p/:token')
+    @HttpCode(200)
+    async savePreferences(@Param('token') token: string, @Body() body: Record<string, unknown>, @Res() res: Response) {
+        const raw = body.topic ?? body.topic_ids ?? [];
+        const ids = (Array.isArray(raw) ? raw : [raw]).map(String).filter((v) => /^[0-9a-f-]{36}$/i.test(v));
+        const result = await this.topics.savePreferences(token, { topic_ids: ids, unsubscribe_all: body.action === 'unsubscribe_all' || body.unsubscribe_all === true });
+        if (wantsJson(body)) {
+            res.json(result);
+            return;
+        }
+        res.redirect(303, `${encodeURIComponent(token)}?saved=1`);
     }
 
     private async connectionForToken(token: string, provider: IntegrationProvider) {

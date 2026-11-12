@@ -17,6 +17,8 @@ const SuppressionsPage = lazy(() => import("./pages/suppressions"));
 const MessagesLogPage = lazy(() => import("./pages/messages-log"));
 const MessageDetailPage = lazy(() => import("./pages/message-detail"));
 const SendersPage = lazy(() => import("./pages/senders"));
+const ThreadsPage = lazy(() => import("./pages/threads"));
+const ThreadDetailPage = lazy(() => import("./pages/thread-detail"));
 
 const gate = (anyOf: string[], element: ReactNode) => <RequirePermission anyOf={anyOf}>{element}</RequirePermission>;
 
@@ -39,6 +41,8 @@ export default function CampaignsRoutes() {
             <Route path="suppressions" element={gate(["communications.suppressions.manage", "communications.consents.read"], <SuppressionsPage />)} />
             <Route path="messages" element={gate(["communications.messages.read"], <MessagesLogPage />)} />
             <Route path="messages/:id" element={gate(["communications.messages.read"], <MessageDetailPage />)} />
+            <Route path="threads" element={gate(["communications.messages.read"], <ThreadsPage />)} />
+            <Route path="threads/:id" element={gate(["communications.messages.read"], <ThreadDetailPage />)} />
             <Route path="senders" element={gate(["communications.sender_identities.manage", "communications.settings.manage"], <SendersPage />)} />
             <Route path=":id/edit" element={gate(["communications.campaigns.update"], <CampaignWizardPage />)} />
             <Route path=":id" element={gate(["communications.campaigns.read"], <CampaignDetailPage />)} />
