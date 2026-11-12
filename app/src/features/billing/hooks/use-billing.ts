@@ -48,6 +48,7 @@ export const useProjectLookup = (search: string, enabled = true) => useQuery({ q
 export const useCreateInvoice = () => useBillingMutation(s.createInvoice, "Draft invoice created", "Could not create the invoice");
 export const useUpdateInvoice = () => useBillingMutation(s.updateInvoice, "Invoice saved", "Could not save the invoice");
 export const useDeleteInvoice = () => useBillingMutation(s.deleteInvoice, "Draft deleted", "Could not delete the draft");
+export const useDownloadInvoicePdf = () => useBillingMutation(s.downloadInvoicePdf, (name) => `Downloaded ${name}`, "Could not create the PDF");
 export const useInvoiceAction = () => useBillingMutation(s.invoiceAction, undefined, "Could not update the invoice");
 export const useInvoiceCheckout = () => useBillingMutation(s.invoiceCheckout, "Payment link created", "Could not create the payment link");
 export const useCreateCreditNote = () => useBillingMutation(s.createCreditNote, "Credit note created", "Could not create the credit note");

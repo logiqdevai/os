@@ -1,5 +1,6 @@
 import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
+import { downloadFile } from "@/features/files/services/file-download.services";
 import type {
     ApprovalInbox, BillingProfile, BillingProfileDetail, CompanyLookup, Coupon, CreditNote, FinanceDashboard, FinanceReport, Invoice, InvoiceDetail, InvoiceInput,
     InvoiceListResponse, Paginated, PaymentDetail, PaymentLink, PaymentListResponse, Product, ProjectLookup, ProviderConnection, Refund, SubscriptionDetail,
@@ -24,6 +25,7 @@ export const getInvoice = (id: string) => get<InvoiceDetail>(R.invoices.detail(i
 export const createInvoice = (dto: InvoiceInput) => post<Invoice>(R.invoices.list, dto);
 export const updateInvoice = ({ id, ...dto }: Partial<InvoiceInput> & { id: string }) => patch<Invoice>(R.invoices.detail(id), dto);
 export const deleteInvoice = async (id: string) => (await axiosInstance.delete(R.invoices.detail(id))).data;
+export const downloadInvoicePdf = (id: string) => downloadFile(R.invoices.action(id, "pdf"), { fallbackName: "invoice.pdf" });
 export const invoiceAction = ({ id, action, body }: { id: string; action: string; body?: Body }) => post<InvoiceDetail>(R.invoices.action(id, action), body);
 export const invoiceCheckout = (id: string) => post<{ url: string; expires_at: string | null; connection: { id: string; display_name: string } }>(R.invoices.action(id, "checkout"));
 

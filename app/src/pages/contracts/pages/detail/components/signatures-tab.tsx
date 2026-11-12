@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { BellRing, Copy, FileCheck2, Link2, Send, XCircle } from "lucide-react";
+import { BellRing, Copy, Download, FileCheck2, Link2, Send, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,7 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { SignatureEventTypeOptions, SigningOrderOptions } from "@/config/constants/dropdowns/contracts/signature.options";
-import { useCancelSignature, useReissueLink, useRemindSignature, useSendForSignature, useSignatureCertificate, useSignatureRequests } from "@/features/contracts/hooks/use-contracts";
+import { useCancelSignature, useDownloadCertificatePdf, useReissueLink, useRemindSignature, useSendForSignature, useSignatureCertificate, useSignatureRequests } from "@/features/contracts/hooks/use-contracts";
 import type { ContractDetail, ContractVersionDetail, SignatureRequest, SigningLink, SigningOrder } from "@/features/contracts/interfaces/contracts.interfaces";
 import { SignatureStatusBadge, SignerStatusBadge } from "../../../components/contract-badges";
 
@@ -178,11 +178,23 @@ function SendDialog({ contract, version, open, onOpenChange, onSent }: { contrac
 
 function CertificateSheet({ requestId, onClose }: { requestId: string | null; onClose: () => void }) {
     const q = useSignatureCertificate(requestId ?? undefined);
+    const pdf = useDownloadCertificatePdf();
     const c = q.data;
     return (
         <Sheet open={!!requestId} onOpenChange={(o) => !o && onClose()}>
             <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
                 <SheetHeader><SheetTitle>Completion certificate</SheetTitle><SheetDescription>Signer identity, consent and the event trail for this request.</SheetDescription></SheetHeader>
+                {requestId && (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-3 w-fit"
+                        loading={pdf.isPending}
+                        onClick={() => pdf.mutate(requestId, { onSuccess: (name) => toast({ title: "PDF downloaded", description: name }), onError: (e) => toast({ variant: "destructive", title: "Could not create the PDF", description: getApiErrorMessage(e) }) })}
+                    >
+                        <Download /> Download PDF
+                    </Button>
+                )}
                 {q.isPending ? <Skeleton className="mt-4 h-64" /> : q.error ? <ErrorState error={q.error} /> : c ? <CertificateBody certificate={c} /> : null}
             </SheetContent>
         </Sheet>

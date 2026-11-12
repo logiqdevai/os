@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Check, CheckCircle2, Eye, Lock, Pencil, Plus, RotateCcw, Send, Trash2, Users, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, CheckCircle2, Download, Eye, Lock, Pencil, Plus, RotateCcw, Send, Trash2, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,7 +17,7 @@ import { formatDateTime, formatRelative, personName } from "@/lib/format";
 import { renderMarkdown, markdownClass } from "@/lib/markdown";
 import { cn } from "@/lib/utils";
 import {
-    useApprovalPreview, useContractComments, useCreateComment, useDecideApproval, useDecideReview, useRequestReview, useResolveComment, useSaveSections, useSubmitForApproval,
+    useApprovalPreview, useContractComments, useCreateComment, useDecideApproval, useDecideReview, useDownloadContractVersionPdf, useRequestReview, useResolveComment, useSaveSections, useSubmitForApproval,
 } from "@/features/contracts/hooks/use-contracts";
 import type { ContractDetail, ContractVersionDetail, SectionInput } from "@/features/contracts/interfaces/contracts.interfaces";
 import { ContractLookupPicker, Member } from "../../../components/contract-badges";
@@ -40,6 +40,22 @@ export function DocumentTab({ contract, version, loading, error, onRetry }: { co
                 <CommentsPanel contract={contract} version={version} />
             </div>
         </div>
+    );
+}
+
+/** Download the version as PDF; a signed version returns the stored signed document with signature blocks. */
+function PdfButton({ contractId, versionId, signed }: { contractId: string; versionId: string; signed: boolean }) {
+    const pdf = useDownloadContractVersionPdf();
+    return (
+        <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto"
+            loading={pdf.isPending}
+            onClick={() => pdf.mutate({ id: contractId, versionId }, { onSuccess: (name) => toast({ title: "PDF downloaded", description: name }), onError: (e) => toast({ variant: "destructive", title: "Could not create the PDF", description: getApiErrorMessage(e) }) })}
+        >
+            <Download /> {signed ? "Signed PDF" : "PDF"}
+        </Button>
     );
 }
 
@@ -67,7 +83,8 @@ function SectionsEditor({ contract, version, editable }: { contract: ContractDet
                 <span className="text-[13px] font-medium text-foreground">{version.label}</span>
                 {version.content_hash && <code className="hidden truncate text-[11px] text-muted-foreground md:inline">sha256 {version.content_hash.slice(0, 16)}…</code>}
                 {!version.editable && <Badge variant="neutral"><Lock className="size-3" /> Read only</Badge>}
-                {editable && !editing && <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setEditing(true)}><Pencil /> Edit document</Button>}
+                <PdfButton contractId={contract.id} versionId={version.id} signed={version.status === "SIGNED"} />
+                {editable && !editing && <Button size="sm" variant="ghost" onClick={() => setEditing(true)}><Pencil /> Edit document</Button>}
                 {editing && <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setEditing(false)}><Eye /> Preview</Button>}
             </div>
             {editing ? (

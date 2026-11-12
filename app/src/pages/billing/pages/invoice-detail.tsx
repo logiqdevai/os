@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Bell, CheckCircle2, Copy, CreditCard, ExternalLink, FileMinus, Link2, MoreHorizontal, Pencil, Printer, Send, Trash2, XCircle } from "lucide-react";
+import { Bell, CheckCircle2, Copy, CreditCard, Download, ExternalLink, FileMinus, Link2, MoreHorizontal, Pencil, Printer, Send, Trash2, XCircle } from "lucide-react";
 import { Page, PageHeader, KeyValueList, Section } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
 import { usePermissions } from "@/hooks/use-permission";
 import { toast } from "@/hooks/use-toast";
-import { useCreditNoteAction, useDeleteInvoice, useInvoice, useInvoiceAction, useInvoiceCheckout } from "@/features/billing/hooks/use-billing";
+import { useCreditNoteAction, useDeleteInvoice, useDownloadInvoicePdf, useInvoice, useInvoiceAction, useInvoiceCheckout } from "@/features/billing/hooks/use-billing";
 import type { InvoiceDetail } from "@/features/billing/interfaces/billing.interfaces";
 import { BillingEventLabelOptions, PaymentMethodTypeOptions } from "@/config/constants/dropdowns/billing/billing.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
@@ -31,6 +31,7 @@ export default function InvoiceDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const q = useInvoice(id);
+    const pdf = useDownloadInvoicePdf();
     const p = usePermissions();
     const action = useInvoiceAction();
     const checkout = useInvoiceCheckout();
@@ -66,7 +67,8 @@ export default function InvoiceDetailPage() {
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label="More actions"><MoreHorizontal /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild><a href={`/print/invoices/${inv.id}`} target="_blank" rel="noreferrer"><Printer /> Print / PDF</a></DropdownMenuItem>
+                                <DropdownMenuItem disabled={pdf.isPending} onSelect={() => pdf.mutate(inv.id)}><Download /> Download PDF</DropdownMenuItem>
+                                <DropdownMenuItem asChild><a href={`/print/invoices/${inv.id}`} target="_blank" rel="noreferrer"><Printer /> Print</a></DropdownMenuItem>
                                 {open && p.can("finance.invoices.send") && <DropdownMenuItem onSelect={() => checkout.mutate(inv.id, { onSuccess: (r) => { void navigator.clipboard?.writeText(r.url); toast({ title: "Payment link copied", description: `Collected through ${r.connection.display_name}` }); } })}><Link2 /> Online payment link</DropdownMenuItem>}
                                 {open && p.can("finance.invoices.send") && <DropdownMenuItem onSelect={() => run("remind", {}, "Reminder logged")}><Bell /> Send reminder</DropdownMenuItem>}
                                 {draft && p.can("finance.invoices.approve") && inv.approval.history.some((h) => h.decision === "PENDING") && <DropdownMenuItem onSelect={() => setDialog("reject")}><XCircle /> Reject approval</DropdownMenuItem>}
