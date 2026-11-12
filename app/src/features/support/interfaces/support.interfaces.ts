@@ -538,3 +538,62 @@ export interface AiStatus {
     require_reply_approval: boolean;
     pending_suggestions: number;
 }
+
+// ---------------------------------------------------------------- AI auto-answer + office hours (13 §3, §5)
+
+export type ChannelAiMode = "OFF" | "SUGGEST" | "AUTO_REPLY";
+
+export interface ChannelAiConfig {
+    mode: ChannelAiMode;
+    /** 0.5–0.99 */
+    min_confidence: number;
+    max_turns: number;
+    handover_phrases: string[];
+}
+
+export type WeekdayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
+export interface OfficeHoursConfig {
+    enabled: boolean;
+    use_organization_hours: boolean;
+    timezone?: string | null;
+    days?: Partial<Record<WeekdayKey, { start: string; end: string } | null>>;
+    offline_message?: string | null;
+}
+
+/** GET /support/channels/:id/automation */
+export interface ChannelAutomation {
+    channel_id: string;
+    ai: ChannelAiConfig;
+    office_hours: OfficeHoursConfig;
+    office_hours_status: { enabled: boolean; open: boolean; next_open_at: string | null; timezone: string | null };
+}
+
+export type SupportAiSessionStatus = "ACTIVE" | "RESOLVED_BY_AI" | "HANDED_OVER" | "ABANDONED" | "FAILED";
+
+/** GET /support/ai/conversations/:id/sessions */
+export interface SupportAiSession {
+    id: string;
+    conversation_id: string;
+    status: SupportAiSessionStatus;
+    model: string;
+    turn_count: number;
+    cited_article_ids: string[];
+    handover_reason: string | null;
+    handover_summary: string | null;
+    handover_label: string | null;
+    usage: { input_tokens?: number; output_tokens?: number; cost?: number } | null;
+    started_at: string;
+    handed_over_at: string | null;
+    ended_at: string | null;
+}
+
+/** Socket `typing` on the /support namespace (agents watching a conversation). */
+export interface SupportTypingEvent {
+    conversation_id: string;
+    from: "visitor" | "agent" | "ai";
+    name: string | null;
+    membership_id?: string | null;
+    internal: boolean;
+    active: boolean;
+}

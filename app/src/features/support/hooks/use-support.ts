@@ -65,6 +65,11 @@ export const useChannels = (enabled = true) => useQuery({ queryKey: k("channels"
 export const useCreateChannel = () => useSupportMutation(s.createChannel);
 export const useUpdateChannel = () => useSupportMutation(s.updateChannel);
 export const useRotateWidgetKey = () => useSupportMutation(s.rotateWidgetKey);
+export const useChannelAutomation = (id: string | undefined, enabled = true) => useQuery({ queryKey: k("channel-automation", id), queryFn: () => s.getChannelAutomation(id as string), enabled: !!id && enabled });
+export const useSetChannelAiAgent = () => useSupportMutation(s.setChannelAiAgent);
+export const useSetChannelOfficeHours = () => useSupportMutation(s.setChannelOfficeHours);
+export const useAiSessions = (conversationId: string | undefined, enabled = true) => useQuery({ queryKey: k("ai-sessions", conversationId), queryFn: () => s.getAiSessions(conversationId as string), enabled: !!conversationId && enabled });
+export const useTakeOverFromAi = () => useSupportMutation(s.takeOverFromAi);
 export const useEmailChannelSetup = (id: string | undefined) => useQuery({ queryKey: k("email-setup", id), queryFn: () => s.getEmailChannelSetup(id as string), enabled: !!id });
 export const useSetEmailInboundSecret = () => useSupportMutation(s.setEmailInboundSecret);
 export const useAgents = (enabled = true) => useQuery({ queryKey: k("agents"), queryFn: () => s.getAgents(), enabled, staleTime: 60_000 });

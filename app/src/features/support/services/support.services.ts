@@ -1,6 +1,10 @@
 import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
 import type {
+    ChannelAiConfig,
+    ChannelAutomation,
+    OfficeHoursConfig,
+    SupportAiSession,
     Agent,
     AiReplySuggestion,
     AiStatus,
@@ -93,6 +97,11 @@ export const updateChannel = async ({ id, ...dto }: Params & { id: string }): Pr
 export const rotateWidgetKey = async (id: string): Promise<SupportChannel> => (await axiosInstance.post(R().channels.rotate(id))).data;
 export const getEmailChannelSetup = async (id: string): Promise<EmailChannelSetup> => (await axiosInstance.get(R().channels.emailSetup(id))).data;
 export const setEmailInboundSecret = async ({ id, secret }: { id: string; secret?: string }): Promise<{ inbound_url: string; secret: string | null }> => (await axiosInstance.post(R().channels.emailSecret(id), { secret })).data;
+export const getChannelAutomation = async (id: string): Promise<ChannelAutomation> => (await axiosInstance.get(R().channels.automation(id))).data;
+export const setChannelAiAgent = async ({ id, ...dto }: ChannelAiConfig & { id: string }): Promise<ChannelAutomation> => (await axiosInstance.put(R().channels.aiAgent(id), dto)).data;
+export const setChannelOfficeHours = async ({ id, ...dto }: OfficeHoursConfig & { id: string }): Promise<ChannelAutomation> => (await axiosInstance.put(R().channels.officeHours(id), dto)).data;
+export const getAiSessions = async (conversationId: string): Promise<SupportAiSession[]> => (await axiosInstance.get(R().ai.sessions(conversationId))).data;
+export const takeOverFromAi = async (conversationId: string): Promise<{ success: boolean; ended: boolean }> => (await axiosInstance.post(R().ai.takeOver(conversationId))).data;
 export const getAgents = async (search?: string): Promise<Agent[]> => (await axiosInstance.get(R().agents.list, { params: { search: search || undefined } })).data;
 export const updateAgentProfile = async ({ membership_id, ...dto }: Params & { membership_id: string }) => (await axiosInstance.patch(R().agents.detail(membership_id), dto)).data;
 export const getSlaPolicies = async (): Promise<SlaPolicy[]> => (await axiosInstance.get(R().sla.list)).data;

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { isLoggedIn, useAuthStore } from "@/stores/auth";
 import * as service from "../services/session.services";
-import type { AuthResponse, Session } from "../interfaces/session.interfaces";
+import { isMfaChallenge, type AuthResponse, type Session, type SignInResult } from "../interfaces/session.interfaces";
 
 export const SESSION_QUERY_KEY = ["session"] as const;
 
@@ -35,9 +35,16 @@ function useStoreCredentials() {
     };
 }
 
+/** Password step. Stores the session unless the account uses MFA (then the caller shows the code step). */
 export function useSignIn() {
     const store = useStoreCredentials();
-    return useMutation({ mutationFn: service.signIn, onSuccess: store });
+    return useMutation({ mutationFn: service.signIn, onSuccess: (res: SignInResult) => { if (!isMfaChallenge(res)) store(res); } });
+}
+
+/** Second sign-in step: code or recovery code → session. */
+export function useVerifyMfa() {
+    const store = useStoreCredentials();
+    return useMutation({ mutationFn: service.verifyMfa, onSuccess: store });
 }
 
 export function useSignUp() {
@@ -123,3 +130,29 @@ export function useRevokeMySession() {
     const queryClient = useQueryClient();
     return useMutation({ mutationFn: service.revokeMySession, onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-sessions"] }) });
 }
+
+export const MFA_QUERY_KEY = ["my-mfa"] as const;
+
+export function useMfaStatus() {
+    return useQuery({ queryKey: MFA_QUERY_KEY, queryFn: service.getMfaStatus });
+}
+
+export function useStartTotpSetup() {
+    return useMutation({ mutationFn: service.startTotpSetup });
+}
+
+/** Refreshes the session too: the enrolment gate opens as soon as MFA is on. */
+function useMfaMutation<TVars, TData>(fn: (v: TVars) => Promise<TData>) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: fn,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: MFA_QUERY_KEY });
+            queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY });
+        },
+    });
+}
+
+export const useConfirmTotpSetup = () => useMfaMutation(service.confirmTotpSetup);
+export const useRegenerateRecoveryCodes = () => useMfaMutation(service.regenerateRecoveryCodes);
+export const useDisableMfa = () => useMfaMutation(service.disableMfa);

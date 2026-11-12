@@ -234,3 +234,36 @@ export const AiSuggestionKindOptions: DropdownOption<string>[] = [
     { id: "FEEDBACK_EXTRACTION", label: "Feedback" },
 ];
 export const AiSuggestionKindFilterOptions: DropdownOption<string>[] = [{ id: "all", label: "Any kind" }, ...AiSuggestionKindOptions];
+
+/** 13 §3 — AI auto-answer mode per channel. */
+export const ChannelAiModeOptions: DropdownOption<"OFF" | "SUGGEST" | "AUTO_REPLY">[] = [
+    { id: "OFF", label: "Off" },
+    { id: "SUGGEST", label: "Suggest only (an agent reviews)" },
+    { id: "AUTO_REPLY", label: "Auto-reply when confident" },
+];
+
+export const ChannelAiModeBadge: Record<"OFF" | "SUGGEST" | "AUTO_REPLY", { label: string; variant: BadgeVariant }> = {
+    OFF: { label: "AI off", variant: "neutral" },
+    SUGGEST: { label: "AI suggests", variant: "info" },
+    AUTO_REPLY: { label: "AI auto-replies", variant: "violet" },
+};
+
+/** Weekday rows of the office-hours editor (keys match the API). */
+export const WeekdayOptions: DropdownOption<"mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun">[] = [
+    { id: "mon", label: "Monday" },
+    { id: "tue", label: "Tuesday" },
+    { id: "wed", label: "Wednesday" },
+    { id: "thu", label: "Thursday" },
+    { id: "fri", label: "Friday" },
+    { id: "sat", label: "Saturday" },
+    { id: "sun", label: "Sunday" },
+];
+
+/** 13 §3 — why the AI assistant stopped answering (SupportAiSession.status). */
+export const AiSessionStatusOptions: DropdownOption<"ACTIVE" | "RESOLVED_BY_AI" | "HANDED_OVER" | "ABANDONED" | "FAILED">[] = [
+    { id: "ACTIVE", label: "AI answering" },
+    { id: "RESOLVED_BY_AI", label: "Resolved by AI" },
+    { id: "HANDED_OVER", label: "Handed over" },
+    { id: "ABANDONED", label: "Abandoned" },
+    { id: "FAILED", label: "AI did not answer" },
+];

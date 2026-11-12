@@ -13,6 +13,9 @@ export const SupportApiRoutes = {
         rotate: (id: string) => `/support/channels/${id}/rotate-widget-key`,
         emailSetup: (id: string) => `/support/channels/${id}/email-setup`,
         emailSecret: (id: string) => `/support/channels/${id}/email-secret`,
+        automation: (id: string) => `/support/channels/${id}/automation`,
+        aiAgent: (id: string) => `/support/channels/${id}/ai-agent`,
+        officeHours: (id: string) => `/support/channels/${id}/office-hours`,
     },
     agents: { list: "/support/agents", detail: (membershipId: string) => `/support/agents/${membershipId}` },
     conversations: {
@@ -72,6 +75,8 @@ export const SupportApiRoutes = {
         status: "/support/ai/status",
         suggestReply: (conversationId: string) => `/support/ai/conversations/${conversationId}/suggest-reply`,
         summarize: (conversationId: string) => `/support/ai/conversations/${conversationId}/summarize`,
+        sessions: (conversationId: string) => `/support/ai/conversations/${conversationId}/sessions`,
+        takeOver: (conversationId: string) => `/support/ai/conversations/${conversationId}/take-over`,
         suggestions: "/support/ai/suggestions",
         accept: (id: string) => `/support/ai/suggestions/${id}/accept`,
         reject: (id: string) => `/support/ai/suggestions/${id}/reject`,
