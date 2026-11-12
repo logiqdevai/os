@@ -1,6 +1,12 @@
 import type {
     ChangeRequestStatus,
+    ChecklistPhase,
     DeliverableStatus,
+    HandoverStatus,
+    HandoverType,
+    ProjectGateKind,
+    ProjectGateStatus,
+    ProjectReviewType,
     ProjectHealth,
     ProjectIssueKind,
     ProjectIssueStatus,
@@ -139,6 +145,8 @@ export const ProjectTabOptions: DropdownOption<"overview" | "tasks" | "timeline"
     { id: "deliverables", label: "Deliverables" },
     { id: "raid", label: "RAID" },
     { id: "updates", label: "Updates" },
+    { id: "governance", label: "Gates & reviews" },
+    { id: "closeout", label: "Closeout" },
     { id: "members", label: "Members" },
     { id: "settings", label: "Settings" },
 ];
@@ -168,3 +176,57 @@ export const TimelineGroupOptions: DropdownOption<"none" | "customer" | "owner" 
     { id: "status", label: "Group by status" },
 ];
 
+export const GateKindFormOptions: DropdownOption<ProjectGateKind>[] = [
+    { id: "APPROVAL", label: "Approval gate" },
+    { id: "QUALITY", label: "Quality gate" },
+];
+
+export const GateStatusFormOptions: DropdownOption<ProjectGateStatus>[] = [
+    { id: "PENDING", label: "Pending" },
+    { id: "PASSED", label: "Passed" },
+    { id: "FAILED", label: "Failed" },
+    { id: "WAIVED", label: "Waived" },
+];
+/** Decisions offered in the decide dialog. */
+export const GateDecisionOptions: DropdownOption<"PASSED" | "FAILED" | "WAIVED">[] = [
+    { id: "PASSED", label: "Pass" },
+    { id: "FAILED", label: "Fail" },
+    { id: "WAIVED", label: "Waive" },
+];
+
+export const ReviewTypeFormOptions: DropdownOption<ProjectReviewType>[] = [
+    { id: "KICKOFF", label: "Kickoff" },
+    { id: "MILESTONE", label: "Milestone review" },
+    { id: "DELIVERY", label: "Delivery review" },
+    { id: "QUALITY", label: "Quality review" },
+    { id: "CUSTOMER", label: "Customer review" },
+    { id: "RETROSPECTIVE", label: "Retrospective" },
+    { id: "POST_PROJECT", label: "Post-project review" },
+];
+
+export const ChecklistPhaseFormOptions: DropdownOption<ChecklistPhase>[] = [
+    { id: "kickoff", label: "Kickoff" },
+    { id: "discovery", label: "Discovery" },
+    { id: "development", label: "Development" },
+    { id: "qa", label: "QA" },
+    { id: "launch", label: "Launch" },
+    { id: "handover", label: "Handover" },
+    { id: "closeout", label: "Closeout" },
+    { id: "custom", label: "Custom" },
+];
+
+export const HandoverTypeFormOptions: DropdownOption<HandoverType>[] = [
+    { id: "sales_to_delivery", label: "Sales → delivery" },
+    { id: "development_to_qa", label: "Development → QA" },
+    { id: "qa_to_customer", label: "QA → customer" },
+    { id: "delivery_to_support", label: "Delivery → support" },
+    { id: "project_to_maintenance", label: "Project → maintenance" },
+    { id: "custom", label: "Custom" },
+];
+
+export const HandoverStatusFormOptions: DropdownOption<HandoverStatus>[] = [
+    { id: "PLANNED", label: "Planned" },
+    { id: "IN_PROGRESS", label: "In progress" },
+    { id: "COMPLETED", label: "Accepted" },
+    { id: "CANCELLED", label: "Cancelled" },
+];

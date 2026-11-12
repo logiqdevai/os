@@ -35,6 +35,13 @@ export const getProjectWorkload = async (params: Params): Promise<{ from: string
 export const getPortfolioTimeline = async (params: Params): Promise<PortfolioTimeline> => (await axiosInstance.get(R.timeline, { params })).data;
 export const getProjectTimeline = async (id: string, params: Params = {}): Promise<ProjectTimeline> => (await axiosInstance.get(R.projectTimeline(id), { params })).data;
 
+// Governance & closeout: `path` is gates | reviews | checklists | handovers | closeout (+ sub-paths).
+export const getGovernance = async <T>(id: string, path: string): Promise<T> => (await axiosInstance.get(R.governance(id, path))).data;
+export const postGovernance = async ({ id, path, dto }: { id: string; path: string; dto?: Params }): Promise<unknown> => (await axiosInstance.post(R.governance(id, path), dto ?? {})).data;
+export const patchGovernance = async ({ id, path, dto }: { id: string; path: string; dto: Params }): Promise<unknown> => (await axiosInstance.patch(R.governance(id, path), dto)).data;
+export const putGovernance = async ({ id, path, dto }: { id: string; path: string; dto: Params }): Promise<unknown> => (await axiosInstance.put(R.governance(id, path), dto)).data;
+export const deleteGovernance = async ({ id, path }: { id: string; path: string }): Promise<unknown> => (await axiosInstance.delete(R.governance(id, path))).data;
+
 export const createProject = async (dto: CreateProjectDto): Promise<ProjectDetail> => (await axiosInstance.post(R.list, dto)).data;
 export const updateProject = async ({ id, ...dto }: UpdateProjectDto & { id: string }): Promise<ProjectDetail> => (await axiosInstance.patch(R.detail(id), dto)).data;
 export const deleteProject = async (id: string) => (await axiosInstance.delete(R.detail(id))).data;

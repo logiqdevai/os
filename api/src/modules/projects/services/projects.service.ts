@@ -457,13 +457,29 @@ export class ProjectsService {
         return {};
     }
 
+    /** What stops completion (05 §71): blocking gates not PASSED/WAIVED and required checklist items still open. */
+    async completionBlockers(id: string) {
+        const [gates, items] = await Promise.all([
+            this.prisma.projectGate.findMany({
+                where: { project_id: id, blocks_completion: true, status: { notIn: [ProjectGateStatus.PASSED, ProjectGateStatus.WAIVED] } },
+                select: { id: true, name: true, status: true },
+            }),
+            this.prisma.projectChecklistItem.findMany({
+                where: { checklist: { project_id: id }, is_required: true, is_completed: false },
+                select: { id: true, title: true, checklist: { select: { id: true, name: true } } },
+            }),
+        ]);
+        return { gates, checklist_items: items };
+    }
+
     private async assertGatesPassed(id: string) {
-        const blocking = await this.prisma.projectGate.findMany({
-            where: { project_id: id, blocks_completion: true, status: { notIn: [ProjectGateStatus.PASSED, ProjectGateStatus.WAIVED] } },
-            select: { id: true, name: true, status: true },
-        });
-        if (blocking.length) {
-            throw new ConflictException({ message: `Pass or waive these gates first: ${blocking.map((g) => g.name).join(', ')}`, code: 'project_gates_pending', gates: blocking });
+        const { gates, checklist_items } = await this.completionBlockers(id);
+        if (gates.length || checklist_items.length) {
+            const parts = [
+                gates.length ? `pass or waive these gates: ${gates.map((g) => g.name).join(', ')}` : null,
+                checklist_items.length ? `complete ${checklist_items.length} required checklist item${checklist_items.length === 1 ? '' : 's'}` : null,
+            ].filter(Boolean);
+            throw new ConflictException({ message: `Cannot complete yet: ${parts.join('; ')}`, code: 'project_gates_pending', gates, checklist_items });
         }
     }
 

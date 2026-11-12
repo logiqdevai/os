@@ -6,6 +6,8 @@ import { ProjectsService } from './services/projects.service';
 import { ProjectItemsService } from './services/project-items.service';
 import { ProjectTimelineService } from './services/project-timeline.service';
 import { PortfolioTimelineQuerySchema, ProjectTimelineToolSchema } from './dto/project-timeline.schema';
+import { ProjectGovernanceService } from './services/project-governance.service';
+import { CloseProjectToolSchema, CreateGateToolSchema, CreateHandoverToolSchema, CreateReviewToolSchema, DecideGateToolSchema, ProjectIdSchema, UpdateChecklistItemToolSchema } from './dto/project-governance.schema';
 import { CreateProjectSchema, UpdateProjectSchema } from './dto/create-project.dto';
 import { LookupQuerySchema, MilestoneQuerySchema, ProjectQuerySchema, RaidQuerySchema } from './dto/project-query.schema';
 import { CreateIssueSchema, CreateMilestoneSchema, CreateRiskSchema, CreateStatusUpdateSchema, UpdateMilestoneSchema } from './dto/project-items.dto';
@@ -20,6 +22,7 @@ export class ProjectsMcp implements OnModuleInit {
         private readonly projects: ProjectsService,
         private readonly items: ProjectItemsService,
         private readonly timeline: ProjectTimelineService,
+        private readonly governance: ProjectGovernanceService,
     ) { }
 
     onModuleInit() {
@@ -48,6 +51,34 @@ export class ProjectsMcp implements OnModuleInit {
             {
                 ...base, name: 'projects_project_timeline_read', description: 'One project timeline: workstreams, milestones, dated tasks, task and project dependencies, unscheduled tasks.', permission: 'projects.projects.read', input: ProjectTimelineToolSchema,
                 handler: (ctx, { project_id, ...q }) => this.timeline.project(ctx, project_id, q),
+            },
+            { ...base, resource_type: 'project_gate', name: 'projects_gates_list', description: 'Approval and quality gates of a project (status PENDING/PASSED/FAILED/WAIVED, blocks_completion, approver).', permission: 'projects.projects.read', input: ProjectIdSchema, handler: (ctx, a) => this.governance.listGates(ctx, a.project_id) },
+            {
+                ...base, resource_type: 'project_gate', name: 'projects_gates_create', description: 'Add an APPROVAL or QUALITY gate; blocks_completion=true stops completion until it is passed or waived.', permission: 'projects.projects.update', input: CreateGateToolSchema,
+                handler: (ctx, { project_id, ...dto }) => this.governance.createGate(ctx, project_id, dto),
+            },
+            {
+                ...base, resource_type: 'project_gate', name: 'projects_gates_decide', description: 'Pass, fail or waive a gate (FAILED / WAIVED need a comment).', permission: 'projects.gates.decide', sensitive: true, input: DecideGateToolSchema,
+                handler: (ctx, { project_id, id, ...dto }) => this.governance.decideGate(ctx, project_id, id, dto),
+            },
+            { ...base, resource_type: 'project_review', name: 'projects_reviews_list', description: 'Reviews and retrospectives of a project with their actions.', permission: 'projects.projects.read', input: ProjectIdSchema, handler: (ctx, a) => this.governance.listReviews(ctx, a.project_id) },
+            {
+                ...base, resource_type: 'project_review', name: 'projects_reviews_create', description: 'Record a review or retrospective (type KICKOFF, MILESTONE, DELIVERY, QUALITY, CUSTOMER, POST_PROJECT, RETROSPECTIVE) with findings, lessons and actions.', permission: 'projects.projects.update', input: CreateReviewToolSchema,
+                handler: (ctx, { project_id, ...dto }) => this.governance.createReview(ctx, project_id, dto),
+            },
+            { ...base, resource_type: 'project_checklist', name: 'projects_checklists_list', description: 'Phase checklists (kickoff … closeout) with items; required open items block completion.', permission: 'projects.projects.read', input: ProjectIdSchema, handler: (ctx, a) => this.governance.listChecklists(ctx, a.project_id) },
+            {
+                ...base, resource_type: 'project_checklist_item', name: 'projects_checklist_items_update', description: 'Tick or untick a checklist item (is_completed) or edit it.', permission: 'projects.projects.update', input: UpdateChecklistItemToolSchema,
+                handler: (ctx, { project_id, checklist_id, id, ...dto }) => this.governance.updateItem(ctx, project_id, checklist_id, id, dto),
+            },
+            {
+                ...base, resource_type: 'project_handover', name: 'projects_handovers_create', description: 'Plan a handover (e.g. delivery_to_support) to a team and/or new owner, with a checklist and notes.', permission: 'projects.projects.update', input: CreateHandoverToolSchema,
+                handler: (ctx, { project_id, ...dto }) => this.governance.createHandover(ctx, project_id, dto),
+            },
+            { ...base, resource_type: 'project_closeout', name: 'projects_closeout_read', description: 'Closeout record and completion requirements (which gates / required checklist items still block completion).', permission: 'projects.projects.read', input: ProjectIdSchema, handler: (ctx, a) => this.governance.closeout(ctx, a.project_id) },
+            {
+                ...base, resource_type: 'project_closeout', name: 'projects_closeout_close', description: 'Save the closeout record (summary, lessons, outcome) and complete the project.', permission: 'projects.projects.complete', sensitive: true, input: CloseProjectToolSchema,
+                handler: (ctx, { project_id, ...dto }) => this.governance.close(ctx, project_id, dto),
             },
             { ...base, resource_type: 'project_risk', name: 'projects_raid_list', description: 'RAID log across projects: kind=risks|issues|decisions|dependencies, open=true for open items.', permission: 'projects.projects.read', input: RaidQuerySchema, handler: (ctx, a) => this.projects.raid(ctx, a) },
             {

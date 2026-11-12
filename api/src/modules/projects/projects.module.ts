@@ -4,10 +4,12 @@ import { ProjectsController } from './controllers/projects.controller';
 import { ProjectItemsController } from './controllers/project-items.controller';
 import { ProjectSettingsController } from './controllers/project-settings.controller';
 import { ProjectTimelineController } from './controllers/project-timeline.controller';
+import { ProjectGovernanceController } from './controllers/project-governance.controller';
 import { ProjectsService } from './services/projects.service';
 import { ProjectItemsService } from './services/project-items.service';
 import { ProjectSettingsService } from './services/project-settings.service';
 import { ProjectTimelineService } from './services/project-timeline.service';
+import { ProjectGovernanceService } from './services/project-governance.service';
 import { ProjectsMcp } from './projects.mcp';
 
 /**
@@ -17,8 +19,8 @@ import { ProjectsMcp } from './projects.mcp';
  */
 @Module({
     imports: [TasksModule],
-    controllers: [ProjectSettingsController, ProjectTimelineController, ProjectsController, ProjectItemsController],
-    providers: [ProjectsService, ProjectItemsService, ProjectSettingsService, ProjectTimelineService, ProjectsMcp],
-    exports: [ProjectsService, ProjectItemsService, ProjectSettingsService],
+    controllers: [ProjectSettingsController, ProjectTimelineController, ProjectsController, ProjectItemsController, ProjectGovernanceController],
+    providers: [ProjectsService, ProjectItemsService, ProjectSettingsService, ProjectTimelineService, ProjectGovernanceService, ProjectsMcp],
+    exports: [ProjectsService, ProjectItemsService, ProjectSettingsService, ProjectGovernanceService],
 })
 export class ProjectsModule { }

@@ -429,3 +429,143 @@ export interface ProjectTimeline {
     tasks_visible: boolean;
 }
 
+// --- Governance & closeout (05 §46–49, §71–74, §92–94, §102–103) ------------------------------
+
+export type ProjectGateKind = "APPROVAL" | "QUALITY";
+export type ProjectGateStatus = "PENDING" | "PASSED" | "FAILED" | "WAIVED";
+export type ProjectReviewType = "KICKOFF" | "MILESTONE" | "DELIVERY" | "QUALITY" | "CUSTOMER" | "POST_PROJECT" | "RETROSPECTIVE";
+export type HandoverStatus = "PLANNED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type HandoverType = "sales_to_delivery" | "delivery_to_support" | "development_to_qa" | "qa_to_customer" | "project_to_maintenance" | "custom";
+export type ChecklistPhase = "kickoff" | "discovery" | "development" | "qa" | "launch" | "handover" | "closeout" | "custom";
+
+export interface TaskLinkRef {
+    id: string;
+    identifier: string;
+    title: string;
+    status: { name: string; category: string } | null;
+}
+
+export interface ProjectGate {
+    id: string;
+    project_id: string;
+    kind: ProjectGateKind;
+    name: string;
+    description: string | null;
+    milestone_id: string | null;
+    milestone: { id: string; name: string; planned_date: string | null } | null;
+    approver_membership_id: string | null;
+    approver: MemberRef | null;
+    status: ProjectGateStatus;
+    blocks_completion: boolean;
+    decision_comment: string | null;
+    decided_at: string | null;
+    sort_order: number;
+}
+
+export interface ReviewActionItem {
+    title: string;
+    owner_membership_id?: string | null;
+    due_date?: string | null;
+    task_id?: string | null;
+    done?: boolean;
+    owner?: MemberRef | null;
+    task?: TaskLinkRef | null;
+}
+
+export interface ProjectReview {
+    id: string;
+    project_id: string;
+    type: ProjectReviewType;
+    title: string;
+    held_at: string | null;
+    facilitator_membership_id: string | null;
+    facilitator: MemberRef | null;
+    participants: string[];
+    participant_people: MemberRef[];
+    findings: string | null;
+    decisions: string | null;
+    went_well: string | null;
+    went_wrong: string | null;
+    root_causes: string | null;
+    lessons: string | null;
+    actions: ReviewActionItem[];
+    milestone_id: string | null;
+    created_at: string;
+}
+
+export interface ProjectChecklistItem {
+    id: string;
+    title: string;
+    is_required: boolean;
+    is_completed: boolean;
+    completed_at: string | null;
+    completed_by: MemberRef | null;
+    task_id: string | null;
+    task: TaskLinkRef | null;
+    sort_order: number;
+}
+
+export interface ProjectChecklist {
+    id: string;
+    name: string;
+    phase: ChecklistPhase | null;
+    items: ProjectChecklistItem[];
+    progress: { total: number; done: number; required_open: number };
+}
+
+export interface HandoverDetails {
+    checklist?: { title: string; done?: boolean }[];
+    open_items?: string;
+    support_reference?: string;
+    contacts?: string;
+    notes?: string;
+    acceptance_comment?: string;
+}
+
+export interface ProjectHandover {
+    id: string;
+    project_id: string;
+    type: HandoverType;
+    status: HandoverStatus;
+    from_team: { id: string; name: string } | null;
+    to_team: { id: string; name: string } | null;
+    from_team_id: string | null;
+    to_team_id: string | null;
+    new_owner_membership_id: string | null;
+    new_owner: MemberRef | null;
+    scheduled_at: string | null;
+    completed_at: string | null;
+    accepted_at: string | null;
+    accepted_by: MemberRef | null;
+    details: HandoverDetails | null;
+    can_accept: boolean;
+    created_at: string;
+}
+
+export interface CloseoutRequirement {
+    key: string;
+    label: string;
+    required: boolean;
+    satisfied: boolean;
+    detail: string | null;
+}
+
+export interface ProjectCloseoutRecord {
+    final_status_summary: string | null;
+    outstanding_items: string | null;
+    lessons_learned: string | null;
+    customer_outcome: string | null;
+    financial_review_ref: string | null;
+    customer_acceptance_recorded_at: string | null;
+    closed_at: string | null;
+    closed_by: MemberRef | null;
+    updated_at: string;
+}
+
+export interface ProjectCloseoutData {
+    project: { id: string; name: string; completed_at: string | null; archived_at: string | null; status: { name: string; category: ProjectStatusCategory } | null };
+    closeout: ProjectCloseoutRecord | null;
+    requirements: CloseoutRequirement[];
+    blockers: { gates: { id: string; name: string; status: ProjectGateStatus }[]; checklist_items: { id: string; title: string; checklist: { id: string; name: string } }[] };
+    can_complete: boolean;
+}

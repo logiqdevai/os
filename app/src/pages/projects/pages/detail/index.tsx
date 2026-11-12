@@ -31,11 +31,13 @@ import { UpdatesTab } from "./components/updates-tab";
 import { MembersTab } from "./components/members-tab";
 import { SettingsTab } from "./components/settings-tab";
 import { TimelineTab } from "./components/timeline-tab";
+import { GovernanceTab } from "./components/governance-tab";
+import { CloseoutTab } from "./components/closeout-tab";
 
 type Confirm = "complete" | "archive" | "delete" | null;
 
 /**
- * /projects/:projectId?tab=overview|tasks|timeline|milestones|deliverables|raid|updates|members|settings — project workspace.
+ * /projects/:projectId?tab=overview|tasks|timeline|milestones|deliverables|raid|updates|governance|closeout|members|settings — project workspace.
  * @perm VIEW projects.projects.read (+ project scope) · edit projects.projects.update · complete/reopen/archive/delete own keys
  * @api GET/PATCH /projects/:id · child endpoints per tab
  * @states loading · not found / no access (404 for out-of-scope) · per-tab empty and error
@@ -118,6 +120,8 @@ export default function ProjectDetailPage() {
                 <TabsContent value="deliverables" className="mt-4"><DeliverablesTab projectId={d.id} /></TabsContent>
                 <TabsContent value="raid" className="mt-4"><RaidTab projectId={d.id} /></TabsContent>
                 <TabsContent value="updates" className="mt-4"><UpdatesTab project={d} /></TabsContent>
+                <TabsContent value="governance" className="mt-4"><GovernanceTab project={d} /></TabsContent>
+                <TabsContent value="closeout" className="mt-4"><CloseoutTab project={d} /></TabsContent>
                 <TabsContent value="members" className="mt-4"><MembersTab project={d} /></TabsContent>
                 {p.can("projects.projects.update") && <TabsContent value="settings" className="mt-4"><SettingsTab project={d} /></TabsContent>}
             </Tabs>
@@ -126,7 +130,7 @@ export default function ProjectDetailPage() {
                 isOpen={confirm === "complete"}
                 onClose={() => setConfirm(null)}
                 title={`Complete ${d.name}?`}
-                description={d.summary.tasks.open ? `${d.summary.tasks.open} tasks are still open. Blocking gates must be passed first.` : "The project moves to Completed. You can reopen it later."}
+                description={d.summary.tasks.open ? `${d.summary.tasks.open} tasks are still open. Blocking gates and required checklist items must be done first (see Closeout).` : "The project moves to Completed. Blocking gates and required checklist items must be done first."}
                 confirmText="Complete project"
                 isLoading={complete.isPending}
                 onConfirm={() => complete.mutate(d.id, { onSuccess: () => setConfirm(null) })}

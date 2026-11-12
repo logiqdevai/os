@@ -24,6 +24,9 @@ export const usePortfolioTimeline = (params: Params) =>
     useQuery({ queryKey: [...PROJECTS_KEY, "timeline", params], queryFn: () => service.getPortfolioTimeline(params), placeholderData: keepPreviousData });
 export const useProjectTimeline = (id: string | undefined, params: Params = {}) =>
     useQuery({ queryKey: [...PROJECTS_KEY, "timeline", id, params], queryFn: () => service.getProjectTimeline(id as string, params), enabled: !!id, placeholderData: keepPreviousData });
+/** Governance & closeout reads: gates | reviews | checklists | handovers | closeout. */
+export const useGovernance = <T,>(id: string | undefined, path: "gates" | "reviews" | "checklists" | "handovers" | "closeout") =>
+    useQuery({ queryKey: [...PROJECTS_KEY, "governance", id, path], queryFn: () => service.getGovernance<T>(id as string, path), enabled: !!id });
 export const useProjectChildren = <T,>(id: string | undefined, kind: ProjectChildKind) =>
     useQuery({ queryKey: [...PROJECTS_KEY, "children", id, kind], queryFn: () => service.getProjectChildren<T>(id as string, kind), enabled: !!id });
 export const useProjectTypes = () => useQuery({ queryKey: [...PROJECTS_KEY, "types"], queryFn: () => service.getProjectTypes(), staleTime: 60_000 });
@@ -67,3 +70,8 @@ export const useArchiveProjectStatus = () => useProjectMutation(service.archiveP
 export const useCreateProjectTemplate = () => useProjectMutation(service.createProjectTemplate, "Template created", "Could not create template");
 export const useUpdateProjectTemplate = () => useProjectMutation(service.updateProjectTemplate, "Template updated", "Could not update template");
 
+/** Governance & closeout writes; `success: null` = toast at the call site. */
+export const useGovernancePost = (success: string | null, failure = "Could not save") => useProjectMutation(service.postGovernance, success, failure);
+export const useGovernancePatch = (success: string | null, failure = "Could not save") => useProjectMutation(service.patchGovernance, success, failure);
+export const useGovernancePut = (success: string | null, failure = "Could not save") => useProjectMutation(service.putGovernance, success, failure);
+export const useGovernanceDelete = (success: string | null, failure = "Could not delete") => useProjectMutation(service.deleteGovernance, success, failure);

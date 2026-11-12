@@ -10,6 +10,8 @@ export const ProjectsApiRoutes = {
     workload: "/projects/workload",
     timeline: "/projects/timeline",
     projectTimeline: (id: string) => `/projects/${id}/timeline`,
+    /** Governance & closeout: gates, reviews, checklists, handovers, closeout (+ sub-paths such as `gates/:gid/decide`). */
+    governance: (id: string, path: string) => `/projects/${id}/${path}`,
     detail: (id: string) => `/projects/${id}`,
     archive: (id: string) => `/projects/${id}/archive`,
     restore: (id: string) => `/projects/${id}/restore`,
