@@ -156,7 +156,7 @@ export default function AnnouncementsPage() {
                     const done = { onSuccess: () => setPending(null) };
                     if (pending.kind === "publish") publish.mutate(pending.a.id, done);
                     else if (pending.kind === "withdraw") withdraw.mutate(pending.a.id, done);
-                    else remove.mutate(pending.a.id, done);
+                    else { remove.mutate(pending.a.id); setPending(null); } // optimistic: the row leaves at once
                 }}
             />
         </Page>

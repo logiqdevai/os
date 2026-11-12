@@ -1,6 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useEntityRemove, useEntityUpdate } from "@/lib/query/optimistic";
 import * as service from "../services/notification-admin.services";
 
 export const NOTIFICATION_ADMIN_KEY = ["notification-admin"] as const;
@@ -24,31 +23,44 @@ export const useDigests = (params: Params, enabled = true) =>
     useQuery({ queryKey: K("digests", params), queryFn: () => service.getDigests(params), placeholderData: keepPreviousData, enabled });
 export const useOrgNotificationSettings = () => useQuery({ queryKey: K("settings"), queryFn: service.getOrgSettings });
 
-function useAdminMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>, success: string | null, failure: string) {
+/**
+ * Admin mutation: refreshes the admin screens and member preferences when it settles. No success toast (the screen shows
+ * the result); a failure is toasted once by the global MutationCache with `failure` as the title — or, for autosaving
+ * editors (`inline`), shown by their <SaveStatus /> instead.
+ */
+function useAdminMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>, failure: string, inline = false) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: fn,
-        onSuccess: () => {
+        meta: inline ? { errorToast: false } : { errorTitle: failure },
+        onSettled: () => {
             qc.invalidateQueries({ queryKey: NOTIFICATION_ADMIN_KEY });
             qc.invalidateQueries({ queryKey: ["notifications", "event-preferences"] });
-            if (success) toast({ title: success });
         },
-        onError: (e) => toast({ variant: "destructive", title: failure, description: getApiErrorMessage(e) }),
     });
 }
 
-export const useCreateEventType = () => useAdminMutation(service.createEventType, "Event type registered", "Could not register the event type");
-export const useUpdateEventType = () => useAdminMutation(service.updateEventType, "Event type saved", "Could not save the event type");
-export const useDeprecateEventType = () => useAdminMutation(service.deprecateEventType, "Event type deprecated", "Could not deprecate");
-export const useCreateTemplate = () => useAdminMutation(service.createTemplate, "Template saved", "Could not save the template");
-export const useUpdateTemplate = () => useAdminMutation(service.updateTemplate, "New version saved", "Could not save the template");
-export const useDeleteTemplate = () => useAdminMutation(service.deleteTemplate, "Template deleted", "Could not delete the template");
-export const useRestoreTemplateVersion = () => useAdminMutation(service.restoreTemplateVersion, "Version restored", "Could not restore the version");
-export const usePreviewTemplate = () => useMutation({ mutationFn: service.previewTemplate });
-export const useSetDefault = () => useAdminMutation(service.setDefault, "Default saved", "Could not save the default");
-export const useRemoveDefault = () => useAdminMutation(service.removeDefault, "Default removed", "Could not remove the default");
-export const useCreateRule = () => useAdminMutation(service.createRule, "Rule created", "Could not create the rule");
-export const useUpdateRule = () => useAdminMutation(service.updateRule, "Rule saved", "Could not save the rule");
-export const useDeleteRule = () => useAdminMutation(service.deleteRule, "Rule deleted", "Could not delete the rule");
-export const useRetryDelivery = () => useAdminMutation(service.retryDelivery, "Delivery retried", "Could not retry");
-export const useUpdateOrgNotificationSettings = () => useAdminMutation(service.updateOrgSettings, "Settings saved", "Could not save the settings");
+export const useCreateEventType = () => useAdminMutation(service.createEventType, "Could not register the event type");
+export const useUpdateEventType = () => useAdminMutation(service.updateEventType, "Could not save the event type");
+export const useDeprecateEventType = () => useAdminMutation(service.deprecateEventType, "Could not deprecate");
+export const useCreateTemplate = () => useAdminMutation(service.createTemplate, "Could not save the template");
+/** Used by the autosaving template editor: errors show in its <SaveStatus />. */
+export const useUpdateTemplate = () => useAdminMutation(service.updateTemplate, "Could not save the template", true);
+export const useDeleteTemplate = () =>
+    useEntityRemove({ root: K("templates"), mutationFn: service.deleteTemplate, alsoInvalidate: [NOTIFICATION_ADMIN_KEY], meta: { errorTitle: "Could not delete the template" } });
+export const useRestoreTemplateVersion = () => useAdminMutation(service.restoreTemplateVersion, "Could not restore the version");
+export const usePreviewTemplate = () => useMutation({ mutationFn: service.previewTemplate, meta: { errorTitle: "Could not render the preview" } });
+/** `inline`: the autosaving default editor shows errors in its <SaveStatus />; creating an override toasts them. */
+export const useSetDefault = (inline = false) => useAdminMutation(service.setDefault, "Could not save the default", inline);
+/** The override leaves the table at once (module rows fall back to "Platform default" after the refresh). */
+export const useRemoveDefault = () =>
+    useEntityRemove({ root: K("defaults"), mutationFn: service.removeDefault, alsoInvalidate: [NOTIFICATION_ADMIN_KEY, ["notifications", "event-preferences"]], meta: { errorTitle: "Could not remove the default" } });
+export const useCreateRule = () => useAdminMutation(service.createRule, "Could not create the rule");
+/** Optimistic (the Active switch flips at once). `inline` for the autosaving rule editor (errors in its <SaveStatus />). */
+export const useUpdateRule = (inline = false) =>
+    useEntityUpdate({ root: K("rules"), mutationFn: service.updateRule, alsoInvalidate: [NOTIFICATION_ADMIN_KEY], meta: inline ? { errorToast: false } : { errorTitle: "Could not save the rule" } });
+export const useDeleteRule = () =>
+    useEntityRemove({ root: K("rules"), mutationFn: service.deleteRule, alsoInvalidate: [NOTIFICATION_ADMIN_KEY], meta: { errorTitle: "Could not delete the rule" } });
+export const useRetryDelivery = () => useAdminMutation(service.retryDelivery, "Could not retry");
+/** Autosaving settings page: errors show in its <SaveStatus />. */
+export const useUpdateOrgNotificationSettings = () => useAdminMutation(service.updateOrgSettings, "Could not save the settings", true);

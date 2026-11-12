@@ -62,7 +62,7 @@ export default function InboxPage() {
                 description="Everything that needs your attention, across modules."
                 actions={
                     <>
-                        <Button variant="outline" onClick={() => readAll.mutate(filters.module)} loading={readAll.isPending} disabled={!counts.data?.unread}>
+                        <Button variant="outline" onClick={() => readAll.mutate(filters.module)} disabled={!counts.data?.unread}>
                             <CheckCheck /> Mark all read
                         </Button>
                         <Can permission="notifications.preferences.manage_own">

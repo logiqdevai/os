@@ -111,8 +111,7 @@ export default function TemplatesPage() {
                 description="The platform default (or the event's own text) is used again."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => setDeleting(null) })}
+                onConfirm={() => { if (deleting) remove.mutate(deleting.id); setDeleting(null); }}
             />
         </Page>
     );

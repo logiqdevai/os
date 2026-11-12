@@ -5,6 +5,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { Switch } from "@/components/ui/switch";
 import { EntityPicker } from "@/components/ui/entity-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,11 +17,11 @@ import type { DeliveryRule, DeliveryRuleDto } from "@/features/notifications/int
 
 const EMPTY: RuleFormValues = { name: "", kind: "DEDUPLICATE", target: "all", module: "", event_type_id: "", channel: "any", window_minutes: "60", max_per_window: "", coalesce_key: "RECORD", priority: "10", is_active: true };
 
-/** Create / edit a delivery rule (14 §9). */
+/** Create (explicit "Create rule") / edit (autosaves valid changes, <SaveStatus /> + "Done") a delivery rule (14 §9). */
 export function RuleFormDialog({ open, onOpenChange, rule }: { open: boolean; onOpenChange: (o: boolean) => void; rule?: DeliveryRule | null }) {
     const types = useAdminEventTypes({ limit: 200, active: "true" }, open);
     const create = useCreateRule();
-    const update = useUpdateRule();
+    const update = useUpdateRule(true);
     const form = useForm<RuleFormValues>({ resolver: zodResolver(ruleFormSchema), defaultValues: EMPTY });
     const kind = useWatch({ control: form.control, name: "kind" });
     const target = useWatch({ control: form.control, name: "target" });
@@ -35,9 +37,7 @@ export function RuleFormDialog({ open, onOpenChange, rule }: { open: boolean; on
             : EMPTY);
     }, [open, rule, form]);
 
-    const pending = create.isPending || update.isPending;
-    const submit = form.handleSubmit((v) => {
-        const dto: DeliveryRuleDto = {
+    const toDto = (v: RuleFormValues): DeliveryRuleDto => ({
             name: v.name, kind: v.kind,
             module: v.target === "module" ? v.module : null, event_type_id: v.target === "event" ? v.event_type_id : null,
             channel: v.channel === "any" ? null : v.channel,
@@ -45,13 +45,17 @@ export function RuleFormDialog({ open, onOpenChange, rule }: { open: boolean; on
             max_per_window: v.kind === "THROTTLE" ? Number(v.max_per_window) : null,
             coalesce_key: v.kind === "COALESCE" ? v.coalesce_key : null,
             priority: Number(v.priority), is_active: v.is_active,
-        };
-        if (rule) update.mutate({ id: rule.id, ...dto }, { onSuccess: () => onOpenChange(false) });
-        else create.mutate(dto, { onSuccess: () => onOpenChange(false) });
+    });
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: (rule as DeliveryRule).id, ...toDto(v) }), { enabled: !!rule });
+    const pending = create.isPending;
+    const close = () => { if (rule) autosave.flush(); onOpenChange(false); };
+    const submit = form.handleSubmit((v) => {
+        if (rule) return close();
+        create.mutate(toDto(v), { onSuccess: () => onOpenChange(false) });
     });
 
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : !pending && close())}>
             <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
@@ -157,9 +161,18 @@ export function RuleFormDialog({ open, onOpenChange, rule }: { open: boolean; on
                                 <FormLabel className="font-normal">Active</FormLabel>
                             </FormItem>
                         )} />
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{rule ? "Save" : "Create rule"}</Button>
+                        <DialogFooter className="sm:items-center">
+                            {rule ? (
+                                <>
+                                    <SaveStatus state={autosave} className="mr-auto" />
+                                    <Button type="button" variant="outline" onClick={close}>Done</Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                                    <Button type="submit" loading={pending}>Create rule</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>

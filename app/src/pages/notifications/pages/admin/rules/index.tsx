@@ -85,8 +85,7 @@ export default function DeliveryRulesPage() {
                 description="Notifications are no longer filtered by this rule."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => setDeleting(null) })}
+                onConfirm={() => { if (deleting) remove.mutate(deleting.id); setDeleting(null); }}
             />
         </Page>
     );

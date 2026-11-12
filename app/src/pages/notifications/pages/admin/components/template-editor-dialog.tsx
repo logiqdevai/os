@@ -7,6 +7,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { Switch } from "@/components/ui/switch";
 import { EntityPicker } from "@/components/ui/entity-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,6 +28,8 @@ export type TemplateEditorTarget =
 
 /**
  * Template editor (14 §10): subject / title / body with {{variables}}, CTA, live preview with sample data, version history.
+ * Editing an organization template autosaves (each save is a new version, so the pause before saving is longer);
+ * a new template or a customized copy of a platform default is created with an explicit button.
  * @perm notifications.templates.manage · @api POST/PATCH /notification-templates · POST /notification-templates/preview · POST /:id/versions/:v/restore
  */
 export function TemplateEditorDialog({ target, onClose }: { target: TemplateEditorTarget | null; onClose: () => void }) {
@@ -52,11 +56,13 @@ export function TemplateEditorDialog({ target, onClose }: { target: TemplateEdit
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [target]);
 
-    const pending = create.isPending || update.isPending;
+    const contentOf = (v: TemplateFormValues) => ({ subject: v.subject || null, title: v.title, body: v.body, cta_label: v.cta_label || null, cta_url: v.cta_url || null, is_active: v.is_active });
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: (editing as TemplateRow).id, ...contentOf(v) }), { enabled: !!editing, delay: 2000 });
+    const pending = create.isPending;
+    const close = () => { if (editing) autosave.flush(); onClose(); };
     const submit = form.handleSubmit((v) => {
-        const content = { subject: v.subject || null, title: v.title, body: v.body, cta_label: v.cta_label || null, cta_url: v.cta_url || null, is_active: v.is_active };
-        if (editing) update.mutate({ id: editing.id, ...content }, { onSuccess: onClose });
-        else create.mutate({ ...content, event_type_id: v.event_type_id, channel: v.channel, locale: v.locale || null }, { onSuccess: onClose });
+        if (editing) return close();
+        create.mutate({ ...contentOf(v), event_type_id: v.event_type_id, channel: v.channel, locale: v.locale || null }, { onSuccess: onClose });
     });
     const runPreview = () => {
         const v = form.getValues();
@@ -64,7 +70,7 @@ export function TemplateEditorDialog({ target, onClose }: { target: TemplateEdit
     };
 
     return (
-        <Dialog open={!!target} onOpenChange={(o) => !o && !pending && onClose()}>
+        <Dialog open={!!target} onOpenChange={(o) => !o && !pending && close()}>
             <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-3xl">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
@@ -184,9 +190,18 @@ export function TemplateEditorDialog({ target, onClose }: { target: TemplateEdit
                                 )}
                             </div>
                         </div>
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{editing ? "Save new version" : "Save template"}</Button>
+                        <DialogFooter className="sm:items-center">
+                            {editing ? (
+                                <>
+                                    <SaveStatus state={autosave} className="mr-auto" />
+                                    <Button type="button" variant="outline" onClick={close}>Done</Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>Cancel</Button>
+                                    <Button type="submit" loading={pending}>{source ? "Create copy" : "Create template"}</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>

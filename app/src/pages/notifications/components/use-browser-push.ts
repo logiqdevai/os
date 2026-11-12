@@ -38,9 +38,9 @@ export function useBrowserPush() {
         try {
             const subscription = await subscribeBrowserPush(config.data.public_key);
             const row = await registerAsync({ platform: "WEB", subscription, locale: navigator.language });
-            setThisDeviceId(row.id);
-            toast({ title: "Browser notifications are on", description: "This browser will show notifications even when the app is closed." });
+            setThisDeviceId(row.id); // the "This browser" badge and the Devices list show the result
         } catch (e) {
+            // Not a toast from the MutationCache (registration errors are inline there): browser permission refusals land here too.
             toast({ variant: "destructive", title: "Could not turn on browser notifications", description: getApiErrorMessage(e) });
         } finally {
             setState(browserPushState());
@@ -48,7 +48,7 @@ export function useBrowserPush() {
         }
     }, [config.data, registerAsync]);
 
-    /** Removes a device; when it is this browser the PushManager subscription is dropped too. */
+    /** Removes a device (optimistic: it leaves the list at once); when it is this browser the PushManager subscription is dropped too. */
     const removeDevice = useCallback(async (id: string) => {
         await remove.mutateAsync(id);
         if (id === thisDeviceId) {
@@ -57,5 +57,5 @@ export function useBrowserPush() {
         }
     }, [remove, thisDeviceId]);
 
-    return { config, state, thisDeviceId, enable, busy: busy || register.isPending, removeDevice, removing: remove.isPending };
+    return { config, state, thisDeviceId, enable, busy: busy || register.isPending, removeDevice };
 }

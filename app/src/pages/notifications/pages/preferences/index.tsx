@@ -34,6 +34,7 @@ function Row({ title, description, children }: { title: string; description?: st
 /**
  * /notifications/preferences — my settings (14 §6): level, channels, quiet hours, digest, and per event type × channel.
  * @perm notifications.preferences.manage_own · mandatory events and organization-disabled channels are locked
+ * Every control saves on change and shows the new value at once (optimistic, rolled back if refused) — no Save button.
  * @api GET/PATCH /notifications/preferences/settings · GET /notifications/preferences/events · PUT/DELETE /notifications/preferences/events/:id
  *      · GET /notifications/devices/push-config + POST /notifications/devices ("Enable browser notifications") · GET /notifications/digests
  */
@@ -191,7 +192,7 @@ export default function NotificationPreferencesPage() {
                                                                     <span className="text-[11px] text-muted-foreground sm:hidden">{getDropdownOptionLabel(NotificationChannelOptions, c.channel)}</span>
                                                                     <Switch
                                                                         checked={c.enabled}
-                                                                        disabled={c.locked || setPref.isPending}
+                                                                        disabled={c.locked}
                                                                         onCheckedChange={(v) => setPref.mutate({ eventTypeId: r.event_type.id, channel: c.channel, enabled: v })}
                                                                         aria-label={`${r.event_type.name} by ${getDropdownOptionLabel(NotificationChannelOptions, c.channel)}`}
                                                                     />

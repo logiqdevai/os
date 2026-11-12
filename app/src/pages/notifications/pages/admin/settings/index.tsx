@@ -1,8 +1,9 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
-import { Button } from "@/components/ui/button";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useAutosave } from "@/hooks/use-autosave";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,6 +29,7 @@ function Row({ title, description, children }: { title: string; description?: Re
 
 /**
  * /notifications/admin/settings — organization channels, sender, digest defaults, retries, retention (14 §5, §8, §11).
+ * Autosaves (no Save button): every change is sent after a short pause; out-of-range numbers wait until they are valid.
  * @perm notifications.settings.manage · @api GET/PATCH /notification-settings
  * @states loading · error / no-access · email / SMS enabled without a connected provider (warning: deliveries skip with "No provider connected")
  * Push uses the platform's Web Push keys (no provider to connect); members turn it on per browser in Notifications → Devices.
@@ -35,14 +37,16 @@ function Row({ title, description, children }: { title: string; description?: Re
 export default function NotificationSettingsPage() {
     const q = useOrgNotificationSettings();
     const save = useUpdateOrgNotificationSettings();
+    // The fields changed on this visit; each autosave sends all of them (idempotent PATCH), so nothing is lost between saves.
     const [draft, setDraft] = useState<OrgSettingsDto>({});
-    useEffect(() => { if (q.data) setDraft({}); }, [q.data]);
+    const valid = (draft.max_delivery_attempts === undefined || (Number.isInteger(draft.max_delivery_attempts) && draft.max_delivery_attempts >= 1 && draft.max_delivery_attempts <= 10))
+        && (draft.retention_days === undefined || draft.retention_days === null || (Number.isInteger(draft.retention_days) && draft.retention_days >= 7 && draft.retention_days <= 3650));
+    const autosave = useAutosave({ value: draft, enabled: !!q.data && valid, save: (dto) => save.mutateAsync(dto) });
 
     if (q.isLoading) return <PageSkeleton />;
     if (q.error || !q.data) return <Page><PageHeader title="Notification settings" /><ErrorState error={q.error} onRetry={() => q.refetch()} /></Page>;
     const s = { ...q.data, ...draft };
     const set = (patch: OrgSettingsDto) => setDraft((d) => ({ ...d, ...patch }));
-    const dirty = Object.keys(draft).length > 0;
     const emailOn = s.enabled_channels.includes("EMAIL");
     const smsOn = s.enabled_channels.includes("SMS");
     const pushOn = s.enabled_channels.includes("PUSH");
@@ -58,7 +62,7 @@ export default function NotificationSettingsPage() {
             <PageHeader
                 title="Notification settings"
                 description="Channels, sender, digests, retries and retention for the whole organization."
-                actions={<Button onClick={() => save.mutate(draft, { onSuccess: () => setDraft({}) })} disabled={!dirty} loading={save.isPending}>Save</Button>}
+                actions={valid ? <SaveStatus state={autosave} /> : <span className="text-xs text-warning">Attempts must be 1–10 and retention 7–3650 days</span>}
             />
             <div className="space-y-8">
                 <Section title="Channels">

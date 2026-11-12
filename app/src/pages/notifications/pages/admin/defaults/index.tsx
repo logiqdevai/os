@@ -142,8 +142,7 @@ export default function OrgDefaultsPage() {
                 title="Reset to the default?"
                 description={resetting?.event_type_id ? "The module default (or the platform default) applies to this event again." : "The platform defaults apply to this module again."}
                 confirmText="Reset"
-                isLoading={remove.isPending}
-                onConfirm={() => resetting && remove.mutate(resetting.id, { onSuccess: () => setResetting(null) })}
+                onConfirm={() => { if (resetting) remove.mutate(resetting.id); setResetting(null); }}
             />
         </Page>
     );

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
-import { AlertTriangle, BellRing, Globe, Laptop, Send, Smartphone, Trash2 } from "lucide-react";
+import { AlertTriangle, BellRing, Check, Globe, Laptop, Send, Smartphone, Trash2 } from "lucide-react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,10 @@ function PermissionNote({ state }: { state: ReturnType<typeof useBrowserPush>["s
 export default function PushDevicesPage() {
     const devices = usePushDevices();
     const test = useTestPushDevice();
+    // A refused push (expired subscription…) is an answer, not a request failure: report it like an error.
+    useEffect(() => {
+        if (test.data && !test.data.ok) toast({ variant: "destructive", title: "Test failed", description: test.data.error ?? undefined });
+    }, [test.data]);
     const push = useBrowserPush();
     const [removing, setRemoving] = useState<PushDevice | null>(null);
     const canEnable = push.state === "default" || push.state === "granted";
@@ -105,7 +110,7 @@ export default function PushDevicesPage() {
                                         </div>
                                         <div className="flex shrink-0 gap-2">
                                             <Button size="sm" variant="outline" onClick={() => test.mutate(d.id)} loading={test.isPending && test.variables === d.id} disabled={d.platform !== "WEB"}>
-                                                <Send /> Send test
+                                                {test.isSuccess && test.variables === d.id && test.data?.ok ? <><Check /> Sent</> : <><Send /> Send test</>}
                                             </Button>
                                             <Button size="icon-sm" variant="ghost" aria-label={`Remove ${d.device_name ?? "device"}`} onClick={() => setRemoving(d)}>
                                                 <Trash2 />
@@ -125,12 +130,14 @@ export default function PushDevicesPage() {
             <ConfirmationDialog
                 isOpen={!!removing}
                 onClose={() => setRemoving(null)}
-                onConfirm={() => removing && void push.removeDevice(removing.id).finally(() => setRemoving(null))}
+                onConfirm={() => {
+                    if (removing) void push.removeDevice(removing.id).catch(() => undefined); // optimistic: the row leaves at once
+                    setRemoving(null);
+                }}
                 title="Remove this device?"
                 description={`${removing?.device_name ?? "This device"} will stop receiving push notifications.`}
                 confirmText="Remove"
                 variant="destructive"
-                isLoading={push.removing}
             />
         </Page>
     );
