@@ -139,6 +139,11 @@ export const AUDIT_EVENT_TYPES = {
     'integration.default_changed': t('integration_connection', 'Default integration of a category changed', { sensitive: true }),
     'integration.disconnected': t('integration_connection', 'Integration disconnected and secret destroyed', { sensitive: true, notifyAdmins: true }),
 
+    // --- Data retention (01 §100, §134) ---
+    'retention.policy_changed': t('organization_retention_policy', 'Retention period or action of a data class changed', { sensitive: true }),
+    'retention.legal_hold_changed': t('organization_retention_policy', 'Legal hold switched on or off', { sensitive: true, notifyAdmins: true }),
+    'retention.purged': t('organization_retention_policy', 'Retention run removed or anonymized old platform data', { sensitive: true }),
+
     // --- Exports (01 §101) ---
     'data.exported': t('export', 'Sensitive data export', { sensitive: true }),
     'membership.updated': t('membership', 'Member job title, type or defaults changed'), 'service_account.updated': t('service_account', 'Service account changed or reactivated', { sensitive: true }), 'mcp_call.confirmed': t('mcp_tool_call', 'A human confirmed a sensitive MCP call', { sensitive: true }), 'mcp_call.rejected': t('mcp_tool_call', 'A human rejected a sensitive MCP call', { sensitive: true }),

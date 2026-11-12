@@ -1,4 +1,4 @@
-import { Bot, Building, Building2, ClipboardCheck, FileClock, FlaskConical, Forward, Globe, KeyRound, KeySquare, Layers, LayoutDashboard, List, LockKeyhole, Mail, MonitorSmartphone, Palette, Plug, Shield, Sparkles, Users, UsersRound } from "lucide-react";
+import { Archive, Bot, Building, Building2, ClipboardCheck, FileClock, FlaskConical, Forward, Globe, KeyRound, KeySquare, Layers, LayoutDashboard, List, LockKeyhole, Mail, MonitorSmartphone, Palette, Plug, Shield, Sparkles, Users, UsersRound } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
 /** Admin (module 01). Every key below exists in api/prisma/seed/permission-catalog.ts. */
@@ -44,6 +44,7 @@ export const adminApp: AppDefinition = {
         { label: "Organization", items: [
             { label: "Profile", to: "/admin/profile", icon: Building, permissions: ["organizations.settings.manage"] },
             { label: "Branding", to: "/admin/branding", icon: Palette, permissions: ["organizations.branding.manage"] },
+            { label: "Data retention", to: "/admin/retention", icon: Archive, permissions: ["organizations.retention.manage"] },
             { label: "Audit log", to: "/admin/audit", icon: FileClock, permissions: ["organizations.audit.read"] },
         ] },
     ],

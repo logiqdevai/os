@@ -119,4 +119,10 @@ export const AdminApiRoutes = {
         item: (itemId: string) => `/access-review-items/${itemId}`,
         reassign: (itemId: string) => `/access-review-items/${itemId}/reassign`,
     },
+    retention: {
+        list: "/retention-policies",
+        detail: (dataClass: string) => `/retention-policies/${dataClass}`,
+        legalHold: "/retention-policies/legal-hold",
+        run: "/retention-policies/run",
+    },
 };
