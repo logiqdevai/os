@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy } from "lucide-react";
+import { CopyLinkButton } from "./invite-link";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -7,8 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EntityPicker } from "@/components/ui/entity-picker";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { useCustomerRoles, useInvitePortalUsers, usePortalClients } from "@/features/client-portal/hooks/use-client-portal";
 import type { InviteResult } from "@/features/client-portal/interfaces/client-portal.interfaces";
 
@@ -57,12 +55,8 @@ export function InviteDialog({ open, onOpenChange, company }: InviteDialogProps)
         invite.mutate(
             { company_id: companyId, emails: list, role_id: roleId !== DEFAULT ? roleId : undefined, message: message || undefined },
             {
-                onSuccess: (r) => {
-                    setResults(r.results);
-                    const sent = r.results.filter((x) => x.status === "invited").length;
-                    toast({ title: sent ? `${sent} invitation${sent === 1 ? "" : "s"} created` : "Nobody new to invite" });
-                },
-                onError: (e) => toast({ variant: "destructive", title: "Could not invite", description: getApiErrorMessage(e) }),
+                // The dialog switches to the per-email results (no toast).
+                onSuccess: (r) => setResults(r.results),
             },
         );
 
@@ -84,7 +78,7 @@ export function InviteDialog({ open, onOpenChange, company }: InviteDialogProps)
                                 {r.invite_url && (
                                     <div className="mt-1.5 flex items-center gap-2">
                                         <code className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{r.invite_url}</code>
-                                        <Button size="icon-sm" variant="ghost" aria-label="Copy invite link" onClick={() => navigator.clipboard.writeText(r.invite_url as string).then(() => toast({ title: "Link copied" }))}><Copy /></Button>
+                                        <CopyLinkButton text={r.invite_url} />
                                     </div>
                                 )}
                             </li>

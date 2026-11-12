@@ -10,8 +10,7 @@ import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { InviteLinkNotice } from "../../components/invite-link";
 import { formatDate, formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { InvitationStatusOptions, InvitationStatusTone, PortalClientStatusOptions, PortalClientStatusTone, PortalMembershipStatusOptions, PortalMembershipStatusTone } from "@/config/constants/dropdowns/portal/portal.options";
@@ -35,7 +34,7 @@ export default function PortalClientPage() {
     const canManageUsers = usePermission("portal.users.manage");
     const [inviteOpen, setInviteOpen] = useState(false);
     const [disabling, setDisabling] = useState(false);
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
+    const [newLink, setNewLink] = useState<{ email: string; url: string } | null>(null);
 
     if (client.isLoading) return <PageSkeleton />;
     if (client.error || !client.data) return <Page><ErrorState error={client.error} onRetry={() => client.refetch()} /></Page>;
@@ -55,7 +54,7 @@ export default function PortalClientPage() {
                             {on ? (
                                 <Button variant="outline" onClick={() => setDisabling(true)}><PowerOff /> Switch off</Button>
                             ) : (
-                                <Button variant="outline" loading={enable.isPending} onClick={() => enable.mutate({ company_id: c.company.id }, { onSuccess: () => toast({ title: "Portal enabled for this client" }), onError: fail("Could not enable") })}><Power /> Enable portal</Button>
+                                <Button variant="outline" onClick={() => enable.mutate({ company_id: c.company.id })}><Power /> Enable portal</Button>
                             )}
                         </Can>
                         <Can permission="portal.users.manage">
@@ -80,11 +79,11 @@ export default function PortalClientPage() {
                                         <Badge variant={PortalMembershipStatusTone[u.status]}>{getDropdownOptionLabel(PortalMembershipStatusOptions, u.status)}</Badge>
                                         {canManageUsers ? (
                                             <>
-                                                <Select value={u.role?.id ?? ""} onValueChange={(v) => updateUser.mutate({ id: u.id, role_id: v }, { onSuccess: () => toast({ title: "Role changed" }), onError: fail("Could not change role") })}>
+                                                <Select value={u.role?.id ?? ""} onValueChange={(v) => updateUser.mutate({ id: u.id, role_id: v, optimistic: { role: roles.data?.find((r) => r.id === v) ?? null } })}>
                                                     <SelectTrigger className="h-8 w-44" aria-label={`Role of ${u.user.email}`}><SelectValue placeholder="No role" /></SelectTrigger>
                                                     <SelectContent>{roles.data?.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
                                                 </Select>
-                                                <Button size="sm" variant="ghost" onClick={() => updateUser.mutate({ id: u.id, status: u.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE" }, { onSuccess: () => toast({ title: u.status === "ACTIVE" ? "Access suspended" : "Access restored" }), onError: fail("Could not update access") })}>
+                                                <Button size="sm" variant="ghost" onClick={() => updateUser.mutate({ id: u.id, status: u.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE" })}>
                                                     {u.status === "ACTIVE" ? "Suspend" : "Reactivate"}
                                                 </Button>
                                             </>
@@ -101,6 +100,7 @@ export default function PortalClientPage() {
                 </Section>
 
                 <Section title="Invitations">
+                    {newLink && <InviteLinkNotice email={newLink.email} url={newLink.url} onDismiss={() => setNewLink(null)} />}
                     <div className="rounded-lg border border-border bg-card">
                         {c.invitations.length ? (
                             <ul className="divide-y divide-border-soft">
@@ -111,8 +111,8 @@ export default function PortalClientPage() {
                                         <Badge variant={InvitationStatusTone[i.status]}>{getDropdownOptionLabel(InvitationStatusOptions, i.status)}</Badge>
                                         {canManageUsers && (i.status === "PENDING" || i.status === "EXPIRED") && (
                                             <>
-                                                <Button size="icon-sm" variant="ghost" aria-label={`Resend to ${i.email}`} onClick={() => resend.mutate(i.id, { onSuccess: (r) => toast({ title: r.email_sent ? "Invitation resent" : "New link created", description: r.invite_url }), onError: fail("Could not resend") })}><RotateCw /></Button>
-                                                <Button size="icon-sm" variant="ghost" aria-label={`Cancel invitation for ${i.email}`} onClick={() => cancel.mutate(i.id, { onSuccess: () => toast({ title: "Invitation cancelled" }), onError: fail("Could not cancel") })}><X /></Button>
+                                                <Button size="icon-sm" variant="ghost" aria-label={`Resend to ${i.email}`} onClick={() => resend.mutate(i.id, { onSuccess: (r) => setNewLink(!r.email_sent && r.invite_url ? { email: i.email, url: r.invite_url } : null) })}><RotateCw /></Button>
+                                                <Button size="icon-sm" variant="ghost" aria-label={`Cancel invitation for ${i.email}`} onClick={() => cancel.mutate(i.id)}><X /></Button>
                                             </>
                                         )}
                                     </li>
@@ -151,8 +151,7 @@ export default function PortalClientPage() {
                 description="Their users can no longer sign in to the portal and pending invitations are cancelled. You can switch it on again later."
                 confirmText="Switch off"
                 variant="destructive"
-                isLoading={disable.isPending}
-                onConfirm={() => disable.mutate(c.company.id, { onSuccess: () => { toast({ title: "Portal switched off" }); setDisabling(false); }, onError: fail("Could not switch off") })}
+                onConfirm={() => { disable.mutate(c.company.id); setDisabling(false); }}
             />
         </Page>
     );

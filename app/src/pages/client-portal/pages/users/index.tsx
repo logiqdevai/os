@@ -12,8 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { InviteLinkNotice } from "../../components/invite-link";
 import { formatDate, formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { InvitationStatusFilterOptions, InvitationStatusOptions, InvitationStatusTone, PortalMembershipStatusFilterOptions, PortalMembershipStatusOptions, PortalMembershipStatusTone } from "@/config/constants/dropdowns/portal/portal.options";
@@ -79,7 +78,6 @@ function UsersTable({ params, search, setSearch, filters, setFilter, setPage }: 
     const roles = useCustomerRoles();
     const update = useUpdatePortalUser();
     const canManage = usePermission("portal.users.manage");
-    const fail = (t: string) => (e: unknown) => toast({ variant: "destructive", title: t, description: getApiErrorMessage(e) });
     const columns: DataTableColumn<PortalMembershipRow>[] = [
         { key: "user", header: "User", cell: (u) => <div className="min-w-0"><MemberAvatar person={u.user} showName size="xs" /><div className="truncate pl-7 text-xs text-muted-foreground">{u.user.email}</div></div> },
         { key: "company", header: "Client", cell: (u) => (u.company ? <Link className="hover:underline" to={CLIENT_PORTAL_PATHS.client(u.company.id)}>{u.company.name}</Link> : "—"), hideBelow: "sm" },
@@ -97,15 +95,15 @@ function UsersTable({ params, search, setSearch, filters, setFilter, setPage }: 
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Change role</DropdownMenuLabel>
                             {roles.data?.map((r) => (
-                                <DropdownMenuItem key={r.id} disabled={u.role?.id === r.id} onSelect={() => update.mutate({ id: u.id, role_id: r.id }, { onSuccess: () => toast({ title: `Role changed to ${r.name}` }), onError: fail("Could not change role") })}>{r.name}</DropdownMenuItem>
+                                <DropdownMenuItem key={r.id} disabled={u.role?.id === r.id} onSelect={() => update.mutate({ id: u.id, role_id: r.id, optimistic: { role: r } })}>{r.name}</DropdownMenuItem>
                             ))}
                             <DropdownMenuSeparator />
                             {u.status === "ACTIVE" ? (
-                                <DropdownMenuItem onSelect={() => update.mutate({ id: u.id, status: "SUSPENDED" }, { onSuccess: () => toast({ title: "Access suspended" }), onError: fail("Could not suspend") })}>Suspend</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => update.mutate({ id: u.id, status: "SUSPENDED" })}>Suspend</DropdownMenuItem>
                             ) : (
-                                <DropdownMenuItem onSelect={() => update.mutate({ id: u.id, status: "ACTIVE" }, { onSuccess: () => toast({ title: "Access restored" }), onError: fail("Could not reactivate") })}>Reactivate</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => update.mutate({ id: u.id, status: "ACTIVE" })}>Reactivate</DropdownMenuItem>
                             )}
-                            {u.status !== "DEACTIVATED" && <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => update.mutate({ id: u.id, status: "DEACTIVATED" }, { onSuccess: () => toast({ title: "User deactivated" }), onError: fail("Could not deactivate") })}>Deactivate</DropdownMenuItem>}
+                            {u.status !== "DEACTIVATED" && <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => update.mutate({ id: u.id, status: "DEACTIVATED" })}>Deactivate</DropdownMenuItem>}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 ),
@@ -133,7 +131,7 @@ function InvitationsTable({ params, search, setSearch, filters, setFilter, setPa
     const resend = useResendPortalInvitation();
     const cancel = useCancelPortalInvitation();
     const canManage = usePermission("portal.users.manage");
-    const fail = (t: string) => (e: unknown) => toast({ variant: "destructive", title: t, description: getApiErrorMessage(e) });
+    const [newLink, setNewLink] = useState<{ email: string; url: string } | null>(null);
     const columns: DataTableColumn<PortalInvitationRow>[] = [
         { key: "email", header: "Email", cell: (i) => <span className="font-medium text-foreground">{i.email}</span> },
         { key: "client", header: "Client", cell: (i) => i.customer?.name ?? "—", hideBelow: "sm" },
@@ -149,8 +147,8 @@ function InvitationsTable({ params, search, setSearch, filters, setFilter, setPa
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${i.email}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => resend.mutate(i.id, { onSuccess: (r) => toast({ title: r.email_sent ? "Invitation resent" : "New link created", description: r.invite_url }), onError: fail("Could not resend") })}>Resend</DropdownMenuItem>
-                            <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => cancel.mutate(i.id, { onSuccess: () => toast({ title: "Invitation cancelled" }), onError: fail("Could not cancel") })}>Cancel invitation</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => resend.mutate(i.id, { onSuccess: (r) => setNewLink(!r.email_sent && r.invite_url ? { email: i.email, url: r.invite_url } : null) })}>Resend</DropdownMenuItem>
+                            <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => cancel.mutate(i.id)}>Cancel invitation</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 ),
@@ -158,6 +156,7 @@ function InvitationsTable({ params, search, setSearch, filters, setFilter, setPa
     ];
     return (
         <>
+            {newLink && <InviteLinkNotice email={newLink.email} url={newLink.url} onDismiss={() => setNewLink(null)} />}
             <TableToolbar search={search} onSearch={setSearch} placeholder="Search email…">
                 <Select value={filters.status ?? "all"} onValueChange={(v) => setFilter("status", v)}>
                     <SelectTrigger className="h-8 w-full sm:w-36" aria-label="Status"><SelectValue /></SelectTrigger>

@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,8 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useAutosave } from "@/hooks/use-autosave";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { PortalFeatureOptions, PortalPermissionOptions } from "@/config/constants/dropdowns/portal/portal.options";
 import { useCustomerRoles, usePortalSettings, useUpdatePortalSettings } from "@/features/client-portal/hooks/use-client-portal";
@@ -42,26 +41,25 @@ function SettingsForm({ s }: { s: PortalSettings }) {
         logo_url: s.branding?.logo_url ?? "",
     });
     const [f, setF] = useState(init);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => setF(init()), [s]);
 
-    const save = () =>
-        update.mutate(
-            {
-                enabled: f.enabled,
-                features: f.features,
-                default_role_slug: f.default_role_slug,
-                profile_changes_require_approval: f.profile_changes_require_approval,
-                welcome_message: f.welcome_message || null,
-                support_email: f.support_email || null,
-                branding: Object.fromEntries(Object.entries({ portal_name: f.portal_name, primary_color: f.primary_color, logo_url: f.logo_url }).filter(([, v]) => v)) as Record<string, string>,
-            },
-            { onSuccess: () => toast({ title: "Portal settings saved" }), onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) },
-        );
+    // Saves as you edit (no Save button); the status shows in the header.
+    const payload = useMemo(
+        () => ({
+            enabled: f.enabled,
+            features: f.features,
+            default_role_slug: f.default_role_slug,
+            profile_changes_require_approval: f.profile_changes_require_approval,
+            welcome_message: f.welcome_message || null,
+            support_email: f.support_email || null,
+            branding: Object.fromEntries(Object.entries({ portal_name: f.portal_name, primary_color: f.primary_color, logo_url: f.logo_url }).filter(([, v]) => v)) as Record<string, string>,
+        }),
+        [f],
+    );
+    const autosave = useAutosave({ value: payload, enabled: canEdit, save: (v) => update.mutateAsync(v) });
 
     return (
         <Page width="narrow">
-            <PageHeader title="Portal settings" description="What clients see, how they join and how the portal looks." />
+            <PageHeader title="Portal settings" description="What clients see, how they join and how the portal looks." meta={<SaveStatus state={autosave} />} />
             <div className="space-y-6">
                 <Section title="Access">
                     <div className="space-y-4 rounded-lg border border-border bg-card p-4">
@@ -111,7 +109,6 @@ function SettingsForm({ s }: { s: PortalSettings }) {
                     </div>
                 </Section>
 
-                {canEdit && <div className="flex justify-end"><Button loading={update.isPending} onClick={save}>Save settings</Button></div>}
             </div>
         </Page>
     );

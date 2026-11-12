@@ -10,8 +10,6 @@ import { Pagination } from "@/components/ui/pagination";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useListParams } from "@/hooks/use-list-params";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { ProfileChangeStatusFilterOptions, ProfileChangeStatusOptions, ProfileChangeStatusTone } from "@/config/constants/dropdowns/portal/portal.options";
@@ -32,7 +30,6 @@ export default function ProfileChangesPage() {
     const reject = useRejectProfileChange();
     const [rejecting, setRejecting] = useState<ProfileChangeRow | null>(null);
     const [note, setNote] = useState("");
-    const fail = (t: string) => (e: unknown) => toast({ variant: "destructive", title: t, description: getApiErrorMessage(e) });
 
     return (
         <Page width="wide">
@@ -73,7 +70,7 @@ export default function ProfileChangesPage() {
                             {r.status === "PENDING" && (
                                 <div className="mt-3 flex justify-end gap-2">
                                     <Button variant="ghost" size="sm" onClick={() => { setRejecting(r); setNote(""); }}>Reject</Button>
-                                    <Button size="sm" loading={approve.isPending} onClick={() => approve.mutate({ id: r.id }, { onSuccess: () => toast({ title: "Change approved and applied" }), onError: fail("Could not approve") })}>Approve & apply</Button>
+                                    <Button size="sm" onClick={() => approve.mutate({ id: r.id })}>Approve & apply</Button>
                                 </div>
                             )}
                         </div>
@@ -81,13 +78,13 @@ export default function ProfileChangesPage() {
                     {list.data.pagination.total_pages > 1 && <Pagination currentPage={list.data.pagination.page} totalPages={list.data.pagination.total_pages} onPageChange={setPage} />}
                 </div>
             )}
-            <Dialog open={!!rejecting} onOpenChange={(o) => !o && !reject.isPending && setRejecting(null)}>
+            <Dialog open={!!rejecting} onOpenChange={(o) => !o && setRejecting(null)}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader><DialogTitle>Reject this change?</DialogTitle><DialogDescription>The client sees that the change was not applied. Add a short reason.</DialogDescription></DialogHeader>
                     <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Reason (optional)" aria-label="Reason" />
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setRejecting(null)} disabled={reject.isPending}>Cancel</Button>
-                        <Button variant="destructive" loading={reject.isPending} onClick={() => rejecting && reject.mutate({ id: rejecting.id, review_note: note || undefined }, { onSuccess: () => { toast({ title: "Change rejected" }); setRejecting(null); }, onError: fail("Could not reject") })}>Reject</Button>
+                        <Button variant="ghost" onClick={() => setRejecting(null)}>Cancel</Button>
+                        <Button variant="destructive" onClick={() => { if (!rejecting) return; reject.mutate({ id: rejecting.id, review_note: note || undefined }); setRejecting(null); }}>Reject</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
