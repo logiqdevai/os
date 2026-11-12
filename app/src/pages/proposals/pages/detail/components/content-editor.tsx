@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Eye, EyeOff, Lock, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,13 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/states";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
 import { renderMarkdown, markdownClass } from "@/lib/markdown";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { cn } from "@/lib/utils";
 import { ProposalSectionTypeFormOptions, ProposalVariableOptions } from "@/config/constants/dropdowns/proposals/proposal-content.options";
-import { useSaveProposalContent } from "@/features/proposals/hooks/use-proposals";
+import { useVersionAutosave } from "@/features/proposals/hooks/use-version-autosave";
 import type { ProposalDetail, ProposalSectionType, SectionInput } from "@/features/proposals/interfaces/proposals.interfaces";
 
 type Draft = SectionInput & { key: string };
@@ -28,21 +27,29 @@ interface ContentEditorProps {
 const toDrafts = (p: ProposalDetail): Draft[] =>
     (p.version?.sections ?? []).map((s) => ({ key: s.id, id: s.id, type: s.type, title: s.title, body: s.body ?? "", is_internal: s.is_internal, is_ai_generated: s.is_ai_generated }));
 
-/** Sections outline + markdown editor with live preview. Internal sections are visible to staff only. */
+/** Sent to the API: the sections in order (new ones without id). */
+const toPayload = (all: Draft[]) => ({ sections: all.map(({ key: _k, ...s }) => s) });
+/** What counts as a change: the content without ids, so ids coming back from a save do not trigger another save. */
+const contentKey = (all: Draft[]) => all.map(({ key: _k, id: _id, ...s }) => s);
+/** Copy server ids into new local sections (same order), keeping local keys so the editor never remounts. */
+const mergeIds = (local: Draft[], server: Draft[]) => local.map((s, i) => (s.id || !server[i]?.id ? s : { ...s, id: server[i].id }));
+
+/**
+ * Sections outline + markdown editor with live preview. Internal sections are visible to staff only.
+ * Autosaves (no Save / Discard buttons): every change is saved after a short pause; <SaveStatus /> shows progress.
+ */
 export function ContentEditor({ proposal, editable, onDirtyChange }: ContentEditorProps) {
     const canInternal = usePermission("proposals.comments.internal.read");
-    const save = useSaveProposalContent();
-    const [sections, setSections] = useState<Draft[]>(() => toDrafts(proposal));
+    const { draft: sections, setDraft: setSections, autosave, dirty } = useVersionAutosave({
+        proposal, editable, toDraft: toDrafts, toPayload, key: contentKey, merge: mergeIds,
+        valid: (all) => all.every((s) => s.title.trim()),
+    });
     const [activeKey, setActiveKey] = useState<string | null>(sections[0]?.key ?? null);
     const [preview, setPreview] = useState(!editable);
-    const original = useMemo(() => JSON.stringify(toDrafts(proposal).map(({ key: _k, ...s }) => s)), [proposal]);
-    const dirty = JSON.stringify(sections.map(({ key: _k, ...s }) => s)) !== original;
 
     useEffect(() => {
-        const next = toDrafts(proposal);
-        setSections(next);
-        setActiveKey((k) => (next.some((s) => s.key === k) ? k : (next[0]?.key ?? null)));
-    }, [proposal]);
+        setActiveKey((k) => (sections.some((s) => s.key === k) ? k : (sections[0]?.key ?? null)));
+    }, [sections]);
     useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
     useEffect(() => setPreview(!editable), [editable]);
 
@@ -67,14 +74,6 @@ export function ContentEditor({ proposal, editable, onDirtyChange }: ContentEdit
         setSections((all) => all.filter((s) => s.key !== key));
         if (activeKey === key) setActiveKey(sections.find((s) => s.key !== key)?.key ?? null);
     };
-    const submit = () =>
-        save.mutate(
-            { id: proposal.id, versionId: proposal.version!.id, sections: sections.map(({ key: _k, ...s }) => s) },
-            {
-                onSuccess: () => toast({ title: "Content saved" }),
-                onError: (e) => toast({ variant: "destructive", title: "Could not save content", description: getApiErrorMessage(e) }),
-            }
-        );
 
     return (
         <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -165,10 +164,9 @@ export function ContentEditor({ proposal, editable, onDirtyChange }: ContentEdit
                     </>
                 )}
                 {editable && (
-                    <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
-                        <span className="mr-auto text-xs text-muted-foreground">{dirty ? "Unsaved changes" : "All changes saved"}</span>
-                        <Button size="sm" variant="ghost" disabled={!dirty || save.isPending} onClick={() => setSections(toDrafts(proposal))}>Discard</Button>
-                        <Button size="sm" disabled={!dirty} loading={save.isPending} onClick={submit}>Save content</Button>
+                    <div className="flex min-h-9 items-center justify-end gap-2 border-t border-border px-3 py-2">
+                        {sections.some((s) => !s.title.trim()) && <span className="mr-auto text-xs text-warning">Every section needs a title to be saved</span>}
+                        <SaveStatus state={autosave} />
                     </div>
                 )}
             </div>

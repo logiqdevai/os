@@ -12,7 +12,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { usePageMetadata } from "@/hooks/use-page-metadata";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { renderMarkdown, markdownClass } from "@/lib/markdown";
@@ -97,6 +96,7 @@ function VerifyStep({ token, data, onVerified }: { token: string; data: PublicPr
     const [email, setEmail] = useState("");
     const [code, setCode] = useState("");
     const [sent, setSent] = useState(false);
+    const [devCode, setDevCode] = useState<string | null>(null);
     return (
         <div className="mx-auto max-w-md space-y-4 rounded-lg border border-border bg-card p-5">
             <MailCheck className="size-7 text-info" />
@@ -105,13 +105,14 @@ function VerifyStep({ token, data, onVerified }: { token: string; data: PublicPr
                 <p className="mt-1 text-[13px] text-muted-foreground">“{data.proposal.title}” is shared with specific people. Enter your email{data.hint ? ` (${data.hint})` : ""} and we'll send you a code.</p>
             </div>
             {!sent ? (
-                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); send.mutate({ token, email }, { onSuccess: (r) => { setSent(true); if (r.dev_code) toast({ title: "Development code", description: r.dev_code }); }, onError: (e2) => toast({ variant: "destructive", title: "Could not send the code", description: getApiErrorMessage(e2) }) }); }}>
+                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); send.mutate({ token, email }, { onSuccess: (r) => { setSent(true); setDevCode(r.dev_code ?? null); } }); }}>
                     <div className="space-y-1.5"><Label htmlFor="v-email">Email</Label><Input id="v-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
                     <Button type="submit" className="w-full" loading={send.isPending}>Send code</Button>
                 </form>
             ) : (
-                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); verify.mutate({ token, code }, { onSuccess: (r) => onVerified(r.access), onError: (e2) => toast({ variant: "destructive", title: "Code not accepted", description: getApiErrorMessage(e2) }) }); }}>
+                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); verify.mutate({ token, code }, { onSuccess: (r) => onVerified(r.access) }); }}>
                     <p className="text-[13px] text-muted-foreground">If {email} is a recipient, a 6-digit code is on its way. It expires in 10 minutes.</p>
+                    {devCode && <p className="rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">Development code: <span className="font-mono text-foreground">{devCode}</span></p>}
                     <div className="space-y-1.5"><Label htmlFor="v-code">Code</Label><Input id="v-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} required /></div>
                     <Button type="submit" className="w-full" loading={verify.isPending} disabled={code.length < 6}>Open proposal</Button>
                     <Button type="button" variant="ghost" className="w-full" onClick={() => { setSent(false); setCode(""); }}>Use another email</Button>
@@ -135,8 +136,9 @@ function ProposalBody({ token, access, data }: { token: string; access: string |
 
     const toggle = (id: string, on: boolean) => {
         const next = on ? [...selected, id] : selected.filter((x) => x !== id);
-        setSelected(next);
-        quote.mutate({ token, access, ids: next }, { onSuccess: (r) => setTotals(r.totals), onError: (e) => toast({ variant: "destructive", title: "Could not update the total", description: getApiErrorMessage(e) }) });
+        const previous = selected;
+        setSelected(next); // optimistic: the checkbox changes at once, the totals follow; a refusal puts it back
+        quote.mutate({ token, access, ids: next }, { onSuccess: (r) => setTotals(r.totals), onError: () => setSelected(previous) });
     };
 
     return (
@@ -222,7 +224,7 @@ function ProposalBody({ token, access, data }: { token: string; access: string |
                         variant="outline"
                         className="w-full"
                         loading={pdf.isPending}
-                        onClick={() => pdf.mutate({ token, access }, { onError: (e) => toast({ variant: "destructive", title: "Could not download the PDF", description: getApiErrorMessage(e) }) })}
+                        onClick={() => pdf.mutate({ token, access })}
                     >
                         <Download /> Download PDF
                     </Button>
@@ -273,7 +275,7 @@ function DecisionCard({ token, access, data, selected }: { token: string; access
         }
         decide.mutate(
             { token, access, decision: mode, signer_name: values.signer_name, signer_email: values.signer_email, signer_title: values.signer_title || undefined, terms_accepted: values.terms_accepted, feedback: values.feedback || undefined, selected_optional_item_ids: selected },
-            { onSuccess: () => setDone(mode), onError: (e) => toast({ variant: "destructive", title: "Could not record your decision", description: getApiErrorMessage(e) }) }
+            { onSuccess: () => setDone(mode) }
         );
     });
 
@@ -340,7 +342,7 @@ function Comments({ token, access, data }: { token: string; access: string | nul
                 </ul>
             )}
             {data.state === "ACTIVE" && (
-                <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); post.mutate({ token, access, body, author_name: name }, { onSuccess: () => { setBody(""); toast({ title: "Comment sent" }); }, onError: (e2) => toast({ variant: "destructive", title: "Could not send", description: getApiErrorMessage(e2) }) }); }}>
+                <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); post.mutate({ token, access, body, author_name: name }, { onSuccess: () => setBody("") }); /* the comment appears in the thread */ }}>
                     <Textarea aria-label="Your question" rows={3} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Ask a question about this proposal" />
                     <div className="flex flex-col gap-2 sm:flex-row">
                         <Input aria-label="Your name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />

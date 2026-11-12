@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, CircleAlert, Copy, Link2 } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, CircleAlert, Copy, Link2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { ProposalLinkAccessModeFormOptions } from "@/config/constants/dropdowns/proposals/proposal-content.options";
 import { useSendPreview, useSendProposal } from "@/features/proposals/hooks/use-proposals";
@@ -59,16 +58,16 @@ export function SendDialog({ proposal, open, onOpenChange }: { proposal: Proposa
                 valid_until: validUntil || undefined,
                 link_access_mode: access,
             },
-            {
-                onSuccess: (r) => { setResult(r); toast({ title: `${proposal.number} sent` }); },
-                onError: (e) => toast({ variant: "destructive", title: "Could not send", description: getApiErrorMessage(e) }),
-            }
+            // The dialog switches to "Proposal sent" with the link; failures toast globally.
+            { onSuccess: (r) => setResult(r) }
         );
 
+    const [copied, setCopied] = useState(false);
     const copy = async (url: string) => {
         try {
             await navigator.clipboard.writeText(url);
-            toast({ title: "Link copied" });
+            setCopied(true); // the button says "Copied" instead of a toast
+            setTimeout(() => setCopied(false), 2000);
         } catch {
             toast({ variant: "destructive", title: "Copy failed", description: "Select the link and copy it manually." });
         }
@@ -88,7 +87,7 @@ export function SendDialog({ proposal, open, onOpenChange }: { proposal: Proposa
                     <div className="space-y-3">
                         <div className="flex items-center gap-2">
                             <Input readOnly value={result.public_url} aria-label="Customer link" onFocus={(e) => e.currentTarget.select()} />
-                            <Button variant="outline" onClick={() => copy(result.public_url)}><Copy /> Copy</Button>
+                            <Button variant="outline" onClick={() => copy(result.public_url)}>{copied ? <><Check /> Copied</> : <><Copy /> Copy</>}</Button>
                         </div>
                         {result.deliveries.filter((d) => d.channel === "EMAIL").map((d) => (
                             <div key={d.id} className="flex items-center gap-2 text-[13px]">

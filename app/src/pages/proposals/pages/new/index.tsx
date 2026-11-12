@@ -13,8 +13,6 @@ import { useCreateProposal, useProposalTemplates } from "@/features/proposals/ho
 import { proposalFormSchema, type ProposalFormValues } from "@/features/proposals/validation-schemas/proposals.schema";
 import { CurrencyOptions, LanguageOptions } from "@/config/constants/dropdowns/proposals/proposal-content.options";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { LookupPicker } from "../../components/lookup-picker";
 
 const NONE = "__none";
@@ -70,13 +68,7 @@ export default function NewProposalPage() {
                 language: v.language,
                 requires_contract: v.requires_contract,
             },
-            {
-                onSuccess: (p) => {
-                    toast({ title: `Proposal ${p.number} created` });
-                    navigate(`/proposals/${p.id}`);
-                },
-                onError: (e) => toast({ variant: "destructive", title: "Could not create the proposal", description: getApiErrorMessage(e) }),
-            }
+            { onSuccess: (p) => navigate(`/proposals/${p.id}`) } // the editor opens; failures toast globally
         )
     );
 

@@ -13,8 +13,6 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, formatMoney, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { ApprovalConditionFieldOptions, ApprovalConditionOperatorOptions } from "@/config/constants/dropdowns/proposals/proposal-content.options";
@@ -69,9 +67,9 @@ export default function ProposalTemplatesPage() {
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${t.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem onSelect={() => { setEditing(t); setFormOpen(true); }}><Pencil /> Edit</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => duplicate.mutate(t.id, { onSuccess: () => toast({ title: "Template duplicated" }), onError: (e) => toast({ variant: "destructive", title: "Could not duplicate", description: getApiErrorMessage(e) }) })}><Copy /> Duplicate</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => duplicate.mutate(t.id)}><Copy /> Duplicate</DropdownMenuItem>
                             {t.archived_at ? (
-                                <DropdownMenuItem onSelect={() => archive.mutate({ id: t.id, restore: true }, { onSuccess: () => toast({ title: "Template restored" }), onError: (e) => toast({ variant: "destructive", title: "Could not restore", description: getApiErrorMessage(e) }) })}><Archive /> Restore</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => archive.mutate({ id: t.id, restore: true })}><Archive /> Restore</DropdownMenuItem>
                             ) : (
                                 <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setArchiving(t)}><Archive /> Archive</DropdownMenuItem>
                             )}
@@ -126,8 +124,7 @@ export default function ProposalTemplatesPage() {
                 description="It is no longer offered for new proposals. Existing proposals are not affected."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate({ id: archiving.id }, { onSuccess: () => { toast({ title: "Template archived" }); setArchiving(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (archiving) archive.mutate({ id: archiving.id }); setArchiving(null); }}
             />
         </Page>
     );
@@ -160,7 +157,7 @@ function RulesSection() {
                                     Then {r.steps.map((s) => `${s.step}. ${s.name} (${(() => { const m = r.approvers.find((a) => a.id === s.approver_membership_id); return m ? personName(m.user) : "removed member"; })()})`).join(" → ")}
                                 </div>
                             </div>
-                            <Switch aria-label={`Enable ${r.name}`} checked={r.enabled} onCheckedChange={(enabled) => update.mutate({ id: r.id, enabled }, { onSuccess: () => toast({ title: enabled ? "Rule enabled" : "Rule disabled" }), onError: (e) => toast({ variant: "destructive", title: "Could not update", description: getApiErrorMessage(e) }) })} />
+                            <Switch aria-label={`Enable ${r.name}`} checked={r.enabled} onCheckedChange={(enabled) => update.mutate({ id: r.id, enabled })} />
                             <Button size="icon-sm" variant="ghost" aria-label={`Edit ${r.name}`} onClick={() => { setEditing(r); setOpen(true); }}><Pencil /></Button>
                             <Button size="icon-sm" variant="ghost" aria-label={`Delete ${r.name}`} onClick={() => setDeleting(r)}><Trash2 /></Button>
                         </li>
@@ -175,8 +172,7 @@ function RulesSection() {
                 description="Approvals already requested by this rule stay as they are."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => { toast({ title: "Rule deleted" }); setDeleting(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not delete", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (deleting) remove.mutate(deleting.id); setDeleting(null); }}
             />
         </Section>
     );

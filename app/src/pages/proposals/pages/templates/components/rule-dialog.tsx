@@ -6,8 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { personName } from "@/lib/format";
 import { ApprovalConditionFieldOptions, ApprovalConditionOperatorOptions } from "@/config/constants/dropdowns/proposals/proposal-content.options";
 import { useCreateApprovalRule, useUpdateApprovalRule } from "@/features/proposals/hooks/use-proposals";
@@ -49,7 +47,8 @@ export function RuleDialog({ open, onOpenChange, rule }: { open: boolean; onOpen
             conditions: conds.map((c) => ({ field: c.field, operator: c.operator, value: parseValue(c) })),
             steps: steps.map((s) => ({ step: s.step, name: s.name.trim(), approver_membership_id: s.approver_membership_id as string })),
         };
-        const opts = { onSuccess: () => { toast({ title: rule ? "Rule saved" : "Rule created" }); onOpenChange(false); }, onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save the rule", description: getApiErrorMessage(e) }) };
+        // Multi-step rule editor: stays a dialog with Save; closes on success, failures toast globally.
+        const opts = { onSuccess: () => onOpenChange(false) };
         if (rule) update.mutate({ id: rule.id, ...dto }, opts);
         else create.mutate(dto, opts);
     };

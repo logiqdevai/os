@@ -12,8 +12,6 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, formatMoney, formatRelative } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -101,10 +99,7 @@ export default function ProposalsListPage() {
                         {p.can("proposals.proposals.create") && (
                             <DropdownMenuItem
                                 onSelect={() =>
-                                    duplicate.mutate(r.id, {
-                                        onSuccess: (n) => { toast({ title: `Duplicated as ${n.number}` }); navigate(`/proposals/${n.id}`); },
-                                        onError: (e) => toast({ variant: "destructive", title: "Could not duplicate", description: getApiErrorMessage(e) }),
-                                    })
+                                    duplicate.mutate(r.id, { onSuccess: (n) => navigate(`/proposals/${n.id}`) })
                                 }
                             >
                                 <Copy /> Duplicate
@@ -116,7 +111,7 @@ export default function ProposalsListPage() {
                         )}
                         {p.can("proposals.proposals.archive") && !r.archived_at && <DropdownMenuItem onSelect={() => setPending({ kind: "archive", proposal: r })}><Archive /> Archive</DropdownMenuItem>}
                         {p.can("proposals.proposals.archive") && r.archived_at && (
-                            <DropdownMenuItem onSelect={() => archive.mutate({ id: r.id, restore: true }, { onSuccess: () => toast({ title: "Proposal restored" }), onError: (e) => toast({ variant: "destructive", title: "Could not restore", description: getApiErrorMessage(e) }) })}>
+                            <DropdownMenuItem onSelect={() => archive.mutate({ id: r.id, restore: true })}>
                                 <Archive /> Restore
                             </DropdownMenuItem>
                         )}
@@ -133,13 +128,11 @@ export default function ProposalsListPage() {
     const confirm = () => {
         if (!pending) return;
         const { kind, proposal } = pending;
-        const done = (title: string) => ({
-            onSuccess: () => { toast({ title }); setPending(null); },
-            onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Action failed", description: getApiErrorMessage(e) }),
-        });
-        if (kind === "cancel") cancel.mutate(proposal.id, done(`${proposal.number} cancelled`));
-        if (kind === "archive") archive.mutate({ id: proposal.id }, done(`${proposal.number} archived`));
-        if (kind === "delete") remove.mutate(proposal.id, done(`${proposal.number} deleted`));
+        // Optimistic: the row changes / disappears at once; a refusal puts it back and toasts.
+        if (kind === "cancel") cancel.mutate(proposal.id);
+        if (kind === "archive") archive.mutate({ id: proposal.id });
+        if (kind === "delete") remove.mutate(proposal.id);
+        setPending(null);
     };
 
     return (
@@ -251,7 +244,6 @@ export default function ProposalsListPage() {
                 }
                 confirmText={pending?.kind === "cancel" ? "Cancel proposal" : pending?.kind === "archive" ? "Archive" : "Delete"}
                 variant="destructive"
-                isLoading={cancel.isPending || archive.isPending || remove.isPending}
                 onConfirm={confirm}
             />
         </Page>

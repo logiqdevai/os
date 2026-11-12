@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,12 +6,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/states";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
 import { formatMoney } from "@/lib/format";
 import { BillingFrequencyFormOptions } from "@/config/constants/dropdowns/proposals/proposal-content.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { useSaveProposalContent } from "@/features/proposals/hooks/use-proposals";
+import { useVersionAutosave } from "@/features/proposals/hooks/use-version-autosave";
 import type { BillingFrequency, LineItemInput, ProposalDetail } from "@/features/proposals/interfaces/proposals.interfaces";
 import { TotalsCard } from "./totals-card";
 
@@ -69,16 +68,19 @@ const lineNet = (r: Row) => {
     return base - (base * (num(r.discount_percent) ?? 0)) / 100;
 };
 
-/** Pricing builder: editable line items; totals are recalculated by the API on save. */
-export function PricingEditor({ proposal, editable, onDirtyChange }: { proposal: ProposalDetail; editable: boolean; onDirtyChange: (d: boolean) => void }) {
-    const save = useSaveProposalContent();
-    const [rows, setRows] = useState<Row[]>(() => toRows(proposal));
-    const original = useMemo(() => JSON.stringify(toRows(proposal).map(toInput)), [proposal]);
-    const dirty = JSON.stringify(rows.map(toInput)) !== original;
-    const v = proposal.version!;
-    const invalid = rows.some((r) => !r.name.trim() || num(r.quantity) === null || Number.isNaN(num(r.quantity)) || Number.isNaN(num(r.unit_price) ?? 0));
+const isInvalid = (rows: Row[]) => rows.some((r) => !r.name.trim() || num(r.quantity) === null || Number.isNaN(num(r.quantity)) || Number.isNaN(num(r.unit_price) ?? 0));
 
-    useEffect(() => setRows(toRows(proposal)), [proposal]);
+/**
+ * Pricing builder: editable line items that autosave (no Save / Discard); the API recalculates the totals after each
+ * save. Incomplete lines are not sent until they are valid.
+ */
+export function PricingEditor({ proposal, editable, onDirtyChange }: { proposal: ProposalDetail; editable: boolean; onDirtyChange: (d: boolean) => void }) {
+    const { draft: rows, setDraft: setRows, autosave, dirty } = useVersionAutosave({
+        proposal, editable, toDraft: toRows, toPayload: (all: Row[]) => ({ line_items: all.map(toInput) }), valid: (all) => !isInvalid(all),
+    });
+    const invalid = isInvalid(rows);
+    const v = proposal.version!;
+
     useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
     const set = (key: string, patch: Partial<Row>) => setRows((all) => all.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -87,11 +89,6 @@ export function PricingEditor({ proposal, editable, onDirtyChange }: { proposal:
             ...all,
             { key: `new-${Date.now()}`, group_name: all.at(-1)?.group_name ?? "", name: "", description: "", quantity: "1", unit: "", unit_price: "0", discount_percent: "", tax_percent: all.at(-1)?.tax_percent ?? "", is_optional: false, is_recurring: false, billing_frequency: "monthly", product_id: null },
         ]);
-    const submit = () =>
-        save.mutate(
-            { id: proposal.id, versionId: v.id, line_items: rows.map(toInput) },
-            { onSuccess: () => toast({ title: "Pricing saved", description: "Totals were recalculated." }), onError: (e) => toast({ variant: "destructive", title: "Could not save pricing", description: getApiErrorMessage(e) }) }
-        );
 
     return (
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
@@ -167,10 +164,9 @@ export function PricingEditor({ proposal, editable, onDirtyChange }: { proposal:
                     </ul>
                 )}
                 {editable && (
-                    <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
-                        <span className="mr-auto text-xs text-muted-foreground">{invalid ? "Every line needs a name, quantity and price" : dirty ? "Unsaved changes · totals update on save" : "All changes saved"}</span>
-                        <Button size="sm" variant="ghost" disabled={!dirty || save.isPending} onClick={() => setRows(toRows(proposal))}>Discard</Button>
-                        <Button size="sm" disabled={!dirty || invalid} loading={save.isPending} onClick={submit}>Save pricing</Button>
+                    <div className="flex min-h-9 items-center justify-end gap-2 border-t border-border px-3 py-2">
+                        {invalid && <span className="mr-auto text-xs text-warning">Every line needs a name, quantity and price to be saved</span>}
+                        <SaveStatus state={autosave} />
                     </div>
                 )}
             </div>

@@ -10,7 +10,6 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { LanguageOptions, ProposalSectionTypeFormOptions } from "@/config/constants/dropdowns/proposals/proposal-content.options";
 import { useCreateProposalTemplate, useUpdateProposalTemplate } from "@/features/proposals/hooks/use-proposals";
 import { templateFormSchema, type TemplateFormValues } from "@/features/proposals/validation-schemas/proposals.schema";
@@ -75,7 +74,8 @@ export function TemplateDialog({ open, onOpenChange, template }: { open: boolean
             is_default: v.is_default,
             sections,
         };
-        const opts = { onSuccess: () => { toast({ title: template ? "Template saved" : "Template created" }); onOpenChange(false); }, onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save the template", description: getApiErrorMessage(e) }) };
+        // Multi-section template editor: stays a dialog with Save; closes on success, failures toast globally.
+        const opts = { onSuccess: () => onOpenChange(false) };
         if (template) update.mutate({ id: template.id, ...dto }, opts);
         else create.mutate(dto, opts);
     });

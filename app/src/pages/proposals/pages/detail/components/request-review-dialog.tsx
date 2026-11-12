@@ -5,8 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { useReviewPreview, useSubmitForReview } from "@/features/proposals/hooks/use-proposals";
 import type { ProposalDetail } from "@/features/proposals/interfaces/proposals.interfaces";
 import { MemberChip } from "../../../components/proposal-badges";
@@ -26,14 +24,8 @@ export function RequestReviewDialog({ proposal, open, onOpenChange }: { proposal
     const go = () =>
         submit.mutate(
             { id: proposal.id, versionId: v.id, approver_membership_ids: extra.length ? extra : undefined, note: note || undefined },
-            {
-                onSuccess: () => {
-                    toast({ title: nothing ? "Version approved" : "Approval requested", description: nothing ? "No rule required approval. You can send it now." : "Approvers were notified." });
-                    setExtra([]); setNote("");
-                    onOpenChange(false);
-                },
-                onError: (e) => toast({ variant: "destructive", title: "Could not submit", description: getApiErrorMessage(e) }),
-            }
+            // The page banner then shows "waiting for approval" or "approved and ready to send"; failures toast globally.
+            { onSuccess: () => { setExtra([]); setNote(""); onOpenChange(false); } }
         );
 
     return (

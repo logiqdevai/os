@@ -8,8 +8,6 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useCompareVersions, useCreateProposalVersion } from "@/features/proposals/hooks/use-proposals";
@@ -66,10 +64,7 @@ export function VersionsTab({ proposal, onOpenVersion }: { proposal: ProposalDet
                     restoring &&
                     create.mutate(
                         { id: proposal.id, from_version_id: restoring.id },
-                        {
-                            onSuccess: (nv: { id: string; version_number: number }) => { toast({ title: `v${nv.version_number} created` }); setRestoring(null); onOpenVersion(nv.id); },
-                            onError: (e) => toast({ variant: "destructive", title: "Could not restore", description: getApiErrorMessage(e) }),
-                        }
+                        { onSuccess: (nv: { id: string }) => { setRestoring(null); onOpenVersion(nv.id); } } // opens the new draft
                     )
                 }
             />

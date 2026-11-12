@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Archive, Copy, Download, Eye, FileSignature, GitBranch, Link2, Lock, MoreHorizontal, Pencil, Send, Sparkles, ThumbsDown, Users, XCircle } from "lucide-react";
+import { Archive, Check, Copy, Download, Eye, FileSignature, GitBranch, Link2, Lock, MoreHorizontal, Pencil, Send, Sparkles, ThumbsDown, Users, XCircle } from "lucide-react";
 import { Page } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,12 +12,11 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePageMetadata } from "@/hooks/use-page-metadata";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { InlineText } from "@/components/ui/inline-edit";
 import { formatDate, formatMoney, personName } from "@/lib/format";
 import { renderMarkdown, markdownClass } from "@/lib/markdown";
 import {
-    useArchiveProposal, useCancelProposal, useCreateProposalVersion, useDownloadProposalPdf, useDuplicateProposal, useProposal, useRotateShareLink,
+    useArchiveProposal, useCancelProposal, useCreateProposalVersion, useDownloadProposalPdf, useDuplicateProposal, useProposal, useRotateShareLink, useUpdateProposal,
 } from "@/features/proposals/hooks/use-proposals";
 import type { ProposalDetail } from "@/features/proposals/interfaces/proposals.interfaces";
 import { ProposalStatusBadge, VersionStatusBadge } from "../../components/proposal-badges";
@@ -59,6 +58,10 @@ export default function ProposalDetailPage() {
     const archive = useArchiveProposal();
     const rotate = useRotateShareLink();
     const pdf = useDownloadProposalPdf();
+    const update = useUpdateProposal();
+    // New customer link: copied to the clipboard (the button says so); shown in a banner when copying is not allowed.
+    const [linkCopied, setLinkCopied] = useState(false);
+    const [newLinkUrl, setNewLinkUrl] = useState<string | null>(null);
     const markDirty = useCallback((key: string) => (d: boolean) => setDirty((all) => (all[key] === d ? all : { ...all, [key]: d })), []);
     const onContentDirty = useCallback((d: boolean) => markDirty("content")(d), [markDirty]);
     const onPricingDirty = useCallback((d: boolean) => markDirty("pricing")(d), [markDirty]);
@@ -84,21 +87,14 @@ export default function ProposalDetailPage() {
     const anyDirty = Object.values(dirty).some(Boolean);
     const currentStatus = proposal.versions.find((x) => x.id === proposal.current_version_id)?.status;
 
-    const newRevision = () =>
-        createVersion.mutate(
-            { id: proposal.id },
-            {
-                onSuccess: (nv: { id: string; version_number: number }) => { toast({ title: `Draft v${nv.version_number} created` }); setParam("version", null); },
-                onError: (e) => toast({ variant: "destructive", title: "Could not create a revision", description: getApiErrorMessage(e) }),
-            }
-        );
+    // The new draft version opens (the version picker and banners show it); failures toast globally.
+    const newRevision = () => createVersion.mutate({ id: proposal.id }, { onSuccess: () => setParam("version", null) });
     const newLink = () =>
         rotate.mutate(proposal.id, {
             onSuccess: async (r) => {
-                try { await navigator.clipboard.writeText(r.public_url); toast({ title: "New customer link copied", description: "The previous link no longer works." }); }
-                catch { toast({ title: "New customer link", description: r.public_url }); }
+                try { await navigator.clipboard.writeText(r.public_url); setNewLinkUrl(null); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2500); }
+                catch { setNewLinkUrl(r.public_url); }
             },
-            onError: (e) => toast({ variant: "destructive", title: "Could not create a link", description: getApiErrorMessage(e) }),
         });
 
     const primary = (() => {
@@ -114,7 +110,7 @@ export default function ProposalDetailPage() {
         if (currentStatus === "DRAFT" && p.can("proposals.proposals.update")) out.push(<Button key="review" variant="outline" disabled={anyDirty} onClick={() => setDialog("review")}><Users /> Request approval</Button>);
         if ((currentStatus === "DRAFT" || currentStatus === "APPROVED") && p.can("proposals.proposals.send")) out.push(<Button key="send" disabled={anyDirty} onClick={() => setDialog("send")}><Send /> Send</Button>);
         if (currentStatus === "SENT" && live) {
-            if (p.can("proposals.proposals.send")) out.push(<Button key="link" variant="outline" loading={rotate.isPending} onClick={newLink}><Link2 /> New customer link</Button>);
+            if (p.can("proposals.proposals.send")) out.push(<Button key="link" variant="outline" loading={rotate.isPending} onClick={newLink}>{linkCopied ? <><Check /> New link copied</> : <><Link2 /> New customer link</>}</Button>);
             if (p.can("proposals.proposals.update")) out.push(<Button key="rev" loading={createVersion.isPending} onClick={newRevision}><GitBranch /> Create revision</Button>);
         }
         return out;
@@ -128,7 +124,10 @@ export default function ProposalDetailPage() {
                     <div className="min-w-0 space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="font-mono text-[13px] text-muted-foreground">{proposal.number}</span>
-                            <h1 className="min-w-0 truncate text-xl font-medium text-foreground">{proposal.title}</h1>
+                            <h1 className="min-w-0 truncate text-xl font-medium text-foreground">
+                                {/* Click to rename; saves on blur / Enter (optimistic). */}
+                                <InlineText value={proposal.title} aria-label="Proposal title" disabled={closed || !p.can("proposals.proposals.update")} onSave={(title) => update.mutate({ id: proposal.id, title })} />
+                            </h1>
                             <ProposalStatusBadge status={proposal.status} />
                         </div>
                         <p className="text-[13px] text-muted-foreground">
@@ -159,14 +158,14 @@ export default function ProposalDetailPage() {
                                 {v && (
                                     <DropdownMenuItem
                                         disabled={pdf.isPending}
-                                        onSelect={() => pdf.mutate({ id: proposal.id, versionId: v.id }, { onSuccess: (name) => toast({ title: "PDF downloaded", description: name }), onError: (e) => toast({ variant: "destructive", title: "Could not create the PDF", description: getApiErrorMessage(e) }) })}
+                                        onSelect={() => pdf.mutate({ id: proposal.id, versionId: v.id })}
                                     >
                                         <Download /> Download PDF (v{v.version_number})
                                     </DropdownMenuItem>
                                 )}
                                 {p.can("proposals.proposals.update") && !closed && <DropdownMenuItem onSelect={() => setDialog("details")}><Pencil /> Edit details</DropdownMenuItem>}
                                 {p.can("proposals.proposals.create") && (
-                                    <DropdownMenuItem onSelect={() => duplicate.mutate(proposal.id, { onSuccess: (n) => { toast({ title: `Duplicated as ${n.number}` }); navigate(`/proposals/${n.id}`); }, onError: (e) => toast({ variant: "destructive", title: "Could not duplicate", description: getApiErrorMessage(e) }) })}>
+                                    <DropdownMenuItem onSelect={() => duplicate.mutate(proposal.id, { onSuccess: (n) => navigate(`/proposals/${n.id}`) })}>
                                         <Copy /> Duplicate
                                     </DropdownMenuItem>
                                 )}
@@ -180,6 +179,7 @@ export default function ProposalDetailPage() {
                 </div>
             </div>
 
+            {newLinkUrl && <Banner tone="info">New customer link (the previous one no longer works): <span className="select-all break-all font-mono">{newLinkUrl}</span></Banner>}
             {!isCurrent && v && (
                 <Banner tone="info">
                     You are looking at v{v.version_number} ({v.status.toLowerCase()}), not the working version.{" "}
@@ -232,11 +232,11 @@ export default function ProposalDetailPage() {
                 description={dialog === "cancel" ? "The customer link stops working and the proposal can no longer be accepted." : "Archived proposals are hidden from the list."}
                 confirmText={dialog === "cancel" ? "Cancel proposal" : "Archive"}
                 variant="destructive"
-                isLoading={cancel.isPending || archive.isPending}
                 onConfirm={() => {
-                    const opts = { onSuccess: () => { toast({ title: dialog === "cancel" ? "Proposal cancelled" : "Proposal archived" }); setDialog(null); }, onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Action failed", description: getApiErrorMessage(e) }) };
-                    if (dialog === "cancel") cancel.mutate(proposal.id, opts);
-                    else archive.mutate({ id: proposal.id }, opts);
+                    // Optimistic: the status / archived state changes at once; a refusal rolls back and toasts.
+                    if (dialog === "cancel") cancel.mutate(proposal.id);
+                    else archive.mutate({ id: proposal.id });
+                    setDialog(null);
                 }}
             />
         </Page>

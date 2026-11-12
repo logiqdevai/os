@@ -8,8 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { InlineText } from "@/components/ui/inline-edit";
 import { formatMoney, personName } from "@/lib/format";
 import { ProposalLostReasonFormOptions } from "@/config/constants/dropdowns/proposals/proposal-content.options";
 import { useConvertProposal, useMarkProposalLost, useUpdateProposal } from "@/features/proposals/hooks/use-proposals";
@@ -22,49 +21,40 @@ interface DialogProps {
     onOpenChange: (o: boolean) => void;
 }
 
-/** Edit header fields: title, customer, contact, deal, owner, contract requirement. */
+/**
+ * Header fields: title, customer, contact, deal, owner, contract requirement. Every field saves on change
+ * (optimistic: the page header updates at once; a refusal rolls back and toasts) — no Save button.
+ */
 export function DetailsDialog({ proposal, open, onOpenChange }: DialogProps) {
     const update = useUpdateProposal();
-    const [title, setTitle] = useState(proposal.title);
-    const [company, setCompany] = useState<string | null>(proposal.company_id);
-    const [contact, setContact] = useState<string | null>(proposal.contact_id);
-    const [deal, setDeal] = useState<string | null>(proposal.deal_id);
-    const [owner, setOwner] = useState<string | null>(proposal.owner_membership_id);
-    const [requiresContract, setRequiresContract] = useState(proposal.requires_contract);
-    useEffect(() => {
-        if (!open) return;
-        setTitle(proposal.title); setCompany(proposal.company_id); setContact(proposal.contact_id); setDeal(proposal.deal_id); setOwner(proposal.owner_membership_id); setRequiresContract(proposal.requires_contract);
-    }, [open, proposal]);
     const contactName = proposal.contact ? `${proposal.contact.first_name} ${proposal.contact.last_name ?? ""}`.trim() : null;
-
-    const save = () =>
-        update.mutate(
-            { id: proposal.id, title: title.trim(), company_id: company, contact_id: contact, deal_id: deal, owner_membership_id: owner, requires_contract: requiresContract },
-            { onSuccess: () => { toast({ title: "Details saved" }); onOpenChange(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) }
-        );
+    const patch = (body: Record<string, unknown>, optimistic?: Record<string, unknown>) => update.mutate({ id: proposal.id, ...body, optimistic });
 
     return (
-        <Dialog open={open} onOpenChange={(o) => !update.isPending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>Proposal details</DialogTitle>
                     <DialogDescription>{proposal.number}. Changes apply to the record, not to sent versions.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
-                    <div className="space-y-1.5"><Label htmlFor="p-title">Title</Label><Input id="p-title" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="p-title">Title</Label>
+                        <div className="rounded-md border border-border px-3 py-1.5 text-[13px]"><InlineText value={proposal.title} aria-label="Title" onSave={(title) => patch({ title })} /></div>
+                    </div>
                     <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1.5"><Label>Customer</Label><LookupPicker kind="companies" ariaLabel="Customer" value={company} valueLabel={proposal.company?.name} onChange={(id) => { setCompany(id); setContact(null); }} /></div>
-                        <div className="space-y-1.5"><Label>Primary contact</Label><LookupPicker kind="contacts" ariaLabel="Primary contact" value={contact} valueLabel={contact === proposal.contact_id ? contactName : undefined} companyId={company} onChange={setContact} /></div>
-                        <div className="space-y-1.5"><Label>Deal</Label><LookupPicker kind="deals" ariaLabel="Deal" value={deal} valueLabel={proposal.deal?.name} companyId={company} onChange={setDeal} /></div>
-                        <div className="space-y-1.5"><Label>Owner</Label><LookupPicker kind="members" ariaLabel="Owner" value={owner} clearable={false} valueLabel={proposal.owner ? personName(proposal.owner.user) : undefined} onChange={setOwner} /></div>
+                        <div className="space-y-1.5"><Label>Customer</Label><LookupPicker kind="companies" ariaLabel="Customer" value={proposal.company_id} valueLabel={proposal.company?.name} onChange={(id, o) => patch({ company_id: id, contact_id: null }, { company: id && o ? { id, name: o.name ?? "" } : null, contact: null })} /></div>
+                        <div className="space-y-1.5"><Label>Primary contact</Label><LookupPicker kind="contacts" ariaLabel="Primary contact" value={proposal.contact_id} valueLabel={contactName} companyId={proposal.company_id} onChange={(id, o) => patch({ contact_id: id }, { contact: id && o ? { id, first_name: o.first_name ?? "", last_name: o.last_name ?? null, email: o.email ?? null } : null })} /></div>
+                        <div className="space-y-1.5"><Label>Deal</Label><LookupPicker kind="deals" ariaLabel="Deal" value={proposal.deal_id} valueLabel={proposal.deal?.name} companyId={proposal.company_id} onChange={(id, o) => patch({ deal_id: id }, { deal: id && o ? { id, name: o.name ?? "" } : null })} /></div>
+                        <div className="space-y-1.5"><Label>Owner</Label><LookupPicker kind="members" ariaLabel="Owner" value={proposal.owner_membership_id} clearable={false} valueLabel={proposal.owner ? personName(proposal.owner.user) : undefined} onChange={(id, o) => id && patch({ owner_membership_id: id }, o?.user ? { owner: { id, job_title: null, user: o.user } } : undefined)} /></div>
                     </div>
                     <label className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-[13px] text-foreground">
-                        Acceptance leads to a contract <Switch checked={requiresContract} onCheckedChange={setRequiresContract} />
+                        Acceptance leads to a contract <Switch checked={proposal.requires_contract} onCheckedChange={(requires_contract) => patch({ requires_contract })} />
                     </label>
+                    <p className="text-xs text-muted-foreground">Changes save automatically.</p>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={update.isPending}>Cancel</Button>
-                    <Button loading={update.isPending} disabled={!title.trim()} onClick={save}>Save</Button>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Done</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -94,7 +84,7 @@ export function MarkLostDialog({ proposal, open, onOpenChange }: DialogProps) {
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={lost.isPending}>Cancel</Button>
-                    <Button variant="destructive" loading={lost.isPending} onClick={() => lost.mutate({ id: proposal.id, lost_reason: reason, note: note || undefined }, { onSuccess: () => { toast({ title: "Marked as lost" }); onOpenChange(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not update", description: getApiErrorMessage(e) }) })}>
+                    <Button variant="destructive" loading={lost.isPending} onClick={() => lost.mutate({ id: proposal.id, lost_reason: reason, note: note || undefined }, { onSuccess: () => onOpenChange(false) })}>
                         Mark lost
                     </Button>
                 </DialogFooter>
@@ -132,10 +122,7 @@ export function ConvertDialog({ proposal, open, onOpenChange }: DialogProps) {
                         onClick={() =>
                             convert.mutate(
                                 { id: proposal.id, contract_title: title.trim() },
-                                {
-                                    onSuccess: (r) => { toast({ title: `Contract ${r.contract_number} drafted` }); onOpenChange(false); navigate(`/contracts/${r.contract_id}`); },
-                                    onError: (e) => toast({ variant: "destructive", title: "Could not convert", description: getApiErrorMessage(e) }),
-                                }
+                                { onSuccess: (r) => { onOpenChange(false); navigate(`/contracts/${r.contract_id}`); } }
                             )
                         }
                     >

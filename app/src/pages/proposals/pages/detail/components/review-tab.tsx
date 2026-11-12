@@ -9,8 +9,6 @@ import { ErrorState } from "@/components/ui/states";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSessionData } from "@/features/session/hooks/use-session";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatRelative, personName } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useAddProposalComment, useDecideApproval, useProposalComments, useResolveProposalComment } from "@/features/proposals/hooks/use-proposals";
@@ -37,10 +35,8 @@ export function ReviewTab({ proposal, onRequestReview }: { proposal: ProposalDet
         if (!deciding) return;
         decide.mutate(
             { id: proposal.id, approvalId: deciding.approval.id, decision: deciding.decision, comment: comment || undefined },
-            {
-                onSuccess: () => { toast({ title: deciding.decision === "APPROVED" ? "Approved" : "Sent back to the owner" }); setDeciding(null); setComment(""); },
-                onError: (e) => toast({ variant: "destructive", title: "Could not record the decision", description: getApiErrorMessage(e) }),
-            }
+            // The approval step shows the decision once recorded; failures toast globally.
+            { onSuccess: () => { setDeciding(null); setComment(""); } }
         );
     };
 
@@ -117,7 +113,7 @@ function CommentsPanel({ proposal }: { proposal: ProposalDetail }) {
     const post = () =>
         add.mutate(
             { id: proposal.id, body, is_internal: internal, version_id: proposal.version?.id },
-            { onSuccess: () => { setBody(""); toast({ title: internal ? "Internal comment added" : "Reply added to the customer thread" }); }, onError: (e) => toast({ variant: "destructive", title: "Could not add the comment", description: getApiErrorMessage(e) }) }
+            { onSuccess: () => setBody("") } // the comment appears in the list
         );
 
     return (
@@ -143,7 +139,7 @@ function CommentsPanel({ proposal }: { proposal: ProposalDetail }) {
                                 {c.section && <span>on {c.section.title}</span>}
                                 <span>· {formatRelative(c.created_at)}</span>
                                 {canReply && (
-                                    <Button size="sm" variant="ghost" className="ml-auto h-6" onClick={() => resolve.mutate({ id: proposal.id, commentId: c.id, resolved: !c.resolved_at }, { onError: (e) => toast({ variant: "destructive", title: "Could not update", description: getApiErrorMessage(e) }) })}>
+                                    <Button size="sm" variant="ghost" className="ml-auto h-6" onClick={() => resolve.mutate({ id: proposal.id, commentId: c.id, resolved: !c.resolved_at })}>
                                         <CheckCircle2 /> {c.resolved_at ? "Reopen" : "Resolve"}
                                     </Button>
                                 )}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,12 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
 import { formatDate, formatMoney } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { ProposalPaymentTriggerFormOptions } from "@/config/constants/dropdowns/proposals/proposal-content.options";
-import { useSaveProposalContent } from "@/features/proposals/hooks/use-proposals";
+import { useVersionAutosave } from "@/features/proposals/hooks/use-version-autosave";
 import type { PaymentInput, ProposalDetail, ProposalPaymentTrigger } from "@/features/proposals/interfaces/proposals.interfaces";
 
 interface Row {
@@ -49,34 +48,34 @@ const toInput = (r: Row): PaymentInput => {
     };
 };
 
-/** Payment schedule (must add up to 100% of the base total before sending), payment terms and validity. */
+type ScheduleDraft = { rows: Row[]; terms: string; validity: string };
+const toDraft = (p: ProposalDetail): ScheduleDraft => ({ rows: toRows(p), terms: p.version?.payment_terms ?? "", validity: String(p.version?.validity_days ?? 30) });
+const isInvalid = (d: ScheduleDraft) => d.rows.some((r) => !r.name.trim()) || Number.isNaN(Number(d.validity)) || Number(d.validity) < 1;
+
+/**
+ * Payment schedule (must add up to 100% of the base total before sending), payment terms and validity.
+ * Autosaves (no Save / Discard); incomplete rows are not sent until they are valid.
+ */
 export function ScheduleEditor({ proposal, editable, onDirtyChange }: { proposal: ProposalDetail; editable: boolean; onDirtyChange: (d: boolean) => void }) {
-    const save = useSaveProposalContent();
     const v = proposal.version!;
-    const [rows, setRows] = useState<Row[]>(() => toRows(proposal));
-    const [terms, setTerms] = useState(v.payment_terms ?? "");
-    const [validity, setValidity] = useState(String(v.validity_days ?? 30));
-    const original = useMemo(() => JSON.stringify({ r: toRows(proposal).map(toInput), t: proposal.version?.payment_terms ?? "", d: String(proposal.version?.validity_days ?? 30) }), [proposal]);
-    const dirty = JSON.stringify({ r: rows.map(toInput), t: terms, d: validity }) !== original;
-    useEffect(() => {
-        setRows(toRows(proposal));
-        setTerms(proposal.version?.payment_terms ?? "");
-        setValidity(String(proposal.version?.validity_days ?? 30));
-    }, [proposal]);
+    const { draft, setDraft, autosave, dirty } = useVersionAutosave({
+        proposal, editable, toDraft,
+        toPayload: (d: ScheduleDraft) => ({ payment_schedule: d.rows.map(toInput), payment_terms: d.terms || null, validity_days: Number(d.validity) }),
+        valid: (d) => !isInvalid(d),
+    });
+    const { rows, terms, validity } = draft;
+    const setRows = (fn: (all: Row[]) => Row[]) => setDraft((d) => ({ ...d, rows: fn(d.rows) }));
+    const setTerms = (t: string) => setDraft((d) => ({ ...d, terms: t }));
+    const setValidity = (x: string) => setDraft((d) => ({ ...d, validity: x }));
     useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
     const gross = Number(v.gross_total);
     const allocated = rows.filter((r) => r.trigger !== "RECURRING").reduce((a, r) => a + (r.mode === "percent" ? Number(r.value || 0) : gross > 0 ? (Number(r.value || 0) / gross) * 100 : 0), 0);
     const fixedCount = rows.filter((r) => r.trigger !== "RECURRING").length;
     const balanced = fixedCount === 0 || Math.abs(allocated - 100) < 0.5;
-    const invalid = rows.some((r) => !r.name.trim()) || Number.isNaN(Number(validity)) || Number(validity) < 1;
+    const invalid = isInvalid(draft);
     const set = (key: string, patch: Partial<Row>) => setRows((all) => all.map((r) => (r.key === key ? { ...r, ...patch } : r)));
 
-    const submit = () =>
-        save.mutate(
-            { id: proposal.id, versionId: v.id, payment_schedule: rows.map(toInput), payment_terms: terms || null, validity_days: Number(validity) },
-            { onSuccess: () => toast({ title: "Payment schedule saved" }), onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) }
-        );
 
     return (
         <div className="space-y-4">
@@ -149,10 +148,9 @@ export function ScheduleEditor({ proposal, editable, onDirtyChange }: { proposal
                 </div>
             </div>
             {editable && (
-                <div className="flex items-center justify-end gap-2">
-                    <span className="mr-auto text-xs text-muted-foreground">{!balanced ? "The schedule must add up to 100% before sending" : dirty ? "Unsaved changes" : "All changes saved"}</span>
-                    <Button size="sm" variant="ghost" disabled={!dirty || save.isPending} onClick={() => { setRows(toRows(proposal)); setTerms(v.payment_terms ?? ""); setValidity(String(v.validity_days ?? 30)); }}>Discard</Button>
-                    <Button size="sm" disabled={!dirty || invalid} loading={save.isPending} onClick={submit}>Save schedule</Button>
+                <div className="flex min-h-6 items-center justify-end gap-2">
+                    {(invalid || !balanced) && <span className="mr-auto text-xs text-warning">{invalid ? "Every payment needs a name, and validity at least 1 day, to be saved" : "The schedule must add up to 100% before sending"}</span>}
+                    <SaveStatus state={autosave} />
                 </div>
             )}
         </div>

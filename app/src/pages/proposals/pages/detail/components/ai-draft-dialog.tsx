@@ -12,8 +12,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatMoney } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { cn } from "@/lib/utils";
@@ -60,7 +58,6 @@ export function AiDraftDialog({ proposal, open, onOpenChange }: { proposal: Prop
                     if (!r.available) { setUnavailable(r.message); return; }
                     setDraft({ run_id: r.run_id, model: r.model, sources: r.sources, sections: r.draft.sections.map((s) => ({ ...s, keep: true })), lines: r.draft.line_items.map((l) => ({ ...l, keep: true })), assumptions: r.draft.assumptions });
                 },
-                onError: (e) => toast({ variant: "destructive", title: "Could not generate a draft", description: getApiErrorMessage(e) }),
             },
         );
     };
@@ -69,7 +66,8 @@ export function AiDraftDialog({ proposal, open, onOpenChange }: { proposal: Prop
         if (!draft || !proposal.version) return;
         apply.mutate(
             { id: proposal.id, version_id: proposal.version.id, run_id: draft.run_id, mode, sections: draft.sections.filter((s) => s.keep).map(({ keep: _k, ...s }) => s), line_items: draft.lines.filter((l) => l.keep).map(({ keep: _k, ...l }) => l) },
-            { onSuccess: () => { toast({ title: "AI draft added", description: "Review and edit it before you send the proposal." }); onOpenChange(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not apply the draft", description: getApiErrorMessage(e) }) },
+            // The new sections / lines appear in the editor; failures toast globally.
+            { onSuccess: () => onOpenChange(false) },
         );
     };
 
