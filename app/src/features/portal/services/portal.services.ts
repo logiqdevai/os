@@ -14,6 +14,8 @@ import type {
     PortalDocument,
     PortalInvoice,
     PortalMembershipOption,
+    PortalNotificationPreferences,
+    PortalNotificationPreferencesDto,
     PortalProject,
     PortalProjectDetail,
     PortalProposal,
@@ -65,3 +67,18 @@ export const getPortalTeam = () => get<PortalTeam>(R().team);
 export const inviteColleagues = (dto: { emails: string[]; role_id?: string; message?: string }) => post<{ results: { email: string; status: string }[] }>(R().teamInvitations, dto);
 export const cancelColleagueInvitation = (id: string) => post(R().cancelInvitation(id));
 export const updateTeamMember = ({ id, ...dto }: { id: string; role_id?: string; status?: string }) => patch(R().teamMember(id), dto);
+
+/** Multipart upload into the company's shared folder (portal.documents.upload). */
+export const uploadPortalDocument = async ({ file, title, project_id, onProgress }: { file: File; title?: string; project_id?: string; onProgress?: (pct: number) => void }) => {
+    const form = new FormData();
+    form.append("file", file);
+    if (title) form.append("title", title);
+    if (project_id) form.append("project_id", project_id);
+    const c = cfg();
+    return (await axiosInstance.post<{ id: string; title: string }>(R().documents, form, { ...c, onUploadProgress: (e) => onProgress?.(e.total ? Math.round((e.loaded / e.total) * 100) : 0) })).data;
+};
+export const getPortalDocumentDownload = (id: string) => get<{ path: string; filename: string }>(R().documentDownload(id));
+export const openPortalProposal = (id: string) => post<{ path: string; access: string | null; token_prefix: string }>(R().proposalOpen(id));
+export const signPortalContract = (id: string) => post<{ path: string }>(R().contractSign(id));
+export const getPortalNotificationPreferences = () => get<PortalNotificationPreferences>(R().notificationPreferences);
+export const updatePortalNotificationPreferences = (dto: PortalNotificationPreferencesDto) => patch<PortalNotificationPreferences>(R().notificationPreferences, dto);

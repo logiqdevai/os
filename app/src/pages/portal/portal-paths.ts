@@ -15,5 +15,6 @@ export const PORTAL_PATHS = {
     help: "/portal/help",
     helpArticle: (slug: string) => `/portal/help/${slug}`,
     company: "/portal/company",
+    notifications: "/portal/notifications",
     signIn: "/auth/sign-in",
 } as const;

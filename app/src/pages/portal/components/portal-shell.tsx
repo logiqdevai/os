@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
-import { Building2, ChevronDown, LogOut, Menu, Repeat } from "lucide-react";
+import { Bell, Building2, ChevronDown, LogOut, Menu, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -146,6 +146,7 @@ function PortalChrome({ session, memberships, onSwitch, children }: { session: P
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem asChild><Link to={PORTAL_PATHS.company}><Building2 /> Company & team</Link></DropdownMenuItem>
+                                <DropdownMenuItem asChild><Link to={PORTAL_PATHS.notifications}><Bell /> Notifications</Link></DropdownMenuItem>
                                 {memberships.length > 1 && <DropdownMenuItem onSelect={onSwitch}><Repeat /> Switch company</DropdownMenuItem>}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onSelect={() => logout.mutate()}><LogOut /> Sign out</DropdownMenuItem>

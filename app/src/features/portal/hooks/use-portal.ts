@@ -46,3 +46,8 @@ export const usePortalTeam = () => { const k = useKey(); return useQuery({ query
 export const useInviteColleagues = () => usePortalMutation(s.inviteColleagues);
 export const useCancelColleagueInvitation = () => usePortalMutation(s.cancelColleagueInvitation);
 export const useUpdateTeamMember = () => usePortalMutation(s.updateTeamMember);
+export const useUploadPortalDocument = () => usePortalMutation(s.uploadPortalDocument);
+export const useOpenPortalProposal = () => useMutation({ mutationFn: s.openPortalProposal });
+export const useSignPortalContract = () => useMutation({ mutationFn: s.signPortalContract });
+export const usePortalNotificationPreferences = () => { const k = useKey(); return useQuery({ queryKey: k("notification-preferences"), queryFn: s.getPortalNotificationPreferences }); };
+export const useUpdatePortalNotificationPreferences = () => usePortalMutation(s.updatePortalNotificationPreferences);

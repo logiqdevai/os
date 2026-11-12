@@ -281,7 +281,7 @@ export class DocumentsService {
      * Upload a file as a new document, or as a new version of `fields.document_id`.
      * Used by `POST /files/upload` and by other modules (via `attachToEntity`).
      */
-    async upload(ctx: OrgContext, file: IncomingFile, fields: UploadFields, opts: { source?: DocumentSource; source_module?: ModuleKey; role?: string; authorized_by_module?: boolean } = {}) {
+    async upload(ctx: OrgContext, file: IncomingFile, fields: UploadFields, opts: { source?: DocumentSource; source_module?: ModuleKey; role?: string; authorized_by_module?: boolean; uploaded_via_portal?: boolean } = {}) {
         if (!file?.buffer) throw new BadRequestException({ message: 'A file is required (multipart field "file")', code: 'file_required' });
         const settings = await this.settings.get(ctx.organization_id);
         this.validateFile(settings, file);
@@ -322,6 +322,7 @@ export class DocumentsService {
                             source_module: opts.source_module,
                             owner_membership_id: ctx.membership_id,
                             created_by_user_id: ctx.user_id,
+                            uploaded_via_portal: opts.uploaded_via_portal ?? false,
                             ...placement,
                         },
                     });
@@ -442,6 +443,36 @@ export class DocumentsService {
             },
             { source: input.source ?? DocumentSource.GENERATED, source_module: input.source_module, role: input.role, authorized_by_module: input.authorized_by_module },
         );
+    }
+
+    /**
+     * 07 §9 — the customer-visible upload folder of a client company ("Client uploads/<Company>"), created on first use.
+     * An agency folder of that company with portal_upload_allowed wins when one exists.
+     */
+    async customerUploadFolder(organizationId: string, companyId: string) {
+        const existing = await this.prisma.folder.findFirst({
+            where: { organization_id: organizationId, company_id: companyId, portal_upload_allowed: true, customer_visible: true, deleted_at: null, archived_at: null },
+            orderBy: { created_at: 'asc' },
+            select: { id: true },
+        });
+        if (existing) return existing.id;
+        const company = await this.prisma.crmCompany.findFirst({ where: { id: companyId, organization_id: organizationId }, select: { name: true } });
+        if (!company) throw new NotFoundException({ message: 'Company not found', code: 'company_not_found' });
+        const rootName = 'Client uploads';
+        const root =
+            (await this.prisma.folder.findFirst({ where: { organization_id: organizationId, parent_folder_id: null, name: rootName, deleted_at: null }, select: { id: true, path: true } })) ??
+            (await this.prisma.folder.create({ data: { organization_id: organizationId, name: rootName, description: 'Files your clients uploaded in the client portal', path: '/', depth: 0, scope: DocumentScope.ORGANIZATION, is_system: true }, select: { id: true, path: true } }));
+        const name = company.name.slice(0, 200);
+        const child = await this.prisma.folder.findFirst({ where: { organization_id: organizationId, parent_folder_id: root.id, name }, select: { id: true } });
+        if (child) {
+            await this.prisma.folder.update({ where: { id: child.id }, data: { company_id: companyId, customer_visible: true, portal_upload_allowed: true, scope: DocumentScope.CUSTOMER, deleted_at: null, archived_at: null } });
+            return child.id;
+        }
+        const created = await this.prisma.folder.create({
+            data: { organization_id: organizationId, parent_folder_id: root.id, name, path: `${root.path || '/'}${root.id}/`, depth: 1, scope: DocumentScope.CUSTOMER, company_id: companyId, customer_visible: true, portal_upload_allowed: true, is_system: true },
+            select: { id: true },
+        });
+        return created.id;
     }
 
     /** Folder, scope, category and record references of a new document (validated against the tenant). */

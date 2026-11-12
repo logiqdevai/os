@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Download, FileSignature, FileText, Receipt } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Download, FileSignature, FileText, PenLine, Receipt, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,53 +10,101 @@ import { Pagination } from "@/components/ui/pagination";
 import { StatCard } from "@/components/ui/stat-card";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { formatDate, formatMoney } from "@/lib/format";
+import { environments } from "@/config/environments";
+import { toast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { getPortalDocumentDownload } from "@/features/portal/services/portal.services";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { PortalAgreementStatusOptions, PortalInvoiceFilterOptions, PortalInvoiceStatusOptions, PortalInvoiceStatusTone } from "@/config/constants/dropdowns/portal/portal.options";
-import { usePortalContracts, usePortalDocuments, usePortalInvoices, usePortalProposals } from "@/features/portal/hooks/use-portal";
+import { useOpenPortalProposal, usePortalContracts, usePortalDocuments, usePortalInvoices, usePortalProposals, useSignPortalContract } from "@/features/portal/hooks/use-portal";
 import { usePortal } from "../components/portal-context";
 import { PortalCard, PortalHeader } from "../components/portal-ui";
+import { PortalUploadDialog } from "../components/upload-dialog";
+
+/** Same key the public proposal page reads for EMAIL_VERIFIED links (pages/proposals/public). */
+const PROPOSAL_ACCESS_KEY = (tokenPrefix: string) => `lq-proposal-access:${tokenPrefix}`;
+
+/** Download through a fresh signed URL (the API checks the document is shared with your company). */
+async function downloadDocument(id: string) {
+    try {
+        const { path } = await getPortalDocumentDownload(id);
+        // Attachment disposition: the browser downloads the file and stays on this page.
+        window.location.assign(`${environments.API_URL.replace(/\/+$/, "")}${path}`);
+    } catch (e) {
+        toast({ variant: "destructive", title: "Could not download", description: getApiErrorMessage(e) });
+    }
+}
 
 const fileSize = (n: number | null) => (n === null ? "" : n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 
-/** Customer documents — /portal/documents (mockup 07-portal `cp-documents`). @perm portal.documents.read */
+/** Customer documents — /portal/documents (mockup 07-portal `cp-documents`). @perm portal.documents.read · upload portal.documents.upload */
 export function PortalDocumentsPage() {
+    const { can } = usePortal();
+    const canUpload = can("portal.documents.upload");
+    const [uploadOpen, setUploadOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
     const docs = usePortalDocuments({ search: search || undefined, page, limit: 25 });
     return (
         <>
-            <PortalHeader title="Documents" description="Files the team shared with you." />
+            <PortalHeader title="Documents" description="Files the team shared with you, and files you shared with the team." actions={canUpload ? <Button onClick={() => setUploadOpen(true)}><Upload /> Upload</Button> : undefined} />
             <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search documents…" className="mb-4 h-9 sm:max-w-xs" aria-label="Search documents" />
             {docs.isLoading ? <ListSkeleton /> : docs.error ? <ErrorState error={docs.error} onRetry={() => docs.refetch()} /> : !docs.data?.data.length ? (
-                <EmptyState icon={FileText} title={search ? "No documents match" : "No documents yet"} description="Specifications, reports and deliverables appear here when shared with you." />
+                <EmptyState icon={FileText} title={search ? "No documents match" : "No documents yet"} description="Specifications, reports and deliverables appear here when shared with you." action={canUpload && !search ? <Button size="sm" variant="outline" onClick={() => setUploadOpen(true)}><Upload /> Share a file</Button> : undefined} />
             ) : (
                 <PortalCard>
                     <ul className="divide-y divide-border-soft">
                         {docs.data.data.map((d) => (
                             <li key={d.id} className="flex items-center gap-3 py-2.5">
                                 <FileText className="size-4 shrink-0 text-muted-foreground" />
-                                <div className="min-w-0 flex-1"><div className="truncate text-[13px] font-medium">{d.title || d.filename}</div><div className="truncate text-xs text-muted-foreground">{[d.project?.name, fileSize(d.size), formatDate(d.created_at)].filter(Boolean).join(" · ")}</div></div>
-                                {d.url && <Button variant="ghost" size="icon-sm" asChild aria-label={`Download ${d.filename}`}><a href={d.url} target="_blank" rel="noreferrer"><Download /></a></Button>}
+                                <div className="min-w-0 flex-1"><div className="truncate text-[13px] font-medium">{d.title || d.filename}</div><div className="truncate text-xs text-muted-foreground">{[d.uploaded_via_portal ? "Shared by you" : null, d.project?.name, fileSize(d.size), formatDate(d.created_at)].filter(Boolean).join(" · ")}</div></div>
+                                <Button variant="ghost" size="icon-sm" aria-label={`Download ${d.title || d.filename}`} onClick={() => downloadDocument(d.id)}><Download /></Button>
                             </li>
                         ))}
                     </ul>
                     {docs.data.pagination.total_pages > 1 && <div className="mt-3"><Pagination currentPage={page} totalPages={docs.data.pagination.total_pages} onPageChange={setPage} /></div>}
                 </PortalCard>
             )}
+            {canUpload && <PortalUploadDialog open={uploadOpen} onOpenChange={setUploadOpen} />}
         </>
     );
 }
 
-/** Customer proposals and contracts — /portal/agreements (mockup 07-portal `cp-agreements`). @perm portal.proposals.read / portal.contracts.read */
+/**
+ * Customer proposals and contracts — /portal/agreements (mockup 07-portal `cp-agreements`).
+ * "Review & accept" / "Sign" ask the API for a fresh link and open the same public pages as the emailed links (/p/:token, /sign/:token).
+ * @perm portal.proposals.read / portal.contracts.read · accept portal.proposals.accept · sign portal.contracts.sign
+ */
 export function PortalAgreementsPage() {
     const { can, feature } = usePortal();
+    const navigate = useNavigate();
+    const openProposal = useOpenPortalProposal();
+    const signContract = useSignPortalContract();
+    const [busyId, setBusyId] = useState<string | null>(null);
+    const onOpenProposal = (id: string) => {
+        setBusyId(id);
+        openProposal.mutate(id, {
+            onSuccess: (r) => {
+                if (r.access) { try { sessionStorage.setItem(PROPOSAL_ACCESS_KEY(r.token_prefix), r.access); } catch { /* private mode: the page asks for a code */ } }
+                navigate(r.path);
+            },
+            onError: (e) => { setBusyId(null); toast({ variant: "destructive", title: "Could not open the proposal", description: getApiErrorMessage(e) }); },
+        });
+    };
+    const onSign = (id: string) => {
+        setBusyId(id);
+        signContract.mutate(id, {
+            onSuccess: (r) => navigate(r.path),
+            onError: (e) => { setBusyId(null); toast({ variant: "destructive", title: "Could not open signing", description: getApiErrorMessage(e) }); },
+        });
+    };
     const showProposals = can("portal.proposals.read") && feature("proposals");
     const showContracts = can("portal.contracts.read") && feature("contracts");
     const proposals = usePortalProposals({ limit: 50 }, showProposals);
     const contracts = usePortalContracts({ limit: 50 }, showContracts);
     return (
         <>
-            <PortalHeader title="Agreements" description="Proposals and contracts with the team. Open the link from the email to review and sign." />
+            <PortalHeader title="Agreements" description="Proposals and contracts with the team. Review, accept and sign them here." />
             <Tabs defaultValue={showProposals ? "proposals" : "contracts"}>
                 <TabsList>
                     {showProposals && <TabsTrigger value="proposals">Proposals</TabsTrigger>}
@@ -71,6 +120,7 @@ export function PortalAgreementsPage() {
                                             <div className="min-w-0 flex-1"><div className="truncate text-[13px] font-medium">{p.title}</div><div className="text-xs text-muted-foreground">{p.number} · sent {formatDate(p.sent_at)}{p.valid_until ? ` · valid until ${formatDate(p.valid_until)}` : ""}</div></div>
                                             <span className="tabular text-[13px]">{formatMoney(p.gross_total, p.currency)}</span>
                                             <Badge variant={p.status === "ACCEPTED" ? "success" : p.can_accept ? "warning" : "neutral"}>{getDropdownOptionLabel(PortalAgreementStatusOptions, p.status)}</Badge>
+                                            {p.can_accept && <Button size="sm" loading={busyId === p.id} disabled={!!busyId} onClick={() => onOpenProposal(p.id)}>Review & accept</Button>}
                                         </li>
                                     ))}
                                 </ul>
@@ -88,6 +138,7 @@ export function PortalAgreementsPage() {
                                             <div className="min-w-0 flex-1"><div className="truncate text-[13px] font-medium">{c.title}</div><div className="text-xs text-muted-foreground">{c.number}{c.start_date ? ` · ${formatDate(c.start_date)} – ${formatDate(c.end_date)}` : ""}</div></div>
                                             {c.total_value && <span className="tabular text-[13px]">{formatMoney(c.total_value, c.currency ?? "EUR")}</span>}
                                             <Badge variant={c.awaiting_signature ? "warning" : c.status === "ACTIVE" ? "success" : "neutral"}>{getDropdownOptionLabel(PortalAgreementStatusOptions, c.status)}</Badge>
+                                            {c.awaiting_signature && can("portal.contracts.sign") && <Button size="sm" loading={busyId === c.id} disabled={!!busyId} onClick={() => onSign(c.id)}><PenLine /> Sign</Button>}
                                         </li>
                                     ))}
                                 </ul>

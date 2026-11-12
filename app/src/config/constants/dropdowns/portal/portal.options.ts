@@ -1,5 +1,6 @@
 import type { DropdownOption } from "@/lib/dropdown-option-label.utils";
 import type { BadgeVariant } from "@/components/ui/badge";
+import type { PortalDigestFrequency } from "@/features/portal/interfaces/portal.interfaces";
 import type { InvitationStatus, PortalClientStatus, PortalFeature, PortalMembershipStatus, ProfileChangeStatus } from "@/features/client-portal/interfaces/client-portal.interfaces";
 
 /** Canonical labels for 07 Client portal enums. */
@@ -163,3 +164,10 @@ export const ProjectHealthOptions: DropdownOption<string>[] = [
     { id: "UNKNOWN", label: "Not rated" },
 ];
 export const ProjectHealthTone: Record<string, BadgeVariant> = { HEALTHY: "success", AT_RISK: "warning", BLOCKED: "danger", CRITICAL: "danger", UNKNOWN: "neutral" };
+
+export const PortalDigestFrequencyOptions: DropdownOption<PortalDigestFrequency>[] = [
+    { id: "IMMEDIATE", label: "Right away" },
+    { id: "HOURLY", label: "Hourly summary" },
+    { id: "DAILY", label: "Daily summary" },
+    { id: "WEEKLY", label: "Weekly summary" },
+];

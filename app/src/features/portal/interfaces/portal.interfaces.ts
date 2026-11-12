@@ -145,7 +145,33 @@ export interface PortalDocument {
     size: number | null;
     url: string | null;
     created_at: string;
+    uploaded_via_portal?: boolean;
     project: { id: string; name: string } | null;
+}
+
+export interface PortalNotificationTopic {
+    module: string;
+    label: string;
+    description: string;
+    enabled: boolean;
+}
+
+export type PortalDigestFrequency = "IMMEDIATE" | "HOURLY" | "DAILY" | "WEEKLY";
+
+/** GET /portal/notification-preferences (14 tables, recipient = the portal membership). */
+export interface PortalNotificationPreferences {
+    email_enabled: boolean;
+    in_app_enabled: boolean;
+    digest_frequency: PortalDigestFrequency;
+    email_available: boolean;
+    topics: PortalNotificationTopic[];
+}
+
+export interface PortalNotificationPreferencesDto {
+    email_enabled?: boolean;
+    in_app_enabled?: boolean;
+    digest_frequency?: PortalDigestFrequency;
+    topics?: { module: string; enabled: boolean }[];
 }
 
 export interface PortalProposal {

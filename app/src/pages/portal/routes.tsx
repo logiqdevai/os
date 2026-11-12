@@ -19,6 +19,7 @@ const Documents = lazy(() => import("./pages/documents-billing").then((m) => ({ 
 const Agreements = lazy(() => import("./pages/documents-billing").then((m) => ({ default: m.PortalAgreementsPage })));
 const Billing = lazy(() => import("./pages/documents-billing").then((m) => ({ default: m.PortalBillingPage })));
 const Help = lazy(() => import("./pages/help").then((m) => ({ default: m.PortalHelpPage })));
+const Notifications = lazy(() => import("./pages/notifications"));
 const HelpArticle = lazy(() => import("./pages/help").then((m) => ({ default: m.PortalHelpArticlePage })));
 
 const page = (el: ReactElement) => (
@@ -50,6 +51,7 @@ export default function PortalRoutes() {
                 <Route path="help" element={page(<PortalGate feature="knowledge"><Help /></PortalGate>)} />
                 <Route path="help/:slug" element={page(<PortalGate feature="knowledge"><HelpArticle /></PortalGate>)} />
                 <Route path="company" element={page(<Company />)} />
+                <Route path="notifications" element={page(<Notifications />)} />
                 <Route path="*" element={page(<Dashboard />)} />
             </Route>
         </Routes>
