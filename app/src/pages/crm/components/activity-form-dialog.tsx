@@ -13,8 +13,6 @@ import { ActivityDirectionFormOptions, ActivityTypeFormOptions, PriorityFormOpti
 import { activityFormSchema, type ActivityFormValues } from "@/features/crm/activities/validation-schemas/activities.schema";
 import { useCreateActivity, useUpdateActivity } from "@/features/crm/activities/hooks/use-activities";
 import type { Activity, ActivityType, CreateActivityDto, CrmRecordLink } from "@/features/crm/activities/interfaces/activities.interfaces";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { MemberSelect } from "./crm-pickers";
 
 const defaultStart = () => {
@@ -78,9 +76,9 @@ export function ActivityFormDialog({ open, onOpenChange, link, activity, default
             description: v.description || undefined,
             outcome: v.outcome || undefined,
         };
-        const onError = (e: unknown) => toast({ variant: "destructive", title: "Could not save activity", description: getApiErrorMessage(e) });
-        if (activity) update.mutate({ id: activity.id, ...dto }, { onSuccess: () => { toast({ title: "Activity updated" }); onOpenChange(false); }, onError });
-        else create.mutate({ ...dto, ...link, status: v.mode === "log" ? "COMPLETED" : "PLANNED" }, { onSuccess: () => { toast({ title: v.mode === "log" ? "Activity logged" : "Activity scheduled" }); onOpenChange(false); }, onError });
+        // Edit is optimistic (the row changes at once), so the dialog closes immediately; a refused save rolls back and toasts.
+        if (activity) { update.mutate({ id: activity.id, ...dto }); onOpenChange(false); }
+        else create.mutate({ ...dto, ...link, status: v.mode === "log" ? "COMPLETED" : "PLANNED" }, { onSuccess: () => onOpenChange(false) });
     });
 
     return (

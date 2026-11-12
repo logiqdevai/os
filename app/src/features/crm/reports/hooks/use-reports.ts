@@ -5,4 +5,4 @@ import * as service from "../services/reports.services";
 
 export const useCrmReport = <K extends ReportKey>(key: K, params: ReportParams) =>
     useQuery({ queryKey: [...CRM_KEY, "reports", key, params], queryFn: () => service.getReport(key, params), placeholderData: keepPreviousData });
-export const useExportReport = () => useMutation({ mutationFn: service.exportReport });
+export const useExportReport = () => useMutation({ mutationFn: service.exportReport, meta: { errorTitle: "Could not export" } });

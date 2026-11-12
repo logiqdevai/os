@@ -17,8 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { InlineText } from "@/components/ui/inline-edit";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { CustomFieldEntityOptions, CustomFieldTypeOptions } from "@/config/constants/dropdowns/crm/custom-field.options";
 import {
@@ -52,7 +51,6 @@ export default function CustomFieldsPage() {
     const [creating, setCreating] = useState(false);
     const [groupsOpen, setGroupsOpen] = useState(false);
     const [confirm, setConfirm] = useState<{ kind: "archive" | "delete"; field: CustomFieldDefinition } | null>(null);
-    const onErr = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
     const rows = useMemo(() => (fields.data ?? []).filter((f) => f.entity_types.includes(entity)), [fields.data, entity]);
     const active = rows.filter((f) => !f.archived_at);
@@ -61,7 +59,7 @@ export default function CustomFieldsPage() {
     const move = (i: number, dir: -1 | 1) => {
         const ids = active.map((r) => r.id);
         [ids[i], ids[i + dir]] = [ids[i + dir], ids[i]];
-        reorder.mutate(ids, { onError: onErr("Could not reorder") });
+        reorder.mutate(ids); // optimistic
     };
 
     return (
@@ -105,8 +103,8 @@ export default function CustomFieldsPage() {
                                         {[getDropdownOptionLabel(CustomFieldTypeOptions, f.type), f.group?.name, f.is_shared ? f.entity_types.map((e) => getDropdownOptionLabel(CustomFieldEntityOptions, e)).join(", ") : null, `${f.usage_count} value${f.usage_count === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex" aria-label={`Move ${f.label} up`} disabled={i === 0 || reorder.isPending} onClick={() => move(i, -1)}><ArrowUp /></Button>
-                                <Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex" aria-label={`Move ${f.label} down`} disabled={i === active.length - 1 || reorder.isPending} onClick={() => move(i, 1)}><ArrowDown /></Button>
+                                <Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex" aria-label={`Move ${f.label} up`} disabled={i === 0} onClick={() => move(i, -1)}><ArrowUp /></Button>
+                                <Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex" aria-label={`Move ${f.label} down`} disabled={i === active.length - 1} onClick={() => move(i, 1)}><ArrowDown /></Button>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${f.label}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
@@ -130,7 +128,7 @@ export default function CustomFieldsPage() {
                         {archived.map((f) => (
                             <li key={f.id} className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
                                 {f.label}
-                                <Button variant="ghost" size="icon-sm" className="size-5" aria-label={`Restore ${f.label}`} onClick={() => restore.mutate(f.id, { onSuccess: () => toast({ title: `${f.label} restored` }), onError: onErr("Could not restore") })}><ArchiveRestore className="size-3" /></Button>
+                                <Button variant="ghost" size="icon-sm" className="size-5" aria-label={`Restore ${f.label}`} onClick={() => restore.mutate(f.id)}><ArchiveRestore className="size-3" /></Button>
                             </li>
                         ))}
                     </ul>
@@ -145,8 +143,7 @@ export default function CustomFieldsPage() {
                 title={`Archive ${confirm?.field.label}?`}
                 description={`The field leaves forms, filters and exports. ${confirm?.field.usage_count ?? 0} stored value(s) are kept and come back if you restore it.`}
                 confirmText="Archive"
-                isLoading={archive.isPending}
-                onConfirm={() => confirm && archive.mutate(confirm.field.id, { onSuccess: () => { toast({ title: "Field archived" }); setConfirm(null); }, onError: onErr("Could not archive") })}
+                onConfirm={() => { if (confirm) archive.mutate(confirm.field.id); setConfirm(null); }}
             />
             <ConfirmationDialog
                 isOpen={confirm?.kind === "delete"}
@@ -155,8 +152,7 @@ export default function CustomFieldsPage() {
                 description="No record has a value for this field. Its key becomes free again."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => confirm && del.mutate(confirm.field.id, { onSuccess: () => { toast({ title: "Field deleted" }); setConfirm(null); }, onError: onErr("Could not delete") })}
+                onConfirm={() => { if (confirm) del.mutate(confirm.field.id); setConfirm(null); }}
             />
         </Page>
     );
@@ -206,7 +202,8 @@ function FieldDialog({ open, field, defaultEntity, onOpenChange }: { open: boole
             options,
             validation,
         };
-        const opts = { onSuccess: () => { toast({ title: field ? "Field saved" : "Field created" }); onOpenChange(false); }, onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save field", description: getApiErrorMessage(e) }) };
+        // Complex multi-field definition: stays a dialog with Save; closes on success, failures toast globally.
+        const opts = { onSuccess: () => onOpenChange(false) };
         if (field) update.mutate({ id: field.id, ...dto }, opts);
         else create.mutate({ key: v.key, ...dto }, opts);
     });
@@ -314,8 +311,6 @@ function GroupsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
     const update = useUpdateCustomFieldGroup();
     const del = useDeleteCustomFieldGroup();
     const [name, setName] = useState("");
-    const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
-    const onErr = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
@@ -328,7 +323,7 @@ function GroupsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
                     onSubmit={(e) => {
                         e.preventDefault();
                         if (!name.trim()) return;
-                        create.mutate({ name: name.trim() }, { onSuccess: () => setName(""), onError: onErr("Could not add group") });
+                        create.mutate({ name: name.trim() }, { onSuccess: () => setName("") });
                     }}
                 >
                     <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Billing details" aria-label="New group name" />
@@ -340,19 +335,10 @@ function GroupsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
                     <ul className="divide-y divide-border-soft rounded-md border border-border">
                         {groups.data.map((g) => (
                             <li key={g.id} className="flex items-center gap-2 px-3 py-2 text-[13px]">
-                                {renaming?.id === g.id ? (
-                                    <form className="flex flex-1 gap-2" onSubmit={(e) => { e.preventDefault(); update.mutate({ id: g.id, name: renaming.name }, { onSuccess: () => setRenaming(null), onError: onErr("Could not rename") }); }}>
-                                        <Input autoFocus value={renaming.name} onChange={(e) => setRenaming({ id: g.id, name: e.target.value })} className="h-8" aria-label="Group name" />
-                                        <Button size="sm" type="submit" loading={update.isPending}>Save</Button>
-                                    </form>
-                                ) : (
-                                    <>
-                                        <span className="flex-1 truncate text-foreground">{g.name}</span>
-                                        <span className="text-xs text-muted-foreground">{g._count.fields} field{g._count.fields === 1 ? "" : "s"}</span>
-                                        <Button variant="ghost" size="icon-sm" aria-label={`Rename ${g.name}`} onClick={() => setRenaming({ id: g.id, name: g.name })}><Pencil /></Button>
-                                        <Button variant="ghost" size="icon-sm" aria-label={`Delete ${g.name}`} onClick={() => del.mutate(g.id, { onError: onErr("Could not delete group") })}><Trash2 /></Button>
-                                    </>
-                                )}
+                                {/* Click the name to rename (saves on blur / Enter, optimistic). */}
+                                <span className="min-w-0 flex-1 text-foreground"><InlineText value={g.name} aria-label={`Rename ${g.name}`} maxLength={80} onSave={(next) => update.mutate({ id: g.id, name: next })} /></span>
+                                <span className="text-xs text-muted-foreground">{g._count.fields} field{g._count.fields === 1 ? "" : "s"}</span>
+                                <Button variant="ghost" size="icon-sm" aria-label={`Delete ${g.name}`} onClick={() => del.mutate(g.id)}><Trash2 /></Button>
                             </li>
                         ))}
                     </ul>

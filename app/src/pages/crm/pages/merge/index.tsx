@@ -8,8 +8,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
@@ -79,8 +77,9 @@ export default function MergePage() {
             entity_type: entity, survivor_id: survivor, merged_ids: merged.map((r) => r.id), field_choices,
             expected_updated_at: Object.fromEntries(d.records.map((r) => [r.id, r.updated_at])),
         }, {
-            onSuccess: () => { toast({ title: "Records merged", description: `${merged.length} ${label}${merged.length > 1 ? "s" : ""} merged. Old links now open the surviving record.` }); navigate(HREF[entity](survivor), { replace: true }); },
-            onError: (e) => { setConfirm(false); toast({ variant: "destructive", title: "Could not merge", description: getApiErrorMessage(e) }); if ((e as { response?: { status?: number } }).response?.status === 409) preview.refetch(); },
+            // The surviving record opening is the feedback; a failure is toasted globally.
+            onSuccess: () => navigate(HREF[entity](survivor), { replace: true }),
+            onError: (e) => { setConfirm(false); if ((e as { response?: { status?: number } }).response?.status === 409) preview.refetch(); },
         });
     };
 

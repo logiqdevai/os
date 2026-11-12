@@ -14,7 +14,6 @@ import { useCreateCompany, useUpdateCompany } from "@/features/crm/companies/hoo
 import type { Company, CompanyType, CreateCompanyDto } from "@/features/crm/companies/interfaces/companies.interfaces";
 import { useCrmSettings } from "@/features/crm/settings/hooks/use-crm-settings";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { CrmPaths } from "../crm-paths";
 import { MemberSelect } from "./crm-pickers";
@@ -39,18 +38,21 @@ interface Props {
  */
 export function CompanyFormDialog({ open, onOpenChange, company, defaultType = "PROSPECT", onCreated }: Props) {
     const navigate = useNavigate();
-    const create = useCreateCompany();
-    const update = useUpdateCompany();
+    // Errors are shown in the dialog (duplicates notice / message), not toasted.
+    const create = useCreateCompany({ errorToast: false });
+    const update = useUpdateCompany({ errorToast: false });
     const settings = useCrmSettings(false, open);
     const canMoney = usePermission("crm.financials.read");
     const canAssign = usePermission("crm.companies.assign");
     const [duplicates, setDuplicates] = useState<DuplicateMatch[] | null>(null);
+    const [formError, setFormError] = useState<string | null>(null);
     const form = useForm<CompanyFormValues>({ resolver: zodResolver(companyFormSchema), defaultValues: { name: "", type: defaultType } });
     const cf = useCustomFieldValues("CRM_COMPANY", open, company);
 
     useEffect(() => {
         if (!open) return;
         setDuplicates(null);
+        setFormError(null);
         form.reset({
             name: company?.name ?? "",
             type: company?.type ?? defaultType,
@@ -91,17 +93,17 @@ export function CompanyFormDialog({ open, onOpenChange, company, defaultType = "
                 description: v.description || undefined,
                 custom_fields: cf.payload(),
             };
+            setFormError(null);
             const onError = (e: unknown) => {
                 const dups = getDuplicates(e);
                 if (dups) setDuplicates(dups);
-                else toast({ variant: "destructive", title: "Could not save company", description: getApiErrorMessage(e) });
+                else setFormError(getApiErrorMessage(e));
             };
             if (company) {
-                update.mutate({ id: company.id, ...dto }, { onSuccess: () => { toast({ title: "Company updated" }); onOpenChange(false); }, onError });
+                update.mutate({ id: company.id, ...dto }, { onSuccess: () => onOpenChange(false), onError });
             } else {
                 create.mutate({ ...dto, allow_duplicate }, {
                     onSuccess: (c) => {
-                        toast({ title: "Company created" });
                         onOpenChange(false);
                         if (onCreated) onCreated(c);
                         else navigate(CrmPaths.company(c.id));
@@ -196,6 +198,7 @@ export function CompanyFormDialog({ open, onOpenChange, company, defaultType = "
                             )} />
                             <CustomFieldInputs state={cf} disabled={pending} />
                         </div>
+                        {formError && <p role="alert" className="text-[13px] text-danger">{formError}</p>}
                         {duplicates && <DuplicateNotice matches={duplicates} hrefOf={CrmPaths.company} />}
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>

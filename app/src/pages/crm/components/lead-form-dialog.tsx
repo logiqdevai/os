@@ -13,7 +13,6 @@ import { useCreateLead, useUpdateLead } from "@/features/crm/leads/hooks/use-lea
 import type { CreateLeadDto, Lead } from "@/features/crm/leads/interfaces/leads.interfaces";
 import { useCrmSettings } from "@/features/crm/settings/hooks/use-crm-settings";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { CrmPaths } from "../crm-paths";
 import { CustomFieldInputs, useCustomFieldValues } from "./custom-fields";
@@ -30,12 +29,14 @@ const toLocalInput = (iso: string | null | undefined) => (iso ? iso.slice(0, 10)
  */
 export function LeadFormDialog({ open, onOpenChange, lead }: { open: boolean; onOpenChange: (o: boolean) => void; lead?: Lead | null }) {
     const navigate = useNavigate();
-    const create = useCreateLead();
-    const update = useUpdateLead();
+    // Errors are shown in the dialog (duplicates notice / message), not toasted.
+    const create = useCreateLead({ errorToast: false });
+    const update = useUpdateLead({ errorToast: false });
     const settings = useCrmSettings(false, open);
     const canMoney = usePermission("crm.financials.read");
     const canAssign = usePermission("crm.leads.assign");
     const [duplicates, setDuplicates] = useState<DuplicateMatch[] | null>(null);
+    const [formError, setFormError] = useState<string | null>(null);
     const form = useForm<LeadFormValues>({ resolver: zodResolver(leadFormSchema), defaultValues: { name: "" } });
     const cf = useCustomFieldValues("CRM_LEAD", open, lead);
     const statuses = settings.data?.lead_statuses.filter((s) => !s.is_converted && !s.is_lost) ?? [];
@@ -43,6 +44,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: { open: boolean; on
     useEffect(() => {
         if (!open) return;
         setDuplicates(null);
+        setFormError(null);
         form.reset({
             name: lead?.name ?? "",
             company_name: lead?.company_name ?? "",
@@ -84,13 +86,14 @@ export function LeadFormDialog({ open, onOpenChange, lead }: { open: boolean; on
                 description: v.description || undefined,
                 custom_fields: cf.payload(),
             };
+            setFormError(null);
             const onError = (e: unknown) => {
                 const dups = getDuplicates(e);
                 if (dups) setDuplicates(dups);
-                else toast({ variant: "destructive", title: "Could not save lead", description: getApiErrorMessage(e) });
+                else setFormError(getApiErrorMessage(e));
             };
-            if (lead) update.mutate({ id: lead.id, ...dto }, { onSuccess: () => { toast({ title: "Lead updated" }); onOpenChange(false); }, onError });
-            else create.mutate({ ...dto, allow_duplicate }, { onSuccess: (l) => { toast({ title: "Lead created" }); onOpenChange(false); navigate(CrmPaths.lead(l.id)); }, onError });
+            if (lead) update.mutate({ id: lead.id, ...dto }, { onSuccess: () => onOpenChange(false), onError });
+            else create.mutate({ ...dto, allow_duplicate }, { onSuccess: (l) => { onOpenChange(false); navigate(CrmPaths.lead(l.id)); }, onError });
         })();
 
     return (
@@ -171,6 +174,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: { open: boolean; on
                             )} />
                             <CustomFieldInputs state={cf} disabled={pending} />
                         </div>
+                        {formError && <p role="alert" className="text-[13px] text-danger">{formError}</p>}
                         {duplicates && <DuplicateNotice matches={duplicates} hrefOf={CrmPaths.lead} />}
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>

@@ -15,16 +15,17 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { InlineText } from "@/components/ui/inline-edit";
+import { MarkdownField } from "@/components/ui/markdown-field";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { useArchiveLead, useDeleteLead, useLead, useSetLeadStatus } from "@/features/crm/leads/hooks/use-leads";
+import { useArchiveLead, useDeleteLead, useLead, useSetLeadStatus, useUpdateLead } from "@/features/crm/leads/hooks/use-leads";
 import { leadLostSchema, type LeadLostValues } from "@/features/crm/leads/validation-schemas/leads.schema";
 import { useCrmSettings } from "@/features/crm/settings/hooks/use-crm-settings";
 import { contactName } from "@/features/crm/common/interfaces/crm-common.interfaces";
 import { CrmPaths } from "../../crm-paths";
 import { MemberChip, Money, Panel, RecordLink, ToneBadge } from "../../components/crm-ui";
 import { LeadFormDialog } from "../../components/lead-form-dialog";
+import { MemberSelect } from "../../components/crm-pickers";
 import { RecordActivities } from "../../components/activity-items";
 import { NotesPanel } from "../../components/notes-panel";
 import { TagEditor } from "../../components/tag-editor";
@@ -47,6 +48,7 @@ export default function LeadDetailPage() {
     const p = usePermissions();
     const setStatus = useSetLeadStatus();
     const archive = useArchiveLead();
+    const update = useUpdateLead();
     const del = useDeleteLead();
     const [editing, setEditing] = useState(false);
     const [converting, setConverting] = useState(false);
@@ -60,20 +62,26 @@ export default function LeadDetailPage() {
     const l = lead.data;
     const converted = !!l.converted_at;
     const statuses = settings.data?.lead_statuses.filter((s) => !s.is_converted) ?? [];
-    const onErr = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
+    const canEdit = p.can("crm.leads.update");
+    const statusRef = (id: string) => {
+        const s = settings.data?.lead_statuses.find((x) => x.id === id);
+        return s ? { id: s.id, name: s.name, color: s.color ?? null, is_converted: !!s.is_converted, is_lost: !!s.is_lost } : undefined;
+    };
 
+    // Optimistic: the status badge changes at once; a refusal rolls back and toasts.
     const pickStatus = (id: string) => {
         const s = statuses.find((x) => x.id === id);
         if (!s || id === l.status_id) return;
         if (s.is_lost) setLostStatusId(id);
-        else setStatus.mutate({ id: l.id, status_id: id }, { onSuccess: () => toast({ title: `Status: ${s.name}` }), onError: onErr("Could not change the status") });
+        else setStatus.mutate({ id: l.id, status_id: id, status: statusRef(id) });
     };
 
     return (
         <Page width="wide">
             <PageHeader
                 back={{ to: CrmPaths.leads, label: "Leads" }}
-                title={l.name}
+                title={<InlineText value={l.name} aria-label="Lead name" disabled={!canEdit} onSave={(name) => update.mutate({ id: l.id, name })} />}
+                documentTitle={l.name}
                 meta={l.status && <ToneBadge tone={l.status.color}>{l.status.name}</ToneBadge>}
                 description={[l.company?.name ?? l.company_name, l.contact?.first_name ? contactName(l.contact) : l.contact_name].filter(Boolean).join(" · ") || undefined}
                 actions={
@@ -129,12 +137,22 @@ export default function LeadDetailPage() {
                                 { label: "Estimated value", value: l.estimated_value === null && !l.financials_hidden ? null : <Money value={l.estimated_value} currency={l.currency} /> },
                                 { label: "Score", value: l.manual_score ?? l.lead_score },
                                 { label: "Source", value: l.lead_source?.name },
-                                { label: "Owner", value: <MemberChip member={l.owner} /> },
+                                {
+                                    label: "Owner",
+                                    // Saves on change (optimistic); needs crm.leads.assign.
+                                    value: p.can("crm.leads.assign")
+                                        ? <MemberSelect value={l.owner_membership_id} className="h-8" onChange={(id, owner) => id && update.mutate({ id: l.id, owner_membership_id: id, optimistic: { owner } })} />
+                                        : <MemberChip member={l.owner} />,
+                                },
                                 { label: "Next follow-up", value: l.next_follow_up_at ? formatDate(l.next_follow_up_at) : null },
                                 ...(l.loss_reason ? [{ label: "Lost reason", value: [l.loss_reason.name, l.lost_reason].filter(Boolean).join(" — ") }] : []),
                             ]}
                         />
-                        {l.description && <p className="mt-3 whitespace-pre-wrap border-t border-border pt-3 text-[13px] text-body">{l.description}</p>}
+                        {(l.description || canEdit) && (
+                            <div className="mt-3 border-t border-border pt-3">
+                                <MarkdownField value={l.description} canEdit={canEdit} rows={5} onSave={(description) => update.mutateAsync({ id: l.id, description })} />
+                            </div>
+                        )}
                     </Panel>
                     <CustomFieldsPanel entityType="CRM_LEAD" values={l.custom_fields} />
                     <Panel title="Tags"><TagEditor entityType="CRM_LEAD" entityId={l.id} tags={l.tags} canEdit={p.can("crm.leads.update")} /></Panel>
@@ -144,10 +162,10 @@ export default function LeadDetailPage() {
 
             <LeadFormDialog open={editing} onOpenChange={setEditing} lead={l} />
             <LeadConvertDialog leadId={l.id} open={converting} onOpenChange={setConverting} />
-            <Dialog open={!!lostStatusId} onOpenChange={(o) => !o && !setStatus.isPending && setLostStatusId(null)}>
+            <Dialog open={!!lostStatusId} onOpenChange={(o) => !o && setLostStatusId(null)}>
                 <DialogContent className="sm:max-w-md">
                     <Form {...lostForm}>
-                        <form className="space-y-4" onSubmit={lostForm.handleSubmit((v) => lostStatusId && setStatus.mutate({ id: l.id, status_id: lostStatusId, lost_reason_id: v.lost_reason_id, lost_reason: v.lost_reason || undefined }, { onSuccess: () => { toast({ title: "Lead marked lost" }); setLostStatusId(null); }, onError: onErr("Could not change the status") }))}>
+                        <form className="space-y-4" onSubmit={lostForm.handleSubmit((v) => { if (!lostStatusId) return; setStatus.mutate({ id: l.id, status_id: lostStatusId, status: statusRef(lostStatusId), lost_reason_id: v.lost_reason_id, lost_reason: v.lost_reason || undefined }); setLostStatusId(null); })}>
                             <DialogHeader>
                                 <DialogTitle>Mark lead lost</DialogTitle>
                                 <DialogDescription>Pick a reason for reporting.</DialogDescription>
@@ -166,8 +184,8 @@ export default function LeadDetailPage() {
                                 <FormItem><FormLabel>Details</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <DialogFooter>
-                                <Button type="button" variant="ghost" onClick={() => setLostStatusId(null)} disabled={setStatus.isPending}>Cancel</Button>
-                                <Button type="submit" variant="destructive" loading={setStatus.isPending}>Mark lost</Button>
+                                <Button type="button" variant="ghost" onClick={() => setLostStatusId(null)}>Cancel</Button>
+                                <Button type="submit" variant="destructive">Mark lost</Button>
                             </DialogFooter>
                         </form>
                     </Form>
@@ -179,8 +197,7 @@ export default function LeadDetailPage() {
                 title={`Archive ${l.name}?`}
                 description="Archived leads are hidden from lists. You can restore them later."
                 confirmText="Archive"
-                isLoading={archive.isPending}
-                onConfirm={() => archive.mutate(l.id, { onSuccess: () => { toast({ title: "Lead archived" }); navigate(CrmPaths.leads); }, onError: onErr("Could not archive") })}
+                onConfirm={() => { archive.mutate(l.id); navigate(CrmPaths.leads); }}
             />
             <ConfirmationDialog
                 isOpen={confirm === "delete"}
@@ -189,8 +206,7 @@ export default function LeadDetailPage() {
                 description="The lead, its activities and notes are deleted permanently."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => del.mutate(l.id, { onSuccess: () => { toast({ title: "Lead deleted" }); navigate(CrmPaths.leads); }, onError: onErr("Could not delete") })}
+                onConfirm={() => { del.mutate(l.id); navigate(CrmPaths.leads); }}
             />
         </Page>
     );

@@ -9,13 +9,14 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { Input } from "@/components/ui/input";
+import { InlineText } from "@/components/ui/inline-edit";
+import { MarkdownField } from "@/components/ui/markdown-field";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { ForecastCategoryFormOptions } from "@/config/constants/dropdowns/crm/deal-status-form.options";
-import { useAddDealContact, useArchiveDeal, useChangeDealStage, useDeal, useDeleteDeal, useRemoveDealContact, useReopenDeal } from "@/features/crm/deals/hooks/use-deals";
+import { useAddDealContact, useArchiveDeal, useAssignDeal, useChangeDealStage, useDeal, useDeleteDeal, useRemoveDealContact, useReopenDeal, useUpdateDeal } from "@/features/crm/deals/hooks/use-deals";
 import type { DealDetail, DealStageRef } from "@/features/crm/deals/interfaces/deals.interfaces";
 import { contactName } from "@/features/crm/common/interfaces/crm-common.interfaces";
 import { CrmPaths } from "../../crm-paths";
@@ -25,7 +26,7 @@ import { DealFormDialog } from "../../components/deal-form-dialog";
 import { RecordActivities } from "../../components/activity-items";
 import { NotesPanel } from "../../components/notes-panel";
 import { TagEditor } from "../../components/tag-editor";
-import { ContactPicker } from "../../components/crm-pickers";
+import { ContactPicker, MemberSelect } from "../../components/crm-pickers";
 import { DealLineItems } from "./components/deal-line-items";
 import { CustomFieldsPanel } from "../../components/custom-fields";
 
@@ -48,6 +49,8 @@ export default function DealDetailPage() {
     const reopen = useReopenDeal();
     const archive = useArchiveDeal();
     const del = useDeleteDeal();
+    const update = useUpdateDeal();
+    const assign = useAssignDeal();
     const [editing, setEditing] = useState(false);
     const [closing, setClosing] = useState<CloseDealTarget | null>(null);
     const [confirm, setConfirm] = useState<"archive" | "delete" | null>(null);
@@ -58,27 +61,29 @@ export default function DealDetailPage() {
     const canStage = p.can("crm.deals.change_stage");
     const wonStage = d.pipeline_stages.find((s) => s.is_won);
     const lostStage = d.pipeline_stages.find((s) => s.is_lost);
-    const onErr = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
+    const canEdit = p.can("crm.deals.update");
 
+    // Optimistic: the stepper, status and board move at once; a refusal rolls back and toasts.
     const goStage = (s: DealStageRef) => {
         if (!canStage || s.id === d.stage_id) return;
-        if (s.is_won || s.is_lost) setClosing({ deal: d, stage_id: s.id, mode: s.is_won ? "won" : "lost" });
-        else if (d.status !== "OPEN") reopen.mutate({ id: d.id, stage_id: s.id }, { onSuccess: () => toast({ title: "Deal reopened" }), onError: onErr("Could not reopen") });
-        else change.mutate({ id: d.id, stage_id: s.id }, { onSuccess: () => toast({ title: `Moved to ${s.name}` }), onError: onErr("Could not change the stage") });
+        if (s.is_won || s.is_lost) setClosing({ deal: d, stage_id: s.id, mode: s.is_won ? "won" : "lost", stage: s });
+        else if (d.status !== "OPEN") reopen.mutate({ id: d.id, stage_id: s.id, stage: s });
+        else change.mutate({ id: d.id, stage_id: s.id, stage: s });
     };
 
     return (
         <Page width="wide">
             <PageHeader
                 back={{ to: CrmPaths.deals, label: "Deals" }}
-                title={d.name}
+                title={<InlineText value={d.name} aria-label="Deal name" disabled={!canEdit} onSave={(name) => update.mutate({ id: d.id, name })} />}
+                documentTitle={d.name}
                 meta={<><DealStatusBadge status={d.status} />{d.archived_at && <span className="text-xs text-muted-foreground">Archived</span>}</>}
                 description={<>{d.company ? <RecordLink to={CrmPaths.company(d.company.id)} className="text-muted-foreground">{d.company.name}</RecordLink> : "No company"} · {d.pipeline.name}</>}
                 actions={
                     <>
-                        {d.status === "OPEN" && canStage && wonStage && <Button variant="outline" onClick={() => setClosing({ deal: d, stage_id: wonStage.id, mode: "won" })}><Check /> Won</Button>}
-                        {d.status === "OPEN" && canStage && lostStage && <Button variant="outline" onClick={() => setClosing({ deal: d, stage_id: lostStage.id, mode: "lost" })}><X /> Lost</Button>}
-                        {d.status !== "OPEN" && p.can("crm.deals.update") && <Button variant="outline" loading={reopen.isPending} onClick={() => reopen.mutate({ id: d.id }, { onSuccess: () => toast({ title: "Deal reopened" }), onError: onErr("Could not reopen") })}><RotateCcw /> Reopen</Button>}
+                        {d.status === "OPEN" && canStage && wonStage && <Button variant="outline" onClick={() => setClosing({ deal: d, stage_id: wonStage.id, mode: "won", stage: wonStage })}><Check /> Won</Button>}
+                        {d.status === "OPEN" && canStage && lostStage && <Button variant="outline" onClick={() => setClosing({ deal: d, stage_id: lostStage.id, mode: "lost", stage: lostStage })}><X /> Lost</Button>}
+                        {d.status !== "OPEN" && p.can("crm.deals.update") && <Button variant="outline" onClick={() => reopen.mutate({ id: d.id })}><RotateCcw /> Reopen</Button>}
                         <Can permission="crm.deals.update"><Button variant="outline" onClick={() => setEditing(true)}><Pencil /> Edit</Button></Can>
                         {(p.can("crm.deals.archive") || p.can("crm.deals.delete")) && (
                             <DropdownMenu>
@@ -93,7 +98,7 @@ export default function DealDetailPage() {
                 }
             />
 
-            <StageStepper deal={d} onPick={goStage} disabled={!canStage || change.isPending || reopen.isPending} />
+            <StageStepper deal={d} onPick={goStage} disabled={!canStage} />
 
             <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_20rem]">
                 <div className="min-w-0">
@@ -118,18 +123,34 @@ export default function DealDetailPage() {
                                 { label: "Value", value: <Money value={d.value} currency={d.currency} className="text-[15px] font-medium" /> },
                                 { label: "Weighted", value: <Money value={d.weighted_value ?? null} currency={d.currency} /> },
                                 { label: "Probability", value: `${d.probability ?? d.stage.probability}% · ${getDropdownOptionLabel(ForecastCategoryFormOptions, d.forecast_category)}` },
-                                { label: "Expected close", value: formatDate(d.expected_close_date) },
+                                {
+                                    label: "Expected close",
+                                    // Saves on change (optimistic).
+                                    value: canEdit
+                                        ? <Input type="date" aria-label="Expected close date" className="h-8" value={d.expected_close_date?.slice(0, 10) ?? ""} onChange={(e) => e.target.value && update.mutate({ id: d.id, expected_close_date: e.target.value })} />
+                                        : formatDate(d.expected_close_date),
+                                },
                                 ...(d.actual_close_date ? [{ label: "Closed", value: formatDate(d.actual_close_date) }] : []),
-                                { label: "Owner", value: <MemberChip member={d.owner} /> },
+                                {
+                                    label: "Owner",
+                                    // Saves on change (optimistic); needs crm.deals.assign.
+                                    value: p.can("crm.deals.assign")
+                                        ? <MemberSelect value={d.owner_membership_id} className="h-8" onChange={(id, owner) => id && assign.mutate({ id: d.id, owner_membership_id: id, optimistic: { owner } })} />
+                                        : <MemberChip member={d.owner} />,
+                                },
                                 { label: "In stage", value: `${d.days_in_stage} day${d.days_in_stage === 1 ? "" : "s"}` },
                                 { label: "Source", value: d.lead_source?.name },
-                                { label: "Next step", value: d.next_step },
+                                { label: "Next step", value: canEdit ? <InlineText value={d.next_step ?? ""} required={false} placeholder="Add next step" aria-label="Next step" onSave={(next_step) => update.mutate({ id: d.id, next_step })} /> : d.next_step },
                                 ...(d.status === "LOST" ? [{ label: "Lost reason", value: [d.loss_reason?.name, d.lost_reason].filter(Boolean).join(" — ") || null }, { label: "Competitor", value: d.competitor }] : []),
                                 ...(d.status === "WON" && d.won_note ? [{ label: "Why we won", value: d.won_note }] : []),
                                 ...(d.converted_from_leads.length ? [{ label: "From lead", value: <RecordLink to={CrmPaths.lead(d.converted_from_leads[0].id)}>{d.converted_from_leads[0].name}</RecordLink> }] : []),
                             ]}
                         />
-                        {d.description && <p className="mt-3 whitespace-pre-wrap border-t border-border pt-3 text-[13px] text-body">{d.description}</p>}
+                        {(d.description || canEdit) && (
+                            <div className="mt-3 border-t border-border pt-3">
+                                <MarkdownField value={d.description} canEdit={canEdit} rows={5} onSave={(description) => update.mutateAsync({ id: d.id, description })} />
+                            </div>
+                        )}
                     </Panel>
                     <DealContacts deal={d} />
                     <CustomFieldsPanel entityType="CRM_DEAL" values={d.custom_fields} />
@@ -148,8 +169,7 @@ export default function DealDetailPage() {
                 title={`Archive ${d.name}?`}
                 description="Archived deals leave the board and reports. You can restore them later."
                 confirmText="Archive"
-                isLoading={archive.isPending}
-                onConfirm={() => archive.mutate(d.id, { onSuccess: () => { toast({ title: "Deal archived" }); navigate(CrmPaths.deals); }, onError: onErr("Could not archive") })}
+                onConfirm={() => { archive.mutate(d.id); navigate(CrmPaths.deals); }}
             />
             <ConfirmationDialog
                 isOpen={confirm === "delete"}
@@ -158,8 +178,7 @@ export default function DealDetailPage() {
                 description="The deal, its line items, activities and notes are deleted permanently. This is recorded in the audit log."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => del.mutate(d.id, { onSuccess: () => { toast({ title: "Deal deleted" }); navigate(CrmPaths.deals); }, onError: onErr("Could not delete") })}
+                onConfirm={() => { del.mutate(d.id); navigate(CrmPaths.deals); }}
             />
         </Page>
     );
@@ -234,7 +253,7 @@ function DealContacts({ deal }: { deal: DealDetail }) {
                         companyId={deal.company_id}
                         value={undefined}
                         placeholder="Add a contact…"
-                        onChange={(id) => id && add.mutate({ id: deal.id, contact_id: id }, { onSuccess: () => { setAdding(false); toast({ title: "Contact added" }); }, onError: (e) => toast({ variant: "destructive", title: "Could not add contact", description: getApiErrorMessage(e) }) })}
+                        onChange={(id) => id && add.mutate({ id: deal.id, contact_id: id }, { onSuccess: () => setAdding(false) })}
                     />
                 </div>
             )}
@@ -247,7 +266,7 @@ function DealContacts({ deal }: { deal: DealDetail }) {
                                 <div className="truncate text-xs text-muted-foreground">{[role, contact.email].filter(Boolean).join(" · ")}</div>
                             </div>
                             {canEdit && !primary && (
-                                <Button variant="ghost" size="icon-sm" aria-label={`Remove ${contactName(contact)}`} onClick={() => remove.mutate({ id: deal.id, contact_id: contact.id }, { onError: (e) => toast({ variant: "destructive", title: "Could not remove", description: getApiErrorMessage(e) }) })}><X /></Button>
+                                <Button variant="ghost" size="icon-sm" aria-label={`Remove ${contactName(contact)}`} onClick={() => remove.mutate({ id: deal.id, contact_id: contact.id })}><X /></Button>
                             )}
                         </li>
                     ))}

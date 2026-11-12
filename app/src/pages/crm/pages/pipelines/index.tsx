@@ -13,8 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { InlineText } from "@/components/ui/inline-edit";
 import { cn } from "@/lib/utils";
 import { ToneFormOptions } from "@/config/constants/dropdowns/crm/crm-settings.options";
 import { useArchivePipeline, useCreatePipeline, usePipelines, useReplaceStages, useUpdatePipeline } from "@/features/crm/pipelines/hooks/use-pipelines";
@@ -36,7 +35,6 @@ export default function PipelinesPage() {
     const [editing, setEditing] = useState<Pipeline | null>(null);
     const [stagesOf, setStagesOf] = useState<Pipeline | null>(null);
     const [archiving, setArchiving] = useState<Pipeline | null>(null);
-    const onErr = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
     return (
         <Page width="wide">
@@ -53,15 +51,15 @@ export default function PipelinesPage() {
                                 {pipelines.data.map((p) => (
                                     <Panel
                                         key={p.id}
-                                        title={<span className="flex items-center gap-2">{p.name}{p.is_default && <Badge variant="info">Default</Badge>}<span className="text-xs font-normal text-muted-foreground">{p._count?.deals ?? 0} open deals · {p.currency}</span></span>}
+                                        title={<span className="flex items-center gap-2"><InlineText value={p.name} aria-label={`Name of ${p.name}`} className="max-w-64" onSave={(name) => update.mutate({ id: p.id, name })} />{p.is_default && <Badge variant="info">Default</Badge>}<span className="text-xs font-normal text-muted-foreground">{p._count?.deals ?? 0} open deals · {p.currency}</span></span>}
                                         actions={
                                             <div className="flex items-center gap-1">
                                                 <Button size="sm" variant="outline" onClick={() => setStagesOf(p)}><Pencil /> Stages</Button>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${p.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onSelect={() => setEditing(p)}><Pencil /> Rename</DropdownMenuItem>
-                                                        {!p.is_default && <DropdownMenuItem onSelect={() => update.mutate({ id: p.id, is_default: true }, { onSuccess: () => toast({ title: `${p.name} is now the default` }), onError: onErr("Could not update") })}><Star /> Make default</DropdownMenuItem>}
+                                                        <DropdownMenuItem onSelect={() => setEditing(p)}><Pencil /> Edit details…</DropdownMenuItem>
+                                                        {!p.is_default && <DropdownMenuItem onSelect={() => update.mutate({ id: p.id, is_default: true })}><Star /> Make default</DropdownMenuItem>}
                                                         {!p.is_default && <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setArchiving(p)}><Archive /> Archive</DropdownMenuItem>}
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -91,8 +89,7 @@ export default function PipelinesPage() {
                 description="Pipelines with open deals cannot be archived. Closed deals keep their history."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate(archiving.id, { onSuccess: () => { toast({ title: "Pipeline archived" }); setArchiving(null); }, onError: onErr("Could not archive") })}
+                onConfirm={() => { if (archiving) archive.mutate(archiving.id); setArchiving(null); }}
             />
         </Page>
     );
@@ -108,9 +105,9 @@ function PipelineDialog({ open, pipeline, onOpenChange }: { open: boolean; pipel
     const pending = create.isPending || update.isPending;
     const submit = form.handleSubmit((v) => {
         const dto = { name: v.name, description: v.description || undefined, currency: v.currency ? v.currency.toUpperCase() : undefined, is_default: v.is_default };
-        const opts = { onSuccess: () => { toast({ title: pipeline ? "Pipeline updated" : "Pipeline created with the standard stages" }); onOpenChange(false); }, onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save pipeline", description: getApiErrorMessage(e) }) };
-        if (pipeline) update.mutate({ id: pipeline.id, ...dto }, opts);
-        else create.mutate(dto, opts);
+        // Edit is optimistic, so the dialog closes at once; create closes when the pipeline exists. Failures toast globally.
+        if (pipeline) { update.mutate({ id: pipeline.id, ...dto }); onOpenChange(false); }
+        else create.mutate(dto, { onSuccess: () => onOpenChange(false) });
     });
     return (
         <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
@@ -119,7 +116,7 @@ function PipelineDialog({ open, pipeline, onOpenChange }: { open: boolean; pipel
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
                             <DialogTitle>{pipeline ? "Edit pipeline" : "New pipeline"}</DialogTitle>
-                            <DialogDescription>{pipeline ? "Rename the pipeline or change its currency." : "Starts with the standard stages; edit them afterwards."}</DialogDescription>
+                            <DialogDescription>{pipeline ? "Change the pipeline's currency, description or default." : "Starts with the standard stages; edit them afterwards."}</DialogDescription>
                         </DialogHeader>
                         <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input autoFocus placeholder="Retainers" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><Input maxLength={3} placeholder="EUR" {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase())} /></FormControl><FormMessage /></FormItem>)} />
@@ -159,10 +156,7 @@ function StagesDialog({ pipeline, onClose }: { pipeline: Pipeline | null; onClos
         save.mutate({
             id: pipeline.id,
             stages: ordered.map((s) => ({ id: s.id, name: s.name, probability: Number(s.probability), is_won: s.is_won, is_lost: s.is_lost, stale_after_days: s.stale_after_days ? Number(s.stale_after_days) : undefined, color: s.color })),
-        }, {
-            onSuccess: () => { toast({ title: "Stages saved" }); onClose(); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not save stages", description: getApiErrorMessage(e) }),
-        });
+        }, { onSuccess: onClose });
     });
 
     return (

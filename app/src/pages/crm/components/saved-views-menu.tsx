@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { SavedViewVisibilityOptions } from "@/config/constants/dropdowns/crm/saved-view.options";
 import { useCreateSavedView, useDeleteSavedView, useSavedViews, useTeamOptions, useUpdateSavedView } from "@/features/crm/saved-views/hooks/use-saved-views";
@@ -88,10 +87,7 @@ export function SavedViewsMenu({ entityType, columns, onSearch }: { entityType: 
     };
 
     const saveCurrent = (view: SavedView) =>
-        update.mutate({ id: view.id, filters: currentFilters(), search: sp.get("q") ?? "" }, {
-            onSuccess: () => toast({ title: `View “${view.name}” updated` }),
-            onError: (e) => toast({ variant: "destructive", title: "Could not update view", description: getApiErrorMessage(e) }),
-        });
+        update.mutate({ id: view.id, filters: currentFilters(), search: sp.get("q") ?? "" });
 
     const groups: { label: string; items: SavedView[] }[] = [
         { label: "My views", items: views.data?.filter((v) => v.visibility === "PERSONAL") ?? [] },
@@ -164,11 +160,7 @@ export function SavedViewsMenu({ entityType, columns, onSearch }: { entityType: 
                 description={deleting?.visibility === "PERSONAL" ? "Only the view is removed, never records." : "Everyone it is shared with loses this view. Records are not affected."}
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => deleting && del.mutate(deleting.id, {
-                    onSuccess: () => { toast({ title: "View deleted" }); setDeleting(null); apply(null); },
-                    onError: (e) => toast({ variant: "destructive", title: "Could not delete view", description: getApiErrorMessage(e) }),
-                })}
+                onConfirm={() => { if (deleting) del.mutate(deleting.id); setDeleting(null); apply(null); }}
             />
         </>
     );
@@ -181,8 +173,9 @@ function SaveViewDialog({ open, mode, view, entityType, filters, search, onOpenC
     const canShare = usePermission("platform.saved_views.manage_shared");
     const canTeams = usePermission("organizations.teams.read");
     const teams = useTeamOptions(open && canShare && canTeams);
-    const create = useCreateSavedView();
-    const update = useUpdateSavedView();
+    // The dialog shows API errors inline.
+    const create = useCreateSavedView({ errorToast: false });
+    const update = useUpdateSavedView({ errorToast: false });
     const [name, setName] = useState("");
     const [visibility, setVisibility] = useState<SavedViewVisibility>("PERSONAL");
     const [teamId, setTeamId] = useState<string>("");
@@ -206,7 +199,7 @@ function SaveViewDialog({ open, mode, view, entityType, filters, search, onOpenC
         if (visibility === "TEAM" && !teamId) return setError("Pick the team to share with");
         const dto = { name: name.trim(), visibility, team_id: visibility === "TEAM" ? teamId : undefined, is_default: isDefault };
         const opts = {
-            onSuccess: (v: SavedView) => { toast({ title: mode === "create" ? "View saved" : "View updated" }); onSaved(v); },
+            onSuccess: (v: unknown) => onSaved(v as SavedView),
             onError: (err: unknown) => setError(getApiErrorMessage(err)),
         };
         if (mode === "edit" && view) update.mutate({ id: view.id, ...dto }, opts);

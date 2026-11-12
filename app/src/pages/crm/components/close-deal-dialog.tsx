@@ -12,14 +12,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { dealLostSchema, dealWonSchema, type DealLostValues, type DealWonValues } from "@/features/crm/deals/validation-schemas/deals.schema";
 import { useChangeDealStage } from "@/features/crm/deals/hooks/use-deals";
 import { useCrmSettings } from "@/features/crm/settings/hooks/use-crm-settings";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import type { DealStageRef } from "@/features/crm/deals/interfaces/deals.interfaces";
 
 export interface CloseDealTarget {
     deal: { id: string; name: string };
     /** The pipeline's won or lost stage. */
     stage_id: string;
     mode: "won" | "lost";
+    /** Display object of that stage, so the board / page show the closed deal at once. */
+    stage?: DealStageRef;
 }
 
 /**
@@ -40,16 +41,20 @@ export function CloseDealDialog({ target, onClose }: { target: CloseDealTarget |
         lost.reset({ lost_reason_id: "", lost_reason: "", competitor: "" });
     }, [target, won, lost]);
 
-    const done = (title: string) => ({
-        onSuccess: () => { toast({ title }); onClose(); },
-        onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not close the deal", description: getApiErrorMessage(e) }),
+    // Optimistic: the deal shows as won / lost at once and the dialog closes; a refusal rolls back and toasts.
+    const submitWon = won.handleSubmit((v) => {
+        if (!target) return;
+        change.mutate({ id: target.deal.id, stage_id: target.stage_id, stage: target.stage, won_note: v.won_note || undefined, actual_close_date: v.actual_close_date || undefined, set_customer: v.set_customer });
+        onClose();
+    });
+    const submitLost = lost.handleSubmit((v) => {
+        if (!target) return;
+        change.mutate({ id: target.deal.id, stage_id: target.stage_id, stage: target.stage, lost_reason_id: v.lost_reason_id, lost_reason: v.lost_reason || undefined, competitor: v.competitor || undefined });
+        onClose();
     });
 
-    const submitWon = won.handleSubmit((v) => target && change.mutate({ id: target.deal.id, stage_id: target.stage_id, won_note: v.won_note || undefined, actual_close_date: v.actual_close_date || undefined, set_customer: v.set_customer }, done("Deal won")));
-    const submitLost = lost.handleSubmit((v) => target && change.mutate({ id: target.deal.id, stage_id: target.stage_id, lost_reason_id: v.lost_reason_id, lost_reason: v.lost_reason || undefined, competitor: v.competitor || undefined }, done("Deal marked lost")));
-
     return (
-        <Dialog open={!!target} onOpenChange={(o) => !o && !change.isPending && onClose()}>
+        <Dialog open={!!target} onOpenChange={(o) => !o && onClose()}>
             <DialogContent className="sm:max-w-md">
                 {target?.mode === "won" ? (
                     <Form {...won}>

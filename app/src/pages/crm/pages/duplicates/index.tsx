@@ -9,8 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmptyState, ErrorState, ListSkeleton, NoAccessState } from "@/components/ui/states";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { DuplicateMatchOptions } from "@/config/constants/dropdowns/crm/crm-merge.options";
@@ -48,11 +46,8 @@ export default function DuplicatesPage() {
     const doDismiss = (pair: DuplicatePair) => {
         const key = `${pair.records[0].id}|${pair.records[1].id}`;
         setBusy(key);
-        dismiss.mutate({ entity_type: tab.id, record_a_id: pair.records[0].id, record_b_id: pair.records[1].id }, {
-            onSuccess: () => toast({ title: "Marked as not a duplicate" }),
-            onError: (e) => toast({ variant: "destructive", title: "Could not dismiss", description: getApiErrorMessage(e) }),
-            onSettled: () => setBusy(null),
-        });
+        // Optimistic: the pair leaves the list at once.
+        dismiss.mutate({ entity_type: tab.id, record_a_id: pair.records[0].id, record_b_id: pair.records[1].id }, { onSettled: () => setBusy(null) });
     };
 
     return (

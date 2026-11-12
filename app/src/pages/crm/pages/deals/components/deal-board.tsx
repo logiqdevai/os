@@ -6,8 +6,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useChangeDealStage } from "@/features/crm/deals/hooks/use-deals";
@@ -42,13 +40,11 @@ export function DealBoard({ board, loading, error, onRetry, onCreate }: Props) {
     const move = (deal: Deal, stage: BoardStage) => {
         if (deal.stage_id === stage.id) return;
         if (stage.is_won || stage.is_lost) {
-            setClosing({ deal, stage_id: stage.id, mode: stage.is_won ? "won" : "lost" });
+            setClosing({ deal, stage_id: stage.id, mode: stage.is_won ? "won" : "lost", stage });
             return;
         }
-        change.mutate({ id: deal.id, stage_id: stage.id }, {
-            onSuccess: () => toast({ title: `Moved to ${stage.name}` }),
-            onError: (e) => toast({ variant: "destructive", title: "Could not move the deal", description: getApiErrorMessage(e) }),
-        });
+        // Optimistic: the card moves at once; a refusal moves it back and toasts.
+        change.mutate({ id: deal.id, stage_id: stage.id, stage });
     };
 
     if (loading && !board) {

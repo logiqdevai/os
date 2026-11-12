@@ -12,13 +12,13 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { InlineText } from "@/components/ui/inline-edit";
+import { MarkdownField } from "@/components/ui/markdown-field";
 import { formatDate, formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { CompanyTypeFormOptions } from "@/config/constants/dropdowns/crm/company-type-form.options";
 import { ContactRoleFormOptions } from "@/config/constants/dropdowns/crm/contact-role-form.options";
-import { useArchiveCompany, useCompany, useDeleteCompany, useRestoreCompany } from "@/features/crm/companies/hooks/use-companies";
+import { useArchiveCompany, useCompany, useDeleteCompany, useRestoreCompany, useUpdateCompany } from "@/features/crm/companies/hooks/use-companies";
 import { useContacts } from "@/features/crm/contacts/hooks/use-contacts";
 import { useDeals } from "@/features/crm/deals/hooks/use-deals";
 import type { Contact } from "@/features/crm/contacts/interfaces/contacts.interfaces";
@@ -29,6 +29,7 @@ import { DealStatusBadge, MemberChip, Money, Panel, ToneBadge } from "../../comp
 import { CompanyFormDialog } from "../../components/company-form-dialog";
 import { ContactFormDialog } from "../../components/contact-form-dialog";
 import { DealFormDialog } from "../../components/deal-form-dialog";
+import { MemberSelect } from "../../components/crm-pickers";
 import { RecordActivities } from "../../components/activity-items";
 import { NotesPanel } from "../../components/notes-panel";
 import { TagEditor } from "../../components/tag-editor";
@@ -52,6 +53,7 @@ export default function CompanyDetailPage() {
     const archive = useArchiveCompany();
     const restore = useRestoreCompany();
     const del = useDeleteCompany();
+    const update = useUpdateCompany();
     const [editing, setEditing] = useState(false);
     const [newContact, setNewContact] = useState(false);
     const [newDeal, setNewDeal] = useState(false);
@@ -61,7 +63,7 @@ export default function CompanyDetailPage() {
     if (company.error) return <Page><ErrorState error={company.error} onRetry={() => company.refetch()} /></Page>;
     const c = company.data;
     const s = c.summary;
-    const onErr = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
+    const canEdit = p.can("crm.companies.update");
     const setTab = (t: string) => setSp((prev) => { const n = new URLSearchParams(prev); n.set("tab", t); return n; }, { replace: true });
 
     const contactCols: DataTableColumn<Contact>[] = [
@@ -80,7 +82,8 @@ export default function CompanyDetailPage() {
         <Page width="wide">
             <PageHeader
                 back={{ to: CrmPaths.companies, label: "Companies" }}
-                title={c.name}
+                title={<InlineText value={c.name} aria-label="Company name" disabled={!canEdit} onSave={(name) => update.mutate({ id: c.id, name })} />}
+                documentTitle={c.name}
                 meta={<><Badge variant={c.type === "CUSTOMER" ? "success" : c.type === "PROSPECT" ? "info" : "neutral"}>{getDropdownOptionLabel(CompanyTypeFormOptions, c.type)}</Badge>{c.lifecycle_stage && <Badge>{c.lifecycle_stage.name}</Badge>}{c.archived_at && <Badge variant="warning">Archived</Badge>}</>}
                 description={[c.website, c.industry, c.country].filter(Boolean).join(" · ") || undefined}
                 actions={
@@ -92,7 +95,7 @@ export default function CompanyDetailPage() {
                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="More actions"><MoreHorizontal /></Button></DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                     {p.can("crm.companies.archive") && (c.archived_at
-                                        ? <DropdownMenuItem onSelect={() => restore.mutate(c.id, { onSuccess: () => toast({ title: "Company restored" }), onError: onErr("Could not restore") })}><ArchiveRestore /> Restore</DropdownMenuItem>
+                                        ? <DropdownMenuItem onSelect={() => restore.mutate(c.id)}><ArchiveRestore /> Restore</DropdownMenuItem>
                                         : <DropdownMenuItem onSelect={() => setConfirm("archive")}><Archive /> Archive</DropdownMenuItem>)}
                                     {p.can("crm.companies.delete") && <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setConfirm("delete")}><Trash2 /> Delete</DropdownMenuItem>}
                                 </DropdownMenuContent>
@@ -132,7 +135,11 @@ export default function CompanyDetailPage() {
                                     </ul>
                                 ) : <EmptyState compact icon={Handshake} title="No deals yet" />}
                         </Panel>
-                        {c.description && <Panel title="About"><p className="whitespace-pre-wrap text-[13px] text-body">{c.description}</p></Panel>}
+                        {(c.description || canEdit) && (
+                            <Panel title="About">
+                                <MarkdownField value={c.description} canEdit={canEdit} aria-label="About" onSave={(description) => update.mutateAsync({ id: c.id, description })} />
+                            </Panel>
+                        )}
                     </TabsContent>
                     <TabsContent value="contacts" className="mt-4">
                         <div className="mb-2 flex justify-end"><Can permission="crm.contacts.create"><Button size="sm" variant="outline" onClick={() => setNewContact(true)}><Plus /> Contact</Button></Can></div>
@@ -155,7 +162,13 @@ export default function CompanyDetailPage() {
                                 { label: "VAT number", value: c.vat_number },
                                 { label: "Company size", value: c.company_size },
                                 { label: "Annual revenue", value: c.annual_revenue === null && !c.financials_hidden ? null : <Money value={c.annual_revenue} currency={c.currency} /> },
-                                { label: "Owner", value: <MemberChip member={c.owner} /> },
+                                {
+                                    label: "Owner",
+                                    // Saves on change (optimistic); needs crm.companies.assign.
+                                    value: p.can("crm.companies.assign")
+                                        ? <MemberSelect value={c.owner_membership_id} className="h-8" onChange={(id, owner) => id && update.mutate({ id: c.id, owner_membership_id: id, optimistic: { owner } })} />
+                                        : <MemberChip member={c.owner} />,
+                                },
                                 { label: "Account manager", value: c.account_manager ? <MemberChip member={c.account_manager} /> : null },
                                 { label: "Source", value: c.lead_source?.name },
                                 { label: "Customer since", value: c.customer_since ? formatDate(c.customer_since) : null },
@@ -177,8 +190,7 @@ export default function CompanyDetailPage() {
                 title={`Archive ${c.name}?`}
                 description="Archived companies are hidden from lists and pickers. Their deals and history stay."
                 confirmText="Archive"
-                isLoading={archive.isPending}
-                onConfirm={() => archive.mutate(c.id, { onSuccess: () => { toast({ title: "Company archived" }); setConfirm(null); }, onError: onErr("Could not archive") })}
+                onConfirm={() => { archive.mutate(c.id); setConfirm(null); }}
             />
             <ConfirmationDialog
                 isOpen={confirm === "delete"}
@@ -187,8 +199,7 @@ export default function CompanyDetailPage() {
                 description="Only companies without deals can be deleted. This cannot be undone."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => del.mutate(c.id, { onSuccess: () => { toast({ title: "Company deleted" }); navigate(CrmPaths.companies); }, onError: (e) => { setConfirm(null); onErr("Could not delete")(e); } })}
+                onConfirm={() => { del.mutate(c.id); navigate(CrmPaths.companies); }}
             />
         </Page>
     );

@@ -11,8 +11,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, formatMoney, formatNumber, formatPercent } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { ActivityTypeFormOptions } from "@/config/constants/dropdowns/crm/activity-form.options";
@@ -78,7 +76,7 @@ export default function CrmReportsPage() {
                 description="Pipeline, win / loss, lead conversion and activity. Every number is computed on the server for the records you can see."
                 actions={
                     <Can permission="crm.records.export">
-                        <Button variant="outline" loading={exp.isPending} onClick={() => exp.mutate({ key: tab, params }, { onSuccess: () => toast({ title: "Report exported", description: "The export was logged." }), onError: (e) => toast({ variant: "destructive", title: "Could not export", description: getApiErrorMessage(e) }) })}>
+                        <Button variant="outline" loading={exp.isPending} onClick={() => exp.mutate({ key: tab, params })}>
                             <Download /> <span className="hidden sm:inline">Export CSV</span>
                         </Button>
                     </Can>

@@ -7,8 +7,6 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
@@ -60,8 +58,7 @@ export function ActivityRow({ activity, onEdit, onDelete, showRecord }: { activi
                     <Button
                         variant="outline"
                         size="sm"
-                        loading={complete.isPending}
-                        onClick={() => complete.mutate({ id: activity.id }, { onSuccess: () => toast({ title: "Activity completed" }), onError: (e) => toast({ variant: "destructive", title: "Could not complete", description: getApiErrorMessage(e) }) })}
+                        onClick={() => complete.mutate({ id: activity.id })}
                     >
                         <Check /> <span className="hidden sm:inline">Done</span>
                     </Button>
@@ -97,11 +94,7 @@ export function useActivityDialogs() {
                 description="It is removed from the record timeline. This cannot be undone."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => deleting && del.mutate(deleting.id, {
-                    onSuccess: () => { toast({ title: "Activity deleted" }); setDeleting(null); },
-                    onError: (e) => toast({ variant: "destructive", title: "Could not delete", description: getApiErrorMessage(e) }),
-                })}
+                onConfirm={() => { if (deleting) del.mutate(deleting.id); setDeleting(null); }}
             />
         </>
     );

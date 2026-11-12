@@ -11,12 +11,11 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { MarkdownField } from "@/components/ui/markdown-field";
 import { formatDateTime } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { ContactRoleFormOptions } from "@/config/constants/dropdowns/crm/contact-role-form.options";
-import { useArchiveContact, useContact, useDeleteContact } from "@/features/crm/contacts/hooks/use-contacts";
+import { useArchiveContact, useContact, useDeleteContact, useUpdateContact } from "@/features/crm/contacts/hooks/use-contacts";
 import { useDeals } from "@/features/crm/deals/hooks/use-deals";
 import type { Deal } from "@/features/crm/deals/interfaces/deals.interfaces";
 import { contactName } from "@/features/crm/common/interfaces/crm-common.interfaces";
@@ -24,6 +23,7 @@ import { CrmPaths } from "../../crm-paths";
 import { DealStatusBadge, MemberChip, Money, Panel, RecordLink, ToneBadge } from "../../components/crm-ui";
 import { ContactFormDialog } from "../../components/contact-form-dialog";
 import { DealFormDialog } from "../../components/deal-form-dialog";
+import { MemberSelect } from "../../components/crm-pickers";
 import { RecordActivities } from "../../components/activity-items";
 import { NotesPanel } from "../../components/notes-panel";
 import { TagEditor } from "../../components/tag-editor";
@@ -45,6 +45,7 @@ export default function ContactDetailPage() {
     const deals = useDeals({ contact_id: contactId, limit: 100 }, !!contactId && p.can("crm.deals.read"));
     const archive = useArchiveContact();
     const del = useDeleteContact();
+    const update = useUpdateContact();
     const [editing, setEditing] = useState(false);
     const [newDeal, setNewDeal] = useState(false);
     const [confirm, setConfirm] = useState<"archive" | "delete" | null>(null);
@@ -53,7 +54,7 @@ export default function ContactDetailPage() {
     if (contact.error) return <Page><ErrorState error={contact.error} onRetry={() => contact.refetch()} /></Page>;
     const c = contact.data;
     const name = contactName(c);
-    const onErr = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
+    const canEdit = p.can("crm.contacts.update");
 
     const dealCols: DataTableColumn<Deal>[] = [
         { key: "name", header: "Deal", cell: (x) => <span className="font-medium text-foreground">{x.name}</span> },
@@ -111,12 +112,22 @@ export default function ContactDetailPage() {
                                 { label: "LinkedIn", value: c.linkedin_url && <a href={c.linkedin_url} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">{c.linkedin_url.replace(/^https?:\/\/(www\.)?/, "")}</a> },
                                 { label: "Roles", value: c.roles.length ? c.roles.map((r) => getDropdownOptionLabel(ContactRoleFormOptions, r)).join(", ") : null },
                                 { label: "Lifecycle", value: c.lifecycle_stage?.name },
-                                { label: "Owner", value: <MemberChip member={c.owner} /> },
+                                {
+                                    label: "Owner",
+                                    // Saves on change (optimistic); needs crm.contacts.assign.
+                                    value: p.can("crm.contacts.assign")
+                                        ? <MemberSelect value={c.owner_membership_id} className="h-8" onChange={(id, owner) => id && update.mutate({ id: c.id, owner_membership_id: id, optimistic: { owner } })} />
+                                        : <MemberChip member={c.owner} />,
+                                },
                                 { label: "Email consent", value: c.consent?.email ? "Yes" : "No" },
                                 { label: "Added", value: formatDateTime(c.created_at) },
                             ]}
                         />
-                        {c.description && <p className="mt-3 whitespace-pre-wrap border-t border-border pt-3 text-[13px] text-body">{c.description}</p>}
+                        {(c.description || canEdit) && (
+                            <div className="mt-3 border-t border-border pt-3">
+                                <MarkdownField value={c.description} canEdit={canEdit} rows={5} onSave={(description) => update.mutateAsync({ id: c.id, description })} />
+                            </div>
+                        )}
                     </Panel>
                     <CustomFieldsPanel entityType="CRM_CONTACT" values={c.custom_fields} />
                     <Panel title="Tags"><TagEditor entityType="CRM_CONTACT" entityId={c.id} tags={c.tags} canEdit={p.can("crm.contacts.update")} /></Panel>
@@ -130,8 +141,7 @@ export default function ContactDetailPage() {
                 title={`Archive ${name}?`}
                 description="Archived contacts are hidden from lists and pickers."
                 confirmText="Archive"
-                isLoading={archive.isPending}
-                onConfirm={() => archive.mutate(c.id, { onSuccess: () => { toast({ title: "Contact archived" }); setConfirm(null); }, onError: onErr("Could not archive") })}
+                onConfirm={() => { archive.mutate(c.id); setConfirm(null); }}
             />
             <ConfirmationDialog
                 isOpen={confirm === "delete"}
@@ -140,8 +150,7 @@ export default function ContactDetailPage() {
                 description="The contact and its notes are deleted permanently. Deals keep their history."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => del.mutate(c.id, { onSuccess: () => { toast({ title: "Contact deleted" }); navigate(CrmPaths.contacts); }, onError: onErr("Could not delete") })}
+                onConfirm={() => { del.mutate(c.id); navigate(CrmPaths.contacts); }}
             />
         </Page>
     );

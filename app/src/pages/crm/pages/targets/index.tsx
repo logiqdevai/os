@@ -12,7 +12,6 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { TargetMetricOptions, TargetPeriodOptions } from "@/config/constants/dropdowns/crm/crm-rules.options";
 import { useCreateTarget, useDeleteTarget, useTargets, useUpdateTarget } from "@/features/crm/rules/hooks/use-rules";
@@ -111,8 +110,7 @@ export default function TargetsPage() {
                 description="Deals are not affected."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => deleting && del.mutate(deleting.id, { onSuccess: () => { toast({ title: "Target deleted" }); setDeleting(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not delete", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (deleting) del.mutate(deleting.id); setDeleting(null); }}
             />
         </Page>
     );
@@ -161,7 +159,8 @@ function TargetDialog({ open, target, onOpenChange }: { open: boolean; target: S
             pipeline_id: pipelineId === NONE ? null : pipelineId,
             period, period_start: start, metric, amount: n,
         };
-        const opts = { onSuccess: () => { toast({ title: target ? "Target saved" : "Target created" }); onOpenChange(false); }, onError: (err: unknown) => setError(getApiErrorMessage(err)) };
+        // Multi-field edit: stays a dialog with Save; API errors show inline (the hooks do not toast).
+        const opts = { onSuccess: () => onOpenChange(false), onError: (err: unknown) => setError(getApiErrorMessage(err)) };
         if (target) update.mutate({ id: target.id, ...dto }, opts);
         else create.mutate(dto, opts);
     };

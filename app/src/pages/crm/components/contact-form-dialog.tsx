@@ -16,7 +16,6 @@ import { useCreateContact, useUpdateContact } from "@/features/crm/contacts/hook
 import type { Contact, CreateContactDto } from "@/features/crm/contacts/interfaces/contacts.interfaces";
 import { useCrmSettings } from "@/features/crm/settings/hooks/use-crm-settings";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { CrmPaths } from "../crm-paths";
 import { CustomFieldInputs, useCustomFieldValues } from "./custom-fields";
@@ -41,17 +40,20 @@ interface Props {
  */
 export function ContactFormDialog({ open, onOpenChange, contact, company, onCreated }: Props) {
     const navigate = useNavigate();
-    const create = useCreateContact();
-    const update = useUpdateContact();
+    // Errors are shown in the dialog (duplicates notice / message), not toasted.
+    const create = useCreateContact({ errorToast: false });
+    const update = useUpdateContact({ errorToast: false });
     const settings = useCrmSettings(false, open);
     const canAssign = usePermission("crm.contacts.assign");
     const [duplicates, setDuplicates] = useState<DuplicateMatch[] | null>(null);
+    const [formError, setFormError] = useState<string | null>(null);
     const form = useForm<ContactFormValues>({ resolver: zodResolver(contactFormSchema), defaultValues: { first_name: "", roles: [], email_consent: false } });
     const cf = useCustomFieldValues("CRM_CONTACT", open, contact);
 
     useEffect(() => {
         if (!open) return;
         setDuplicates(null);
+        setFormError(null);
         form.reset({
             first_name: contact?.first_name ?? "",
             last_name: contact?.last_name ?? "",
@@ -91,17 +93,17 @@ export function ContactFormDialog({ open, onOpenChange, contact, company, onCrea
                 description: v.description || undefined,
                 custom_fields: cf.payload(),
             };
+            setFormError(null);
             const onError = (e: unknown) => {
                 const dups = getDuplicates(e);
                 if (dups) setDuplicates(dups);
-                else toast({ variant: "destructive", title: "Could not save contact", description: getApiErrorMessage(e) });
+                else setFormError(getApiErrorMessage(e));
             };
             if (contact) {
-                update.mutate({ id: contact.id, ...dto }, { onSuccess: () => { toast({ title: "Contact updated" }); onOpenChange(false); }, onError });
+                update.mutate({ id: contact.id, ...dto }, { onSuccess: () => onOpenChange(false), onError });
             } else {
                 create.mutate({ ...dto, allow_duplicate }, {
                     onSuccess: (c) => {
-                        toast({ title: "Contact created" });
                         onOpenChange(false);
                         if (onCreated) onCreated(c);
                         else navigate(CrmPaths.contact(c.id));
@@ -195,6 +197,7 @@ export function ContactFormDialog({ open, onOpenChange, contact, company, onCrea
                             )} />
                             <CustomFieldInputs state={cf} disabled={pending} />
                         </div>
+                        {formError && <p role="alert" className="text-[13px] text-danger">{formError}</p>}
                         {duplicates && <DuplicateNotice matches={duplicates} hrefOf={CrmPaths.contact} />}
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>

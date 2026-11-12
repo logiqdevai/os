@@ -8,17 +8,17 @@ import { cn } from "@/lib/utils";
 import { useCrmMembers } from "@/features/crm/settings/hooks/use-crm-settings";
 import { useCompanyLookup } from "@/features/crm/companies/hooks/use-companies";
 import { useContactLookup } from "@/features/crm/contacts/hooks/use-contacts";
-import { contactName } from "@/features/crm/common/interfaces/crm-common.interfaces";
+import { contactName, type MemberRef } from "@/features/crm/common/interfaces/crm-common.interfaces";
 import { memberLabel } from "./crm-ui";
 
 const NONE = "__none";
 
 /** Owner / assignee picker (GET /crm/members). `allowNone` adds "Unassigned". */
-export function MemberSelect({ value, onChange, allowNone, disabled, label = "Owner", className }: { value: string | undefined | null; onChange: (v: string | undefined) => void; allowNone?: boolean; disabled?: boolean; label?: string; className?: string }) {
+export function MemberSelect({ value, onChange, allowNone, disabled, label = "Owner", className }: { value: string | undefined | null; onChange: (v: string | undefined, member?: MemberRef | null) => void; allowNone?: boolean; disabled?: boolean; label?: string; className?: string }) {
     const members = useCrmMembers();
     return (
         // No value on create = the API makes the caller the owner, so say so instead of showing an empty field.
-        <Select value={value ?? (allowNone ? NONE : "")} onValueChange={(v) => onChange(v === NONE ? undefined : v)} disabled={disabled}>
+        <Select value={value ?? (allowNone ? NONE : "")} onValueChange={(v) => onChange(v === NONE ? undefined : v, v === NONE ? null : members.data?.find((m) => m.id === v))} disabled={disabled}>
             <SelectTrigger aria-label={label} className={className}>
                 <SelectValue placeholder={members.isPending ? "Loading members…" : "You (default)"} />
             </SelectTrigger>

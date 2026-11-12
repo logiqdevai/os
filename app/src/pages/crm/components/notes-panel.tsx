@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Lock, MoreHorizontal, NotebookPen, Pencil, Pin, PinOff, Trash2 } from "lucide-react";
+import { Lock, MoreHorizontal, NotebookPen, Pin, PinOff, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,8 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { MarkdownField } from "@/components/ui/markdown-field";
 import { formatDateTime } from "@/lib/format";
 import { useCreateNote, useDeleteNote, useNotes, useUpdateNote } from "@/features/crm/notes/hooks/use-notes";
 import type { CrmNote, NoteEntityType } from "@/features/crm/notes/interfaces/notes.interfaces";
@@ -31,16 +30,12 @@ export function NotesPanel({ entityType, entityId }: { entityType: NoteEntityTyp
     const canWrite = usePermission(UPDATE_KEY[entityType]);
     const [body, setBody] = useState("");
     const [isPrivate, setIsPrivate] = useState(false);
-    const [editing, setEditing] = useState<CrmNote | null>(null);
-    const [editBody, setEditBody] = useState("");
     const [deleting, setDeleting] = useState<CrmNote | null>(null);
-    const onError = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
     const add = () => {
         if (!body.trim()) return;
         create.mutate({ entity_type: entityType, entity_id: entityId, body: body.trim(), is_private: isPrivate }, {
-            onSuccess: () => { setBody(""); setIsPrivate(false); toast({ title: "Note added" }); },
-            onError: onError("Could not add note"),
+            onSuccess: () => { setBody(""); setIsPrivate(false); },
         });
     };
 
@@ -79,9 +74,8 @@ export function NotesPanel({ entityType, entityId }: { entityType: NoteEntityTyp
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="Note actions"><MoreHorizontal /></Button></DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        {n.can_edit && <DropdownMenuItem onSelect={() => { setEditing(n); setEditBody(n.body); }}><Pencil /> Edit</DropdownMenuItem>}
                                                         {n.can_edit && (
-                                                            <DropdownMenuItem onSelect={() => update.mutate({ id: n.id, pinned: !n.pinned }, { onError: onError("Could not update note") })}>
+                                                            <DropdownMenuItem onSelect={() => update.mutate({ id: n.id, pinned: !n.pinned })}>
                                                                 {n.pinned ? <><PinOff /> Unpin</> : <><Pin /> Pin</>}
                                                             </DropdownMenuItem>
                                                         )}
@@ -90,17 +84,16 @@ export function NotesPanel({ entityType, entityId }: { entityType: NoteEntityTyp
                                                 </DropdownMenu>
                                             )}
                                         </div>
-                                        {editing?.id === n.id ? (
-                                            <div className="mt-2 space-y-2">
-                                                <Textarea rows={3} value={editBody} onChange={(e) => setEditBody(e.target.value)} aria-label="Edit note" />
-                                                <div className="flex justify-end gap-2">
-                                                    <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
-                                                    <Button size="sm" loading={update.isPending} disabled={!editBody.trim()} onClick={() => update.mutate({ id: n.id, body: editBody.trim() }, { onSuccess: () => { setEditing(null); toast({ title: "Note updated" }); }, onError: onError("Could not update note") })}>Save</Button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <p className="mt-2 whitespace-pre-wrap break-words text-[13px] text-body">{n.body}</p>
-                                        )}
+                                        {/* Click to edit; autosaves (an empty note is never sent). */}
+                                        <MarkdownField
+                                            className="mt-2"
+                                            aria-label="Note"
+                                            value={n.body}
+                                            canEdit={canWrite && n.can_edit}
+                                            placeholder="Empty note"
+                                            rows={4}
+                                            onSave={(next) => (next.trim() ? update.mutateAsync({ id: n.id, body: next.trim() }) : Promise.resolve())}
+                                        />
                                     </li>
                                 ))}
                             </ul>
@@ -112,8 +105,7 @@ export function NotesPanel({ entityType, entityId }: { entityType: NoteEntityTyp
                 description="This cannot be undone."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => deleting && del.mutate(deleting.id, { onSuccess: () => { setDeleting(null); toast({ title: "Note deleted" }); }, onError: onError("Could not delete note") })}
+                onConfirm={() => { if (deleting) del.mutate(deleting.id); setDeleting(null); }}
             />
         </div>
     );

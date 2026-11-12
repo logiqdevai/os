@@ -11,8 +11,6 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { useConvertLead, useConvertPreview } from "@/features/crm/leads/hooks/use-leads";
 import { convertLeadSchema, type ConvertLeadValues } from "@/features/crm/leads/validation-schemas/leads.schema";
 import type { ConvertLeadDto } from "@/features/crm/leads/interfaces/leads.interfaces";
@@ -70,13 +68,11 @@ export function LeadConvertDialog({ leadId, open, onOpenChange }: { leadId: stri
         };
         convert.mutate({ id: leadId, ...dto }, {
             onSuccess: (r) => {
-                toast({ title: "Lead converted" });
                 onOpenChange(false);
                 if (r.deal_id) navigate(CrmPaths.deal(r.deal_id));
                 else if (r.company_id) navigate(CrmPaths.company(r.company_id));
                 else if (r.contact_id) navigate(CrmPaths.contact(r.contact_id));
             },
-            onError: (e) => toast({ variant: "destructive", title: "Could not convert the lead", description: getApiErrorMessage(e) }),
         });
     });
 

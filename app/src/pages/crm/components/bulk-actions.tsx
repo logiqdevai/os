@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { DataTableColumn } from "@/components/ui/data-table";
 import { usePermissions } from "@/hooks/use-permission";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { CompanyTypeFormOptions } from "@/config/constants/dropdowns/crm/company-type-form.options";
 import { useBulkAction } from "@/features/crm/bulk/hooks/use-bulk";
 import { useCrmMembers, useCrmSettings } from "@/features/crm/settings/hooks/use-crm-settings";
@@ -78,14 +77,13 @@ export function BulkActionBar({ entity, sel, archived }: { entity: BulkEntity; s
                 setDialog(null);
                 if (res.failed.length) {
                     setFailures(res.failed);
-                    toast({ variant: res.succeeded.length ? "default" : "destructive", title: `${label}: ${res.succeeded.length} of ${res.requested} done`, description: `${res.failed.length} could not be changed.` });
+                    // Partial failure: the only toast here (the failed rows stay selected and are listed).
+                    toast({ variant: "destructive", title: `${label}: ${res.succeeded.length} of ${res.requested} done`, description: `${res.failed.length} could not be changed.` });
                     sel.setAll(res.failed.map((f) => f.id), true);
                 } else {
-                    toast({ title: `${label}: ${res.succeeded.length} record${res.succeeded.length === 1 ? "" : "s"} updated` });
-                    sel.clear();
+                    sel.clear(); // the refreshed list shows the change
                 }
             },
-            onError: (e) => toast({ variant: "destructive", title: `Could not ${label.toLowerCase()}`, description: getApiErrorMessage(e) }),
         });
 
     const canMerge = ids.length >= 2 && ids.length <= 5 && p.can(`crm.${r}.merge`);

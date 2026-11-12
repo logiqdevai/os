@@ -15,8 +15,6 @@ import { usePipelines } from "@/features/crm/pipelines/hooks/use-pipelines";
 import { useCrmSettings } from "@/features/crm/settings/hooks/use-crm-settings";
 import { contactName } from "@/features/crm/common/interfaces/crm-common.interfaces";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { CrmPaths } from "../crm-paths";
 import { CustomFieldInputs, useCustomFieldValues } from "./custom-fields";
 import { CompanyPicker, ContactPicker, MemberSelect } from "./crm-pickers";
@@ -97,12 +95,13 @@ export function DealFormDialog({ open, onOpenChange, deal, defaults }: { open: b
             description: v.description || undefined,
             custom_fields: cf.payload(),
         };
-        const onError = (e: unknown) => toast({ variant: "destructive", title: "Could not save deal", description: getApiErrorMessage(e) });
         if (deal) {
-            update.mutate({ id: deal.id, ...base }, { onSuccess: () => { toast({ title: "Deal updated" }); onOpenChange(false); }, onError });
+            // Optimistic: the page shows the edit at once; a refusal rolls back and toasts.
+            update.mutate({ id: deal.id, ...base });
+            onOpenChange(false);
         } else {
             const dto: CreateDealDto = { ...base, pipeline_id: v.pipeline_id || undefined, stage_id: v.stage_id || undefined };
-            create.mutate(dto, { onSuccess: (d) => { toast({ title: "Deal created" }); onOpenChange(false); navigate(CrmPaths.deal(d.id)); }, onError });
+            create.mutate(dto, { onSuccess: (d) => { onOpenChange(false); navigate(CrmPaths.deal(d.id)); } });
         }
     });
 

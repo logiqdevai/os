@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
-import { CRM_KEY, useCrmInvalidate } from "../../common/hooks/use-crm-invalidate";
+import { CRM_KEY, useCrmArchive, useCrmMutation, useCrmRemove, useCrmUpdate, type CrmMutationMeta } from "../../common/hooks/use-crm-invalidate";
 import * as service from "../services/contacts.services";
 
 const KEY = [...CRM_KEY, "contacts"] as const;
@@ -10,8 +10,9 @@ export const useContact = (id: string | undefined) => useQuery({ queryKey: [...K
 export const useContactLookup = (search: string, company_id?: string, enabled = true) =>
     useQuery({ queryKey: [...KEY, "lookup", search, company_id], queryFn: () => service.lookupContacts({ search: search || undefined, company_id, limit: 20 }), enabled, placeholderData: keepPreviousData });
 
-export const useCreateContact = () => useMutation({ mutationFn: service.createContact, onSuccess: useCrmInvalidate() });
-export const useUpdateContact = () => useMutation({ mutationFn: service.updateContact, onSuccess: useCrmInvalidate() });
-export const useArchiveContact = () => useMutation({ mutationFn: service.archiveContact, onSuccess: useCrmInvalidate() });
-export const useDeleteContact = () => useMutation({ mutationFn: service.deleteContact, onSuccess: useCrmInvalidate() });
-export const useExportContacts = () => useMutation({ mutationFn: service.exportContacts });
+export const useCreateContact = (meta: CrmMutationMeta = { errorTitle: "Could not create contact" }) => useCrmMutation(service.createContact, meta);
+/** Optimistic; pass display objects through `optimistic`. */
+export const useUpdateContact = (meta: CrmMutationMeta = { errorTitle: "Could not update contact" }) => useCrmUpdate(KEY, service.updateContact, meta);
+export const useArchiveContact = () => useCrmArchive(KEY, service.archiveContact, { errorTitle: "Could not archive contact" });
+export const useDeleteContact = () => useCrmRemove(KEY, service.deleteContact, { errorTitle: "Could not delete contact" });
+export const useExportContacts = () => useMutation({ mutationFn: service.exportContacts, meta: { errorTitle: "Could not export" } });

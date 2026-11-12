@@ -4,8 +4,6 @@ import type { UseMutationResult } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { Button } from "@/components/ui/button";
 import { Can } from "@/components/access/can";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 /** CSV export (sensitive and audited on the server). Shown only with the entity's export key. */
 export function ExportButton({ permission, mutation, params }: { permission: string; mutation: UseMutationResult<number, Error, Record<string, unknown>>; params: Record<string, unknown> }) {
@@ -14,12 +12,8 @@ export function ExportButton({ permission, mutation, params }: { permission: str
             <Button
                 variant="outline"
                 loading={mutation.isPending}
-                onClick={() =>
-                    mutation.mutate(params, {
-                        onSuccess: (count) => toast({ title: "Export ready", description: `${count} record(s) exported. The export was logged.` }),
-                        onError: (e) => toast({ variant: "destructive", title: "Could not export", description: getApiErrorMessage(e) }),
-                    })
-                }
+                // The browser download is the feedback; a failure is toasted by the global MutationCache.
+                onClick={() => mutation.mutate(params)}
             >
                 <Download /> <span className="hidden sm:inline">Export</span>
             </Button>

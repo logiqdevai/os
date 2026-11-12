@@ -12,7 +12,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -90,7 +89,6 @@ function MappingStep({ job }: { job: ImportJob }) {
         if (!m) return;
         setMap(Object.fromEntries(headers.filter((h) => m.field_mapping[h]).map((h) => [h, m.field_mapping[h]])));
         if (m.duplicate_strategy) { setMode(m.duplicate_strategy.mode); setMatchKey(m.duplicate_strategy.match_key); }
-        toast({ title: `Mapping “${m.name}” applied` });
     };
 
     const next = () => {
@@ -209,7 +207,7 @@ function RowsTable({ rows }: { rows: ImportRowResult[] }) {
 
 function PreviewStep({ job }: { job: ImportJob }) {
     const start = useStartImport();
-    const setMapping = useSetImportMapping();
+    const setMapping = useSetImportMapping({ errorTitle: "Could not go back to mapping" });
     const [filter, setFilter] = useState<"all" | "error">("all");
     const summary = job.preview_summary;
     const rows = useMemo(() => (job.preview_rows ?? []).filter((r) => (filter === "all" ? r.row <= 101 : r.plan === "error")), [job.preview_rows, filter]);
@@ -238,7 +236,7 @@ function PreviewStep({ job }: { job: ImportJob }) {
             </Panel>
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button variant="outline" loading={setMapping.isPending} onClick={() => setMapping.mutate({ id: job.id, field_mapping: job.field_mapping ?? {}, duplicate_strategy: job.duplicate_strategy ?? { mode: "skip", match_key: "name" } })}>Back to mapping</Button>
-                <Button disabled={!writes} loading={start.isPending} onClick={() => start.mutate(job.id, { onSuccess: () => toast({ title: "Import started", description: "You can leave this page; it keeps running." }), onError: (e) => toast({ variant: "destructive", title: "Could not start", description: getApiErrorMessage(e) }) })}>
+                <Button disabled={!writes} loading={start.isPending} onClick={() => start.mutate(job.id)}>
                     <Play /> Import {formatNumber(writes)} row{writes === 1 ? "" : "s"}
                 </Button>
             </div>
@@ -250,6 +248,7 @@ function ResultStep({ job }: { job: ImportJob }) {
     const rollback = useRollbackImport();
     const download = useDownloadImportErrors();
     const [confirm, setConfirm] = useState(false);
+    const [rolledBack, setRolledBack] = useState<{ deleted: number; kept: number } | null>(null);
     const running = job.status === "IMPORTING";
     const pct = job.total_rows ? (job.processed_rows / job.total_rows) * 100 : 0;
     return (
@@ -270,7 +269,7 @@ function ResultStep({ job }: { job: ImportJob }) {
                 <StatCard label="Errors" value={formatNumber(job.error_rows)} tone={job.error_rows ? "danger" : "default"} />
             </StatGrid>
             {!!job.error_sample.length && (
-                <Panel title="Rows with errors" actions={<Button size="sm" variant="outline" loading={download.isPending} onClick={() => download.mutate(job.id, { onError: (e) => toast({ variant: "destructive", title: "Could not download", description: getApiErrorMessage(e) }) })}><Download /> Error file</Button>} bodyClassName="p-0">
+                <Panel title="Rows with errors" actions={<Button size="sm" variant="outline" loading={download.isPending} onClick={() => download.mutate(job.id)}><Download /> Error file</Button>} bodyClassName="p-0">
                     <RowsTable rows={job.error_sample} />
                 </Panel>
             )}
@@ -287,11 +286,9 @@ function ResultStep({ job }: { job: ImportJob }) {
                 confirmText="Roll back"
                 variant="destructive"
                 isLoading={rollback.isPending}
-                onConfirm={() => rollback.mutate(job.id, {
-                    onSuccess: (r) => { toast({ title: "Import rolled back", description: `${r.deleted} deleted${r.kept ? `, ${r.kept} kept` : ""}.` }); setConfirm(false); },
-                    onError: (e) => toast({ variant: "destructive", title: "Could not roll back", description: getApiErrorMessage(e) }),
-                })}
+                onConfirm={() => rollback.mutate(job.id, { onSuccess: (r) => { setRolledBack(r); setConfirm(false); } })}
             />
+            {rolledBack && <p role="status" className="text-right text-[13px] text-muted-foreground">Rolled back: {rolledBack.deleted} deleted{rolledBack.kept ? `, ${rolledBack.kept} kept` : ""}.</p>}
             {!running && <div className="flex justify-end"><Button variant="ghost" asChild><Link to={CrmPaths.imports}><Save /> New import</Link></Button></div>}
         </div>
     );

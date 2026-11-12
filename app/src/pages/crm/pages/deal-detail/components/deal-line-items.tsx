@@ -9,8 +9,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/states";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { formatNumber } from "@/lib/format";
 import { useReplaceLineItems } from "@/features/crm/deals/hooks/use-deals";
 import { lineItemsSchema, type LineItemsValues } from "@/features/crm/deals/validation-schemas/deals.schema";
@@ -28,6 +28,11 @@ export function DealLineItems({ deal }: { deal: DealDetail }) {
     const p = usePermissions();
     const canEdit = p.can("crm.deals.update") && p.can("crm.financials.read");
     const save = useReplaceLineItems();
+    const toPayload = (v: LineItemsValues) => ({
+        id: deal.id,
+        discount_percent: num(v.discount_percent),
+        items: v.items.map((i) => ({ name: i.name, quantity: num(i.quantity), unit_price: num(i.unit_price), discount_percent: i.discount_percent ? num(i.discount_percent) : undefined, tax_percent: i.tax_percent ? num(i.tax_percent) : undefined, is_recurring: i.is_recurring, billing_frequency: i.is_recurring ? i.billing_frequency ?? "monthly" : undefined })),
+    });
     const [editing, setEditing] = useState(false);
     const form = useForm<LineItemsValues>({ resolver: zodResolver(lineItemsSchema), defaultValues: { items: [], discount_percent: "" } });
     const items = useFieldArray({ control: form.control, name: "items" });
@@ -46,26 +51,21 @@ export function DealLineItems({ deal }: { deal: DealDetail }) {
                 billing_frequency: li.billing_frequency ?? undefined,
             })),
         });
-    }, [editing, deal, form]);
+        // Reset only when the editor opens: refetches after each autosave must not overwrite what is being typed.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editing]);
+
+    // Autosave: every valid change replaces the line items (invalid rows keep their inline errors and are not sent).
+    const autosave = useFormAutosave(form, (v) => save.mutateAsync(toPayload(v)), { enabled: editing });
 
     if (deal.financials_hidden) return <EmptyState compact title="Amounts are hidden" description="You need the CRM financials permission to see line items." />;
 
-    const submit = form.handleSubmit((v) =>
-        save.mutate({
-            id: deal.id,
-            discount_percent: num(v.discount_percent),
-            items: v.items.map((i) => ({ name: i.name, quantity: num(i.quantity), unit_price: num(i.unit_price), discount_percent: i.discount_percent ? num(i.discount_percent) : undefined, tax_percent: i.tax_percent ? num(i.tax_percent) : undefined, is_recurring: i.is_recurring, billing_frequency: i.is_recurring ? i.billing_frequency ?? "monthly" : undefined })),
-        }, {
-            onSuccess: () => { toast({ title: "Line items saved" }); setEditing(false); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not save line items", description: getApiErrorMessage(e) }),
-        }),
-    );
 
     if (editing) {
         const preview = form.watch("items").reduce((n, i) => n + num(i.quantity) * num(i.unit_price) * (1 - num(i.discount_percent) / 100), 0) * (1 - num(form.watch("discount_percent")) / 100);
         return (
             <Form {...form}>
-                <form onSubmit={submit} className="space-y-3">
+                <form onSubmit={(e) => { e.preventDefault(); autosave.flush(); }} className="space-y-3">
                     {items.fields.map((f, i) => (
                         <div key={f.id} className="grid grid-cols-2 gap-2 rounded-md border border-border p-3 sm:grid-cols-[1fr_5rem_7rem_5rem_5rem_auto]">
                             <FormField control={form.control} name={`items.${i}.name`} render={({ field }) => (
@@ -98,9 +98,9 @@ export function DealLineItems({ deal }: { deal: DealDetail }) {
                         )} />
                         <div className="text-[13px] text-muted-foreground">Net total ≈ <Money value={preview} currency={deal.currency} className="font-medium text-foreground" /></div>
                     </div>
-                    <div className="flex justify-end gap-2">
-                        <Button type="button" variant="ghost" onClick={() => setEditing(false)} disabled={save.isPending}>Cancel</Button>
-                        <Button type="submit" loading={save.isPending}>Save line items</Button>
+                    <div className="flex items-center justify-end gap-3">
+                        <SaveStatus state={autosave} />
+                        <Button type="button" variant="outline" onClick={() => { autosave.flush(); setEditing(false); }}>Done</Button>
                     </div>
                 </form>
             </Form>

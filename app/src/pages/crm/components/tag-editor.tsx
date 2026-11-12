@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { useCreateTag, useSetTaggings, useTags } from "@/features/crm/tags/hooks/use-tags";
 import type { CrmEntityType, TagRef } from "@/features/crm/common/interfaces/crm-common.interfaces";
@@ -25,8 +23,12 @@ export function TagEditor({ entityType, entityId, tags, canEdit }: { entityType:
     const canManage = usePermission("platform.tags.manage");
     const selected = new Set((tags ?? []).map((t) => t.id));
 
-    const apply = (ids: string[]) =>
-        setTags.mutate({ entity_type: entityType, entity_id: entityId, tag_ids: ids }, { onError: (e) => toast({ variant: "destructive", title: "Could not update tags", description: getApiErrorMessage(e) }) });
+    // Optimistic: the chips change at once (`tags` are the display objects); a refusal rolls back and toasts.
+    const apply = (ids: string[], extra: TagRef[] = []) => {
+        const known = [...(tags ?? []), ...(all.data ?? []), ...extra];
+        const display = ids.map((id) => known.find((t) => t.id === id)).filter((t): t is TagRef => !!t).map(({ id, name, color }) => ({ id, name, color }));
+        setTags.mutate({ entity_type: entityType, entity_id: entityId, tag_ids: ids, tags: display });
+    };
 
     const toggle = (id: string) => apply(selected.has(id) ? [...selected].filter((x) => x !== id) : [...selected, id]);
 
@@ -57,8 +59,7 @@ export function TagEditor({ entityType, entityId, tags, canEdit }: { entityType:
                                         <CommandItem
                                             value={`__create ${search}`}
                                             onSelect={() => createTag.mutate({ name: search.trim() }, {
-                                                onSuccess: (t) => { apply([...selected, t.id]); setSearch(""); },
-                                                onError: (e) => toast({ variant: "destructive", title: "Could not create tag", description: getApiErrorMessage(e) }),
+                                                onSuccess: (t) => { apply([...selected, t.id], [t]); setSearch(""); },
                                             })}
                                         >
                                             <Plus className="size-4" /> Create “{search.trim()}”

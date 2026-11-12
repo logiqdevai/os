@@ -16,8 +16,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { cn } from "@/lib/utils";
 import { LossReasonScopeFormOptions, SettingKindOptions, ToneFormOptions } from "@/config/constants/dropdowns/crm/crm-settings.options";
@@ -66,7 +64,6 @@ function OptionList({ kind, description }: { kind: SettingKind; description: str
     const update = useUpdateSettingOption();
     const [editing, setEditing] = useState<SettingOption | null>(null);
     const [creating, setCreating] = useState(false);
-    const onErr = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
     const label = getDropdownOptionLabel(SettingKindOptions, kind);
 
     if (settings.isPending) return <ListSkeleton className="p-0" />;
@@ -78,7 +75,7 @@ function OptionList({ kind, description }: { kind: SettingKind; description: str
     const move = (i: number, dir: -1 | 1) => {
         const ids = active.map((r) => r.id);
         [ids[i], ids[i + dir]] = [ids[i + dir], ids[i]];
-        reorder.mutate({ kind, ids }, { onError: onErr("Could not reorder") });
+        reorder.mutate({ kind, ids }); // optimistic
     };
 
     return (
@@ -100,14 +97,14 @@ function OptionList({ kind, description }: { kind: SettingKind; description: str
                                     {r.is_customer && <Badge variant="success">Customer</Badge>}
                                     {kind === "loss-reasons" && r.applies_to && <Badge>{getDropdownOptionLabel(LossReasonScopeFormOptions, r.applies_to)}</Badge>}
                                 </div>
-                                <Button variant="ghost" size="icon-sm" aria-label={`Move ${r.name} up`} disabled={i === 0 || reorder.isPending} onClick={() => move(i, -1)}><ArrowUp /></Button>
-                                <Button variant="ghost" size="icon-sm" aria-label={`Move ${r.name} down`} disabled={i === active.length - 1 || reorder.isPending} onClick={() => move(i, 1)}><ArrowDown /></Button>
+                                <Button variant="ghost" size="icon-sm" aria-label={`Move ${r.name} up`} disabled={i === 0} onClick={() => move(i, -1)}><ArrowUp /></Button>
+                                <Button variant="ghost" size="icon-sm" aria-label={`Move ${r.name} down`} disabled={i === active.length - 1} onClick={() => move(i, 1)}><ArrowDown /></Button>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${r.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onSelect={() => setEditing(r)}><Pencil /> Edit</DropdownMenuItem>
-                                        {kind !== "loss-reasons" && !r.is_default && <DropdownMenuItem onSelect={() => update.mutate({ kind, id: r.id, is_default: true }, { onError: onErr("Could not update") })}>Make default</DropdownMenuItem>}
-                                        <DropdownMenuItem onSelect={() => archive.mutate({ kind, id: r.id, archived: true }, { onSuccess: () => toast({ title: `${r.name} archived` }), onError: onErr("Could not archive") })}><Archive /> Archive</DropdownMenuItem>
+                                        {kind !== "loss-reasons" && !r.is_default && <DropdownMenuItem onSelect={() => update.mutate({ kind, id: r.id, is_default: true })}>Make default</DropdownMenuItem>}
+                                        <DropdownMenuItem onSelect={() => archive.mutate({ kind, id: r.id, archived: true })}><Archive /> Archive</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </li>
@@ -122,7 +119,7 @@ function OptionList({ kind, description }: { kind: SettingKind; description: str
                         {archived.map((r) => (
                             <li key={r.id} className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
                                 {r.name}
-                                <Button variant="ghost" size="icon-sm" className="size-5" aria-label={`Restore ${r.name}`} onClick={() => archive.mutate({ kind, id: r.id, archived: false }, { onError: onErr("Could not restore") })}><ArchiveRestore className="size-3" /></Button>
+                                <Button variant="ghost" size="icon-sm" className="size-5" aria-label={`Restore ${r.name}`} onClick={() => archive.mutate({ kind, id: r.id, archived: false })}><ArchiveRestore className="size-3" /></Button>
                             </li>
                         ))}
                     </ul>
@@ -150,9 +147,9 @@ function OptionDialog({ kind, open, option, onOpenChange }: { kind: SettingKind;
             ...(kind === "lifecycle-stages" && { is_customer: v.is_customer }),
             ...(kind === "loss-reasons" && { applies_to: v.applies_to }),
         };
-        const opts = { onSuccess: () => { toast({ title: option ? "Saved" : "Added" }); onOpenChange(false); }, onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save", description: getApiErrorMessage(e) }) };
-        if (option) update.mutate({ kind, id: option.id, ...dto }, opts);
-        else create.mutate({ kind, ...dto }, opts);
+        // Edit is optimistic, so the dialog closes at once; add closes when created. Failures toast globally.
+        if (option) { update.mutate({ kind, id: option.id, ...dto }); onOpenChange(false); }
+        else create.mutate({ kind, ...dto }, { onSuccess: () => onOpenChange(false) });
     });
     const flag = (name: "is_default" | "is_converted" | "is_lost" | "is_customer", title: string) => (
         <FormField control={form.control} name={name} render={({ field }) => (
@@ -223,9 +220,9 @@ function TagsManager() {
     const close = () => { setCreating(false); setEditing(null); };
     const pending = create.isPending || update.isPending;
     const submit = form.handleSubmit((v) => {
-        const opts = { onSuccess: () => { toast({ title: "Tag saved" }); close(); }, onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save tag", description: getApiErrorMessage(e) }) };
-        if (editing) update.mutate({ id: editing.id, ...v }, opts);
-        else create.mutate(v, opts);
+        // Edit is optimistic, so the dialog closes at once; create closes when created. Failures toast globally.
+        if (editing) { update.mutate({ id: editing.id, ...v }); close(); }
+        else create.mutate(v, { onSuccess: close });
     });
 
     return (
@@ -277,8 +274,7 @@ function TagsManager() {
                 description="It is removed from every record that has it."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => deleting && del.mutate(deleting.id, { onSuccess: () => { toast({ title: "Tag deleted" }); setDeleting(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not delete", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (deleting) del.mutate(deleting.id); setDeleting(null); }}
             />
         </div>
     );

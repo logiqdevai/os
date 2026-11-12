@@ -15,7 +15,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, ListSkeleton, NoAccessState } from "@/components/ui/states";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { AssignModeOptions, AssignStrategyOptions } from "@/config/constants/dropdowns/crm/crm-rules.options";
 import {
@@ -77,7 +76,6 @@ function AssignmentRules() {
     const [editing, setEditing] = useState<AssignmentRule | null>(null);
     const [creating, setCreating] = useState(false);
     const [deleting, setDeleting] = useState<AssignmentRule | null>(null);
-    const onErr = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
     return (
         <div className="space-y-3">
@@ -97,12 +95,12 @@ function AssignmentRules() {
                                     <div className="flex flex-wrap items-center gap-1.5"><span className="font-medium text-foreground">{r.name}</span>{!r.enabled && <Badge>Off</Badge>}</div>
                                     <div className="mt-0.5 text-xs text-muted-foreground">If {summary(r.conditions).toLowerCase()} → {assignSummary(r.assign_to)}</div>
                                 </div>
-                                <Switch checked={r.enabled} aria-label={`Enable ${r.name}`} onCheckedChange={(c) => update.mutate({ id: r.id, enabled: c }, { onError: onErr("Could not update rule") })} />
+                                <Switch checked={r.enabled} aria-label={`Enable ${r.name}`} onCheckedChange={(c) => update.mutate({ id: r.id, enabled: c })} />
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${r.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onSelect={() => setEditing(r)}><Pencil /> Edit</DropdownMenuItem>
-                                        {i > 0 && <DropdownMenuItem onSelect={() => update.mutate({ id: r.id, priority: rules.data[i - 1].priority - 1 }, { onError: onErr("Could not reorder") })}>Move up</DropdownMenuItem>}
+                                        {i > 0 && <DropdownMenuItem onSelect={() => update.mutate({ id: r.id, priority: rules.data[i - 1].priority - 1 })}>Move up</DropdownMenuItem>}
                                         <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setDeleting(r)}><Trash2 /> Delete</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -119,16 +117,16 @@ function AssignmentRules() {
                 description="Existing leads keep their owners."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => deleting && del.mutate(deleting.id, { onSuccess: () => { toast({ title: "Rule deleted" }); setDeleting(null); }, onError: onErr("Could not delete rule") })}
+                onConfirm={() => { if (deleting) del.mutate(deleting.id); setDeleting(null); }}
             />
         </div>
     );
 }
 
 function AssignmentRuleDialog({ open, rule, onOpenChange }: { open: boolean; rule: AssignmentRule | null; onOpenChange: (o: boolean) => void }) {
+    // Complex multi-field edit: stays a dialog with Save; API errors show inline, no toasts.
     const create = useCreateAssignmentRule();
-    const update = useUpdateAssignmentRule();
+    const update = useUpdateAssignmentRule({ errorToast: false });
     const members = useCrmMembers(open);
     const canTeams = usePermission("organizations.teams.read");
     const teams = useTeamOptions(open && canTeams);
@@ -163,7 +161,7 @@ function AssignmentRuleDialog({ open, rule, onOpenChange }: { open: boolean; rul
         if (mode === "member") { if (!memberId) return setError("Choose a member"); assign_to = { membership_id: memberId }; }
         else if (mode === "team") { if (!teamId) return setError("Choose a team"); assign_to = { team_id: teamId, strategy }; }
         else { if (!memberIds.length) return setError("Choose at least one member"); assign_to = { membership_ids: memberIds, strategy }; }
-        const opts = { onSuccess: () => { toast({ title: rule ? "Rule saved" : "Rule created" }); onOpenChange(false); }, onError: (err: unknown) => setError(getApiErrorMessage(err)) };
+        const opts = { onSuccess: () => onOpenChange(false), onError: (err: unknown) => setError(getApiErrorMessage(err)) };
         if (rule) update.mutate({ id: rule.id, name: name.trim(), conditions, assign_to }, opts);
         else create.mutate({ name: name.trim(), conditions, assign_to, enabled: true }, opts);
     };
@@ -233,7 +231,7 @@ function ScoringRules() {
     const [editing, setEditing] = useState<ScoringRule | null>(null);
     const [creating, setCreating] = useState(false);
     const [deleting, setDeleting] = useState<ScoringRule | null>(null);
-    const onErr = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
+    const [recalculated, setRecalculated] = useState<{ leads: number; changed: number } | null>(null);
     const max = rules.data?.filter((r) => r.enabled && r.points > 0).reduce((n, r) => n + r.points, 0) ?? 0;
 
     return (
@@ -241,7 +239,8 @@ function ScoringRules() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[13px] text-muted-foreground">A lead's score is the sum of the points of every matching rule, from 0 to 100. A manual score set on the lead takes precedence in lists.</p>
                 <div className="flex gap-2">
-                    <Button size="sm" variant="outline" loading={recalc.isPending} onClick={() => recalc.mutate(undefined, { onSuccess: (r) => toast({ title: "Scores recalculated", description: `${r.changed} of ${r.leads} open leads changed.` }), onError: onErr("Could not recalculate") })}><Calculator /> Recalculate</Button>
+                    {recalculated && !recalc.isPending && <span role="status" className="self-center text-xs text-muted-foreground">{recalculated.changed} of {recalculated.leads} open leads changed</span>}
+                    <Button size="sm" variant="outline" loading={recalc.isPending} onClick={() => recalc.mutate(undefined, { onSuccess: setRecalculated })}><Calculator /> Recalculate</Button>
                     <Button size="sm" onClick={() => setCreating(true)}><Plus /> New rule</Button>
                 </div>
             </div>
@@ -258,7 +257,7 @@ function ScoringRules() {
                                     <div className="flex flex-wrap items-center gap-1.5"><span className="font-medium text-foreground">{r.name}</span>{!r.enabled && <Badge>Off</Badge>}</div>
                                     <div className="mt-0.5 text-xs text-muted-foreground">When {summary(r.conditions).toLowerCase()}</div>
                                 </div>
-                                <Switch checked={r.enabled} aria-label={`Enable ${r.name}`} onCheckedChange={(c) => update.mutate({ id: r.id, enabled: c }, { onError: onErr("Could not update rule") })} />
+                                <Switch checked={r.enabled} aria-label={`Enable ${r.name}`} onCheckedChange={(c) => update.mutate({ id: r.id, enabled: c })} />
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${r.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
@@ -279,16 +278,16 @@ function ScoringRules() {
                 description="Scores change the next time leads are saved or recalculated."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => deleting && del.mutate(deleting.id, { onSuccess: () => { toast({ title: "Rule deleted" }); setDeleting(null); }, onError: onErr("Could not delete rule") })}
+                onConfirm={() => { if (deleting) del.mutate(deleting.id); setDeleting(null); }}
             />
         </div>
     );
 }
 
 function ScoringRuleDialog({ open, rule, onOpenChange }: { open: boolean; rule: ScoringRule | null; onOpenChange: (o: boolean) => void }) {
+    // Complex multi-field edit: stays a dialog with Save; API errors show inline, no toasts.
     const create = useCreateScoringRule();
-    const update = useUpdateScoringRule();
+    const update = useUpdateScoringRule({ errorToast: false });
     const [name, setName] = useState("");
     const [points, setPoints] = useState("10");
     const [conditions, setConditions] = useState<RuleCondition[]>([]);
@@ -308,7 +307,7 @@ function ScoringRuleDialog({ open, rule, onOpenChange }: { open: boolean; rule: 
         if (!Number.isInteger(p) || p < -100 || p > 100 || p === 0) return setError("Points must be a whole number between -100 and 100 (not 0)");
         if (!conditions.length) return setError("Add at least one condition");
         if (conditions.some((c) => !["is_empty", "is_not_empty"].includes(c.operator) && (c.value === null || c.value === undefined || c.value === ""))) return setError("Every condition needs a value");
-        const opts = { onSuccess: () => { toast({ title: rule ? "Rule saved" : "Rule created", description: "Use Recalculate to update existing leads." }); onOpenChange(false); }, onError: (err: unknown) => setError(getApiErrorMessage(err)) };
+        const opts = { onSuccess: () => onOpenChange(false), onError: (err: unknown) => setError(getApiErrorMessage(err)) };
         if (rule) update.mutate({ id: rule.id, name: name.trim(), points: p, conditions }, opts);
         else create.mutate({ name: name.trim(), points: p, conditions, description: null, enabled: true }, opts);
     };
