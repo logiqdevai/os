@@ -24,7 +24,7 @@ export function ContextPanelNav({ app, onNavigate }: { app: AppDefinition; onNav
                             className={({ isActive }) =>
                                 cn(
                                     "flex h-[30px] items-center gap-2 rounded-md px-2 text-[13px] text-body transition-colors hover:bg-border-soft hover:text-foreground [&_svg]:size-4 [&_svg]:flex-none",
-                                    isActive && "bg-accent font-medium text-foreground"
+                                    isActive && "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
                                 )
                             }
                         >
@@ -41,8 +41,8 @@ export function ContextPanelNav({ app, onNavigate }: { app: AppDefinition; onNav
 
 export function ContextPanel({ app, onCollapse }: { app: AppDefinition; onCollapse: () => void }) {
     return (
-        <aside aria-label={`${app.label} navigation`} className="hidden h-full w-[236px] flex-none flex-col overflow-hidden border-r border-border bg-card lg:flex">
-            <div className="flex h-[52px] flex-none items-center gap-1 border-b border-border pl-4 pr-2.5">
+        <aside aria-label={`${app.label} navigation`} className="hidden h-full w-[236px] flex-none flex-col overflow-hidden border-r border-sidebar-border bg-sidebar lg:flex">
+            <div className="flex h-[52px] flex-none items-center gap-1 border-b border-sidebar-border pl-4 pr-2.5">
                 <b className="flex-1 truncate text-[15px] font-semibold text-foreground">{app.label}</b>
                 <Button variant="ghost" size="icon-sm" onClick={onCollapse} aria-label="Collapse panel">
                     <PanelLeftClose />

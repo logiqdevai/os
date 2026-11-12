@@ -13,14 +13,16 @@ import { SecurityPolicyService } from '../../admin/security/security-policy.serv
 import { MfaRequirementService } from '@/shared/authorization/mfa-requirement.service';
 import { MFA_CHALLENGE_TTL_SECONDS, MfaFactorInput, MfaService } from '../mfa/mfa.service';
 import { AuthRateLimitService } from '../mfa/auth-rate-limit.service';
+import { AccountAppearanceService } from './account-appearance.service';
 
 export interface ClientMeta {
     ip_address?: string | null;
     user_agent?: string | null;
 }
 
-const publicUser = <T extends { password?: string }>(user: T) => {
-    const { password, ...rest } = user;
+/** Strips secrets and storage internals before a User leaves the API. */
+const publicUser = <T extends { password?: string; profile_photo_key?: string | null }>(user: T) => {
+    const { password, profile_photo_key, ...rest } = user;
     return rest;
 };
 
@@ -37,6 +39,7 @@ export class EmailAuthService {
         private readonly mfa: MfaService,
         private readonly mfaRequirement: MfaRequirementService,
         private readonly rateLimit: AuthRateLimitService,
+        private readonly appearance: AccountAppearanceService,
     ) { }
 
     async registerWithEmail(dto: RegisterEmailDto, meta: ClientMeta) {
@@ -166,7 +169,7 @@ export class EmailAuthService {
 
     /** Session bootstrap for the app: user, organizations, active organization, effective permissions, enabled modules. */
     async me(userId: string, requestedOrgId: string | null) {
-        const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { preferences: true } });
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
         if (!user) throw new UnauthorizedException({ message: 'User not found', code: 'invalid_token' });
 
         const memberships = await this.prisma.membership.findMany({
@@ -205,8 +208,11 @@ export class EmailAuthService {
 
         const requirement = await this.mfaRequirement.requirementFor(userId, active?.organization_id ?? null);
 
+        const appearance = await this.appearance.get(userId, active?.organization_id ?? null);
+
         return {
             user: publicUser(user),
+            appearance,
             mfa: { enabled: user.mfa_enabled, required: requirement.required, required_reason: requirement.reason, enrollment_required: requirement.required && !user.mfa_enabled },
             organizations: activeMemberships.map((m) => ({ ...m.organization, membership_id: m.id, job_title: m.job_title })),
             active_organization: active ? { ...active.organization, membership_id: active.id, default_branch_id: active.default_branch_id } : null,
@@ -343,7 +349,7 @@ export class EmailAuthService {
         return { success: true };
     }
 
-    async updateProfile(userId: string, data: { first_name?: string; last_name?: string; display_name?: string; timezone?: string; locale?: string; language?: string; profile_photo_url?: string; phone?: string | null }) {
+    async updateProfile(userId: string, data: { first_name?: string; last_name?: string; display_name?: string; timezone?: string; locale?: string; language?: string; phone?: string | null }) {
         const before = data.phone !== undefined ? await this.prisma.user.findUnique({ where: { id: userId }, select: { phone: true } }) : null;
         const phoneChanged = !!before && (before.phone ?? null) !== (data.phone ?? null);
         const user = await this.prisma.user
@@ -363,10 +369,6 @@ export class EmailAuthService {
         await this.prisma.user.update({ where: { id: userId }, data: { password: await bcrypt.hash(next, 10), password_changed_at: new Date() } });
         await this.audit.record(null, 'user.password_changed', { resource_type: 'user', resource_id: userId });
         return { success: true };
-    }
-
-    async setPreferences(userId: string, data: { theme?: string; default_organization_id?: string; dashboard_layout?: any }) {
-        return this.prisma.userPreference.upsert({ where: { user_id: userId }, update: data, create: { user_id: userId, ...data } });
     }
 }
 

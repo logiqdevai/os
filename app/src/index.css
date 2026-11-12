@@ -59,6 +59,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-rail: var(--rail);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -80,9 +81,14 @@
   --card-foreground: #0b0b0c;
   --popover: #ffffff;
   --popover-foreground: #0b0b0c;
-  --primary: #0b0b0c;
-  --primary-hover: #2a2a2d;
-  --primary-foreground: #ffffff;
+  /* Appearance (01 §127): --brand is the theme accent (or the user's custom primary color, set inline on <html>);
+     --tint is how strongly the navigation (rail + side panel) picks up the brand hue. DEFAULT = monochrome, no tint. */
+  --brand: #0b0b0c;
+  --brand-foreground: #ffffff;
+  --tint: 0%;
+  --primary: var(--brand);
+  --primary-hover: color-mix(in oklab, var(--brand) 84%, #808080);
+  --primary-foreground: var(--brand-foreground);
   --secondary: #f4f4f5;
   --secondary-foreground: #0b0b0c;
   --muted: #f4f4f5;
@@ -98,7 +104,7 @@
   --border-soft: rgba(0, 0, 0, 0.05);
   --border-strong: rgba(0, 0, 0, 0.16);
   --input: #e4e4e7;
-  --ring: rgba(0, 0, 0, 0.32);
+  --ring: color-mix(in oklab, var(--brand) 38%, transparent);
   --info: #0b72b5;
   --info-soft: rgba(11, 114, 181, 0.1);
   --success: #12804f;
@@ -116,14 +122,15 @@
   --chart-3: #6d4bd1;
   --chart-4: #c27c00;
   --chart-5: #d02f2f;
-  --sidebar: #fafafa;
+  --rail: color-mix(in oklab, var(--brand) calc(var(--tint) * 1.7), #ffffff);
+  --sidebar: color-mix(in oklab, var(--brand) var(--tint), #fafafa);
   --sidebar-foreground: #3f3f46;
-  --sidebar-primary: #0b0b0c;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ececee;
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-foreground);
+  --sidebar-accent: color-mix(in oklab, var(--brand) calc(var(--tint) * 2.4), #ececee);
   --sidebar-accent-foreground: #0b0b0c;
-  --sidebar-border: #e4e4e7;
-  --sidebar-ring: rgba(0, 0, 0, 0.32);
+  --sidebar-border: color-mix(in oklab, var(--brand) calc(var(--tint) * 2.2), #e4e4e7);
+  --sidebar-ring: var(--ring);
 }
 
 .dark {
@@ -135,9 +142,9 @@
   --card-foreground: #f4f4f6;
   --popover: #101111;
   --popover-foreground: #f4f4f6;
-  --primary: #ffffff;
-  --primary-hover: #e8e8e8;
-  --primary-foreground: #000000;
+  --brand: #ffffff;
+  --brand-foreground: #000000;
+  --tint: 0%;
   --secondary: #101111;
   --secondary-foreground: #f4f4f6;
   --muted: #101111;
@@ -153,7 +160,6 @@
   --border-soft: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
   --input: #242728;
-  --ring: rgba(255, 255, 255, 0.3);
   --info: #57c1ff;
   --info-soft: rgba(87, 193, 255, 0.15);
   --success: #59d499;
@@ -171,14 +177,105 @@
   --chart-3: #b79cff;
   --chart-4: #ffc533;
   --chart-5: #ff6161;
-  --sidebar: #0d0d0d;
+  --rail: color-mix(in oklab, var(--brand) calc(var(--tint) * 1.4), #07080a);
+  --sidebar: color-mix(in oklab, var(--brand) var(--tint), #0d0d0d);
   --sidebar-foreground: #cdcdcd;
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #000000;
-  --sidebar-accent: #18191a;
+  --sidebar-accent: color-mix(in oklab, var(--brand) calc(var(--tint) * 2.2), #18191a);
   --sidebar-accent-foreground: #f4f4f6;
-  --sidebar-border: #242728;
-  --sidebar-ring: rgba(255, 255, 255, 0.3);
+  --sidebar-border: color-mix(in oklab, var(--brand) calc(var(--tint) * 2), #242728);
+}
+
+/*
+ * Color themes (Settings → Appearance; AppTheme enum). Each theme sets the accent for light and dark and a
+ * navigation tint. Light accents keep ≥4.5:1 contrast with white text; dark accents are light with black text.
+ */
+html[data-theme="cyan"] {
+  --brand: #0e7490;
+  --tint: 6%;
+}
+html.dark[data-theme="cyan"] {
+  --brand: #22d3ee;
+  --tint: 8%;
+}
+html[data-theme="ocean"] {
+  --brand: #2563eb;
+  --tint: 6%;
+}
+html.dark[data-theme="ocean"] {
+  --brand: #60a5fa;
+  --tint: 8%;
+}
+html[data-theme="indigo"] {
+  --brand: #4f46e5;
+  --tint: 6%;
+}
+html.dark[data-theme="indigo"] {
+  --brand: #818cf8;
+  --tint: 8%;
+}
+html[data-theme="aubergine"] {
+  --brand: #6b2174;
+  --tint: 6%;
+}
+html.dark[data-theme="aubergine"] {
+  --brand: #d49be0;
+  --tint: 8%;
+}
+html[data-theme="rose"] {
+  --brand: #be185d;
+  --tint: 6%;
+}
+html.dark[data-theme="rose"] {
+  --brand: #f472b6;
+  --tint: 8%;
+}
+html[data-theme="crimson"] {
+  --brand: #dc2626;
+  --tint: 6%;
+}
+html.dark[data-theme="crimson"] {
+  --brand: #f87171;
+  --tint: 8%;
+}
+html[data-theme="sunset"] {
+  --brand: #c2410c;
+  --tint: 6%;
+}
+html.dark[data-theme="sunset"] {
+  --brand: #fb923c;
+  --tint: 8%;
+}
+html[data-theme="honey"] {
+  --brand: #a16207;
+  --tint: 6%;
+}
+html.dark[data-theme="honey"] {
+  --brand: #fbbf24;
+  --tint: 8%;
+}
+html[data-theme="forest"] {
+  --brand: #15803d;
+  --tint: 6%;
+}
+html.dark[data-theme="forest"] {
+  --brand: #4ade80;
+  --tint: 8%;
+}
+html[data-theme="slate"] {
+  --brand: #475569;
+  --tint: 6%;
+}
+html.dark[data-theme="slate"] {
+  --brand: #94a3b8;
+  --tint: 8%;
+}
+html[data-theme="mocha"] {
+  --brand: #7c4a2d;
+  --tint: 6%;
+}
+html.dark[data-theme="mocha"] {
+  --brand: #d6a77a;
+  --tint: 8%;
 }
 
 @layer base {

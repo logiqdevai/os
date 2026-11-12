@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Check, LogOut, Moon, Plus, Sun, User } from "lucide-react";
+import { Check, LogOut, Moon, Palette, Plus, Sun, User } from "lucide-react";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -50,7 +50,12 @@ export function UserMenu({ compact }: { compact?: boolean }) {
                         </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={toggleTheme}>
-                        {resolved === "dark" ? <Sun /> : <Moon />} {resolved === "dark" ? "Light theme" : "Dark theme"}
+                        {resolved === "dark" ? <Sun /> : <Moon />} {resolved === "dark" ? "Light mode" : "Dark mode"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link to="/settings/appearance">
+                            <Palette /> Themes
+                        </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Organizations</DropdownMenuLabel>

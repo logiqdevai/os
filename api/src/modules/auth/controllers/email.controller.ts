@@ -24,7 +24,6 @@ class ProfileFieldsDto {
     @ApiProperty() @IsString() @MaxLength(64) timezone: string;
     @ApiProperty() @IsString() @MaxLength(16) locale: string;
     @ApiProperty() @IsString() @MaxLength(16) language: string;
-    @ApiProperty() @IsString() @MaxLength(1000) profile_photo_url: string;
     /** Mobile number in E.164 (used for SMS notifications, 14 §5); null removes it. */
     @ApiProperty({ nullable: true, example: '+306912345678' }) @ValidateIf((_, v) => v !== null) @Matches(/^\+[1-9]\d{6,14}$/, { message: 'Use international format, e.g. +306912345678' }) phone: string | null;
 }
@@ -33,10 +32,6 @@ class UpdateProfileDto extends PartialType(ProfileFieldsDto) { }
 class ChangePasswordDto {
     @ApiProperty() @IsString() current_password: string;
     @ApiProperty() @IsString() @MinLength(8) @MaxLength(128) new_password: string;
-}
-
-class PreferencesDto {
-    @ApiProperty({ required: false }) @IsOptional() @IsString() theme?: string;
 }
 
 const meta = (req: any) => ({ ip_address: req.ip ?? null, user_agent: req.headers['user-agent'] ?? null });
@@ -99,14 +94,6 @@ export class EmailAuthController {
     @ApiOperation({ summary: 'Change own password' })
     changePassword(@CurrentUser('id') userId: string, @Body() dto: ChangePasswordDto) {
         return this.authService.changePassword(userId, dto.current_password, dto.new_password);
-    }
-
-    @Patch('me/preferences')
-    @UseGuards(JwtGuard)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Update own preferences (theme)' })
-    preferences(@CurrentUser('id') userId: string, @Body() dto: PreferencesDto) {
-        return this.authService.setPreferences(userId, dto);
     }
 
     @Post('switch-organization/:organizationId')

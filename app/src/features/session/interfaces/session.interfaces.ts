@@ -1,3 +1,5 @@
+import type { Appearance } from "@/hooks/use-theme";
+
 export interface SessionUser {
     id: string;
     email: string;
@@ -5,13 +7,13 @@ export interface SessionUser {
     first_name: string | null;
     last_name: string | null;
     display_name: string | null;
+    /** Public URL of the uploaded photo (POST /auth/me/photo); null = initials. */
     profile_photo_url: string | null;
     /** Mobile number (E.164) for SMS notifications. */
     phone?: string | null;
     timezone: string | null;
     locale: string | null;
     default_organization_id: string | null;
-    preferences?: { theme?: string | null } | null;
     mfa_enabled?: boolean;
 }
 
@@ -53,6 +55,8 @@ export interface Session {
     permissions: string[];
     modules: string[];
     branches: SessionBranch[];
+    /** 01 §127 — own appearance in the active organization (defaults when no row / no organization). */
+    appearance: Appearance & { organization_id: string | null };
 }
 
 export interface AuthResponse {
@@ -147,6 +151,5 @@ export interface UpdateProfileDto {
     timezone?: string;
     locale?: string;
     language?: string;
-    profile_photo_url?: string;
     phone?: string | null;
 }

@@ -4,7 +4,6 @@ export const profileSettingsSchema = z.object({
     first_name: z.string().trim().min(1, "Enter your first name").max(80),
     last_name: z.string().trim().min(1, "Enter your last name").max(80),
     display_name: z.string().trim().max(120),
-    profile_photo_url: z.union([z.literal(""), z.string().trim().url("Enter a full URL starting with https://")]),
     timezone: z.string(),
     locale: z.string().trim().max(16),
     phone: z.union([z.literal(""), z.string().trim().regex(/^\+[1-9]\d{6,14}$/, "Use international format, e.g. +306912345678")]),

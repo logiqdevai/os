@@ -51,6 +51,29 @@ enum AuthRole {
   SUPPORT
 }
 
+/// 01 §127 — light / dark / follow the device.
+enum AppColorMode {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+/// 01 §127 — app color themes (accent + tinted navigation). DEFAULT is the neutral monochrome look.
+enum AppTheme {
+  DEFAULT
+  CYAN
+  OCEAN
+  INDIGO
+  AUBERGINE
+  ROSE
+  CRIMSON
+  SUNSET
+  HONEY
+  FOREST
+  SLATE
+  MOCHA
+}
+
 /// 01 §5
 enum UserStatus {
   INVITED
@@ -352,7 +375,10 @@ model User {
   first_name              String?
   last_name               String?
   display_name            String?
+  /// Public, versioned URL of the uploaded profile photo (GET /auth/photos/:user_id/:photo_id). Set only by the upload endpoint.
   profile_photo_url       String?
+  /// Storage key of the uploaded profile photo (never exposed). Null when the user has no photo.
+  profile_photo_key       String?
   locale                  String?
   timezone                String?
   language                String?
@@ -372,6 +398,7 @@ model User {
   auth_methods                   UserAuthMethod[]
   sessions                       UserSession[]
   preferences                    UserPreference?
+  appearances                    UserAppearance[]
   memberships                    Membership[]
   customer_memberships           CustomerPortalMembership[]
   invitations_sent               Invitation[]                         @relation("InvitationInviter")
@@ -498,7 +525,6 @@ model UserDevice {
 /// 01 §127 — user-specific preferences. These are not permissions.
 model UserPreference {
   user_id                 String   @id
-  theme                   String?
   default_organization_id String?
   default_branch_id       String?
   default_team_id         String?
@@ -508,6 +534,27 @@ model UserPreference {
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("user_preferences")
+}
+
+/// 01 §127 — how the app looks for one user inside one organization (Slack-style: every workspace keeps its own theme).
+/// Personal preference, not a permission. One row per (user, organization); no row = defaults (SYSTEM / DEFAULT / theme color).
+model UserAppearance {
+  id              String       @id @default(uuid())
+  user_id         String
+  organization_id String
+  color_mode      AppColorMode @default(SYSTEM)
+  theme           AppTheme     @default(DEFAULT)
+  /// Custom primary color (#rrggbb) that overrides the theme accent; null = the theme color.
+  primary_color   String?
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, organization_id])
+  @@index([organization_id])
+  @@map("user_appearances")
 }
 
 // =====================================================================
@@ -844,6 +891,7 @@ model Organization {
   channel_access_requests       ChannelAccessRequest[]
   messaging_legal_holds         MessagingLegalHold[]
   proposal_access_tokens        ProposalAccessToken[]
+  user_appearances              UserAppearance[]
 
   @@index([status])
   @@map("organizations")

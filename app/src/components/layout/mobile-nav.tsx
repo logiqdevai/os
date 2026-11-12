@@ -15,7 +15,7 @@ export function MobileNav({ open, onOpenChange, app }: { open: boolean; onOpenCh
     const close = () => onOpenChange(false);
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="left" className="flex w-[300px] max-w-[85vw] flex-col gap-0 p-0">
+            <SheetContent side="left" className="flex w-[300px] max-w-[85vw] flex-col gap-0 bg-sidebar p-0">
                 <SheetHeader className="flex-row items-center gap-2 space-y-0 border-b border-border px-4 py-3">
                     <BrandMark className="size-7" />
                     <SheetTitle className="text-[15px]">{app?.label ?? "Logiqdev OS"}</SheetTitle>
@@ -30,7 +30,7 @@ export function MobileNav({ open, onOpenChange, app }: { open: boolean; onOpenCh
                                 onClick={close}
                                 className={cn(
                                     "flex flex-col items-center gap-1 rounded-md px-1 py-2 text-[11px] text-muted-foreground hover:bg-border-soft hover:text-foreground [&_svg]:size-[18px]",
-                                    app?.id === a.id && "bg-accent text-foreground"
+                                    app?.id === a.id && "bg-sidebar-accent text-sidebar-accent-foreground"
                                 )}
                             >
                                 <a.icon />

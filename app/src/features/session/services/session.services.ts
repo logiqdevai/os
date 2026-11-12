@@ -1,5 +1,6 @@
 import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
+import type { Appearance } from "@/hooks/use-theme";
 import type { AuthResponse, InvitationPreview, MfaFactorDto, MfaStatus, MfaVerifyDto, Session, SignInDto, SignInResult, SignUpDto, TotpSetup, UpdateProfileDto, UserSessionRow } from "../interfaces/session.interfaces";
 
 export const signIn = async (dto: SignInDto): Promise<SignInResult> => (await axiosInstance.post(ApiRoutes.auth.login, dto)).data;
@@ -15,7 +16,13 @@ export const getInvitation = async (token: string): Promise<InvitationPreview> =
 export const acceptInvitation = async (token: string) => (await axiosInstance.post(ApiRoutes.auth.accept_invitation, { token })).data;
 export const updateProfile = async (dto: UpdateProfileDto) => (await axiosInstance.patch(ApiRoutes.auth.me, dto)).data;
 export const changePassword = async (dto: { current_password: string; new_password: string }) => (await axiosInstance.post(ApiRoutes.auth.password, dto)).data;
-export const updatePreferences = async (dto: { theme?: string }) => (await axiosInstance.patch(ApiRoutes.auth.preferences, dto)).data;
+export const uploadProfilePhoto = async (file: File): Promise<{ profile_photo_url: string }> => {
+    const form = new FormData();
+    form.append("file", file);
+    return (await axiosInstance.post(ApiRoutes.auth.photo, form, { headers: { "Content-Type": "multipart/form-data" } })).data;
+};
+export const removeProfilePhoto = async (): Promise<{ profile_photo_url: null }> => (await axiosInstance.delete(ApiRoutes.auth.photo)).data;
+export const updateAppearance = async (dto: Partial<Appearance>): Promise<Session["appearance"]> => (await axiosInstance.patch(ApiRoutes.auth.appearance, dto)).data;
 export const getMySessions = async (): Promise<UserSessionRow[]> => (await axiosInstance.get(ApiRoutes.auth.sessions)).data;
 export const revokeMySession = async (id: string) => (await axiosInstance.delete(ApiRoutes.auth.session(id))).data;
 

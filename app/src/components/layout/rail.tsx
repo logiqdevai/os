@@ -42,7 +42,7 @@ export function Rail({ unread }: { unread?: number }) {
     const notifications = visible.find((a) => a.id === "notifications");
 
     return (
-        <nav aria-label="Apps" className="hidden h-full w-[60px] flex-none flex-col items-center border-r border-border bg-background pb-2.5 pt-3 md:flex">
+        <nav aria-label="Apps" className="hidden h-full w-[60px] flex-none flex-col items-center border-r border-sidebar-border bg-rail pb-2.5 pt-3 md:flex">
             <Link to="/home" className="mb-2.5 flex-none" aria-label="Home">
                 <BrandMark />
             </Link>

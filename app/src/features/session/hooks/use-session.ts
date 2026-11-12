@@ -118,8 +118,24 @@ export function useChangePassword() {
     return useMutation({ mutationFn: service.changePassword });
 }
 
-export function useUpdatePreferences() {
-    return useMutation({ mutationFn: service.updatePreferences });
+/** Upload or replace own profile photo; the session (and every avatar reading it) refreshes. */
+export function useUploadProfilePhoto() {
+    const queryClient = useQueryClient();
+    return useMutation({ mutationFn: service.uploadProfilePhoto, onSuccess: () => queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY }) });
+}
+
+export function useRemoveProfilePhoto() {
+    const queryClient = useQueryClient();
+    return useMutation({ mutationFn: service.removeProfilePhoto, onSuccess: () => queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY }) });
+}
+
+/** Save own appearance for the active organization and write it into the cached session. */
+export function useUpdateAppearance() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: service.updateAppearance,
+        onSuccess: (appearance) => queryClient.setQueriesData<Session>({ queryKey: SESSION_QUERY_KEY }, (s) => (s && s.active_organization?.id === appearance.organization_id ? { ...s, appearance } : s)),
+    });
 }
 
 export function useMySessions() {

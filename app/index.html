@@ -12,9 +12,19 @@
     <script>
       (function () {
         try {
-          var t = localStorage.getItem("theme") || "system";
-          var dark = t === "dark" || (t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-          document.documentElement.classList.add(dark ? "dark" : "light");
+          // Mirrors applyAppearance() in src/hooks/use-theme.ts so the first paint already uses the saved appearance.
+          var a = JSON.parse(localStorage.getItem("appearance") || "{}");
+          var m = a.color_mode || "SYSTEM";
+          var dark = m === "DARK" || (m === "SYSTEM" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          var root = document.documentElement;
+          root.classList.add(dark ? "dark" : "light");
+          if (a.theme && a.theme !== "DEFAULT") root.setAttribute("data-theme", String(a.theme).toLowerCase());
+          if (/^#[0-9a-f]{6}$/i.test(a.primary_color || "")) {
+            var c = [1, 3, 5].map(function (i) { var v = parseInt(a.primary_color.slice(i, i + 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+            root.style.setProperty("--brand", a.primary_color);
+            root.style.setProperty("--brand-foreground", 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] > 0.4 ? "#000000" : "#ffffff");
+            if (!a.theme || a.theme === "DEFAULT") root.style.setProperty("--tint", dark ? "8%" : "6%");
+          }
         } catch (e) {}
       })();
     </script>
