@@ -131,9 +131,10 @@ export const RaidKindOptions: DropdownOption<"risks" | "issues" | "decisions">[]
 ];
 
 /** Workspace tabs of a project. */
-export const ProjectTabOptions: DropdownOption<"overview" | "tasks" | "milestones" | "deliverables" | "raid" | "updates" | "members" | "settings">[] = [
+export const ProjectTabOptions: DropdownOption<"overview" | "tasks" | "timeline" | "milestones" | "deliverables" | "raid" | "updates" | "governance" | "closeout" | "members" | "settings">[] = [
     { id: "overview", label: "Overview" },
     { id: "tasks", label: "Tasks" },
+    { id: "timeline", label: "Timeline" },
     { id: "milestones", label: "Milestones" },
     { id: "deliverables", label: "Deliverables" },
     { id: "raid", label: "RAID" },
@@ -151,3 +152,19 @@ export const ColorTokenFormOptions: DropdownOption<"neutral" | "info" | "success
     { id: "danger", label: "Red" },
     { id: "violet", label: "Violet" },
 ];
+
+/** Timeline (Gantt) zoom levels. */
+export const TimelineZoomOptions: DropdownOption<"week" | "month" | "quarter">[] = [
+    { id: "week", label: "Weeks" },
+    { id: "month", label: "Months" },
+    { id: "quarter", label: "Quarters" },
+];
+
+/** Portfolio timeline grouping. */
+export const TimelineGroupOptions: DropdownOption<"none" | "customer" | "owner" | "status">[] = [
+    { id: "none", label: "No grouping" },
+    { id: "customer", label: "Group by customer" },
+    { id: "owner", label: "Group by owner" },
+    { id: "status", label: "Group by status" },
+];
+

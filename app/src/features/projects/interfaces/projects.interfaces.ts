@@ -338,3 +338,94 @@ export type UpdateProjectDto = Partial<Omit<CreateProjectDto, "template_id">>;
 
 /** Child kinds of a project (API path segment). */
 export type ProjectChildKind = "milestones" | "workstreams" | "deliverables" | "risks" | "issues" | "decisions" | "dependencies" | "status-updates" | "change-requests" | "allocations";
+
+// --- Timeline (05 §24–26) ----------------------------------------------------------------------
+
+export type DependencyItemType = "PROJECT" | "WORKSTREAM" | "MILESTONE" | "DELIVERABLE" | "TASK" | "EXTERNAL";
+
+export interface TimelineMilestone {
+    id: string;
+    project_id: string;
+    workstream_id: string | null;
+    name: string;
+    planned_date: string | null;
+    actual_date: string | null;
+    status: ProjectItemStatus;
+    progress_percent: number;
+    is_billing_milestone: boolean;
+    customer_visible: boolean;
+}
+
+export interface TimelineWorkstream {
+    id: string;
+    project_id: string;
+    name: string;
+    planned_start: string | null;
+    planned_end: string | null;
+    actual_start: string | null;
+    actual_end: string | null;
+    status: ProjectItemStatus;
+    progress_percent: number;
+    color: string | null;
+}
+
+export interface TimelineDependency {
+    id: string;
+    project_id: string;
+    source_type: DependencyItemType;
+    source_id: string;
+    target_type: DependencyItemType;
+    target_id: string;
+    type: string;
+    status: string;
+    lag_days: number | null;
+}
+
+export interface TimelineProject {
+    id: string;
+    name: string;
+    code: string | null;
+    color: string | null;
+    health: ProjectHealth;
+    progress_percent: number;
+    planned_start: string | null;
+    target_completion: string | null;
+    actual_start: string | null;
+    actual_completion: string | null;
+    status: { id: string; name: string; category: ProjectStatusCategory } | null;
+    company?: { id: string; name: string } | null;
+    owner?: MemberRef | null;
+}
+
+export interface PortfolioTimeline {
+    projects: TimelineProject[];
+    milestones: TimelineMilestone[];
+    workstreams: TimelineWorkstream[];
+    dependencies: TimelineDependency[];
+}
+
+export interface TimelineTask {
+    id: string;
+    identifier: string;
+    title: string;
+    start_date: string | null;
+    due_date: string | null;
+    workstream_id: string | null;
+    milestone_id: string | null;
+    priority: string;
+    completed_at: string | null;
+    status: { id: string; name: string; category: string } | null;
+    assignee: MemberRef | null;
+}
+
+export interface ProjectTimeline {
+    project: TimelineProject;
+    milestones: TimelineMilestone[];
+    workstreams: TimelineWorkstream[];
+    dependencies: TimelineDependency[];
+    tasks: TimelineTask[];
+    task_dependencies: { id: string; source_task_id: string; target_task_id: string; type: string }[];
+    unscheduled_tasks: TimelineTask[];
+    tasks_visible: boolean;
+}
+

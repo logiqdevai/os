@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { McpRegistry } from '@/core/mcp/mcp.registry';
 import { ProjectsService } from './services/projects.service';
 import { ProjectItemsService } from './services/project-items.service';
+import { ProjectTimelineService } from './services/project-timeline.service';
+import { PortfolioTimelineQuerySchema, ProjectTimelineToolSchema } from './dto/project-timeline.schema';
 import { CreateProjectSchema, UpdateProjectSchema } from './dto/create-project.dto';
 import { LookupQuerySchema, MilestoneQuerySchema, ProjectQuerySchema, RaidQuerySchema } from './dto/project-query.schema';
 import { CreateIssueSchema, CreateMilestoneSchema, CreateRiskSchema, CreateStatusUpdateSchema, UpdateMilestoneSchema } from './dto/project-items.dto';
@@ -17,6 +19,7 @@ export class ProjectsMcp implements OnModuleInit {
         private readonly registry: McpRegistry,
         private readonly projects: ProjectsService,
         private readonly items: ProjectItemsService,
+        private readonly timeline: ProjectTimelineService,
     ) { }
 
     onModuleInit() {
@@ -40,6 +43,11 @@ export class ProjectsMcp implements OnModuleInit {
             {
                 ...base, resource_type: 'project_milestone', name: 'projects_milestones_update', description: 'Update a milestone (planned_date, status COMPLETED completes it).', permission: 'projects.milestones.manage', input: UpdateMilestoneSchema,
                 handler: (ctx, { project_id, id: milestoneId, ...dto }) => this.items.update(ctx, project_id, 'milestones', milestoneId, dto),
+            },
+            { ...base, name: 'projects_timeline_read', description: 'Portfolio timeline: projects in scope with planned_start/target_completion, milestones, workstreams and dependencies (filters: search, company_id, owner_id, include_closed).', permission: 'projects.projects.read', input: PortfolioTimelineQuerySchema, handler: (ctx, a) => this.timeline.portfolio(ctx, a) },
+            {
+                ...base, name: 'projects_project_timeline_read', description: 'One project timeline: workstreams, milestones, dated tasks, task and project dependencies, unscheduled tasks.', permission: 'projects.projects.read', input: ProjectTimelineToolSchema,
+                handler: (ctx, { project_id, ...q }) => this.timeline.project(ctx, project_id, q),
             },
             { ...base, resource_type: 'project_risk', name: 'projects_raid_list', description: 'RAID log across projects: kind=risks|issues|decisions|dependencies, open=true for open items.', permission: 'projects.projects.read', input: RaidQuerySchema, handler: (ctx, a) => this.projects.raid(ctx, a) },
             {

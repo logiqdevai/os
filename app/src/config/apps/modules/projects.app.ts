@@ -1,4 +1,4 @@
-import { Flag, Folder, LayoutDashboard, Settings, TriangleAlert, Users } from "lucide-react";
+import { CalendarRange, Flag, Folder, LayoutDashboard, Settings, TriangleAlert, Users } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
 export const projectsApp: AppDefinition = {
@@ -14,6 +14,7 @@ export const projectsApp: AppDefinition = {
         { items: [
             { label: "Overview", to: "/projects/overview", icon: LayoutDashboard },
             { label: "All projects", to: "/projects", icon: Folder, end: true },
+            { label: "Timeline", to: "/projects/timeline", icon: CalendarRange },
             { label: "Milestones", to: "/projects/milestones", icon: Flag },
             { label: "RAID log", to: "/projects/raid", icon: TriangleAlert },
             { label: "Workload", to: "/projects/workload", icon: Users, permissions: ["projects.portfolio.read", "projects.members.manage"] },

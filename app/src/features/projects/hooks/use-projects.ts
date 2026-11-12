@@ -20,6 +20,10 @@ export const useMilestonesAcross = (params: Params) =>
     useQuery({ queryKey: [...PROJECTS_KEY, "milestones", params], queryFn: () => service.getMilestonesAcross(params), placeholderData: keepPreviousData });
 export const useRaid = <T,>(params: Params) => useQuery({ queryKey: [...PROJECTS_KEY, "raid", params], queryFn: () => service.getRaid<T>(params), placeholderData: keepPreviousData });
 export const useProjectWorkload = (params: Params) => useQuery({ queryKey: [...PROJECTS_KEY, "workload", params], queryFn: () => service.getProjectWorkload(params) });
+export const usePortfolioTimeline = (params: Params) =>
+    useQuery({ queryKey: [...PROJECTS_KEY, "timeline", params], queryFn: () => service.getPortfolioTimeline(params), placeholderData: keepPreviousData });
+export const useProjectTimeline = (id: string | undefined, params: Params = {}) =>
+    useQuery({ queryKey: [...PROJECTS_KEY, "timeline", id, params], queryFn: () => service.getProjectTimeline(id as string, params), enabled: !!id, placeholderData: keepPreviousData });
 export const useProjectChildren = <T,>(id: string | undefined, kind: ProjectChildKind) =>
     useQuery({ queryKey: [...PROJECTS_KEY, "children", id, kind], queryFn: () => service.getProjectChildren<T>(id as string, kind), enabled: !!id });
 export const useProjectTypes = () => useQuery({ queryKey: [...PROJECTS_KEY, "types"], queryFn: () => service.getProjectTypes(), staleTime: 60_000 });
@@ -62,3 +66,4 @@ export const useUpdateProjectStatus = () => useProjectMutation(service.updatePro
 export const useArchiveProjectStatus = () => useProjectMutation(service.archiveProjectStatus, "Status updated", "Could not archive status");
 export const useCreateProjectTemplate = () => useProjectMutation(service.createProjectTemplate, "Template created", "Could not create template");
 export const useUpdateProjectTemplate = () => useProjectMutation(service.updateProjectTemplate, "Template updated", "Could not update template");
+

@@ -226,6 +226,7 @@ export interface CreateTaskDto {
     assignee_membership_id?: string | null;
     label_ids?: string[];
     estimate_points?: number | null;
+    start_date?: string | null;
     due_date?: string | null;
     customer_visible?: boolean;
     checklist?: string[];
@@ -239,3 +240,4 @@ export interface UpdateTaskDto extends Partial<Omit<CreateTaskDto, "checklist" |
     blocked?: boolean;
     blocked_reason?: string;
 }
+

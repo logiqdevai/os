@@ -8,6 +8,8 @@ export const ProjectsApiRoutes = {
     milestones: "/projects/milestones",
     raid: "/projects/raid",
     workload: "/projects/workload",
+    timeline: "/projects/timeline",
+    projectTimeline: (id: string) => `/projects/${id}/timeline`,
     detail: (id: string) => `/projects/${id}`,
     archive: (id: string) => `/projects/${id}/archive`,
     restore: (id: string) => `/projects/${id}/restore`,

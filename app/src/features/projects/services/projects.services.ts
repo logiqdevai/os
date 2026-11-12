@@ -6,11 +6,13 @@ import type {
     Milestone,
     Paginated,
     PortfolioSummary,
+    PortfolioTimeline,
     ProjectChildKind,
     ProjectDetail,
     ProjectListItem,
     ProjectMember,
     ProjectStatus,
+    ProjectTimeline,
     ProjectTemplate,
     ProjectType,
     UpdateProjectDto,
@@ -29,6 +31,9 @@ export const getPortfolio = async (): Promise<PortfolioSummary> => (await axiosI
 export const getMilestonesAcross = async (params: Params): Promise<Paginated<Milestone>> => (await axiosInstance.get(R.milestones, { params })).data;
 export const getRaid = async <T>(params: Params): Promise<Paginated<T>> => (await axiosInstance.get(R.raid, { params })).data;
 export const getProjectWorkload = async (params: Params): Promise<{ from: string; to: string; people: WorkloadPerson[] }> => (await axiosInstance.get(R.workload, { params })).data;
+
+export const getPortfolioTimeline = async (params: Params): Promise<PortfolioTimeline> => (await axiosInstance.get(R.timeline, { params })).data;
+export const getProjectTimeline = async (id: string, params: Params = {}): Promise<ProjectTimeline> => (await axiosInstance.get(R.projectTimeline(id), { params })).data;
 
 export const createProject = async (dto: CreateProjectDto): Promise<ProjectDetail> => (await axiosInstance.post(R.list, dto)).data;
 export const updateProject = async ({ id, ...dto }: UpdateProjectDto & { id: string }): Promise<ProjectDetail> => (await axiosInstance.patch(R.detail(id), dto)).data;

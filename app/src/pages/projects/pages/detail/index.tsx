@@ -30,11 +30,12 @@ import { RaidTab } from "./components/raid-tab";
 import { UpdatesTab } from "./components/updates-tab";
 import { MembersTab } from "./components/members-tab";
 import { SettingsTab } from "./components/settings-tab";
+import { TimelineTab } from "./components/timeline-tab";
 
 type Confirm = "complete" | "archive" | "delete" | null;
 
 /**
- * /projects/:projectId?tab=overview|tasks|milestones|deliverables|raid|updates|members|settings — project workspace.
+ * /projects/:projectId?tab=overview|tasks|timeline|milestones|deliverables|raid|updates|members|settings — project workspace.
  * @perm VIEW projects.projects.read (+ project scope) · edit projects.projects.update · complete/reopen/archive/delete own keys
  * @api GET/PATCH /projects/:id · child endpoints per tab
  * @states loading · not found / no access (404 for out-of-scope) · per-tab empty and error
@@ -112,6 +113,7 @@ export default function ProjectDetailPage() {
                 </div>
                 <TabsContent value="overview" className="mt-4"><OverviewTab project={d} onTab={setTab} /></TabsContent>
                 <TabsContent value="tasks" className="mt-4"><ProjectTasksTab project={d} /></TabsContent>
+                <TabsContent value="timeline" className="mt-4"><TimelineTab project={d} /></TabsContent>
                 <TabsContent value="milestones" className="mt-4"><MilestonesTab projectId={d.id} /></TabsContent>
                 <TabsContent value="deliverables" className="mt-4"><DeliverablesTab projectId={d.id} /></TabsContent>
                 <TabsContent value="raid" className="mt-4"><RaidTab projectId={d.id} /></TabsContent>
