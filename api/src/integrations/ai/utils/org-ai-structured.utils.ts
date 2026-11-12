@@ -61,7 +61,9 @@ export async function generateOrgAiObject<S extends z.ZodTypeAny>(
         return { available: true, object: object as z.infer<S>, model, connection_id: conn.id, input_tokens: input, output_tokens: output, cost, latency_ms: Date.now() - started };
     } catch (error) {
         const message = ((error as Error)?.message ?? 'AI provider error').slice(0, 500);
-        logger.warn(`AI call failed: ${message}`);
+        // Schema mismatches carry the model's raw text and the validation issues; log them (never the prompt or key).
+        const detail = error as { text?: string; cause?: { message?: string } };
+        logger.warn(`AI call failed: ${message}${detail?.cause?.message ? ` | cause: ${String(detail.cause.message).slice(-900)}` : ''}${detail?.text ? ` | output: ${String(detail.text).slice(0, 400)}` : ''}`);
         await prisma.integrationConnection.update({ where: { id: conn.id }, data: { last_error: message } }).catch(() => undefined);
         return { available: false, reason: 'ai_provider_error', message: `The AI provider returned an error: ${message}` };
     }

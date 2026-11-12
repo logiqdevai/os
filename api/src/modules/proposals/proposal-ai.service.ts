@@ -46,8 +46,9 @@ const DraftLineSchema = z.object({
 });
 const ModelOutputSchema = z.object({
     sections: z.array(DraftSectionSchema).max(15),
-    line_items: z.array(DraftLineSchema).max(50),
-    assumptions: z.array(z.string().max(500)).max(10).describe('Facts the model assumed because the sources did not say'),
+    // The model sometimes leaves a list out when it has nothing to add (strict mode is off): default to empty.
+    line_items: z.array(DraftLineSchema).max(50).default([]),
+    assumptions: z.array(z.string().max(500)).max(10).default([]).describe('Facts the model assumed because the sources did not say'),
 });
 
 export const AiApplyProposalSchema = z.object({
