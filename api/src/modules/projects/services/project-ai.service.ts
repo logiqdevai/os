@@ -116,8 +116,10 @@ export class ProjectAiService {
     private async facts(ctx: OrgContext, projectId: string, dto: DraftStatusUpdateInput) {
         const today = startOfDay();
         const last = await this.prisma.projectStatusUpdate.findFirst({ where: { project_id: projectId, published_at: { not: null } }, orderBy: { published_at: 'desc' }, select: { period_end: true, published_at: true } });
-        const start = dto.period_start ? (toDate(dto.period_start) as Date) : last?.period_end ? addDays(last.period_end, 1) : last?.published_at ? startOfDay(last.published_at) : addDays(today, -7);
         const end = dto.period_end ? (toDate(dto.period_end) as Date) : today;
+        const from = dto.period_start ? (toDate(dto.period_start) as Date) : last?.period_end ? addDays(last.period_end, 1) : last?.published_at ? startOfDay(last.published_at) : addDays(today, -7);
+        // The previous update may already cover today (or later): never start the period after it ends.
+        const start = from > end ? end : from;
         const endExcl = addDays(end, 1);
         const canTasks = ctx.can('tasks.tasks.read');
         const taskWhere = (extra: Prisma.TaskWhereInput): Prisma.TaskWhereInput => ({ AND: [{ organization_id: ctx.organization_id, project_id: projectId, archived_at: null, is_template: false }, this.tasks.scopeWhere(ctx), extra] });

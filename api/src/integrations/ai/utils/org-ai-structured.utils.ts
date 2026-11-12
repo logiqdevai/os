@@ -49,6 +49,9 @@ export async function generateOrgAiObject<S extends z.ZodTypeAny>(
             prompt: options.prompt,
             temperature: options.temperature ?? 0.2,
             maxOutputTokens: options.maxTokens ?? 4000,
+            // OpenAI's strict mode (the SDK default) rejects any schema with optional fields; our zod schemas have them,
+            // and the result is validated against the zod schema anyway.
+            providerOptions: { openai: { strictJsonSchema: false } },
         });
         const input = usage?.inputTokens ?? null;
         const output = usage?.outputTokens ?? null;
