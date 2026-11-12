@@ -1,6 +1,7 @@
 import type { CompanyRef, ContactRef, MemberRef, Money, TagRef } from "../../common/interfaces/crm-common.interfaces";
 import type { CreateCompanyDto } from "../../companies/interfaces/companies.interfaces";
 import type { CreateContactDto } from "../../contacts/interfaces/contacts.interfaces";
+import type { CustomFieldValues } from "../../custom-fields/interfaces/custom-fields.interfaces";
 
 export const LeadStates = { OPEN: "open", CONVERTED: "converted", LOST: "lost", ALL: "all" } as const;
 export type LeadState = (typeof LeadStates)[keyof typeof LeadStates];
@@ -14,6 +15,8 @@ export interface LeadStatusRef {
 }
 
 export interface Lead {
+    /** Custom field values keyed by field key (detail responses; send on create/update). */
+    custom_fields?: CustomFieldValues;
     id: string;
     name: string;
     company_id: string | null;
@@ -59,6 +62,8 @@ export interface LeadDetail extends Lead {
 }
 
 export interface CreateLeadDto {
+    /** Custom field values keyed by field key (detail responses; send on create/update). */
+    custom_fields?: CustomFieldValues;
     name: string;
     company_name?: string;
     contact_name?: string;

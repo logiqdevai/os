@@ -2,6 +2,7 @@ import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { IsBoolean, IsEmail, IsEnum, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { CrmCompanyType } from 'generated/prisma';
 import { z } from 'zod';
+import { CustomFieldValuesSchema } from '../../custom-fields/dto/custom-field.dto';
 
 export class CreateCompanyDto {
     @ApiProperty({ example: 'Acme Digital' })
@@ -35,6 +36,7 @@ export class CreateCompanyDto {
     @ApiProperty({ required: false }) @IsOptional() @IsUUID() team_id?: string;
     @ApiProperty({ required: false, description: 'Primary branch relationship (01 §31)' }) @IsOptional() @IsUUID() branch_id?: string;
     @ApiProperty({ required: false, description: 'Create even when possible duplicates exist' }) @IsOptional() @IsBoolean() allow_duplicate?: boolean;
+    @ApiProperty({ required: false, description: 'Custom field values keyed by field key (02 §26), e.g. { customer_tier: "enterprise" }; null clears a value' }) @IsOptional() @IsObject() custom_fields?: Record<string, unknown>;
 }
 
 export class UpdateCompanyDto extends PartialType(CreateCompanyDto) { }
@@ -73,5 +75,6 @@ export const CreateCompanySchema = z.object({
     team_id: z.string().uuid().optional(),
     branch_id: z.string().uuid().optional(),
     allow_duplicate: z.boolean().optional(),
+    custom_fields: CustomFieldValuesSchema.optional().describe('Custom field values keyed by field key; null clears'),
 });
 export const UpdateCompanySchema = CreateCompanySchema.partial().extend({ id: z.string().uuid() });

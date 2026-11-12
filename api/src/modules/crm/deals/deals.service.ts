@@ -11,6 +11,7 @@ import { CrmRefsService } from '../common/crm-refs.service';
 import { CsvExport, memberLabel, toCsv } from '../common/csv.utils';
 import { CrmPipelinesService } from '../pipelines/pipelines.service';
 import { BoardQuery, ChangeStageDto, CreateDealDto, DealQuery, LineItemInputDto, UpdateDealDto } from './dto/deal.dto';
+import { CrmCustomFieldValuesService } from '../custom-fields/custom-field-values.service';
 
 const READ = 'crm.deals.read';
 
@@ -54,6 +55,7 @@ export class CrmDealsService {
         private readonly events: EventsService,
         private readonly refs: CrmRefsService,
         private readonly pipelines: CrmPipelinesService,
+        private readonly cf: CrmCustomFieldValuesService,
     ) { }
 
     private where(ctx: OrgContext, query: Partial<DealQuery>, ids?: string[]): Prisma.CrmDealWhereInput {
@@ -81,7 +83,7 @@ export class CrmDealsService {
     }
 
     async findAll(ctx: OrgContext, query: DealQuery) {
-        const tagged = await this.refs.idsWithTag(RecordEntityType.CRM_DEAL, query.tag_id);
+        const tagged = await this.cf.restrictIds(ctx.organization_id, RecordEntityType.CRM_DEAL, query, await this.refs.idsWithTag(RecordEntityType.CRM_DEAL, query.tag_id));
         const where = this.where(ctx, query, tagged);
         const money = ctx.can(CRM_FINANCIALS);
         const [items, total, sums] = await Promise.all([
@@ -136,15 +138,17 @@ export class CrmDealsService {
     async findOne(ctx: OrgContext, id: string) {
         const deal = await this.prisma.crmDeal.findFirst({ where: { id, organization_id: ctx.organization_id, ...dealScopeWhere(ctx, READ) }, include: DETAIL_INCLUDE });
         if (!deal) throw new NotFoundException({ message: 'Deal not found', code: 'deal_not_found' });
-        const [stages, tags] = await Promise.all([
+        const [stages, tags, custom] = await Promise.all([
             this.prisma.crmPipelineStage.findMany({ where: { pipeline_id: deal.pipeline_id }, orderBy: { sort_order: 'asc' }, select: { id: true, name: true, probability: true, is_won: true, is_lost: true, color: true, sort_order: true } }),
             this.refs.tagsFor(RecordEntityType.CRM_DEAL, [id]),
+            this.cf.valuesFor(ctx.organization_id, RecordEntityType.CRM_DEAL, [id]),
         ]);
         const days_in_stage = Math.floor((Date.now() - deal.stage_entered_at.getTime()) / 86400_000);
         return redactDeal(ctx, {
             ...deal,
             pipeline_stages: stages,
             tags: tags.get(id) ?? [],
+            custom_fields: custom.get(id) ?? {},
             days_in_stage,
             weighted_value: round2(toNumber(deal.value) * (deal.probability ?? deal.stage.probability) / 100),
         });
@@ -154,7 +158,7 @@ export class CrmDealsService {
         const pipeline = await this.pipelines.resolve(ctx, dto.pipeline_id);
         const stage = dto.stage_id ? pipeline.stages.find((s) => s.id === dto.stage_id) : pipeline.stages.find((s) => !s.is_won && !s.is_lost);
         if (!stage) throw new BadRequestException({ message: 'The stage does not belong to the pipeline', code: 'stage_not_in_pipeline' });
-        const { contact_ids, ...data } = dto;
+        const { contact_ids, custom_fields, ...data } = dto;
         await this.refs.assert(ctx, {
             membership: [data.owner_membership_id, data.secondary_owner_membership_id, data.project_manager_membership_id],
             company: data.company_id, contact: [data.primary_contact_id, ...(contact_ids ?? [])],
@@ -162,6 +166,7 @@ export class CrmDealsService {
         });
         const assigningOther = [data.owner_membership_id, data.secondary_owner_membership_id, data.project_manager_membership_id].some((m) => m && m !== ctx.membership_id);
         this.refs.assertCanAssign(ctx, 'crm.deals.assign', assigningOther);
+        const customValues = await this.cf.prepare(ctx, RecordEntityType.CRM_DEAL, custom_fields, { creating: true });
         const money = ctx.can(CRM_FINANCIALS);
         const status = stage.is_won ? CrmDealStatus.WON : stage.is_lost ? CrmDealStatus.LOST : CrmDealStatus.OPEN;
         const deal = await this.prisma.$transaction(async (tx) => {
@@ -186,6 +191,7 @@ export class CrmDealsService {
                 },
             });
             await tx.crmDealStageHistory.create({ data: { deal_id: d.id, to_stage_id: stage.id, changed_by_user_id: ctx.user_id } });
+            await this.cf.write(tx, RecordEntityType.CRM_DEAL, d.id, customValues);
             await this.audit.record(ctx, 'crm.deal.created', { resource_type: 'crm_deal', resource_id: d.id, branch_id: d.branch_id, metadata: { after: { name: d.name, stage: stage.name, value: money ? data.value : undefined } } }, tx);
             return d;
         });
@@ -199,7 +205,8 @@ export class CrmDealsService {
 
     async update(ctx: OrgContext, id: string, dto: UpdateDealDto) {
         const before = await this.getForWrite(ctx, id, 'crm.deals.update');
-        const data: UpdateDealDto = { ...dto };
+        const { custom_fields, ...data }: UpdateDealDto = { ...dto };
+        const customValues = await this.cf.prepare(ctx, RecordEntityType.CRM_DEAL, custom_fields, { creating: false });
         await this.refs.assert(ctx, {
             membership: [data.owner_membership_id, data.secondary_owner_membership_id, data.project_manager_membership_id],
             company: data.company_id, contact: data.primary_contact_id, team: data.team_id, branch: data.branch_id, lead_source: data.lead_source_id,
@@ -218,7 +225,8 @@ export class CrmDealsService {
                     ...(data.expected_close_date !== undefined && { expected_close_date: dateOnly(data.expected_close_date) ?? null }),
                 },
             });
-            await this.audit.record(ctx, 'crm.deal.updated', { resource_type: 'crm_deal', resource_id: id, branch_id: d.branch_id, metadata: { before: pick(before, Object.keys(data)), after: data } }, tx);
+            await this.cf.write(tx, RecordEntityType.CRM_DEAL, id, customValues);
+            await this.audit.record(ctx, 'crm.deal.updated', { resource_type: 'crm_deal', resource_id: id, branch_id: d.branch_id, metadata: { before: pick(before, Object.keys(data)), after: { ...data, ...(custom_fields && { custom_fields }) } } }, tx);
             return d;
         });
         this.events.publish(ctx, {
@@ -472,13 +480,14 @@ export class CrmDealsService {
     }
 
     async export(ctx: OrgContext, query: DealQuery): Promise<CsvExport> {
-        const tagged = await this.refs.idsWithTag(RecordEntityType.CRM_DEAL, query.tag_id);
+        const tagged = await this.cf.restrictIds(ctx.organization_id, RecordEntityType.CRM_DEAL, query, await this.refs.idsWithTag(RecordEntityType.CRM_DEAL, query.tag_id));
         const rows = await this.prisma.crmDeal.findMany({ where: this.where(ctx, query, tagged), include: CARD_INCLUDE, orderBy: { created_at: 'desc' }, take: 10000 });
         const money = ctx.can(CRM_FINANCIALS);
-        const headers = ['id', 'name', 'pipeline', 'stage', 'status', 'company', 'primary_contact', 'owner', ...(money ? ['value', 'currency'] : []), 'probability', 'expected_close_date', 'actual_close_date', 'created_at'];
+        const extra = await this.cf.exportColumns(ctx.organization_id, RecordEntityType.CRM_DEAL, rows.map((r) => r.id));
+        const headers = ['id', 'name', 'pipeline', 'stage', 'status', 'company', 'primary_contact', 'owner', ...(money ? ['value', 'currency'] : []), 'probability', 'expected_close_date', 'actual_close_date', 'created_at', ...extra.headers];
         const content = toCsv(headers, rows.map((d) => [
             d.id, d.name, d.pipeline.name, d.stage.name, d.status, d.company?.name, d.primary_contact ? [d.primary_contact.first_name, d.primary_contact.last_name].filter(Boolean).join(' ') : '',
-            memberLabel(d.owner), ...(money ? [d.value.toString(), d.currency] : []), d.probability, d.expected_close_date?.toISOString().slice(0, 10), d.actual_close_date?.toISOString().slice(0, 10), d.created_at,
+            memberLabel(d.owner), ...(money ? [d.value.toString(), d.currency] : []), d.probability, d.expected_close_date?.toISOString().slice(0, 10), d.actual_close_date?.toISOString().slice(0, 10), d.created_at, ...extra.row(d.id),
         ]));
         await this.audit.record(ctx, 'crm.records.exported', { resource_type: 'crm_deal', metadata: { entity: 'deals', count: rows.length, filters: query, financials: money } });
         this.events.publish(ctx, { event_key: 'crm.records.exported', module: ModuleKey.CRM, payload: { entity: 'deals', count: rows.length } });

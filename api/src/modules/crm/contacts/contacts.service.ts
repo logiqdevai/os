@@ -10,6 +10,7 @@ import { contactScopeWhere, ownerFilter, pick } from '../common/crm-scope.utils'
 import { CrmRefsService } from '../common/crm-refs.service';
 import { CsvExport, memberLabel, toCsv } from '../common/csv.utils';
 import { LookupQuery } from '../companies/dto/company-query.schema';
+import { CrmCustomFieldValuesService } from '../custom-fields/custom-field-values.service';
 import { ContactQuery, CreateContactDto, UpdateContactDto } from './dto/contact.dto';
 
 const READ = 'crm.contacts.read';
@@ -28,6 +29,7 @@ export class CrmContactsService {
         private readonly audit: AuditService,
         private readonly events: EventsService,
         private readonly refs: CrmRefsService,
+        private readonly cf: CrmCustomFieldValuesService,
     ) { }
 
     private where(ctx: OrgContext, query: ContactQuery, ids?: string[]): Prisma.CrmContactWhereInput {
@@ -58,7 +60,7 @@ export class CrmContactsService {
     }
 
     async findAll(ctx: OrgContext, query: ContactQuery) {
-        const tagged = await this.refs.idsWithTag(RecordEntityType.CRM_CONTACT, query.tag_id);
+        const tagged = await this.cf.restrictIds(ctx.organization_id, RecordEntityType.CRM_CONTACT, query, await this.refs.idsWithTag(RecordEntityType.CRM_CONTACT, query.tag_id));
         const where = this.where(ctx, query, tagged);
         const [items, total] = await Promise.all([
             this.prisma.crmContact.findMany({ where, ...skipTake(query), orderBy: orderBy(query, ['first_name', 'last_name', 'created_at', 'last_activity_at'], 'created_at'), include: LIST_INCLUDE }),
@@ -101,7 +103,8 @@ export class CrmContactsService {
             this.prisma.crmDeal.count({ where: { archived_at: null, OR: [{ primary_contact_id: id }, { contacts: { some: { contact_id: id } } }] } }),
             this.prisma.crmActivity.count({ where: { contact_id: id, status: 'PLANNED' } }),
         ]);
-        return { ...contact, tags: tags.get(id) ?? [], summary: { deals, open_activities: openActivities } };
+        const custom = await this.cf.valuesFor(ctx.organization_id, RecordEntityType.CRM_CONTACT, [id]);
+        return { ...contact, tags: tags.get(id) ?? [], custom_fields: custom.get(id) ?? {}, summary: { deals, open_activities: openActivities } };
     }
 
     async findDuplicates(ctx: OrgContext, input: { email?: string; first_name?: string; last_name?: string; exclude_id?: string }) {
@@ -120,8 +123,9 @@ export class CrmContactsService {
     }
 
     async create(ctx: OrgContext, dto: CreateContactDto) {
-        const { allow_duplicate, ...data } = dto;
+        const { allow_duplicate, custom_fields, ...data } = dto;
         await this.refs.assert(ctx, { membership: data.owner_membership_id, company: data.company_id, lifecycle_stage: data.lifecycle_stage_id, lead_source: data.lead_source_id });
+        const customValues = await this.cf.prepare(ctx, RecordEntityType.CRM_CONTACT, custom_fields, { creating: true });
         if (!allow_duplicate) {
             const duplicates = await this.findDuplicates(ctx, data);
             if (duplicates.length) throw new ConflictException({ message: 'A contact with this email or name already exists', code: 'possible_duplicates', duplicates });
@@ -139,6 +143,7 @@ export class CrmContactsService {
                 },
             });
             if (c.lifecycle_stage_id) await tx.crmLifecycleHistory.create({ data: { contact_id: c.id, stage_id: c.lifecycle_stage_id, changed_by_user_id: ctx.user_id } });
+            await this.cf.write(tx, RecordEntityType.CRM_CONTACT, c.id, customValues);
             await this.audit.record(ctx, 'crm.contact.created', { resource_type: 'crm_contact', resource_id: c.id, metadata: { after: { first_name: c.first_name, last_name: c.last_name, company_id: c.company_id } } }, tx);
             return c;
         });
@@ -153,8 +158,9 @@ export class CrmContactsService {
 
     async update(ctx: OrgContext, id: string, dto: UpdateContactDto) {
         const before = await this.getForWrite(ctx, id, 'crm.contacts.update');
-        const { allow_duplicate: _a, ...data } = dto;
+        const { allow_duplicate: _a, custom_fields, ...data } = dto;
         await this.refs.assert(ctx, { membership: data.owner_membership_id, company: data.company_id, lifecycle_stage: data.lifecycle_stage_id, lead_source: data.lead_source_id });
+        const customValues = await this.cf.prepare(ctx, RecordEntityType.CRM_CONTACT, custom_fields, { creating: false });
         this.refs.assertCanAssign(ctx, 'crm.contacts.assign', data.owner_membership_id !== undefined && data.owner_membership_id !== before.owner_membership_id);
         const lifecycleChanged = !!data.lifecycle_stage_id && data.lifecycle_stage_id !== before.lifecycle_stage_id;
         const contact = await this.prisma.$transaction(async (tx) => {
@@ -163,7 +169,8 @@ export class CrmContactsService {
                 data: { ...data, ...(data.email && { email: data.email.toLowerCase() }), address: data.address as Prisma.InputJsonValue | undefined, consent: data.consent as Prisma.InputJsonValue | undefined },
             });
             if (lifecycleChanged) await tx.crmLifecycleHistory.create({ data: { contact_id: id, stage_id: data.lifecycle_stage_id!, changed_by_user_id: ctx.user_id } });
-            await this.audit.record(ctx, data.consent ? 'crm.contact.consent_changed' : 'crm.contact.updated', { resource_type: 'crm_contact', resource_id: id, metadata: { before: pick(before, Object.keys(data)), after: data } }, tx);
+            await this.cf.write(tx, RecordEntityType.CRM_CONTACT, id, customValues);
+            await this.audit.record(ctx, data.consent ? 'crm.contact.consent_changed' : 'crm.contact.updated', { resource_type: 'crm_contact', resource_id: id, metadata: { before: pick(before, Object.keys(data)), after: { ...data, ...(custom_fields && { custom_fields }) } } }, tx);
             return c;
         });
         this.events.publish(ctx, {
@@ -213,11 +220,12 @@ export class CrmContactsService {
     }
 
     async export(ctx: OrgContext, query: ContactQuery): Promise<CsvExport> {
-        const tagged = await this.refs.idsWithTag(RecordEntityType.CRM_CONTACT, query.tag_id);
+        const tagged = await this.cf.restrictIds(ctx.organization_id, RecordEntityType.CRM_CONTACT, query, await this.refs.idsWithTag(RecordEntityType.CRM_CONTACT, query.tag_id));
         const rows = await this.prisma.crmContact.findMany({ where: this.where(ctx, query, tagged), include: LIST_INCLUDE, orderBy: { created_at: 'desc' }, take: 10000 });
+        const extra = await this.cf.exportColumns(ctx.organization_id, RecordEntityType.CRM_CONTACT, rows.map((r) => r.id));
         const content = toCsv(
-            ['id', 'first_name', 'last_name', 'email', 'phone', 'mobile', 'job_title', 'company', 'roles', 'lifecycle_stage', 'owner', 'created_at'],
-            rows.map((c) => [c.id, c.first_name, c.last_name, c.email, c.phone, c.mobile, c.job_title, c.company?.name, c.roles.join('|'), c.lifecycle_stage?.name, memberLabel(c.owner), c.created_at]),
+            ['id', 'first_name', 'last_name', 'email', 'phone', 'mobile', 'job_title', 'company', 'roles', 'lifecycle_stage', 'owner', 'created_at', ...extra.headers],
+            rows.map((c) => [c.id, c.first_name, c.last_name, c.email, c.phone, c.mobile, c.job_title, c.company?.name, c.roles.join('|'), c.lifecycle_stage?.name, memberLabel(c.owner), c.created_at, ...extra.row(c.id)]),
         );
         await this.audit.record(ctx, 'crm.records.exported', { resource_type: 'crm_contact', metadata: { entity: 'contacts', count: rows.length, filters: query } });
         this.events.publish(ctx, { event_key: 'crm.records.exported', module: ModuleKey.CRM, payload: { entity: 'contacts', count: rows.length } });

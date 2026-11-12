@@ -1,4 +1,5 @@
 import type { CompanyRef, ContactRef, MemberRef, Money, TagRef } from "../../common/interfaces/crm-common.interfaces";
+import type { CustomFieldValues } from "../../custom-fields/interfaces/custom-fields.interfaces";
 
 export const DealStatuses = { OPEN: "OPEN", WON: "WON", LOST: "LOST", ABANDONED: "ABANDONED" } as const;
 export type DealStatus = (typeof DealStatuses)[keyof typeof DealStatuses];
@@ -18,6 +19,8 @@ export interface DealStageRef {
 }
 
 export interface Deal {
+    /** Custom field values keyed by field key (detail responses; send on create/update). */
+    custom_fields?: CustomFieldValues;
     id: string;
     name: string;
     pipeline_id: string;
@@ -127,6 +130,8 @@ export interface DealList {
 }
 
 export interface CreateDealDto {
+    /** Custom field values keyed by field key (detail responses; send on create/update). */
+    custom_fields?: CustomFieldValues;
     name: string;
     pipeline_id?: string;
     stage_id?: string;

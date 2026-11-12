@@ -32,6 +32,7 @@ import { DealFormDialog } from "../../components/deal-form-dialog";
 import { RecordActivities } from "../../components/activity-items";
 import { NotesPanel } from "../../components/notes-panel";
 import { TagEditor } from "../../components/tag-editor";
+import { CustomFieldsPanel } from "../../components/custom-fields";
 
 /**
  * Company page — Customer 360 (mockup `company`).
@@ -162,6 +163,7 @@ export default function CompanyDetailPage() {
                             ]}
                         />
                     </Panel>
+                    <CustomFieldsPanel entityType="CRM_COMPANY" values={c.custom_fields} />
                     <Panel title="Tags"><TagEditor entityType="CRM_COMPANY" entityId={c.id} tags={c.tags} canEdit={p.can("crm.companies.update")} /></Panel>
                 </div>
             </div>

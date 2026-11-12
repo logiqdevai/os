@@ -19,6 +19,7 @@ import { usePermission } from "@/hooks/use-permission";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { CrmPaths } from "../crm-paths";
+import { CustomFieldInputs, useCustomFieldValues } from "./custom-fields";
 import { CompanyPicker, MemberSelect } from "./crm-pickers";
 import { DuplicateNotice, getDuplicates, type DuplicateMatch } from "./crm-actions";
 
@@ -46,6 +47,7 @@ export function ContactFormDialog({ open, onOpenChange, contact, company, onCrea
     const canAssign = usePermission("crm.contacts.assign");
     const [duplicates, setDuplicates] = useState<DuplicateMatch[] | null>(null);
     const form = useForm<ContactFormValues>({ resolver: zodResolver(contactFormSchema), defaultValues: { first_name: "", roles: [], email_consent: false } });
+    const cf = useCustomFieldValues("CRM_CONTACT", open, contact);
 
     useEffect(() => {
         if (!open) return;
@@ -72,6 +74,7 @@ export function ContactFormDialog({ open, onOpenChange, contact, company, onCrea
 
     const save = (allow_duplicate: boolean) =>
         form.handleSubmit((v) => {
+            if (!cf.validate()) return;
             const dto: CreateContactDto = {
                 first_name: v.first_name,
                 last_name: v.last_name || undefined,
@@ -86,6 +89,7 @@ export function ContactFormDialog({ open, onOpenChange, contact, company, onCrea
                 owner_membership_id: canAssign ? v.owner_membership_id || undefined : undefined,
                 consent: { email: v.email_consent },
                 description: v.description || undefined,
+                custom_fields: cf.payload(),
             };
             const onError = (e: unknown) => {
                 const dups = getDuplicates(e);
@@ -189,6 +193,7 @@ export function ContactFormDialog({ open, onOpenChange, contact, company, onCrea
                             <FormField control={form.control} name="description" render={({ field }) => (
                                 <FormItem className="sm:col-span-2"><FormLabel>Notes</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
+                            <CustomFieldInputs state={cf} disabled={pending} />
                         </div>
                         {duplicates && <DuplicateNotice matches={duplicates} hrefOf={CrmPaths.contact} />}
                         <DialogFooter>

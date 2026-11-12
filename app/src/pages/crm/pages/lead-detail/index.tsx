@@ -29,6 +29,7 @@ import { RecordActivities } from "../../components/activity-items";
 import { NotesPanel } from "../../components/notes-panel";
 import { TagEditor } from "../../components/tag-editor";
 import { LeadConvertDialog } from "./components/lead-convert-dialog";
+import { CustomFieldsPanel } from "../../components/custom-fields";
 
 /**
  * Lead page (mockup `lead`).
@@ -135,6 +136,7 @@ export default function LeadDetailPage() {
                         />
                         {l.description && <p className="mt-3 whitespace-pre-wrap border-t border-border pt-3 text-[13px] text-body">{l.description}</p>}
                     </Panel>
+                    <CustomFieldsPanel entityType="CRM_LEAD" values={l.custom_fields} />
                     <Panel title="Tags"><TagEditor entityType="CRM_LEAD" entityId={l.id} tags={l.tags} canEdit={p.can("crm.leads.update")} /></Panel>
                     <p className="px-1 text-xs text-muted-foreground">Created {formatDateTime(l.created_at)}</p>
                 </div>

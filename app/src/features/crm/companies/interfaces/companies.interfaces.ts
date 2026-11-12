@@ -1,4 +1,5 @@
 import type { MemberRef, Money, TagRef } from "../../common/interfaces/crm-common.interfaces";
+import type { CustomFieldValues } from "../../custom-fields/interfaces/custom-fields.interfaces";
 
 export const CompanyTypes = {
     PROSPECT: "PROSPECT",
@@ -10,6 +11,8 @@ export const CompanyTypes = {
 export type CompanyType = (typeof CompanyTypes)[keyof typeof CompanyTypes];
 
 export interface Company {
+    /** Custom field values keyed by field key (detail responses; send on create/update). */
+    custom_fields?: CustomFieldValues;
     id: string;
     name: string;
     legal_name: string | null;
@@ -77,6 +80,8 @@ export interface CompanyLookupItem {
 }
 
 export interface CreateCompanyDto {
+    /** Custom field values keyed by field key (detail responses; send on create/update). */
+    custom_fields?: CustomFieldValues;
     name: string;
     legal_name?: string;
     type?: CompanyType;

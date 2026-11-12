@@ -1,4 +1,5 @@
 import type { CompanyRef, MemberRef, TagRef } from "../../common/interfaces/crm-common.interfaces";
+import type { CustomFieldValues } from "../../custom-fields/interfaces/custom-fields.interfaces";
 
 export const ContactRoles = {
     PRIMARY: "PRIMARY",
@@ -11,6 +12,8 @@ export const ContactRoles = {
 export type ContactRole = (typeof ContactRoles)[keyof typeof ContactRoles];
 
 export interface Contact {
+    /** Custom field values keyed by field key (detail responses; send on create/update). */
+    custom_fields?: CustomFieldValues;
     id: string;
     first_name: string;
     last_name: string | null;
@@ -54,6 +57,8 @@ export interface ContactLookupItem {
 }
 
 export interface CreateContactDto {
+    /** Custom field values keyed by field key (detail responses; send on create/update). */
+    custom_fields?: CustomFieldValues;
     first_name: string;
     last_name?: string;
     job_title?: string;

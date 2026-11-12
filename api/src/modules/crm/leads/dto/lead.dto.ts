@@ -2,6 +2,7 @@ import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsBoolean, IsDateString, IsEmail, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
 import { z } from 'zod';
+import { CustomFieldValuesSchema } from '../../custom-fields/dto/custom-field.dto';
 import { BaseListQuerySchema, boolish } from '@/shared/utils/pagination/pagination.utils';
 import { CreateCompanyDto, CreateCompanySchema } from '../../companies/dto/company.dto';
 import { CreateContactDto, CreateContactSchema } from '../../contacts/dto/contact.dto';
@@ -29,6 +30,7 @@ export class CreateLeadDto {
     @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(5000) description?: string;
     @ApiProperty({ required: false }) @IsOptional() @IsDateString() next_follow_up_at?: string;
     @ApiProperty({ required: false }) @IsOptional() @IsBoolean() allow_duplicate?: boolean;
+    @ApiProperty({ required: false, description: 'Custom field values keyed by field key (02 §26), e.g. { customer_tier: "enterprise" }; null clears a value' }) @IsOptional() @IsObject() custom_fields?: Record<string, unknown>;
 }
 
 export class UpdateLeadDto extends PartialType(CreateLeadDto) { }
@@ -90,6 +92,7 @@ export const CreateLeadSchema = z.object({
     description: z.string().max(5000).optional(),
     next_follow_up_at: z.string().optional(),
     allow_duplicate: z.boolean().optional(),
+    custom_fields: CustomFieldValuesSchema.optional().describe('Custom field values keyed by field key; null clears'),
 });
 export const UpdateLeadSchema = CreateLeadSchema.partial().extend({ id: z.string().uuid() });
 
@@ -116,6 +119,9 @@ export const LeadQuerySchema = BaseListQuerySchema.extend({
     /** open = not converted and not lost (default) · converted · lost · all */
     state: z.enum(['open', 'converted', 'lost', 'all']).optional().default('open'),
     tag_id: z.string().uuid().optional(),
+    /** Custom-field filter (02 §26): records whose value of field `cf_key` contains `cf_value`. */
+    cf_key: z.string().max(50).optional(),
+    cf_value: z.string().max(200).optional(),
     archived: boolish,
 });
 export type LeadQuery = z.infer<typeof LeadQuerySchema>;

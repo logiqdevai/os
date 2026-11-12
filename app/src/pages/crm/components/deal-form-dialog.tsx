@@ -18,6 +18,7 @@ import { usePermission } from "@/hooks/use-permission";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { CrmPaths } from "../crm-paths";
+import { CustomFieldInputs, useCustomFieldValues } from "./custom-fields";
 import { CompanyPicker, ContactPicker, MemberSelect } from "./crm-pickers";
 
 const NONE = "__none";
@@ -44,6 +45,7 @@ export function DealFormDialog({ open, onOpenChange, deal, defaults }: { open: b
     const canMoney = usePermission("crm.financials.read");
     const canAssign = usePermission("crm.deals.assign");
     const form = useForm<DealFormValues>({ resolver: zodResolver(dealFormSchema), defaultValues: { name: "" } });
+    const cf = useCustomFieldValues("CRM_DEAL", open, deal);
 
     const pipelineId = form.watch("pipeline_id");
     const pipeline = pipelines.data?.find((p) => p.id === pipelineId) ?? pipelines.data?.[0];
@@ -80,6 +82,7 @@ export function DealFormDialog({ open, onOpenChange, deal, defaults }: { open: b
     const hasLineItems = !!deal && 'line_items' in deal && Array.isArray(deal.line_items) && deal.line_items.length > 0;
 
     const submit = form.handleSubmit((v) => {
+        if (!cf.validate()) return;
         const base = {
             name: v.name,
             company_id: v.company_id || undefined,
@@ -92,6 +95,7 @@ export function DealFormDialog({ open, onOpenChange, deal, defaults }: { open: b
             lead_source_id: v.lead_source_id || undefined,
             next_step: v.next_step || undefined,
             description: v.description || undefined,
+            custom_fields: cf.payload(),
         };
         const onError = (e: unknown) => toast({ variant: "destructive", title: "Could not save deal", description: getApiErrorMessage(e) });
         if (deal) {
@@ -188,6 +192,7 @@ export function DealFormDialog({ open, onOpenChange, deal, defaults }: { open: b
                             <FormField control={form.control} name="description" render={({ field }) => (
                                 <FormItem className="sm:col-span-2"><FormLabel>Description</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
+                            <CustomFieldInputs state={cf} disabled={pending} />
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>

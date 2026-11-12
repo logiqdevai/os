@@ -11,6 +11,9 @@ export const CompanyQuerySchema = BaseListQuerySchema.extend({
     branch_id: z.string().uuid().optional(),
     country: z.string().max(2).optional(),
     tag_id: z.string().uuid().optional(),
+    /** Custom-field filter (02 §26): records whose value of field `cf_key` contains `cf_value`. */
+    cf_key: z.string().max(50).optional(),
+    cf_value: z.string().max(200).optional(),
     archived: boolish,
 });
 export type CompanyQuery = z.infer<typeof CompanyQuerySchema>;

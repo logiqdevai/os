@@ -16,6 +16,7 @@ import { usePermission } from "@/hooks/use-permission";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { CrmPaths } from "../crm-paths";
+import { CustomFieldInputs, useCustomFieldValues } from "./custom-fields";
 import { MemberSelect } from "./crm-pickers";
 import { DuplicateNotice, getDuplicates, type DuplicateMatch } from "./crm-actions";
 
@@ -36,6 +37,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: { open: boolean; on
     const canAssign = usePermission("crm.leads.assign");
     const [duplicates, setDuplicates] = useState<DuplicateMatch[] | null>(null);
     const form = useForm<LeadFormValues>({ resolver: zodResolver(leadFormSchema), defaultValues: { name: "" } });
+    const cf = useCustomFieldValues("CRM_LEAD", open, lead);
     const statuses = settings.data?.lead_statuses.filter((s) => !s.is_converted && !s.is_lost) ?? [];
 
     useEffect(() => {
@@ -64,6 +66,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: { open: boolean; on
 
     const save = (allow_duplicate: boolean) =>
         form.handleSubmit((v) => {
+            if (!cf.validate()) return;
             const dto: CreateLeadDto = {
                 name: v.name,
                 company_name: v.company_name || undefined,
@@ -79,6 +82,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: { open: boolean; on
                 manual_score: v.manual_score ? Number(v.manual_score) : undefined,
                 next_follow_up_at: v.next_follow_up_at ? new Date(`${v.next_follow_up_at}T09:00:00`).toISOString() : undefined,
                 description: v.description || undefined,
+                custom_fields: cf.payload(),
             };
             const onError = (e: unknown) => {
                 const dups = getDuplicates(e);
@@ -165,6 +169,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: { open: boolean; on
                             <FormField control={form.control} name="description" render={({ field }) => (
                                 <FormItem className="sm:col-span-2"><FormLabel>Description</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
+                            <CustomFieldInputs state={cf} disabled={pending} />
                         </div>
                         {duplicates && <DuplicateNotice matches={duplicates} hrefOf={CrmPaths.lead} />}
                         <DialogFooter>

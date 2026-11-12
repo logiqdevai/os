@@ -13,6 +13,7 @@ import { CsvExport, memberLabel, toCsv } from '../common/csv.utils';
 import { CrmCompaniesService } from '../companies/companies.service';
 import { CrmContactsService } from '../contacts/contacts.service';
 import { CrmPipelinesService } from '../pipelines/pipelines.service';
+import { CrmCustomFieldValuesService } from '../custom-fields/custom-field-values.service';
 import { ConvertLeadDto, CreateLeadDto, LeadQuery, LeadStatusDto, UpdateLeadDto } from './dto/lead.dto';
 
 const READ = 'crm.leads.read';
@@ -42,6 +43,7 @@ export class CrmLeadsService {
         private readonly companies: CrmCompaniesService,
         private readonly contacts: CrmContactsService,
         private readonly pipelines: CrmPipelinesService,
+        private readonly cf: CrmCustomFieldValuesService,
     ) { }
 
     private where(ctx: OrgContext, query: LeadQuery, ids?: string[]): Prisma.CrmLeadWhereInput {
@@ -78,7 +80,7 @@ export class CrmLeadsService {
 
     async findAll(ctx: OrgContext, query: LeadQuery) {
         await this.defaults.ensure(ctx.organization_id);
-        const tagged = await this.refs.idsWithTag(RecordEntityType.CRM_LEAD, query.tag_id);
+        const tagged = await this.cf.restrictIds(ctx.organization_id, RecordEntityType.CRM_LEAD, query, await this.refs.idsWithTag(RecordEntityType.CRM_LEAD, query.tag_id));
         const where = this.where(ctx, query, tagged);
         const [items, total] = await Promise.all([
             this.prisma.crmLead.findMany({ where, ...skipTake(query), orderBy: orderBy(query, ['name', 'created_at', 'lead_score', 'manual_score', 'next_follow_up_at', 'last_activity_at'], 'created_at'), include: LIST_INCLUDE }),
@@ -101,8 +103,8 @@ export class CrmLeadsService {
             },
         });
         if (!lead) throw new NotFoundException({ message: 'Lead not found', code: 'lead_not_found' });
-        const tags = await this.refs.tagsFor(RecordEntityType.CRM_LEAD, [id]);
-        return redactLead(ctx, { ...lead, tags: tags.get(id) ?? [] });
+        const [tags, custom] = await Promise.all([this.refs.tagsFor(RecordEntityType.CRM_LEAD, [id]), this.cf.valuesFor(ctx.organization_id, RecordEntityType.CRM_LEAD, [id])]);
+        return redactLead(ctx, { ...lead, tags: tags.get(id) ?? [], custom_fields: custom.get(id) ?? {} });
     }
 
     async findDuplicates(ctx: OrgContext, input: { email?: string; exclude_id?: string }) {
@@ -116,13 +118,14 @@ export class CrmLeadsService {
 
     async create(ctx: OrgContext, dto: CreateLeadDto) {
         await this.defaults.ensure(ctx.organization_id);
-        const { allow_duplicate, ...data } = dto;
+        const { allow_duplicate, custom_fields, ...data } = dto;
         await this.refs.assert(ctx, { membership: data.owner_membership_id, company: data.company_id, contact: data.contact_id, lead_status: data.status_id, lead_source: data.lead_source_id, branch: data.branch_id });
         this.refs.assertCanAssign(ctx, 'crm.leads.assign', !!data.owner_membership_id && data.owner_membership_id !== ctx.membership_id);
         if (!allow_duplicate) {
             const duplicates = await this.findDuplicates(ctx, data);
             if (duplicates.length) throw new ConflictException({ message: 'A lead with this email already exists', code: 'possible_duplicates', duplicates });
         }
+        const customValues = await this.cf.prepare(ctx, RecordEntityType.CRM_LEAD, custom_fields, { creating: true });
         if (!ctx.can(CRM_FINANCIALS)) delete data.estimated_value;
         const status_id = data.status_id ?? (await this.prisma.crmLeadStatus.findFirst({ where: { organization_id: ctx.organization_id, is_default: true, archived_at: null }, select: { id: true } }))?.id;
         const lead = await this.prisma.$transaction(async (tx) => {
@@ -139,6 +142,7 @@ export class CrmLeadsService {
                     created_by_user_id: ctx.user_id,
                 },
             });
+            await this.cf.write(tx, RecordEntityType.CRM_LEAD, l.id, customValues);
             await this.audit.record(ctx, 'crm.lead.created', { resource_type: 'crm_lead', resource_id: l.id, branch_id: l.branch_id, metadata: { after: { name: l.name, email: l.email } } }, tx);
             return l;
         });
@@ -152,7 +156,7 @@ export class CrmLeadsService {
 
     async update(ctx: OrgContext, id: string, dto: UpdateLeadDto) {
         const before = await this.getForWrite(ctx, id, 'crm.leads.update');
-        const { allow_duplicate: _a, ...data } = dto;
+        const { allow_duplicate: _a, custom_fields, ...data } = dto;
         await this.refs.assert(ctx, { membership: data.owner_membership_id, company: data.company_id, contact: data.contact_id, lead_status: data.status_id, lead_source: data.lead_source_id, branch: data.branch_id });
         this.refs.assertCanAssign(ctx, 'crm.leads.assign', data.owner_membership_id !== undefined && data.owner_membership_id !== before.owner_membership_id);
         if (data.status_id && data.status_id !== before.status_id) {
@@ -160,6 +164,7 @@ export class CrmLeadsService {
             if (status?.is_converted) throw new BadRequestException({ message: 'Use Convert to mark a lead as converted', code: 'use_convert' });
             if (status?.is_lost) throw new BadRequestException({ message: 'Use the status action with a lost reason', code: 'lost_reason_required' });
         }
+        const customValues = await this.cf.prepare(ctx, RecordEntityType.CRM_LEAD, custom_fields, { creating: false });
         if (!ctx.can(CRM_FINANCIALS)) delete data.estimated_value;
         const lead = await this.prisma.$transaction(async (tx) => {
             const l = await tx.crmLead.update({
@@ -172,7 +177,8 @@ export class CrmLeadsService {
                     ...(data.next_follow_up_at !== undefined && { next_follow_up_at: data.next_follow_up_at ? new Date(data.next_follow_up_at) : null }),
                 },
             });
-            await this.audit.record(ctx, 'crm.lead.updated', { resource_type: 'crm_lead', resource_id: id, branch_id: l.branch_id, metadata: { before: pick(before, Object.keys(data)), after: data } }, tx);
+            await this.cf.write(tx, RecordEntityType.CRM_LEAD, id, customValues);
+            await this.audit.record(ctx, 'crm.lead.updated', { resource_type: 'crm_lead', resource_id: id, branch_id: l.branch_id, metadata: { before: pick(before, Object.keys(data)), after: { ...data, ...(custom_fields && { custom_fields }) } } }, tx);
             return l;
         });
         this.events.publish(ctx, { event_key: 'crm.lead.updated', module: ModuleKey.CRM, entity_type: RecordEntityType.CRM_LEAD, entity_id: id, payload: { name: lead.name, owner_membership_id: lead.owner_membership_id }, changes: data as Record<string, unknown> });
@@ -267,6 +273,8 @@ export class CrmLeadsService {
             membership: [dto.company?.new?.owner_membership_id, dto.contact?.new?.owner_membership_id, dto.deal?.owner_membership_id],
             pipeline: dto.deal?.pipeline_id,
         });
+        const companyCustom = dto.company?.new ? await this.cf.prepare(ctx, RecordEntityType.CRM_COMPANY, dto.company.new.custom_fields, { creating: true }) : null;
+        const contactCustom = dto.contact?.new ? await this.cf.prepare(ctx, RecordEntityType.CRM_CONTACT, dto.contact.new.custom_fields, { creating: true }) : null;
         const pipeline = dto.deal ? await this.pipelines.resolve(ctx, dto.deal.pipeline_id) : null;
         const stage = pipeline && (dto.deal?.stage_id ? pipeline.stages.find((s) => s.id === dto.deal!.stage_id) : pipeline.stages.find((s) => !s.is_won && !s.is_lost));
         if (pipeline && !stage) throw new BadRequestException({ message: 'The stage does not belong to the pipeline', code: 'stage_not_in_pipeline' });
@@ -277,7 +285,7 @@ export class CrmLeadsService {
         const result = await this.prisma.$transaction(async (tx) => {
             let company_id = dto.company?.existing_id ?? lead.company_id ?? null;
             if (dto.company?.new) {
-                const { allow_duplicate: _d, branch_id, ...c } = dto.company.new;
+                const { allow_duplicate: _d, branch_id, custom_fields: _cf, ...c } = dto.company.new;
                 if (!money) { delete c.annual_revenue; delete c.partner_commission_percent; }
                 const created = await tx.crmCompany.create({
                     data: {
@@ -287,10 +295,12 @@ export class CrmLeadsService {
                     },
                 });
                 company_id = created.id;
+                if (companyCustom) await this.cf.write(tx, RecordEntityType.CRM_COMPANY, created.id, companyCustom);
+                await this.cf.carryOver(tx, ctx.organization_id, id, RecordEntityType.CRM_COMPANY, created.id);
             }
             let contact_id = dto.contact?.existing_id ?? lead.contact_id ?? null;
             if (dto.contact?.new) {
-                const { allow_duplicate: _d, ...c } = dto.contact.new;
+                const { allow_duplicate: _d, custom_fields: _cf, ...c } = dto.contact.new;
                 const created = await tx.crmContact.create({
                     data: {
                         ...c, email: c.email?.toLowerCase(), address: c.address as Prisma.InputJsonValue, consent: c.consent as Prisma.InputJsonValue,
@@ -299,6 +309,8 @@ export class CrmLeadsService {
                     },
                 });
                 contact_id = created.id;
+                if (contactCustom) await this.cf.write(tx, RecordEntityType.CRM_CONTACT, created.id, contactCustom);
+                await this.cf.carryOver(tx, ctx.organization_id, id, RecordEntityType.CRM_CONTACT, created.id);
             } else if (contact_id && company_id) {
                 await tx.crmContact.updateMany({ where: { id: contact_id, company_id: null }, data: { company_id } });
             }
@@ -317,6 +329,7 @@ export class CrmLeadsService {
                 });
                 await tx.crmDealStageHistory.create({ data: { deal_id: deal.id, to_stage_id: stage.id, changed_by_user_id: ctx.user_id } });
                 deal_id = deal.id;
+                await this.cf.carryOver(tx, ctx.organization_id, id, RecordEntityType.CRM_DEAL, deal.id);
             }
             // Keep the history: the lead's activities and notes follow the new records.
             await tx.crmActivity.updateMany({ where: { lead_id: id }, data: { ...(company_id && { company_id }), ...(contact_id && { contact_id }), ...(deal_id && { deal_id }) } });
@@ -372,12 +385,13 @@ export class CrmLeadsService {
     }
 
     async export(ctx: OrgContext, query: LeadQuery): Promise<CsvExport> {
-        const tagged = await this.refs.idsWithTag(RecordEntityType.CRM_LEAD, query.tag_id);
+        const tagged = await this.cf.restrictIds(ctx.organization_id, RecordEntityType.CRM_LEAD, query, await this.refs.idsWithTag(RecordEntityType.CRM_LEAD, query.tag_id));
         const rows = await this.prisma.crmLead.findMany({ where: this.where(ctx, query, tagged), include: LIST_INCLUDE, orderBy: { created_at: 'desc' }, take: 10000 });
         const money = ctx.can(CRM_FINANCIALS);
+        const extra = await this.cf.exportColumns(ctx.organization_id, RecordEntityType.CRM_LEAD, rows.map((r) => r.id));
         const content = toCsv(
-            ['id', 'name', 'company', 'contact', 'email', 'phone', 'status', 'source', 'owner', 'score', ...(money ? ['estimated_value', 'currency'] : []), 'created_at', 'converted_at'],
-            rows.map((l) => [l.id, l.name, l.company?.name ?? l.company_name, l.contact_name, l.email, l.phone, l.status?.name, l.lead_source?.name, memberLabel(l.owner), l.manual_score ?? l.lead_score, ...(money ? [l.estimated_value?.toString(), l.currency] : []), l.created_at, l.converted_at]),
+            ['id', 'name', 'company', 'contact', 'email', 'phone', 'status', 'source', 'owner', 'score', ...(money ? ['estimated_value', 'currency'] : []), 'created_at', 'converted_at', ...extra.headers],
+            rows.map((l) => [l.id, l.name, l.company?.name ?? l.company_name, l.contact_name, l.email, l.phone, l.status?.name, l.lead_source?.name, memberLabel(l.owner), l.manual_score ?? l.lead_score, ...(money ? [l.estimated_value?.toString(), l.currency] : []), l.created_at, l.converted_at, ...extra.row(l.id)]),
         );
         await this.audit.record(ctx, 'crm.records.exported', { resource_type: 'crm_lead', metadata: { entity: 'leads', count: rows.length, filters: query } });
         this.events.publish(ctx, { event_key: 'crm.records.exported', module: ModuleKey.CRM, payload: { entity: 'leads', count: rows.length } });

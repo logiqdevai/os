@@ -1,8 +1,9 @@
 import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsDateString, IsInt, IsNumber, IsOptional, IsString, IsUUID, Length, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsDateString, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
 import { CrmDealStatus } from 'generated/prisma';
 import { z } from 'zod';
+import { CustomFieldValuesSchema } from '../../custom-fields/dto/custom-field.dto';
 import { BaseListQuerySchema, boolish, csv } from '@/shared/utils/pagination/pagination.utils';
 
 export class CreateDealDto {
@@ -26,6 +27,7 @@ export class CreateDealDto {
     @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(500) next_step?: string;
     @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(5000) description?: string;
     @ApiProperty({ required: false, type: [String], description: 'Additional contacts' }) @IsOptional() @IsArray() @IsUUID('4', { each: true }) contact_ids?: string[];
+    @ApiProperty({ required: false, description: 'Custom field values keyed by field key (02 §26), e.g. { customer_tier: "enterprise" }; null clears a value' }) @IsOptional() @IsObject() custom_fields?: Record<string, unknown>;
 }
 
 export class UpdateDealDto extends PartialType(OmitType(CreateDealDto, ['pipeline_id', 'stage_id', 'contact_ids'] as const)) { }
@@ -103,6 +105,7 @@ export const CreateDealSchema = z.object({
     next_step: z.string().max(500).optional(),
     description: z.string().max(5000).optional(),
     contact_ids: z.array(z.string().uuid()).optional(),
+    custom_fields: CustomFieldValuesSchema.optional().describe('Custom field values keyed by field key; null clears'),
 });
 export const UpdateDealSchema = CreateDealSchema.omit({ pipeline_id: true, stage_id: true, contact_ids: true }).partial().extend({ id: z.string().uuid() });
 export const ChangeStageSchema = z.object({
@@ -129,6 +132,9 @@ export const DealQuerySchema = BaseListQuerySchema.extend({
     close_from: z.string().optional(),
     close_to: z.string().optional(),
     tag_id: z.string().uuid().optional(),
+    /** Custom-field filter (02 §26): records whose value of field `cf_key` contains `cf_value`. */
+    cf_key: z.string().max(50).optional(),
+    cf_value: z.string().max(200).optional(),
     archived: boolish,
 });
 export type DealQuery = z.infer<typeof DealQuerySchema>;

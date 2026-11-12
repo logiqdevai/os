@@ -19,6 +19,7 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { CrmPaths } from "../crm-paths";
 import { MemberSelect } from "./crm-pickers";
 import { DuplicateNotice, getDuplicates, type DuplicateMatch } from "./crm-actions";
+import { CustomFieldInputs, useCustomFieldValues } from "./custom-fields";
 
 const NONE = "__none";
 
@@ -45,6 +46,7 @@ export function CompanyFormDialog({ open, onOpenChange, company, defaultType = "
     const canAssign = usePermission("crm.companies.assign");
     const [duplicates, setDuplicates] = useState<DuplicateMatch[] | null>(null);
     const form = useForm<CompanyFormValues>({ resolver: zodResolver(companyFormSchema), defaultValues: { name: "", type: defaultType } });
+    const cf = useCustomFieldValues("CRM_COMPANY", open, company);
 
     useEffect(() => {
         if (!open) return;
@@ -71,6 +73,7 @@ export function CompanyFormDialog({ open, onOpenChange, company, defaultType = "
 
     const save = (allow_duplicate: boolean) =>
         form.handleSubmit((v) => {
+            if (!cf.validate()) return;
             const dto: CreateCompanyDto = {
                 name: v.name,
                 type: v.type,
@@ -86,6 +89,7 @@ export function CompanyFormDialog({ open, onOpenChange, company, defaultType = "
                 owner_membership_id: canAssign ? v.owner_membership_id || undefined : undefined,
                 annual_revenue: canMoney && v.annual_revenue ? Number(v.annual_revenue) : undefined,
                 description: v.description || undefined,
+                custom_fields: cf.payload(),
             };
             const onError = (e: unknown) => {
                 const dups = getDuplicates(e);
@@ -190,6 +194,7 @@ export function CompanyFormDialog({ open, onOpenChange, company, defaultType = "
                             <FormField control={form.control} name="description" render={({ field }) => (
                                 <FormItem className="sm:col-span-2"><FormLabel>Description</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
+                            <CustomFieldInputs state={cf} disabled={pending} />
                         </div>
                         {duplicates && <DuplicateNotice matches={duplicates} hrefOf={CrmPaths.company} />}
                         <DialogFooter>

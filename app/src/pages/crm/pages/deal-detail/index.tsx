@@ -27,6 +27,7 @@ import { NotesPanel } from "../../components/notes-panel";
 import { TagEditor } from "../../components/tag-editor";
 import { ContactPicker } from "../../components/crm-pickers";
 import { DealLineItems } from "./components/deal-line-items";
+import { CustomFieldsPanel } from "../../components/custom-fields";
 
 const days = (s: number | null) => (s == null ? "—" : s < 86400 ? "< 1 day" : `${Math.round(s / 86400)} days`);
 
@@ -131,6 +132,7 @@ export default function DealDetailPage() {
                         {d.description && <p className="mt-3 whitespace-pre-wrap border-t border-border pt-3 text-[13px] text-body">{d.description}</p>}
                     </Panel>
                     <DealContacts deal={d} />
+                    <CustomFieldsPanel entityType="CRM_DEAL" values={d.custom_fields} />
                     <Panel title="Tags">
                         <TagEditor entityType="CRM_DEAL" entityId={d.id} tags={d.tags} canEdit={p.can("crm.deals.update")} />
                     </Panel>

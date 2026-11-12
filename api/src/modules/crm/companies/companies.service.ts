@@ -10,6 +10,7 @@ import { companyScopeWhere, dealScopeWhere, domainOf, ownerFilter, pick, PUBLIC_
 import { CrmRefsService } from '../common/crm-refs.service';
 import { CrmDefaultsService } from '../common/crm-defaults.service';
 import { CsvExport, memberLabel, toCsv } from '../common/csv.utils';
+import { CrmCustomFieldValuesService } from '../custom-fields/custom-field-values.service';
 import { CreateCompanyDto, UpdateCompanyDto } from './dto/company.dto';
 import { CompanyQuery, LookupQuery } from './dto/company-query.schema';
 
@@ -37,6 +38,7 @@ export class CrmCompaniesService {
         private readonly events: EventsService,
         private readonly refs: CrmRefsService,
         private readonly defaults: CrmDefaultsService,
+        private readonly cf: CrmCustomFieldValuesService,
     ) { }
 
     private where(ctx: OrgContext, query: CompanyQuery, extraIds?: string[]): Prisma.CrmCompanyWhereInput {
@@ -68,7 +70,7 @@ export class CrmCompaniesService {
     }
 
     async findAll(ctx: OrgContext, query: CompanyQuery) {
-        const tagged = await this.refs.idsWithTag(RecordEntityType.CRM_COMPANY, query.tag_id);
+        const tagged = await this.cf.restrictIds(ctx.organization_id, RecordEntityType.CRM_COMPANY, query, await this.refs.idsWithTag(RecordEntityType.CRM_COMPANY, query.tag_id));
         const where = this.where(ctx, query, tagged);
         const [items, total] = await Promise.all([
             this.prisma.crmCompany.findMany({ where, ...skipTake(query), orderBy: orderBy(query, ['name', 'created_at', 'updated_at', 'last_activity_at'], 'name'), include: LIST_INCLUDE }),
@@ -113,8 +115,8 @@ export class CrmCompaniesService {
             },
         });
         if (!company) throw new NotFoundException({ message: 'Company not found', code: 'company_not_found' });
-        const [tags, summary] = await Promise.all([this.refs.tagsFor(RecordEntityType.CRM_COMPANY, [id]), this.summary(ctx, id)]);
-        return { ...redactCompany(ctx, company), tags: tags.get(id) ?? [], summary };
+        const [tags, summary, custom] = await Promise.all([this.refs.tagsFor(RecordEntityType.CRM_COMPANY, [id]), this.summary(ctx, id), this.cf.valuesFor(ctx.organization_id, RecordEntityType.CRM_COMPANY, [id])]);
+        return { ...redactCompany(ctx, company), tags: tags.get(id) ?? [], custom_fields: custom.get(id) ?? {}, summary };
     }
 
     /** Customer 360 numbers (02 §18): deal counts and values (money only with crm.financials.read). */
@@ -162,7 +164,7 @@ export class CrmCompaniesService {
 
     async create(ctx: OrgContext, dto: CreateCompanyDto) {
         await this.defaults.ensure(ctx.organization_id);
-        const { allow_duplicate, branch_id, ...data } = dto;
+        const { allow_duplicate, branch_id, custom_fields, ...data } = dto;
         await this.refs.assert(ctx, {
             membership: [data.owner_membership_id, data.account_manager_membership_id],
             team: data.team_id, branch: branch_id, company: data.parent_company_id,
@@ -173,6 +175,7 @@ export class CrmCompaniesService {
             if (duplicates.length) throw new ConflictException({ message: 'A company with this name or domain already exists', code: 'possible_duplicates', duplicates });
         }
         if (!ctx.can(CRM_FINANCIALS)) { delete data.annual_revenue; delete data.partner_commission_percent; }
+        const customValues = await this.cf.prepare(ctx, RecordEntityType.CRM_COMPANY, custom_fields, { creating: true });
         const lifecycle_stage_id = data.lifecycle_stage_id ?? (await this.prisma.crmLifecycleStage.findFirst({ where: { organization_id: ctx.organization_id, is_default: true, archived_at: null }, select: { id: true } }))?.id;
         const company = await this.prisma.$transaction(async (tx) => {
             const c = await tx.crmCompany.create({
@@ -189,6 +192,7 @@ export class CrmCompaniesService {
                 },
             });
             if (lifecycle_stage_id) await tx.crmLifecycleHistory.create({ data: { company_id: c.id, stage_id: lifecycle_stage_id, changed_by_user_id: ctx.user_id } });
+            await this.cf.write(tx, RecordEntityType.CRM_COMPANY, c.id, customValues);
             await this.audit.record(ctx, 'crm.company.created', { resource_type: 'crm_company', resource_id: c.id, branch_id, metadata: { after: { name: c.name, type: c.type } } }, tx);
             return c;
         });
@@ -202,7 +206,7 @@ export class CrmCompaniesService {
 
     async update(ctx: OrgContext, id: string, dto: UpdateCompanyDto) {
         const before = await this.getForWrite(ctx, id, UPDATE);
-        const { allow_duplicate: _a, branch_id, ...data } = dto;
+        const { allow_duplicate: _a, branch_id, custom_fields, ...data } = dto;
         await this.refs.assert(ctx, {
             membership: [data.owner_membership_id, data.account_manager_membership_id],
             team: data.team_id, branch: branch_id, company: data.parent_company_id,
@@ -211,6 +215,7 @@ export class CrmCompaniesService {
         this.refs.assertCanAssign(ctx, ASSIGN,
             (data.owner_membership_id !== undefined && data.owner_membership_id !== before.owner_membership_id) ||
             (data.account_manager_membership_id !== undefined && data.account_manager_membership_id !== before.account_manager_membership_id));
+        const customValues = await this.cf.prepare(ctx, RecordEntityType.CRM_COMPANY, custom_fields, { creating: false });
         if (data.parent_company_id === id) throw new ConflictException({ message: 'A company cannot be its own parent', code: 'company_cycle' });
         if (!ctx.can(CRM_FINANCIALS)) { delete data.annual_revenue; delete data.partner_commission_percent; }
         const lifecycleChanged = !!data.lifecycle_stage_id && data.lifecycle_stage_id !== before.lifecycle_stage_id;
@@ -226,6 +231,7 @@ export class CrmCompaniesService {
                 },
             });
             if (lifecycleChanged) await tx.crmLifecycleHistory.create({ data: { company_id: id, stage_id: data.lifecycle_stage_id!, changed_by_user_id: ctx.user_id } });
+            await this.cf.write(tx, RecordEntityType.CRM_COMPANY, id, customValues);
             if (branch_id) {
                 await tx.crmCompanyBranch.upsert({
                     where: { company_id_branch_id_relation_type: { company_id: id, branch_id, relation_type: 'OWNER' } },
@@ -235,7 +241,7 @@ export class CrmCompaniesService {
             }
             await this.audit.record(ctx, 'crm.company.updated', {
                 resource_type: 'crm_company', resource_id: id,
-                metadata: { before: pick(before, Object.keys(data)), after: data },
+                metadata: { before: pick(before, Object.keys(data)), after: { ...data, ...(custom_fields && { custom_fields }) } },
             }, tx);
             return c;
         });
@@ -298,13 +304,14 @@ export class CrmCompaniesService {
 
     /** CSV export (sensitive, audited). Applies the same filters and scope as the list. */
     async export(ctx: OrgContext, query: CompanyQuery): Promise<CsvExport> {
-        const tagged = await this.refs.idsWithTag(RecordEntityType.CRM_COMPANY, query.tag_id);
+        const tagged = await this.cf.restrictIds(ctx.organization_id, RecordEntityType.CRM_COMPANY, query, await this.refs.idsWithTag(RecordEntityType.CRM_COMPANY, query.tag_id));
         const rows = await this.prisma.crmCompany.findMany({ where: this.where(ctx, query, tagged), include: LIST_INCLUDE, orderBy: { name: 'asc' }, take: 10000 });
         const money = ctx.can(CRM_FINANCIALS);
-        const headers = ['id', 'name', 'legal_name', 'type', 'lifecycle_stage', 'industry', 'website', 'email', 'phone', 'country', 'vat_number', 'owner', 'contacts', 'open_deals', ...(money ? ['annual_revenue', 'currency'] : []), 'created_at'];
+        const extra = await this.cf.exportColumns(ctx.organization_id, RecordEntityType.CRM_COMPANY, rows.map((r) => r.id));
+        const headers = ['id', 'name', 'legal_name', 'type', 'lifecycle_stage', 'industry', 'website', 'email', 'phone', 'country', 'vat_number', 'owner', 'contacts', 'open_deals', ...(money ? ['annual_revenue', 'currency'] : []), 'created_at', ...extra.headers];
         const content = toCsv(headers, rows.map((c) => [
             c.id, c.name, c.legal_name, c.type, c.lifecycle_stage?.name, c.industry, c.website, c.email, c.phone, c.country, c.vat_number, memberLabel(c.owner),
-            c._count.contacts, c._count.deals, ...(money ? [c.annual_revenue?.toString(), c.currency] : []), c.created_at,
+            c._count.contacts, c._count.deals, ...(money ? [c.annual_revenue?.toString(), c.currency] : []), c.created_at, ...extra.row(c.id),
         ]));
         await this.audit.record(ctx, 'crm.records.exported', { resource_type: 'crm_company', metadata: { entity: 'companies', count: rows.length, filters: query } });
         this.events.publish(ctx, { event_key: 'crm.records.exported', module: ModuleKey.CRM, payload: { entity: 'companies', count: rows.length } });

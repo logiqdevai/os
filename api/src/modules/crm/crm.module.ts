@@ -30,6 +30,21 @@ import { SavedViewsController } from './saved-views/saved-views.controller';
 import { SavedViewsService } from './saved-views/saved-views.service';
 import { CrmMiscMcp } from './crm-misc.mcp';
 
+import { CrmCustomFieldValuesService } from './custom-fields/custom-field-values.service';
+import { CrmCustomFieldsService } from './custom-fields/custom-fields.service';
+import { CrmCustomFieldsController } from './custom-fields/custom-fields.controller';
+import { CrmCustomFieldsMcp } from './custom-fields/custom-fields.mcp';
+
+/** Extensions (02 §22–33): custom fields, rules & targets, import, merge & duplicates, bulk actions, reports. */
+const FEATURE_CONTROLLERS = [CrmCustomFieldsController];
+const FEATURE_PROVIDERS = [CrmCustomFieldValuesService, CrmCustomFieldsService, CrmCustomFieldsMcp];
+
+
+
+
+
+
+
 /**
  * 02 CRM & Sales (docs/features/02-crm-sales-management.md) plus the platform tags and saved views it owns.
  * Other modules import this module for `CrmCompaniesService.search` / `CrmContactsService.search` (customer pickers).
@@ -38,13 +53,15 @@ import { CrmMiscMcp } from './crm-misc.mcp';
     controllers: [
         CrmCompaniesController, CrmContactsController, CrmLeadsController, CrmDealsController, CrmPipelinesController,
         CrmActivitiesController, CrmNotesController, CrmSettingsController, CrmInsightsController, TagsController, SavedViewsController,
+        ...FEATURE_CONTROLLERS,
     ],
     providers: [
         CrmDefaultsService, CrmRefsService,
         CrmCompaniesService, CrmContactsService, CrmLeadsService, CrmDealsService, CrmPipelinesService,
         CrmActivitiesService, CrmNotesService, CrmSettingsService, CrmInsightsService, TagsService, SavedViewsService,
         CrmCompaniesMcp, CrmContactsMcp, CrmLeadsMcp, CrmDealsMcp, CrmActivitiesMcp, CrmMiscMcp,
+        ...FEATURE_PROVIDERS,
     ],
-    exports: [CrmCompaniesService, CrmContactsService, CrmDealsService, CrmDefaultsService, TagsService],
+    exports: [CrmCompaniesService, CrmContactsService, CrmDealsService, CrmDefaultsService, TagsService, CrmCustomFieldValuesService],
 })
 export class CrmModule { }

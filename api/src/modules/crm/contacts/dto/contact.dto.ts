@@ -2,6 +2,7 @@ import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { IsArray, IsBoolean, IsEmail, IsEnum, IsObject, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { CrmContactRole } from 'generated/prisma';
 import { z } from 'zod';
+import { CustomFieldValuesSchema } from '../../custom-fields/dto/custom-field.dto';
 import { BaseListQuerySchema, boolish, csv } from '@/shared/utils/pagination/pagination.utils';
 
 export class CreateContactDto {
@@ -26,6 +27,7 @@ export class CreateContactDto {
     @ApiProperty({ required: false, description: 'Marketing consent per channel, e.g. { email: true }' }) @IsOptional() @IsObject() consent?: Record<string, boolean>;
     @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(5000) description?: string;
     @ApiProperty({ required: false }) @IsOptional() @IsBoolean() allow_duplicate?: boolean;
+    @ApiProperty({ required: false, description: 'Custom field values keyed by field key (02 §26), e.g. { customer_tier: "enterprise" }; null clears a value' }) @IsOptional() @IsObject() custom_fields?: Record<string, unknown>;
 }
 
 export class UpdateContactDto extends PartialType(CreateContactDto) { }
@@ -52,6 +54,7 @@ export const CreateContactSchema = z.object({
     consent: z.record(z.string(), z.boolean()).optional(),
     description: z.string().max(5000).optional(),
     allow_duplicate: z.boolean().optional(),
+    custom_fields: CustomFieldValuesSchema.optional().describe('Custom field values keyed by field key; null clears'),
 });
 export const UpdateContactSchema = CreateContactSchema.partial().extend({ id: z.string().uuid() });
 
@@ -61,6 +64,9 @@ export const ContactQuerySchema = BaseListQuerySchema.extend({
     owner: z.string().optional(),
     lifecycle_stage_id: z.string().uuid().optional(),
     tag_id: z.string().uuid().optional(),
+    /** Custom-field filter (02 §26): records whose value of field `cf_key` contains `cf_value`. */
+    cf_key: z.string().max(50).optional(),
+    cf_value: z.string().max(200).optional(),
     archived: boolish,
 });
 export type ContactQuery = z.infer<typeof ContactQuerySchema>;
