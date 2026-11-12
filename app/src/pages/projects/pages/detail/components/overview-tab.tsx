@@ -8,6 +8,7 @@ import type { ProjectDetail } from "@/features/projects/interfaces/projects.inte
 import { formatDate, formatMoney, formatNumber, formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { ProjectPriorityFormOptions, ProjectVisibilityFormOptions } from "@/config/constants/dropdowns/projects/project-form.options";
+import { Markdown } from "@/components/ui/markdown";
 import { HealthBadge, ProgressBar, ProjectStatusBadge } from "../../../components/project-badges";
 
 export function OverviewTab({ project: d, onTab }: { project: ProjectDetail; onTab: (tab: string) => void }) {
@@ -52,7 +53,7 @@ export function OverviewTab({ project: d, onTab }: { project: ProjectDetail; onT
                                         {s.latest_update.health && <HealthBadge health={s.latest_update.health} />}
                                         <span>{formatRelative(s.latest_update.published_at)}</span>
                                     </div>
-                                    <p className="whitespace-pre-line text-[13px] text-foreground">{s.latest_update.summary}</p>
+                                    <Markdown source={s.latest_update.summary} className="space-y-1.5 text-[13px]" />
                                 </div>
                             ) : (
                                 <p className="text-[13px] text-muted-foreground">No status update yet. Post one to share health and progress.</p>

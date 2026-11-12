@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Building2, Mail, Plus, Sparkles, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/ui/page";
+import { Markdown } from "@/components/ui/markdown";
 import { Can } from "@/components/access/can";
 import { usePermission } from "@/hooks/use-permission";
 import { toast } from "@/hooks/use-toast";
@@ -90,7 +91,7 @@ export function ConversationDetails({ conversation: c }: { conversation: Convers
                         </Button>
                     }
                 >
-                    {summary ? <p className="whitespace-pre-wrap text-[13px] text-foreground">{summary}</p> : <p className="text-xs text-muted-foreground">No summary yet.</p>}
+                    {summary ? <Markdown source={summary} className="space-y-1.5 text-[13px]" /> : <p className="text-xs text-muted-foreground">No summary yet.</p>}
                 </Section>
             )}
 

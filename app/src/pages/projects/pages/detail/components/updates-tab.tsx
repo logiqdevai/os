@@ -26,6 +26,7 @@ import type { ChangeRequest, ProjectDetail, StatusUpdate, StatusUpdateDraftField
 import { ChangeRequestStatusFormOptions, ProjectHealthFormOptions, ProjectPriorityFormOptions } from "@/config/constants/dropdowns/projects/project-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatRelative } from "@/lib/format";
+import { Markdown } from "@/components/ui/markdown";
 import { HealthBadge, ProjectPriorityBadge } from "../../../components/project-badges";
 
 /** What the status-update dialog edits: a new update (optionally prefilled) or an existing draft. */
@@ -120,12 +121,12 @@ export function UpdatesTab({ project }: { project: ProjectDetail }) {
                                         </div>
                                     )}
                                 </div>
-                                <p className="whitespace-pre-line text-[13px] text-foreground">{u.summary}</p>
+                                <Markdown source={u.summary} className="space-y-1.5 text-[13px]" />
                                 {(u.completed_work || u.upcoming_work || u.risks_summary) && (
                                     <dl className="mt-3 grid gap-3 text-[13px] sm:grid-cols-3">
-                                        {u.completed_work && <div><dt className="text-xs text-muted-foreground">Done</dt><dd className="whitespace-pre-line text-body">{u.completed_work}</dd></div>}
-                                        {u.upcoming_work && <div><dt className="text-xs text-muted-foreground">Next</dt><dd className="whitespace-pre-line text-body">{u.upcoming_work}</dd></div>}
-                                        {u.risks_summary && <div><dt className="text-xs text-muted-foreground">Risks</dt><dd className="whitespace-pre-line text-body">{u.risks_summary}</dd></div>}
+                                        {u.completed_work && <div><dt className="text-xs text-muted-foreground">Done</dt><dd className="text-body"><Markdown source={u.completed_work} className="space-y-1 text-[13px]" /></dd></div>}
+                                        {u.upcoming_work && <div><dt className="text-xs text-muted-foreground">Next</dt><dd className="text-body"><Markdown source={u.upcoming_work} className="space-y-1 text-[13px]" /></dd></div>}
+                                        {u.risks_summary && <div><dt className="text-xs text-muted-foreground">Risks</dt><dd className="text-body"><Markdown source={u.risks_summary} className="space-y-1 text-[13px]" /></dd></div>}
                                     </dl>
                                 )}
                             </li>
