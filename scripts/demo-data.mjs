@@ -11,8 +11,14 @@
  */
 
 const API = (process.env.API_URL ?? 'http://localhost:3000').replace(/\/$/, '');
-const OWNER = { email: 'owner@logiqdev.test', password: 'Password123!' };
-const MEMBER_PASSWORD = 'Password123!';
+// Defaults seed the original test organization. To seed another account (its organization must already exist):
+//   DEMO_OWNER_EMAIL=me@x.com DEMO_OWNER_PASSWORD=… DEMO_MEMBER_DOMAIN=demo.example.test DEMO_CREATE_BASE_MEMBERS=1 node scripts/demo-data.mjs
+// Colleagues are created as members `<name>@DEMO_MEMBER_DOMAIN` with password DEMO_MEMBER_PASSWORD (invite emails are only sent
+// when the organization has an email provider connected — disable it while seeding if the domain is not real).
+const OWNER = { email: process.env.DEMO_OWNER_EMAIL ?? 'owner@logiqdev.test', password: process.env.DEMO_OWNER_PASSWORD ?? 'Password123!' };
+const MEMBER_PASSWORD = process.env.DEMO_MEMBER_PASSWORD ?? 'Password123!';
+const DOMAIN = process.env.DEMO_MEMBER_DOMAIN ?? 'logiqdev.test';
+const CREATE_BASE_MEMBERS = !!process.env.DEMO_CREATE_BASE_MEMBERS;
 
 let token = null;
 let orgId = null;
@@ -204,9 +210,17 @@ async function admin(ctx) {
     const role = (slug) => roles.find((r) => r.slug === slug)?.id;
 
     const newMembers = [
-        { email: 'elena@logiqdev.test', first_name: 'Elena', last_name: 'Papadaki', role: 'project-manager', team: 'WEB' },
-        { email: 'nikos@logiqdev.test', first_name: 'Nikos', last_name: 'Georgiou', role: 'developer', team: 'APP' },
-        { email: 'laura@logiqdev.test', first_name: 'Laura', last_name: 'Becker', role: 'sales-manager', team: 'SAL' },
+        ...(CREATE_BASE_MEMBERS
+            ? [
+                { email: `kim@${DOMAIN}`, first_name: 'Kim', last_name: 'Larsen', role: 'finance-manager', team: 'SAL' },
+                { email: `jonas@${DOMAIN}`, first_name: 'Jonas', last_name: 'Weber', role: 'developer', team: 'WEB' },
+                { email: `sofia@${DOMAIN}`, first_name: 'Sofia', last_name: 'Rossi', role: 'developer', team: 'WEB' },
+                { email: `marco@${DOMAIN}`, first_name: 'Marco', last_name: 'Silva', role: 'employee', team: 'WEB' },
+            ]
+            : []),
+        { email: `elena@${DOMAIN}`, first_name: 'Elena', last_name: 'Papadaki', role: 'project-manager', team: 'WEB' },
+        { email: `nikos@${DOMAIN}`, first_name: 'Nikos', last_name: 'Georgiou', role: 'developer', team: 'APP' },
+        { email: `laura@${DOMAIN}`, first_name: 'Laura', last_name: 'Becker', role: 'sales-manager', team: 'SAL' },
     ];
     for (const m of newMembers) {
         await step(`member ${m.email}`, async () => {
@@ -226,14 +240,14 @@ async function admin(ctx) {
     ctx.members = members;
     const byEmail = (e) => members.find((m) => m.user?.email === e);
     ctx.m = {
-        owner: byEmail('owner@logiqdev.test'),
-        kim: byEmail('kim@logiqdev.test'),
-        jonas: byEmail('jonas@logiqdev.test'),
-        sofia: byEmail('sofia@logiqdev.test'),
-        marco: byEmail('marco@logiqdev.test'),
-        elena: byEmail('elena@logiqdev.test'),
-        nikos: byEmail('nikos@logiqdev.test'),
-        laura: byEmail('laura@logiqdev.test'),
+        owner: byEmail(OWNER.email),
+        kim: byEmail(`kim@${DOMAIN}`),
+        jonas: byEmail(`jonas@${DOMAIN}`),
+        sofia: byEmail(`sofia@${DOMAIN}`),
+        marco: byEmail(`marco@${DOMAIN}`),
+        elena: byEmail(`elena@${DOMAIN}`),
+        nikos: byEmail(`nikos@${DOMAIN}`),
+        laura: byEmail(`laura@${DOMAIN}`),
     };
     for (const [k, v] of Object.entries(ctx.m)) if (!v) console.warn(`  ! member ${k} not found`);
 
