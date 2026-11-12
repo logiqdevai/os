@@ -31,6 +31,8 @@ const DelegationsPage = lazy(() => import("./pages/delegations"));
 const AccessReviewsPage = lazy(() => import("./pages/access-reviews"));
 const AccessReviewDetailPage = lazy(() => import("./pages/access-review-detail"));
 const RetentionPage = lazy(() => import("./pages/retention"));
+/** Customer portal users reuse the Client portal screen and the portal admin API (07 / 01 §79): no second implementation. */
+const PortalUsersPage = lazy(() => import("../client-portal/pages/users"));
 
 const gate = (anyOf: string[], element: ReactNode) => <RequirePermission anyOf={anyOf}>{element}</RequirePermission>;
 
@@ -71,6 +73,7 @@ export default function AdminRoutes() {
             <Route path="access-reviews/new" element={gate(["organizations.access_reviews.manage"], <AccessReviewsPage />)} />
             <Route path="access-reviews/:id" element={gate(["organizations.access_reviews.read", "organizations.access_reviews.manage", "organizations.access_reviews.decide"], <AccessReviewDetailPage />)} />
             <Route path="retention" element={gate(["organizations.retention.manage"], <RetentionPage />)} />
+            <Route path="portal-users" element={gate(["portal.users.read", "portal.users.manage"], <PortalUsersPage />)} />
             <Route path="*" element={gate(["users.members.read", "organizations.audit.read", "organizations.settings.manage"], <OverviewPage />)} />
         </Routes>
     );

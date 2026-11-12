@@ -1,4 +1,4 @@
-import { Archive, Bot, Building, Building2, ClipboardCheck, FileClock, FlaskConical, Forward, Globe, KeyRound, KeySquare, Layers, LayoutDashboard, List, LockKeyhole, Mail, MonitorSmartphone, Palette, Plug, Shield, Sparkles, Users, UsersRound } from "lucide-react";
+import { Archive, Bot, BriefcaseBusiness, Building, Building2, ClipboardCheck, FileClock, FlaskConical, Forward, Globe, KeyRound, KeySquare, Layers, LayoutDashboard, List, LockKeyhole, Mail, MonitorSmartphone, Palette, Plug, Shield, Sparkles, Users, UsersRound } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
 /** Admin (module 01). Every key below exists in api/prisma/seed/permission-catalog.ts. */
@@ -8,7 +8,9 @@ export const adminApp: AppDefinition = {
     icon: Shield,
     basePath: "/admin",
     module: "ADMINISTRATION",
-    viewPermissions: ["users.members.read", "users.roles.read", "organizations.settings.manage", "organizations.audit.read", "organizations.teams.read", "organizations.branches.read"],
+    viewPermissions: ["users.members.read", "users.roles.read", "organizations.settings.manage", "organizations.audit.read", "organizations.teams.read", "organizations.branches.read",
+        "users.sessions.read", "organizations.security.manage", "organizations.domains.manage", "organizations.sso.manage", "users.delegations.manage",
+        "organizations.access_reviews.read", "organizations.access_reviews.decide", "organizations.retention.manage", "portal.users.read", "portal.users.manage"],
     newAction: { label: "Invite member", to: "/admin/invitations/new", permission: "users.members.invite" },
     hidden: true,
     nav: [
@@ -20,6 +22,7 @@ export const adminApp: AppDefinition = {
             { label: "Invitations", to: "/admin/invitations", icon: Mail, permissions: ["users.members.read", "users.members.invite"] },
             { label: "Teams", to: "/admin/teams", icon: UsersRound, permissions: ["organizations.teams.read"] },
             { label: "Branches", to: "/admin/branches", icon: Building2, permissions: ["organizations.branches.read"] },
+            { label: "Portal users", to: "/admin/portal-users", icon: BriefcaseBusiness, permissions: ["portal.users.read", "portal.users.manage"] },
         ] },
         { label: "Access control", items: [
             { label: "Roles", to: "/admin/roles", icon: Shield, permissions: ["users.roles.read"] },
