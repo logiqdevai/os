@@ -1,5 +1,5 @@
 import type {
-    ConditionOperator, DeliveryStatus, EventSource, InboundAuthScheme, InboundWebhookStatus, JobKind, JobRunStatus, JobStatus, OutboundWebhookStatus,
+    ConditionOperator, DateDirection, DeliveryStatus, EventSource, InboundAuthScheme, InboundWebhookStatus, JobKind, JobRunStatus, JobStatus, OutboundWebhookStatus,
     RuleScopeType, RuleStatus, RunMode, RunStatus, StepStatus, TriggerKind, ApprovalDecision,
 } from "@/features/automation/interfaces/automation.interfaces";
 import type { DropdownOption } from "@/lib/dropdown-option-label.utils";
@@ -17,7 +17,7 @@ export const TriggerKindFormOptions: DropdownOption<TriggerKind>[] = [
     { id: "SCHEDULE", label: "On a schedule" },
     { id: "MANUAL", label: "Run manually" },
     { id: "INBOUND_WEBHOOK", label: "Inbound webhook" },
-    { id: "DATE_RELATIVE", label: "Date-relative" },
+    { id: "DATE_RELATIVE", label: "Days before or after a date" },
 ];
 export const TriggerKindShortOptions: DropdownOption<TriggerKind>[] = [
     { id: "EVENT", label: "Event" },
@@ -191,3 +191,34 @@ export const ModuleKeyOptions: DropdownOption<string>[] = [
     { id: "CUSTOMER_PORTAL", label: "Client portal" },
 ];
 export const ModuleKeyFilterOptions: DropdownOption<string>[] = [{ id: "all", label: "All modules" }, ...ModuleKeyOptions];
+
+export const DateDirectionFormOptions: DropdownOption<DateDirection>[] = [
+    { id: "before", label: "days before" },
+    { id: "after", label: "days after" },
+    { id: "on", label: "on the day" },
+];
+
+export const ArchivedFilterOptions: DropdownOption<"false" | "true">[] = [
+    { id: "false", label: "Active" },
+    { id: "true", label: "Archived" },
+];
+
+/** Statuses a member can set on an inbound endpoint (REVOKED is a separate, final action). */
+export const InboundEditableStatusOptions: DropdownOption<"ACTIVE" | "PAUSED">[] = [
+    { id: "ACTIVE", label: "Active" },
+    { id: "PAUSED", label: "Paused (requests get 503)" },
+];
+
+export const OverviewPeriodOptions: DropdownOption<string>[] = [
+    { id: "7", label: "Last 7 days" },
+    { id: "30", label: "Last 30 days" },
+    { id: "90", label: "Last 90 days" },
+];
+
+export const McpCallStatusOptions: DropdownOption<string>[] = [
+    { id: "SUCCEEDED", label: "Succeeded" },
+    { id: "FAILED", label: "Failed" },
+    { id: "DENIED", label: "Denied" },
+    { id: "AWAITING_CONFIRMATION", label: "Awaiting confirmation" },
+    { id: "REJECTED", label: "Rejected" },
+];

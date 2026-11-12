@@ -1,7 +1,7 @@
 import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
 import type {
-    ActionEntry, ApprovalRow, AutomationOverview, AutomationSettings, AutomationUsage, CreateInboundWebhookDto, CreateJobDto, CreateOutboundWebhookDto,
+    ActionEntry, AgentsOverview, ApprovalPolicy, ApprovalPolicyDto, ApprovalRow, DateTriggerPreview, ScopeOptions, UpdateInboundWebhookDto, AutomationOverview, AutomationSettings, AutomationUsage, CreateInboundWebhookDto, CreateJobDto, CreateOutboundWebhookDto,
     InboundWebhook, JobHandler, JobRun, OutboundWebhook, Paginated, PlatformEventDetail, PlatformEventRow, Rule, RuleDefinitionFields, RuleListItem,
     RuleTemplate, RuleVersion, RunDetail, RunListItem, RunMode, ScheduledJob, TriggerEntry, UpdateAutomationSettingsDto, WebhookDelivery, WebhookDeliveryDetail,
 } from "../interfaces/automation.interfaces";
@@ -39,6 +39,7 @@ export const restoreRuleVersion = ({ id, version }: { id: string; version: numbe
 export const exportRule = (id: string) => get<Record<string, unknown>>(R().rules.export(id));
 export const importRule = (rule: Record<string, unknown>) => post<Rule>(R().rules.import, { rule });
 export const runRule = ({ id, payload }: { id: string; payload?: Record<string, unknown> }) => post<RunListItem>(R().rules.run(id), { payload });
+export const previewDateTrigger = (dto: { trigger_key: string; trigger_config?: Record<string, unknown> | null }) => post<DateTriggerPreview>(R().rules.datePreview, dto);
 export const testRule = ({ id, mode, payload }: { id: string; mode: RunMode; payload?: Record<string, unknown> }) => post<RunListItem>(R().rules.test(id), { mode, payload });
 
 // Runs, approvals, events
@@ -63,6 +64,7 @@ export const getDelivery = (id: string) => get<WebhookDeliveryDetail>(R().webhoo
 export const retryDelivery = (id: string) => post<WebhookDelivery>(R().webhooks.retryDelivery(id));
 export const getInboundWebhooks = () => get<InboundWebhook[]>(R().webhooks.inbound);
 export const createInboundWebhook = (dto: CreateInboundWebhookDto) => post<InboundWebhook>(R().webhooks.inbound, dto);
+export const updateInboundWebhook = ({ id, ...dto }: UpdateInboundWebhookDto & { id: string }) => patch<InboundWebhook>(R().webhooks.inboundDetail(id), dto);
 export const inboundAction = ({ id, action }: { id: string; action: "rotate-secret" | "revoke" }) => post<InboundWebhook>(R().webhooks.inboundAction(id, action));
 
 // Jobs
@@ -75,3 +77,12 @@ export const updateJob = ({ id, ...dto }: Partial<CreateJobDto> & { id: string }
 export const deleteJob = (id: string) => del(R().jobs.detail(id));
 export const jobAction = ({ id, action }: { id: string; action: "pause" | "resume" | "run-now" }) => post<ScheduledJob>(R().jobs.action(id, action));
 export const previewSchedule = (dto: { kind: string; cron_expression?: string; interval_seconds?: number; timezone?: string }) => post<{ next_runs: string[] }>(R().jobs.preview, dto);
+
+// Approval policies, scope pickers
+export const getApprovalPolicies = (params: Params) => get<Paginated<ApprovalPolicy>>(R().approvalPolicies.list, params);
+export const getApprovalPolicy = (id: string) => get<ApprovalPolicy>(R().approvalPolicies.detail(id));
+export const createApprovalPolicy = (dto: ApprovalPolicyDto) => post<ApprovalPolicy>(R().approvalPolicies.list, dto);
+export const updateApprovalPolicy = ({ id, ...dto }: Partial<ApprovalPolicyDto> & { id: string }) => patch<ApprovalPolicy>(R().approvalPolicies.detail(id), dto);
+export const setApprovalPolicyArchived = ({ id, archived }: { id: string; archived: boolean }) => post<ApprovalPolicy>(R().approvalPolicies.action(id, archived ? "archive" : "restore"));
+export const getScopeOptions = (search?: string) => get<ScopeOptions>(R().scopeOptions, search ? { search } : undefined);
+export const getAgentsOverview = (days: number) => get<AgentsOverview>(R().agents, { days });

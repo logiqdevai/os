@@ -19,7 +19,7 @@ import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatRelative, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { ConditionOperatorOptions, RunModeFormOptions, TriggerKindFormOptions, ModuleKeyOptions } from "@/config/constants/dropdowns/automation/automation.options";
+import { ConditionOperatorOptions, RunModeFormOptions, TriggerKindFormOptions, ModuleKeyOptions, DateDirectionFormOptions } from "@/config/constants/dropdowns/automation/automation.options";
 import * as service from "@/features/automation/services/automation.services";
 import {
     useActionCatalog, useArchiveRule, useDeleteRule, useDiscardDraft, useDuplicateRule, usePublishRule, useRestoreRule, useRestoreRuleVersion, useRule, useRuleVersions,
@@ -162,6 +162,11 @@ export default function WorkflowDetailPage() {
                                 <div className="rounded-lg border border-border bg-card p-4">
                                     <div className="text-[13px] font-medium text-foreground">{getDropdownOptionLabel(TriggerKindFormOptions, r.trigger_kind)}</div>
                                     <div className="mt-0.5 font-mono text-xs text-muted-foreground">{r.trigger_key}</div>
+                                    {r.trigger_kind === "DATE_RELATIVE" && r.trigger_config && (
+                                        <div className="mt-2 text-xs text-muted-foreground">
+                                            {r.trigger_config.direction === "on" ? "On the day" : `${r.trigger_config.offset_days ?? 0} day(s) ${getDropdownOptionLabel(DateDirectionFormOptions, r.trigger_config.direction ?? "before").replace(/^days? /, "")}`} · checked hourly, once per record
+                                        </div>
+                                    )}
                                     {r.trigger_config?.cron && <div className="mt-2 text-xs text-muted-foreground">Cron <code className="font-mono">{r.trigger_config.cron}</code> · {r.trigger_config.timezone ?? "UTC"}{r.next_run_at && ` · next ${formatDateTime(r.next_run_at)}`}</div>}
                                 </div>
                             </Section>

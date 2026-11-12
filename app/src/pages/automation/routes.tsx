@@ -14,6 +14,8 @@ const WebhooksPage = lazy(() => import("./pages/webhooks"));
 const JobsPage = lazy(() => import("./pages/jobs"));
 const JobDetailPage = lazy(() => import("./pages/job-detail"));
 const SettingsPage = lazy(() => import("./pages/settings"));
+const ApprovalPoliciesPage = lazy(() => import("./pages/approval-policies"));
+const AgentsOverviewPage = lazy(() => import("./pages/agents"));
 
 /** /automation/* — each route gated by its VIEW permission (app/mockups/modules/20-automation). */
 export default function AutomationRoutes() {
@@ -29,9 +31,11 @@ export default function AutomationRoutes() {
             <Route path="runs/:id" element={<RequirePermission permission="automation.runs.read"><RunDetailPage /></RequirePermission>} />
             <Route path="events" element={<RequirePermission permission="automation.runs.read"><EventLogPage /></RequirePermission>} />
             <Route path="approvals" element={<ApprovalsPage />} />
+            <Route path="approval-policies" element={<RequirePermission permission="automation.rules.read"><ApprovalPoliciesPage /></RequirePermission>} />
             <Route path="webhooks" element={<RequirePermission permission="automation.webhooks.read"><WebhooksPage /></RequirePermission>} />
             <Route path="jobs" element={<RequirePermission permission="automation.jobs.read"><JobsPage /></RequirePermission>} />
             <Route path="jobs/:id" element={<RequirePermission permission="automation.jobs.read"><JobDetailPage /></RequirePermission>} />
+            <Route path="agents" element={<RequirePermission permission="automation.rules.read"><AgentsOverviewPage /></RequirePermission>} />
             <Route path="settings" element={<RequirePermission permission="automation.rules.read"><SettingsPage /></RequirePermission>} />
             <Route path="*" element={<Navigate to="/automation" replace />} />
         </Routes>

@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { EntityPicker } from "@/components/ui/entity-picker";
 import { ErrorState, NoAccessState, PageSkeleton } from "@/components/ui/states";
 import { usePermissions } from "@/hooks/use-permission";
 import { toast } from "@/hooks/use-toast";
@@ -22,12 +23,13 @@ import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { useSessionData } from "@/features/session/hooks/use-session";
 import { useServiceAccounts } from "@/features/admin/service-accounts/hooks/use-service-accounts";
 import {
-    useActionCatalog, useCreateRule, useInboundWebhooks, useOutboundWebhooks, usePreviewSchedule, useRule, useRuleTemplates, useTriggerCatalog, useUpdateRule,
+    useActionCatalog, useCreateRule, useInboundWebhooks, useOutboundWebhooks, usePreviewSchedule, useRule, useRuleTemplates, useScopeOptions, useTriggerCatalog, useUpdateRule,
 } from "@/features/automation/hooks/use-automation";
 import type { ActionEntry, ConditionGroup, RuleDefinitionFields, RuleScopeType, RuleStep, TriggerKind } from "@/features/automation/interfaces/automation.interfaces";
 import { ModuleKeyOptions, RuleScopeFormOptions, SchedulePresetOptions, TriggerKindFormOptions } from "@/config/constants/dropdowns/automation/automation.options";
 import { ConditionsEditor } from "./components/conditions-editor";
 import { StepCard } from "./components/step-card";
+import { DateTriggerEditor } from "./components/date-trigger-editor";
 import { MemberPicker } from "../../components/automation-ui";
 
 const NONE = "__none";
@@ -48,6 +50,8 @@ const emptyDraft = (): RuleDefinitionFields => ({
     actions: [],
     scope_type: "ORGANIZATION",
     branch_id: null,
+    team_id: null,
+    project_id: null,
     run_as_service_account_id: null,
     owner_membership_id: null,
     serialize_per_record: false,
@@ -82,6 +86,9 @@ export default function WorkflowBuilderPage() {
     const [loaded, setLoaded] = useState(false);
     const [errors, setErrors] = useState<string[]>([]);
     const [templateRef, setTemplateRef] = useState<string | null>(null);
+    const [projectSearch, setProjectSearch] = useState("");
+    const scopeOptions = useScopeOptions(projectSearch, draft.scope_type === "TEAM" || draft.scope_type === "PROJECT");
+    const [knownProject, setKnownProject] = useState<{ id: string; label: string } | null>(null);
 
     // Load the rule (its unpublished draft wins) or a template.
     useEffect(() => {
@@ -103,6 +110,16 @@ export default function WorkflowBuilderPage() {
         }
     }, [id, rule.data, templates.data, sp, loaded]);
 
+    // Keep the chosen project's label while the search narrows the list.
+    const projectItems = useMemo(() => {
+        const items = (scopeOptions.data?.projects ?? []).map((p) => ({ id: p.id, label: p.code ? `${p.code} · ${p.name}` : p.name }));
+        return knownProject && !items.some((i) => i.id === knownProject.id) ? [knownProject, ...items] : items;
+    }, [scopeOptions.data, knownProject]);
+    useEffect(() => {
+        const hit = projectItems.find((i) => i.id === draft.project_id);
+        if (hit && hit.id !== knownProject?.id) setKnownProject(hit);
+    }, [projectItems, draft.project_id, knownProject]);
+
     const set = <K extends keyof RuleDefinitionFields>(key: K, value: RuleDefinitionFields[K]) => setDraft((d) => ({ ...d, [key]: value }));
     const actionMap = useMemo(() => new Map((actions.data ?? []).map((a) => [a.key, a])), [actions.data]);
     const trigger = triggers.data?.find((t) => t.key === draft.trigger_key);
@@ -117,7 +134,8 @@ export default function WorkflowBuilderPage() {
 
     const setTriggerKind = (kind: TriggerKind) => {
         const key = kind === "MANUAL" ? "manual" : kind === "SCHEDULE" ? "schedule.cron" : "";
-        setDraft((d) => ({ ...d, trigger_kind: kind, trigger_key: key, trigger_config: kind === "SCHEDULE" ? { cron: "0 9 * * 1-5", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone } : null }));
+        const config = kind === "SCHEDULE" ? { cron: "0 9 * * 1-5", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone } : kind === "DATE_RELATIVE" ? { offset_days: 3, direction: "before" as const } : null;
+        setDraft((d) => ({ ...d, trigger_kind: kind, trigger_key: key, trigger_config: config }));
     };
 
     const addStep = (a: ActionEntry) => {
@@ -145,6 +163,7 @@ export default function WorkflowBuilderPage() {
                 const v = s.inputs[f.key];
                 if (v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length)) issues.push(`Step ${i + 1} (${a.name}): ${f.label} is required`);
             });
+            if (s.action_key === "engine.approval" && !s.inputs.policy_id && !s.inputs.approver_membership_id) issues.push(`Step ${i + 1} (${a?.name ?? "Approval"}): choose an approval policy or an approver`);
         });
         setErrors(issues);
         if (issues.length) return;
@@ -169,6 +188,7 @@ export default function WorkflowBuilderPage() {
     };
 
     const eventTriggers = (triggers.data ?? []).filter((t) => t.kind === "EVENT");
+    const dateTriggers = (triggers.data ?? []).filter((t) => t.kind === "DATE_RELATIVE");
     const cron = draft.trigger_config?.cron ?? "";
     const preset = SchedulePresetOptions.some((o) => o.id === cron) ? cron : "custom";
 
@@ -210,7 +230,7 @@ export default function WorkflowBuilderPage() {
                         <Select value={draft.trigger_kind} onValueChange={(v) => setTriggerKind(v as TriggerKind)}>
                             <SelectTrigger aria-label="Trigger type"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                {TriggerKindFormOptions.filter((o) => o.id !== "DATE_RELATIVE").map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}
+                                {TriggerKindFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}
                             </SelectContent>
                         </Select>
 
@@ -248,6 +268,15 @@ export default function WorkflowBuilderPage() {
                                     {preview.data && <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">{preview.data.next_runs.map((d) => <li key={d}>{formatDateTime(d)}</li>)}</ul>}
                                 </div>
                             </div>
+                        )}
+
+                        {draft.trigger_kind === "DATE_RELATIVE" && (
+                            <DateTriggerEditor
+                                triggerKey={draft.trigger_key}
+                                config={draft.trigger_config}
+                                options={dateTriggers}
+                                onChange={(key, config) => setDraft((d) => ({ ...d, trigger_key: key, trigger_config: config }))}
+                            />
                         )}
 
                         {draft.trigger_kind === "MANUAL" && <p className="text-[13px] text-muted-foreground">Runs when someone with automation.rules.run presses “Run now”, or through the API / MCP.</p>}
@@ -301,7 +330,7 @@ export default function WorkflowBuilderPage() {
                                 <Label>Scope</Label>
                                 <Select value={draft.scope_type ?? "ORGANIZATION"} onValueChange={(v) => set("scope_type", v as RuleScopeType)}>
                                     <SelectTrigger aria-label="Scope"><SelectValue /></SelectTrigger>
-                                    <SelectContent>{RuleScopeFormOptions.filter((o) => o.id === "ORGANIZATION" || o.id === "BRANCH").map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
+                                    <SelectContent>{RuleScopeFormOptions.filter((o) => o.id !== "PROJECT_TYPE").map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
                             {draft.scope_type === "BRANCH" && (
@@ -316,7 +345,44 @@ export default function WorkflowBuilderPage() {
                                     </Select>
                                 </div>
                             )}
+                            {draft.scope_type === "TEAM" && (
+                                <div className="space-y-1.5">
+                                    <Label>Team</Label>
+                                    <EntityPicker
+                                        items={(scopeOptions.data?.teams ?? []).map((t) => ({ id: t.id, label: t.name }))}
+                                        value={draft.team_id}
+                                        onChange={(v) => set("team_id", v)}
+                                        placeholder="Choose a team"
+                                        searchPlaceholder="Search teams…"
+                                        loading={scopeOptions.isPending}
+                                        ariaLabel="Team"
+                                        className="h-9"
+                                    />
+                                </div>
+                            )}
+                            {draft.scope_type === "PROJECT" && (
+                                <div className="space-y-1.5">
+                                    <Label>Project</Label>
+                                    <EntityPicker
+                                        items={projectItems}
+                                        value={draft.project_id}
+                                        onChange={(v) => set("project_id", v)}
+                                        onSearch={setProjectSearch}
+                                        placeholder="Choose a project"
+                                        searchPlaceholder="Search projects…"
+                                        emptyText="No project found (needs projects.projects.read)"
+                                        loading={scopeOptions.isFetching}
+                                        ariaLabel="Project"
+                                        className="h-9"
+                                    />
+                                </div>
+                            )}
                         </div>
+                        {draft.scope_type && draft.scope_type !== "ORGANIZATION" && (
+                            <p className="-mt-2 text-xs text-muted-foreground">
+                                The workflow only runs for events that carry the matching {draft.scope_type === "BRANCH" ? "branch" : draft.scope_type === "TEAM" ? "team" : "project"} id (for example tasks of that {draft.scope_type === "PROJECT" ? "project" : "team"}). Members scoped to it can see and edit the workflow.
+                            </p>
+                        )}
                         <div className="space-y-1.5">
                             <Label>Owner</Label>
                             <MemberPicker value={draft.owner_membership_id ? [draft.owner_membership_id] : []} onChange={(ids) => set("owner_membership_id", ids[0] ?? null)} placeholder="You (default)" />

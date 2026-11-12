@@ -12,6 +12,7 @@ import { AutomationSettingsService } from './automation-settings.service';
 import { UpdateAutomationSettingsDto } from './dto/update-automation-settings.dto';
 
 const CatalogQuerySchema = z.object({ module: z.nativeEnum(ModuleKey).optional(), search: z.string().optional() });
+const ScopeQuerySchema = z.object({ search: z.string().max(100).optional() });
 const UsageQuerySchema = z.object({ days: z.coerce.number().int().min(1).max(90).optional().default(30) });
 
 @ApiTags('Automation · Catalog & settings')
@@ -37,6 +38,13 @@ export class AutomationSettingsController {
         return this.insights.usage(ctx, query.days);
     }
 
+    @Get('agents')
+    @RequirePermission('automation.rules.read')
+    @ApiOperation({ summary: 'AI agents & MCP overview: tool-call stats (needs organizations.mcp_calls.read) and service accounts used by workflows' })
+    agents(@CurrentOrg() ctx: OrgContext, @Query(new ZodValidationPipe(UsageQuerySchema)) query: z.infer<typeof UsageQuerySchema>) {
+        return this.insights.agentsOverview(ctx, query.days);
+    }
+
     @Get('triggers')
     @RequirePermission('automation.rules.read')
     @ApiOperation({ summary: 'Trigger catalog + event keys discovered on the bus' })
@@ -56,6 +64,13 @@ export class AutomationSettingsController {
     @ApiOperation({ summary: 'MCP tools the "Run any tool" step can call (only tools the caller holds)' })
     tools(@CurrentOrg() ctx: OrgContext) {
         return this.insights.tools(ctx);
+    }
+
+    @Get('scope-options')
+    @RequirePermission('automation.rules.read')
+    @ApiOperation({ summary: 'Branches, teams, roles and projects (caller scope) for the workflow builder and approval policies' })
+    scopeOptions(@CurrentOrg() ctx: OrgContext, @Query(new ZodValidationPipe(ScopeQuerySchema)) query: z.infer<typeof ScopeQuerySchema>) {
+        return this.insights.scopeOptions(ctx, query.search);
     }
 
     @Get('settings')

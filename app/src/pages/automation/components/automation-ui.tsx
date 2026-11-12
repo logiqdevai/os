@@ -141,5 +141,54 @@ export function MemberPicker({ value, onChange, multiple, placeholder = "Choose 
     );
 }
 
+interface OptionMultiPickerProps {
+    options: { id: string; name: string; hint?: string }[];
+    value: string[];
+    onChange: (ids: string[]) => void;
+    placeholder?: string;
+    searchPlaceholder?: string;
+    emptyText?: string;
+    disabled?: boolean;
+    id?: string;
+    loading?: boolean;
+}
+
+/** Searchable multi-select over a fetched list (teams, roles …). Popover + Command, never a plain <select>. */
+export function OptionMultiPicker({ options, value, onChange, placeholder = "Choose…", searchPlaceholder = "Search…", emptyText = "Nothing found", disabled, id, loading }: OptionMultiPickerProps) {
+    const [open, setOpen] = useState(false);
+    const selected = options.filter((o) => value.includes(o.id));
+    const label = selected.length ? selected.map((o) => o.name).join(", ") : value.length ? `${value.length} selected` : placeholder;
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button id={id} type="button" variant="outline" role="combobox" aria-expanded={open} disabled={disabled} className="w-full justify-between font-normal">
+                    <span className={cn("truncate", !value.length && "text-muted-foreground")}>{label}</span>
+                    <ChevronsUpDown className="opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-64 p-0" align="start">
+                <Command>
+                    <CommandInput placeholder={searchPlaceholder} />
+                    <CommandList>
+                        <CommandEmpty>{loading ? "Loading…" : emptyText}</CommandEmpty>
+                        <CommandGroup>
+                            {options.map((o) => {
+                                const on = value.includes(o.id);
+                                return (
+                                    <CommandItem key={o.id} value={`${o.name} ${o.id}`} onSelect={() => onChange(on ? value.filter((v) => v !== o.id) : [...value, o.id])}>
+                                        <Check className={cn("size-4", on ? "opacity-100" : "opacity-0")} />
+                                        <span className="min-w-0 flex-1 truncate text-[13px]">{o.name}</span>
+                                        {o.hint && <span className="text-xs text-muted-foreground">{o.hint}</span>}
+                                    </CommandItem>
+                                );
+                            })}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 export const describeSchedule = (j: Pick<ScheduledJob, "kind" | "cron_expression" | "interval_seconds" | "run_at" | "timezone">) =>
     j.kind === "CRON" ? `${j.cron_expression} (${j.timezone})` : j.kind === "INTERVAL" ? `every ${j.interval_seconds}s` : j.run_at ? `once at ${formatDateTime(j.run_at)}` : "—";

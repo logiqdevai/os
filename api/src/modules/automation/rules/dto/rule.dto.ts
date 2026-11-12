@@ -175,6 +175,14 @@ export class TestRuleDto extends RunRuleDto {
     use_draft?: boolean;
 }
 
+export class DatePreviewDto {
+    @ApiProperty({ example: 'date.tasks.task.due_date' }) @IsString() @MaxLength(160)
+    trigger_key: string;
+
+    @ApiProperty({ required: false, example: { offset_days: 3, direction: 'before' } }) @IsOptional() @IsObject()
+    trigger_config?: Record<string, unknown>;
+}
+
 export class ImportRuleDto {
     @ApiProperty({ description: 'Body of GET /automation/rules/:id/export' }) @IsObject()
     rule: Record<string, unknown>;

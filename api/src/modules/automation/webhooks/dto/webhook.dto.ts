@@ -80,3 +80,16 @@ export type DeliveryQuery = z.infer<typeof DeliveryQuerySchema>;
 
 export const OutboundQuerySchema = BaseListQuerySchema.extend({ status: z.nativeEnum(OutboundWebhookStatus).optional() });
 export type OutboundQuery = z.infer<typeof OutboundQuerySchema>;
+
+/** MCP input for editing an inbound endpoint (same fields as UpdateInboundWebhookDto; the slug never changes). */
+export const UpdateInboundWebhookSchema = z.object({
+    id: z.string().uuid(),
+    name: z.string().min(1).max(120).optional(),
+    description: z.string().max(1000).optional(),
+    auth_scheme: z.nativeEnum(InboundWebhookAuthScheme).optional(),
+    signature_header: z.string().max(100).optional(),
+    rule_id: z.string().uuid().nullable().optional(),
+    allowed_ip_ranges: z.array(z.string().max(60)).max(50).optional(),
+    rate_limit_per_minute: z.number().int().min(1).max(10000).nullable().optional(),
+    status: z.enum([InboundWebhookStatus.ACTIVE, InboundWebhookStatus.PAUSED]).optional(),
+});

@@ -22,10 +22,12 @@ import { AuthorizationService } from '@/shared/authorization/authorization.servi
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { EventsService, PublishedEvent } from '@/shared/events/events.service';
 import { NotificationsService } from '@/modules/notifications/notifications.service';
+import { OrgAiService } from '@/integrations/ai/services/org-ai.service';
 import { ACTION_BY_KEY, ActionCatalogEntry } from '../catalog/action-catalog';
 import { JobHandlerContext, JobHandlerRegistry } from '../jobs/job-handler.registry';
 import { AutomationSettingsService } from '../settings/automation-settings.service';
 import { WebhookDeliveryService } from '../webhooks/webhook-delivery.service';
+import { ApprovalPoliciesService } from '../approval-policies/approval-policies.service';
 import { automationRunStorage, backoffSeconds, evaluateConditions, resolveTemplates } from './engine.utils';
 import { ConditionGroup, RuleDefinition, RuleStep, RunScope } from './rule-definition.types';
 
@@ -95,6 +97,8 @@ export class AutomationEngineService implements OnModuleInit, OnModuleDestroy {
         private readonly deliveries: WebhookDeliveryService,
         private readonly jobHandlers: JobHandlerRegistry,
         private readonly moduleRef: ModuleRef,
+        private readonly ai: OrgAiService,
+        private readonly policies: ApprovalPoliciesService,
     ) { }
 
     onModuleInit() {
@@ -141,15 +145,14 @@ export class AutomationEngineService implements OnModuleInit, OnModuleDestroy {
     async processEvent(eventId: string) {
         const event = await this.prisma.platformEvent.findUnique({ where: { id: eventId } });
         if (!event?.organization_id) return 0;
+        // An inbound endpoint may be linked to one workflow (20 §12): that workflow runs too, whatever its trigger key.
+        const linkedRuleId = event.inbound_webhook_id
+            ? (await this.prisma.automationInboundWebhook.findUnique({ where: { id: event.inbound_webhook_id }, select: { rule_id: true } }))?.rule_id ?? null
+            : null;
+        const match: Prisma.AutomationRuleWhereInput[] = [{ trigger_key: event.event_key, trigger_kind: { in: [AutomationTriggerKind.EVENT, AutomationTriggerKind.INBOUND_WEBHOOK] } }];
+        if (linkedRuleId) match.push({ id: linkedRuleId });
         const rules = await this.prisma.automationRule.findMany({
-            where: {
-                organization_id: event.organization_id,
-                trigger_key: event.event_key,
-                trigger_kind: { in: [AutomationTriggerKind.EVENT, AutomationTriggerKind.INBOUND_WEBHOOK] },
-                status: 'PUBLISHED',
-                enabled: true,
-                archived_at: null,
-            },
+            where: { organization_id: event.organization_id, status: 'PUBLISHED', enabled: true, archived_at: null, OR: match },
         });
         let started = 0;
         for (const rule of rules) {
@@ -441,7 +444,7 @@ export class AutomationEngineService implements OnModuleInit, OnModuleDestroy {
                     throw new ActionError('destructive_not_allowed', 'This step is destructive or customer-facing; destructive actions are not enabled for the organization or this workflow');
                 }
                 if (run.rule.require_approval_for_destructive && settings.destructive_requires_approval) {
-                    const gate = await this.approvalGate(run, row.id, existing?.approval ?? null, run.rule.owner_membership_id, `${def.name}: ${JSON.stringify(inputs).slice(0, 300)}`, 48, ctx);
+                    const gate = await this.approvalGate(run, row.id, existing?.approval ?? null, { approverIds: run.rule.owner_membership_id ? [run.rule.owner_membership_id] : [], message: `${def.name}: ${JSON.stringify(inputs).slice(0, 300)}`, expiresHours: 48 }, ctx);
                     if (gate) {
                         if (gate.kind === 'awaiting_approval') await done(AutomationStepStatus.AWAITING_APPROVAL, {});
                         return gate;
@@ -522,7 +525,23 @@ export class AutomationEngineService implements OnModuleInit, OnModuleDestroy {
             }
             case 'engine.approval': {
                 if (run.mode === AutomationRunMode.TEST) return { kind: 'succeeded', output: { skipped_in_test: true } };
-                const gate = await this.approvalGate(run, stepId, existing?.approval ?? null, (inputs.approver_membership_id as string) || null, String(inputs.message ?? 'Approval requested'), Number(inputs.expires_after_hours) || null, ctx);
+                const message = String(inputs.message ?? 'Approval requested');
+                let gateOpts: { approverIds: string[]; message: string; expiresHours: number | null; policyId?: string; escalateAfterHours?: number | null; escalateTo?: string | null };
+                if (inputs.policy_id) {
+                    const policy = await this.policies.findForEngine(run.organization_id, String(inputs.policy_id));
+                    if (!policy) throw new ActionError('approval_unavailable', 'The approval policy was not found or is archived');
+                    gateOpts = {
+                        approverIds: existing?.approval ? [] : await this.policies.resolveApprovers(run.organization_id, policy, run.rule.owner_membership_id),
+                        message,
+                        expiresHours: policy.expires_after_hours ?? (Number(inputs.expires_after_hours) || null),
+                        policyId: policy.id,
+                        escalateAfterHours: policy.escalate_after_hours,
+                        escalateTo: policy.escalate_to_membership_id,
+                    };
+                } else {
+                    gateOpts = { approverIds: inputs.approver_membership_id ? [String(inputs.approver_membership_id)] : [], message, expiresHours: Number(inputs.expires_after_hours) || null };
+                }
+                const gate = await this.approvalGate(run, stepId, existing?.approval ?? null, gateOpts, ctx);
                 return gate ?? { kind: 'succeeded', output: { approved_by: existing?.approval?.approver_membership_id, comment: existing?.approval?.comment } };
             }
             case 'notifications.notify': {
@@ -555,6 +574,8 @@ export class AutomationEngineService implements OnModuleInit, OnModuleDestroy {
                 if (!delivery || delivery.status !== WebhookDeliveryStatus.SUCCEEDED) throw new ActionError('webhook_failed', delivery?.error_message ?? 'Delivery failed', true);
                 return { kind: 'succeeded', output: { delivery_id: delivery.id, status_code: delivery.response_status_code } };
             }
+            case 'ai.step':
+                return this.runAiStep(run, stepId, inputs);
             case 'mcp.tool': {
                 const name = String(inputs.tool ?? '');
                 const args = typeof inputs.arguments === 'string' ? safeJson(inputs.arguments) : (inputs.arguments as Record<string, unknown>) ?? {};
@@ -563,6 +584,60 @@ export class AutomationEngineService implements OnModuleInit, OnModuleDestroy {
             default:
                 throw new ActionError('unknown_action', `No executor for ${def.key}`);
         }
+    }
+
+    /**
+     * 20 §4, §9 — AI step on the organization's own OpenAI key (BYOK). Writes an AutomationAiStep row (model, tokens,
+     * cost, confidence). Output is data for later steps only: nothing is sent. No connection → non-retryable failure
+     * with a clear message; CLASSIFY below the confidence threshold stops the run before the next step.
+     */
+    private async runAiStep(run: { id: string; organization_id: string }, stepId: string, inputs: Record<string, unknown>): Promise<StepOutcome> {
+        const op = String(inputs.operation ?? 'SUMMARIZE').toUpperCase() as 'SUMMARIZE' | 'CLASSIFY' | 'DRAFT';
+        if (!['SUMMARIZE', 'CLASSIFY', 'DRAFT'].includes(op)) throw new ActionError('invalid_input', 'Operation must be summarize, classify or draft');
+        const text = (typeof inputs.text === 'string' ? inputs.text : JSON.stringify(inputs.text ?? '')).slice(0, 12_000);
+        if (!text.trim()) throw new ActionError('invalid_input', 'The input text is empty');
+        const instructions = inputs.instructions ? String(inputs.instructions).slice(0, 2000) : '';
+        const labels = String(inputs.labels ?? '').split(',').map((l) => l.trim()).filter(Boolean).slice(0, 30);
+        if (op === 'CLASSIFY' && labels.length < 2) throw new ActionError('invalid_input', 'Classify needs at least two comma-separated labels');
+        const settings = await this.settings.forOrganization(run.organization_id);
+        const raw = inputs.confidence_threshold;
+        const thresholdInput = raw === '' || raw === undefined || raw === null ? NaN : Number(raw);
+        const threshold = Number.isFinite(thresholdInput) ? Math.max(0, Math.min(100, thresholdInput)) : Number(settings.ai_default_confidence_threshold);
+
+        const systems: Record<typeof op, string> = {
+            SUMMARIZE: 'You summarize business records for colleagues. Be concise and factual: 2-5 short sentences or bullet points. Never invent facts.',
+            CLASSIFY: `You classify text into exactly one of these labels: ${labels.join(' | ')}. Reply with JSON only: {"label": "<one label>", "confidence": <0-100>, "reason": "<short>"}.`,
+            DRAFT: 'You draft business text (emails, messages, notes) for a human to review before anything is sent. Match the language of the input. Return only the draft text.',
+        };
+        const prompt = `${instructions ? `Instructions: ${instructions}\n\n` : ''}Input:\n${text}`;
+        const result = await this.ai.generateText(run.organization_id, { system: systems[op], prompt, temperature: op === 'CLASSIFY' ? 0 : 0.3, maxTokens: op === 'CLASSIFY' ? 200 : 800 });
+
+        const base = { organization_id: run.organization_id, run_id: run.id, step_id: stepId, kind: op, prompt_template: instructions || null, input: { text: text.slice(0, 4000), labels } as Prisma.InputJsonValue };
+        if (result.available === false) {
+            await this.prisma.automationAiStep.upsert({ where: { step_id: stepId }, create: { ...base, error: result.message }, update: { error: result.message } }).catch(() => undefined);
+            throw new ActionError(result.reason, result.message, result.reason === 'ai_provider_error');
+        }
+
+        let output: Record<string, unknown>;
+        let confidence: number | null = null;
+        let passed: boolean | null = null;
+        if (op === 'CLASSIFY') {
+            const parsed = parseJsonObject(result.text);
+            const label = labels.find((l) => l.toLowerCase() === String(parsed?.label ?? '').trim().toLowerCase());
+            if (!label) throw new ActionError('ai_invalid_output', `The AI answer did not match one of the labels: ${result.text.slice(0, 200)}`, true);
+            confidence = Math.max(0, Math.min(100, Number(parsed?.confidence ?? 0) || 0));
+            passed = confidence >= threshold;
+            output = { label, confidence, reason: parsed?.reason ?? null, passed_threshold: passed, threshold };
+        } else {
+            output = { text: result.text, ...(op === 'DRAFT' ? { draft: true, sent: false } : {}) };
+        }
+        const row = {
+            provider: result.provider, model: result.model, input_tokens: result.input_tokens, output_tokens: result.output_tokens, latency_ms: result.latency_ms, cost_amount: result.cost,
+            output: output as Prisma.InputJsonValue, confidence, confidence_threshold: op === 'CLASSIFY' ? threshold : null, passed_threshold: passed, requires_approval: false, error: null,
+        };
+        await this.prisma.automationAiStep.upsert({ where: { step_id: stepId }, create: { ...base, ...row }, update: row });
+        const out = { ...output, model: result.model };
+        return passed === false ? { kind: 'stop', output: out } : { kind: 'succeeded', output: out };
     }
 
     /** Module action through its MCP tool: same zod validation, permission key and service method as REST. */
@@ -583,9 +658,7 @@ export class AutomationEngineService implements OnModuleInit, OnModuleDestroy {
         run: { id: string; organization_id: string; rule: AutomationRule },
         stepId: string,
         approval: { id: string; decision: AutomationApprovalDecision } | null,
-        approverId: string | null,
-        message: string,
-        expiresHours: number | null,
+        opts: { approverIds: string[]; message: string; expiresHours: number | null; policyId?: string; escalateAfterHours?: number | null; escalateTo?: string | null },
         ctx: OrgContext,
     ): Promise<StepOutcome | null> {
         if (approval) {
@@ -593,21 +666,25 @@ export class AutomationEngineService implements OnModuleInit, OnModuleDestroy {
             if (approval.decision === AutomationApprovalDecision.PENDING) return { kind: 'awaiting_approval' };
             throw new ActionError(`approval_${approval.decision.toLowerCase()}`, `Approval ${approval.decision.toLowerCase()}`);
         }
-        if (!approverId) throw new ActionError('approval_unavailable', 'No approver: set an approver or a workflow owner');
-        const approver = await this.prisma.membership.findFirst({ where: { id: approverId, organization_id: run.organization_id, status: 'ACTIVE' }, select: { id: true } });
-        if (!approver) throw new ActionError('approval_unavailable', 'The approver is not an active member');
+        if (!opts.approverIds.length) throw new ActionError('approval_unavailable', opts.policyId ? 'The approval policy has no active approver right now' : 'No approver: set an approver, a policy or a workflow owner');
+        const active = await this.prisma.membership.findMany({ where: { id: { in: opts.approverIds }, organization_id: run.organization_id, status: 'ACTIVE' }, select: { id: true } });
+        const activeSet = new Set(active.map((m) => m.id));
+        const approvers = opts.approverIds.filter((id) => activeSet.has(id));
+        if (!approvers.length) throw new ActionError('approval_unavailable', 'The approver is not an active member');
         const created = await this.prisma.automationApproval.create({
             data: {
                 organization_id: run.organization_id,
                 run_id: run.id,
                 step_id: stepId,
-                requested_from_membership_id: approver.id,
-                context: { message, rule_id: run.rule.id, rule_name: run.rule.name } as Prisma.InputJsonValue,
-                expires_at: expiresHours ? new Date(Date.now() + expiresHours * 3600_000) : null,
+                requested_from_membership_id: approvers[0],
+                requested_from: { membership_ids: approvers, escalate_after_hours: opts.escalateAfterHours ?? null, escalate_to_membership_id: opts.escalateTo ?? null } as Prisma.InputJsonValue,
+                policy_id: opts.policyId ?? null,
+                context: { message: opts.message, rule_id: run.rule.id, rule_name: run.rule.name } as Prisma.InputJsonValue,
+                expires_at: opts.expiresHours ? new Date(Date.now() + opts.expiresHours * 3600_000) : null,
             },
         });
-        await this.audit.record(ctx, 'automation.approval.requested', { resource_type: 'automation_approval', resource_id: created.id, metadata: { run_id: run.id, approver_membership_id: approver.id } });
-        void this.notify(ctx, [approver.id], 'automation.approval.requested', `Approval needed: ${run.rule.name}`, message, `/automation/approvals`);
+        await this.audit.record(ctx, 'automation.approval.requested', { resource_type: 'automation_approval', resource_id: created.id, metadata: { run_id: run.id, approver_membership_ids: approvers, policy_id: opts.policyId ?? null } });
+        void this.notify(ctx, approvers, 'automation.approval.requested', `Approval needed: ${run.rule.name}`, opts.message, `/automation/approvals`);
         return { kind: 'awaiting_approval' };
     }
 
@@ -738,6 +815,28 @@ export class AutomationEngineService implements OnModuleInit, OnModuleDestroy {
             if (res.count) await this.execute(a.run_id);
         }
 
+        // Policy escalation: re-send pending requests to the escalation approver once (20 §4).
+        const escalate = await this.prisma.automationApproval.findMany({
+            where: { decision: AutomationApprovalDecision.PENDING, escalated_at: null, policy_id: { not: null }, policy: { escalate_after_hours: { not: null }, escalate_to_membership_id: { not: null } } },
+            select: { id: true, organization_id: true, requested_at: true, requested_from: true, context: true, policy: { select: { escalate_after_hours: true, escalate_to_membership_id: true } } },
+            take: 50,
+        });
+        for (const a of escalate) {
+            const hours = a.policy?.escalate_after_hours ?? 0;
+            const to = a.policy?.escalate_to_membership_id;
+            if (!to || a.requested_at.getTime() + hours * 3600_000 > now.getTime()) continue;
+            const from = (a.requested_from as { membership_ids?: string[] } | null) ?? {};
+            const res = await this.prisma.automationApproval.updateMany({
+                where: { id: a.id, escalated_at: null, decision: AutomationApprovalDecision.PENDING },
+                data: { escalated_at: now, escalated_to_membership_id: to, requested_from: { ...from, membership_ids: [...new Set([...(from.membership_ids ?? []), to])] } as Prisma.InputJsonValue },
+            });
+            if (!res.count) continue;
+            const ctx = await this.systemContext(a.organization_id);
+            const context = (a.context as { message?: string; rule_name?: string } | null) ?? {};
+            await this.audit.record(ctx, 'automation.approval.escalated', { resource_type: 'automation_approval', resource_id: a.id, metadata: { escalated_to_membership_id: to } });
+            void this.notify(ctx, [to], 'automation.approval.requested', `Escalated approval: ${context.rule_name ?? 'workflow'}`, context.message ?? 'An approval request was escalated to you.', '/automation/approvals');
+        }
+
         // At-least-once: events stored but never matched (crash between write and emit, or a failed attempt).
         const missed = await this.prisma.platformEvent.findMany({
             where: {
@@ -768,6 +867,16 @@ export class AutomationEngineService implements OnModuleInit, OnModuleDestroy {
 
 function toEntityType(value: string | null | undefined): RecordEntityType | null {
     return value && (Object.values(RecordEntityType) as string[]).includes(value) ? (value as RecordEntityType) : null;
+}
+
+function parseJsonObject(text: string): Record<string, unknown> | null {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    try {
+        return JSON.parse(match[0]);
+    } catch {
+        return null;
+    }
 }
 
 function safeJson(text: string): Record<string, unknown> {

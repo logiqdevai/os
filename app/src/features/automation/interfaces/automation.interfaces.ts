@@ -47,10 +47,15 @@ export interface RuleStep {
     name?: string;
 }
 
+export type DateDirection = "before" | "after" | "on";
+
 export interface TriggerConfig {
     cron?: string;
     timezone?: string;
     interval_seconds?: number;
+    /** DATE_RELATIVE */
+    offset_days?: number;
+    direction?: DateDirection;
     [key: string]: unknown;
 }
 
@@ -163,6 +168,8 @@ export interface TriggerEntry {
     required_permission?: string;
     fields?: CatalogField[];
     sample_payload?: Record<string, unknown>;
+    /** DATE_RELATIVE triggers: label of the watched date ("due date"). */
+    date_label?: string;
     source: "catalog" | "discovered";
     can_use: boolean;
     module_enabled: boolean;
@@ -173,7 +180,7 @@ export interface TriggerEntry {
 export interface ActionField {
     key: string;
     label: string;
-    type: "text" | "textarea" | "number" | "boolean" | "json" | "select" | "member" | "members" | "webhook" | "conditions";
+    type: "text" | "textarea" | "number" | "boolean" | "json" | "select" | "member" | "members" | "webhook" | "conditions" | "approval_policy";
     required?: boolean;
     placeholder?: string;
     help?: string;
@@ -249,6 +256,10 @@ export interface RunApproval {
     requested_from_membership_id: string | null;
     requested_from_member: PersonRef | null;
     approver: PersonRef | null;
+    policy_id?: string | null;
+    escalated_at?: string | null;
+    /** Everyone who may decide (policy approvers + escalation target); first decision wins. */
+    eligible_membership_ids?: string[];
 }
 
 export interface RunStep {
@@ -519,6 +530,13 @@ export interface CreateInboundWebhookDto {
     slug?: string;
     auth_scheme?: InboundAuthScheme;
     rule_id?: string | null;
+    signature_header?: string;
+    allowed_ip_ranges?: string[];
+    rate_limit_per_minute?: number | null;
+}
+
+export interface UpdateInboundWebhookDto extends Omit<CreateInboundWebhookDto, "slug"> {
+    status?: "ACTIVE" | "PAUSED";
 }
 
 export interface CreateJobDto {
@@ -533,4 +551,89 @@ export interface CreateJobDto {
     handler: string;
     payload?: Record<string, unknown>;
     max_retries?: number;
+}
+
+export interface DateTriggerPreview {
+    date?: string;
+    total: number;
+    records: { id: string; date: string; label: string }[];
+}
+
+export interface NamedRef {
+    id: string;
+    name: string;
+}
+
+export interface ApprovalPolicy {
+    id: string;
+    name: string;
+    description: string | null;
+    approver_membership_ids: string[];
+    approver_team_ids: string[];
+    approver_role_ids: string[];
+    allow_rule_owner: boolean;
+    expires_after_hours: number | null;
+    escalate_after_hours: number | null;
+    escalate_to_membership_id: string | null;
+    delegate_when_out_of_office: boolean;
+    archived_at: string | null;
+    created_at: string;
+    approval_count: number;
+    approvers: PersonRef[];
+    teams: NamedRef[];
+    roles: NamedRef[];
+    escalate_to: PersonRef | null;
+    used_by_rules?: { id: string; name: string; status: RuleStatus }[];
+}
+
+export interface ApprovalPolicyDto {
+    name: string;
+    description?: string | null;
+    approver_membership_ids: string[];
+    approver_team_ids: string[];
+    approver_role_ids: string[];
+    allow_rule_owner: boolean;
+    expires_after_hours: number | null;
+    escalate_after_hours: number | null;
+    escalate_to_membership_id: string | null;
+    delegate_when_out_of_office: boolean;
+}
+
+export interface ScopeOptions {
+    branches: NamedRef[];
+    teams: NamedRef[];
+    roles: (NamedRef & { is_template: boolean })[];
+    projects: (NamedRef & { code: string | null })[];
+}
+
+export interface AgentsOverview {
+    days: number;
+    default_service_account_id: string | null;
+    service_accounts: {
+        id: string;
+        name: string;
+        purpose: string | null;
+        status: string;
+        expires_at: string | null;
+        expired: boolean;
+        is_default: boolean;
+        owner: PersonRef | null;
+        rule_count: number;
+        rules: { id: string; name: string; enabled: boolean; status: RuleStatus }[];
+        runs: number;
+        failed_runs: number;
+    }[];
+    mcp: {
+        total: number;
+        by_status: Record<string, number>;
+        awaiting_confirmation: number;
+        from_automation: number;
+        top_tools: { tool_name: string; count: number; avg_duration_ms: number | null }[];
+        by_service_account: { id: string; name: string; count: number }[];
+        by_api_key: { id: string; name: string; key_prefix: string | null; count: number }[];
+        by_client: { client_name: string; count: number }[];
+        by_day: { date: string; succeeded: number; failed: number }[];
+        recent_issues: { id: string; tool_name: string; status: string; error_code: string | null; client_name: string | null; created_at: string }[];
+    } | null;
+    can: { mcp_calls: boolean; service_accounts: boolean };
 }

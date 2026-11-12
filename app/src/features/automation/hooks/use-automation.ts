@@ -72,6 +72,7 @@ export const useDelivery = (id: string | null) => useQuery({ queryKey: [...KEY, 
 export const useRetryDelivery = mutation(service.retryDelivery);
 export const useInboundWebhooks = (enabled = true) => useQuery({ queryKey: [...KEY, "inbound"], queryFn: service.getInboundWebhooks, enabled });
 export const useCreateInboundWebhook = mutation(service.createInboundWebhook);
+export const useUpdateInboundWebhook = mutation(service.updateInboundWebhook);
 export const useInboundAction = mutation(service.inboundAction);
 
 export const useJobs = (params: Params) => useQuery({ queryKey: [...KEY, "jobs", params], queryFn: () => service.getJobs(params), placeholderData: keepPreviousData });
@@ -82,4 +83,13 @@ export const useCreateJob = mutation(service.createJob);
 export const useUpdateJob = mutation(service.updateJob);
 export const useDeleteJob = mutation(service.deleteJob);
 export const useJobAction = mutation(service.jobAction);
+export const usePreviewDateTrigger = () => useMutation({ mutationFn: service.previewDateTrigger });
 export const usePreviewSchedule = () => useMutation({ mutationFn: service.previewSchedule });
+
+export const useApprovalPolicies = (params: Params, enabled = true) => useQuery({ queryKey: [...KEY, "approval-policies", params], queryFn: () => service.getApprovalPolicies(params), placeholderData: keepPreviousData, enabled });
+export const useApprovalPolicy = (id: string | null) => useQuery({ queryKey: [...KEY, "approval-policy", id], queryFn: () => service.getApprovalPolicy(id as string), enabled: !!id });
+export const useCreateApprovalPolicy = mutation(service.createApprovalPolicy);
+export const useUpdateApprovalPolicy = mutation(service.updateApprovalPolicy);
+export const useSetApprovalPolicyArchived = mutation(service.setApprovalPolicyArchived);
+export const useScopeOptions = (search = "", enabled = true) => useQuery({ queryKey: [...KEY, "scope-options", search], queryFn: () => service.getScopeOptions(search), staleTime: 60_000, placeholderData: keepPreviousData, enabled });
+export const useAgentsOverview = (days: number) => useQuery({ queryKey: [...KEY, "agents", days], queryFn: () => service.getAgentsOverview(days), placeholderData: keepPreviousData });

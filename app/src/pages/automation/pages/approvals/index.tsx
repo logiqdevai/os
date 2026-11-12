@@ -45,7 +45,21 @@ export default function ApprovalsPage() {
                 </div>
             ),
         },
-        { key: "from", header: "Approver", cell: (a) => (a.requested_from_member ? personName(a.requested_from_member.user) : "—"), hideBelow: "md" },
+        {
+            key: "from",
+            header: "Approver",
+            cell: (a) => {
+                const others = Math.max(0, (a.eligible_membership_ids?.length ?? 1) - 1);
+                return (
+                    <span>
+                        {a.requested_from_member ? personName(a.requested_from_member.user) : "—"}
+                        {others > 0 && <span className="text-muted-foreground"> +{others} more</span>}
+                        {a.escalated_at && <span className="block text-xs text-warning">Escalated</span>}
+                    </span>
+                );
+            },
+            hideBelow: "md",
+        },
         { key: "requested", header: "Requested", cell: (a) => <span title={formatDateTime(a.requested_at)}>{formatRelative(a.requested_at)}</span>, hideBelow: "sm" },
         { key: "expires", header: "Expires", cell: (a) => (a.expires_at ? formatDateTime(a.expires_at) : "—"), hideBelow: "lg" },
         { key: "decision", header: "Decision", cell: (a) => <StatusBadge status={a.decision} /> },

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ActionEntry, ActionField, CatalogField, ConditionGroup, OutboundWebhook, RuleStep } from "@/features/automation/interfaces/automation.interfaces";
 import { MemberPicker } from "../../../components/automation-ui";
+import { useApprovalPolicies } from "@/features/automation/hooks/use-automation";
 import { ConditionsEditor } from "./conditions-editor";
 
 interface Props {
@@ -134,11 +135,32 @@ function FieldInput({ id, field, value, onChange, webhooks, triggerFields, disab
             );
         case "json":
             return <JsonInput id={id} label={label} help={help} value={value} onChange={onChange} placeholder={field.placeholder} disabled={disabled} />;
+        case "approval_policy":
+            return <div className="space-y-1.5">{label}<PolicySelect id={id} value={str} onChange={onChange} disabled={disabled} />{help}</div>;
         case "conditions":
             return <div className="space-y-1.5">{label}<ConditionsEditor value={(value as ConditionGroup) ?? { all: [] }} onChange={onChange} fields={triggerFields} disabled={disabled} /></div>;
         default:
             return <div className="space-y-1.5">{label}<Input id={id} value={str} placeholder={field.placeholder} disabled={disabled} onChange={(e) => onChange(e.target.value)} />{help}</div>;
     }
+}
+
+/** Reusable approval policy (20 §4); "none" falls back to the single approver field. */
+function PolicySelect({ id, value, onChange, disabled }: { id: string; value: string; onChange: (v: unknown) => void; disabled?: boolean }) {
+    const policies = useApprovalPolicies({ limit: 200 });
+    const rows = policies.data?.data ?? [];
+    return (
+        <>
+            <Select value={value || "__none"} onValueChange={(v) => onChange(v === "__none" ? undefined : v)} disabled={disabled}>
+                <SelectTrigger id={id}><SelectValue placeholder={policies.isPending ? "Loading…" : undefined} /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="__none">No policy — one approver</SelectItem>
+                    {rows.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+            </Select>
+            {policies.isError && <p className="text-xs text-danger">Policies could not be loaded.</p>}
+            {!policies.isPending && !rows.length && <p className="text-xs text-muted-foreground">No approval policies yet — create one under Automation → Approval policies.</p>}
+        </>
+    );
 }
 
 /** JSON text area that only emits parsed objects (keeps the text while it is invalid). */

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Globe, KeyRound, MoreHorizontal, Pause, Play, Plus, RotateCcw, Send, Trash2, Webhook } from "lucide-react";
+import { Globe, KeyRound, MoreHorizontal, Pencil, Pause, Play, Plus, RotateCcw, Send, Trash2, Webhook } from "lucide-react";
 import { Page, PageHeader, KeyValueList } from "@/components/ui/page";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -28,11 +28,12 @@ import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { environments } from "@/config/environments";
 import { DeliveryStatusFilterOptions, InboundAuthSchemeOptions } from "@/config/constants/dropdowns/automation/automation.options";
 import {
-    useCreateInboundWebhook, useCreateOutboundWebhook, useDeleteOutboundWebhook, useDeliveries, useDelivery, useInboundAction, useInboundWebhooks, useOutboundAction,
+    useCreateOutboundWebhook, useDeleteOutboundWebhook, useDeliveries, useDelivery, useInboundAction, useInboundWebhooks, useOutboundAction,
     useOutboundWebhooks, useRetryDelivery, useUpdateOutboundWebhook,
 } from "@/features/automation/hooks/use-automation";
-import type { InboundAuthScheme, InboundWebhook, OutboundWebhook, WebhookDelivery } from "@/features/automation/interfaces/automation.interfaces";
+import type { InboundWebhook, OutboundWebhook, WebhookDelivery } from "@/features/automation/interfaces/automation.interfaces";
 import { JsonBlock, SecretReveal, StatusBadge, formatDuration } from "../../components/automation-ui";
+import { InboundWebhookDialog } from "./components/inbound-webhook-dialog";
 
 /**
  * /automation/webhooks?tab=outbound|inbound|deliveries (20 §12)
@@ -213,36 +214,24 @@ function OutboundFormDialog({ open, onOpenChange, hook, onSecret }: { open: bool
     );
 }
 
-const inboundSchema = z.object({
-    name: z.string().trim().min(1, "Required").max(120),
-    slug: z.string().trim().regex(/^([a-z0-9][a-z0-9-]{2,60})?$/, "3–61 lowercase letters, digits or dashes").optional(),
-    auth_scheme: z.enum(["HMAC_SHA256", "BEARER_TOKEN", "BASIC", "NONE"]),
-});
-type InboundValues = z.infer<typeof inboundSchema>;
-
 function InboundTab({ onSecret }: { onSecret: SecretSetter }) {
     const hooks = useInboundWebhooks();
     const action = useInboundAction();
-    const create = useCreateInboundWebhook();
     const canManage = usePermissions().can("automation.webhooks.manage");
     const [open, setOpen] = useState(false);
+    const [editing, setEditing] = useState<InboundWebhook | null>(null);
     const [revoking, setRevoking] = useState<InboundWebhook | null>(null);
-    const form = useForm<InboundValues>({ resolver: zodResolver(inboundSchema), defaultValues: { name: "", slug: "", auth_scheme: "HMAC_SHA256" } });
     const base = environments.API_URL.replace(/\/$/, "");
-
-    const submit = form.handleSubmit((v) =>
-        create.mutate({ name: v.name, slug: v.slug || undefined, auth_scheme: v.auth_scheme as InboundAuthScheme }, {
-            onSuccess: (h) => { setOpen(false); form.reset(); if (h.secret) onSecret({ title: `Secret for ${h.name}`, secret: h.secret, extra: `POST ${base}${h.url_path} — sign the raw body with HMAC-SHA256 in the ${h.signature_header ?? "x-signature"} header (or send the token for bearer auth).` }); },
-            onError: fail("Could not create the endpoint"),
-        }),
-    );
+    const onCreated = (h: InboundWebhook) => {
+        if (h.secret) onSecret({ title: `Secret for ${h.name}`, secret: h.secret, extra: `POST ${base}${h.url_path} — sign the raw body with HMAC-SHA256 in the ${h.signature_header ?? "x-signature"} header (or send the token for bearer auth).` });
+    };
 
     if (hooks.isPending) return <ListSkeleton />;
     if (hooks.error) return <ErrorState error={hooks.error} onRetry={() => hooks.refetch()} />;
 
     return (
         <>
-            {canManage && <div className="mb-3 flex justify-end"><Button size="sm" onClick={() => setOpen(true)}><Plus /> New inbound endpoint</Button></div>}
+            {canManage && <div className="mb-3 flex justify-end"><Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus /> New inbound endpoint</Button></div>}
             {!hooks.data.length ? (
                 <div className="rounded-lg border border-border bg-card"><EmptyState icon={Webhook} title="No inbound endpoints" description="Give an external system (forms, Zapier, a CI pipeline) a signed URL that starts a workflow." /></div>
             ) : (
@@ -260,13 +249,15 @@ function InboundTab({ onSecret }: { onSecret: SecretSetter }) {
                             <KeyValueList
                                 items={[
                                     { label: "Auth", value: getDropdownOptionLabel(InboundAuthSchemeOptions, h.auth_scheme) },
-                                    { label: "Workflow", value: h.rule?.name ?? "Any workflow on this trigger" },
+                                    { label: "Workflow", value: h.rule ? <Link className="text-foreground hover:underline" to={`/automation/workflows/${h.rule.id}`}>{h.rule.name}</Link> : "Any workflow on this trigger" },
+                                    ...(h.allowed_ip_ranges.length ? [{ label: "Allowed IPs", value: h.allowed_ip_ranges.join(", ") }] : []),
                                     { label: "Received", value: `${h.received_count}${h.last_received_at ? ` · ${formatRelative(h.last_received_at)}` : ""}` },
                                     { label: "Rejected", value: h.rejected_count ? <span className="text-danger">{h.rejected_count} · {h.last_rejection_reason}</span> : "0" },
                                 ]}
                             />
                             {canManage && h.status !== "REVOKED" && (
                                 <div className="flex flex-wrap gap-2">
+                                    <Button size="sm" variant="outline" onClick={() => { setEditing(h); setOpen(true); }}><Pencil /> Edit</Button>
                                     <Button size="sm" variant="outline" onClick={() => action.mutate({ id: h.id, action: "rotate-secret" }, { onSuccess: (r) => r.secret && onSecret({ title: `New secret for ${h.name}`, secret: r.secret, extra: "The old secret stops working now." }), onError: fail("Could not rotate") })}><KeyRound /> Rotate secret</Button>
                                     <Button size="sm" variant="outline" className="text-danger" onClick={() => setRevoking(h)}>Revoke</Button>
                                 </div>
@@ -275,38 +266,7 @@ function InboundTab({ onSecret }: { onSecret: SecretSetter }) {
                     ))}
                 </div>
             )}
-            <Dialog open={open} onOpenChange={(o) => !create.isPending && setOpen(o)}>
-                <DialogContent className="sm:max-w-md">
-                    <Form {...form}>
-                        <form onSubmit={submit} className="space-y-4">
-                            <DialogHeader>
-                                <DialogTitle>New inbound endpoint</DialogTitle>
-                                <DialogDescription>Each accepted request publishes inbound_webhook.&lt;slug&gt; on the event bus.</DialogDescription>
-                            </DialogHeader>
-                            <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input autoFocus placeholder="Website leads" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="slug" render={({ field }) => (<FormItem><FormLabel>Slug</FormLabel><FormControl><Input placeholder="generated when empty" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField
-                                control={form.control}
-                                name="auth_scheme"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Authentication</FormLabel>
-                                        <Select value={field.value} onValueChange={field.onChange}>
-                                            <FormControl><SelectTrigger aria-label="Authentication"><SelectValue /></SelectTrigger></FormControl>
-                                            <SelectContent>{InboundAuthSchemeOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <DialogFooter>
-                                <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={create.isPending}>Cancel</Button>
-                                <Button type="submit" loading={create.isPending}>Create</Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
+            <InboundWebhookDialog open={open} onOpenChange={setOpen} hook={editing} onCreated={onCreated} />
             <ConfirmationDialog
                 isOpen={!!revoking}
                 onClose={() => setRevoking(null)}

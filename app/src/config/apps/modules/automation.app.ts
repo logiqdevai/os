@@ -1,4 +1,4 @@
-import { CheckCheck, Clock, Globe, Inbox, LayoutDashboard, List, Settings2, Zap } from "lucide-react";
+import { Bot, CheckCheck, Clock, Globe, Inbox, LayoutDashboard, List, Settings2, ShieldCheck, Zap } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
 export const automationApp: AppDefinition = {
@@ -14,6 +14,7 @@ export const automationApp: AppDefinition = {
             { label: "Overview", to: "/automation", icon: LayoutDashboard, end: true },
             { label: "Workflows", to: "/automation/workflows", icon: Zap },
             { label: "Approvals", to: "/automation/approvals", icon: CheckCheck },
+            { label: "Approval policies", to: "/automation/approval-policies", icon: ShieldCheck, permissions: ["automation.rules.read"] },
         ] },
         { label: "Executions", items: [
             { label: "Runs", to: "/automation/runs", icon: List, permissions: ["automation.runs.read"] },
@@ -22,6 +23,7 @@ export const automationApp: AppDefinition = {
         { label: "Integrations", items: [
             { label: "Webhooks", to: "/automation/webhooks", icon: Globe, permissions: ["automation.webhooks.read"] },
             { label: "Scheduled jobs", to: "/automation/jobs", icon: Clock, permissions: ["automation.jobs.read"] },
+            { label: "AI agents & MCP", to: "/automation/agents", icon: Bot, permissions: ["automation.rules.read"] },
         ] },
         { items: [
             { label: "Settings", to: "/automation/settings", icon: Settings2 },

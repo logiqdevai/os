@@ -121,7 +121,7 @@ export class RunsService {
         const where: Prisma.AutomationApprovalWhereInput = {
             organization_id: ctx.organization_id,
             ...(query.decision && { decision: query.decision }),
-            ...(mineOnly ? { requested_from_membership_id: ctx.membership_id ?? '__none__' } : { run: { rule: this.rules.scopeWhere(ctx, RUNS_READ) } }),
+            ...(mineOnly ? { OR: this.mineWhere(ctx) } : { run: { rule: this.rules.scopeWhere(ctx, RUNS_READ) } }),
         };
         const [items, total] = await Promise.all([
             this.prisma.automationApproval.findMany({
@@ -137,13 +137,23 @@ export class RunsService {
             }),
             this.prisma.automationApproval.count({ where }),
         ]);
-        return paginate(items.map((a) => ({ ...a, can_decide: a.decision === AutomationApprovalDecision.PENDING && a.requested_from_membership_id === ctx.membership_id })), total, query);
+        return paginate(items.map((a) => ({ ...a, eligible_membership_ids: eligibleApprovers(a), can_decide: a.decision === AutomationApprovalDecision.PENDING && !!ctx.membership_id && eligibleApprovers(a).includes(ctx.membership_id) })), total, query);
+    }
+
+    /** Requests the caller may decide: primary approver, any approver of the policy, or the escalation target. */
+    private mineWhere(ctx: OrgContext): Prisma.AutomationApprovalWhereInput[] {
+        const me = ctx.membership_id ?? '__none__';
+        return [
+            { requested_from_membership_id: me },
+            { escalated_to_membership_id: me },
+            { requested_from: { path: ['membership_ids'], array_contains: [me] } },
+        ];
     }
 
     async decide(ctx: OrgContext, id: string, dto: DecideApprovalDto) {
         const approval = await this.prisma.automationApproval.findFirst({ where: { id, organization_id: ctx.organization_id } });
         if (!approval) throw new NotFoundException({ message: 'Approval not found', code: 'approval_not_found' });
-        if (approval.requested_from_membership_id !== ctx.membership_id) throw new ForbiddenException({ message: 'Only the requested approver can decide', code: 'not_the_approver' });
+        if (!ctx.membership_id || !eligibleApprovers(approval).includes(ctx.membership_id)) throw new ForbiddenException({ message: 'Only a requested approver can decide', code: 'not_the_approver' });
         if (ctx.channel === 'mcp' || ctx.service_account_id) throw new ForbiddenException({ message: 'Approvals are decided by a person, not an agent', code: 'human_decision_required' });
         const res = await this.prisma.automationApproval.updateMany({
             where: { id, decision: AutomationApprovalDecision.PENDING },
@@ -235,4 +245,10 @@ export class RunsService {
         ]);
         return { runs, deliveries, events, job_runs: jobRuns };
     }
+}
+
+/** Members who may decide an approval (first decision wins). */
+function eligibleApprovers(a: { requested_from_membership_id: string | null; escalated_to_membership_id: string | null; requested_from: Prisma.JsonValue }): string[] {
+    const listed = ((a.requested_from as { membership_ids?: unknown } | null)?.membership_ids ?? []) as unknown[];
+    return [...new Set([a.requested_from_membership_id, a.escalated_to_membership_id, ...listed.filter((x): x is string => typeof x === 'string')].filter((x): x is string => !!x))];
 }

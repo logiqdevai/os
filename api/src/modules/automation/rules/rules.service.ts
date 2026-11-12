@@ -21,6 +21,8 @@ import { ACTION_BY_KEY } from '../catalog/action-catalog';
 import { SYSTEM_TEMPLATES } from '../catalog/template-catalog';
 import { TRIGGER_BY_KEY } from '../catalog/trigger-catalog';
 import { AutomationEngineService } from '../engine/automation-engine.service';
+import { DateTriggerService } from '../engine/date-trigger.service';
+import { DATE_SOURCE_BY_TRIGGER_KEY } from '../catalog/date-trigger-catalog';
 import { RuleDefinition, RuleStep } from '../engine/rule-definition.types';
 import { SchedulerService } from '../jobs/scheduler.service';
 import { CreateRuleSchema, CreateTemplateDto, RuleInput, RuleQuery, TestRuleDto, UpdateRuleSchema } from './dto/rule.dto';
@@ -42,6 +44,7 @@ export class RulesService {
         private readonly engine: AutomationEngineService,
         private readonly scheduler: SchedulerService,
         private readonly mcp: McpRegistry,
+        private readonly dateTriggers: DateTriggerService,
     ) { }
 
     /** Organization-wide readers see every rule; scoped readers see organization rules plus those in their branches / teams / projects. */
@@ -243,6 +246,7 @@ export class RulesService {
             });
         });
         await this.syncSchedule(updated);
+        this.scanDateTrigger(updated);
         await this.audit.record(ctx, 'automation.rule.published', { resource_type: 'automation_rule', resource_id: id, metadata: { version, change_summary: changeSummary ?? null } });
         this.emit(ctx, 'automation.rule.published', updated, { version });
         return this.findOne(ctx, id);
@@ -254,6 +258,7 @@ export class RulesService {
         if (rule.enabled === enabled) return rule;
         const updated = await this.prisma.automationRule.update({ where: { id }, data: { enabled, ...(enabled ? { enabled_at: new Date() } : { disabled_at: new Date() }) } });
         await this.syncSchedule(updated);
+        this.scanDateTrigger(updated);
         await this.audit.record(ctx, enabled ? 'automation.rule.enabled' : 'automation.rule.disabled', { resource_type: 'automation_rule', resource_id: id });
         this.emit(ctx, enabled ? 'automation.rule.enabled' : 'automation.rule.disabled', updated);
         return this.findOne(ctx, id);
@@ -536,8 +541,14 @@ export class RulesService {
                 if (!hook) throw bad('Choose an inbound webhook endpoint of this organization');
                 break;
             }
-            case AutomationTriggerKind.DATE_RELATIVE:
-                throw bad('Date-relative triggers are not available yet; use a schedule with a condition instead', 'trigger_unsupported');
+            case AutomationTriggerKind.DATE_RELATIVE: {
+                if (!DATE_SOURCE_BY_TRIGGER_KEY.has(key)) throw bad('Choose a date to watch, e.g. task due date or contract end date');
+                const direction = config.direction ?? 'before';
+                if (!['before', 'after', 'on'].includes(String(direction))) throw bad('Direction must be before, after or on');
+                const offset = Number(config.offset_days ?? 0);
+                if (direction !== 'on' && (!Number.isInteger(offset) || offset < 0 || offset > 365)) throw bad('Days must be a whole number between 0 and 365');
+                break;
+            }
         }
 
         // Scope references belong to the organization.
@@ -609,6 +620,13 @@ export class RulesService {
             if ((def.is_destructive || def.is_customer_facing || tool?.sensitive) && !allowDestructive) {
                 throw bad(`Step "${step.name ?? def.name}" is destructive or customer-facing: allow destructive actions on the workflow first`, 'destructive_not_allowed');
             }
+            if (def.key === 'engine.approval' && !step.inputs?.policy_id && !step.inputs?.approver_membership_id) {
+                throw bad(`Step "${step.name ?? def.name}": choose an approval policy or an approver`);
+            }
+            if (def.key === 'engine.approval' && step.inputs?.policy_id && typeof step.inputs.policy_id === 'string' && !step.inputs.policy_id.includes('{{')) {
+                const policy = await this.prisma.automationApprovalPolicy.findFirst({ where: { id: step.inputs.policy_id, organization_id: ctx.organization_id, archived_at: null }, select: { id: true } });
+                if (!policy) throw bad(`Step "${step.name ?? def.name}": the approval policy was not found or is archived`);
+            }
             for (const field of def.fields) {
                 if (!field.required) continue;
                 const v = step.inputs?.[field.key];
@@ -649,6 +667,20 @@ export class RulesService {
         });
         const fresh = await this.prisma.scheduledJob.findUnique({ where: { id: job.id }, select: { next_run_at: true } });
         await this.prisma.automationRule.update({ where: { id: rule.id }, data: { next_run_at: fresh?.next_run_at ?? null } });
+    }
+
+    /** DATE_RELATIVE rules fire for today's records right away instead of waiting for the hourly scan. */
+    private scanDateTrigger(rule: AutomationRule) {
+        if (rule.trigger_kind !== AutomationTriggerKind.DATE_RELATIVE) return;
+        setImmediate(() => void this.dateTriggers.scanRule(rule).catch(() => undefined));
+    }
+
+    /** Builder preview of a date-relative trigger: which records would fire today. Needs the source's read key. */
+    async previewDateTrigger(ctx: OrgContext, triggerKey: string, config: Record<string, unknown>) {
+        const source = DATE_SOURCE_BY_TRIGGER_KEY.get(triggerKey);
+        if (!source) throw new BadRequestException({ message: 'Unknown date trigger', code: 'rule_invalid' });
+        if (!ctx.can(source.required_permission)) throw new ForbiddenException({ message: `Previewing needs ${source.required_permission}`, code: 'permission_denied' });
+        return this.dateTriggers.preview(ctx.organization_id, triggerKey, config);
     }
 
     private emit(ctx: OrgContext, key: string, rule: AutomationRule, extra: Record<string, unknown> = {}) {

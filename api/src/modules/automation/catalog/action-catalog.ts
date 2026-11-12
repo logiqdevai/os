@@ -4,7 +4,7 @@ import { AutomationActionKind, ModuleKey } from 'generated/prisma';
 export interface ActionField {
     key: string;
     label: string;
-    type: 'text' | 'textarea' | 'number' | 'boolean' | 'json' | 'select' | 'member' | 'members' | 'webhook' | 'conditions';
+    type: 'text' | 'textarea' | 'number' | 'boolean' | 'json' | 'select' | 'member' | 'members' | 'webhook' | 'conditions' | 'approval_policy';
     required?: boolean;
     placeholder?: string;
     help?: string;
@@ -65,11 +65,12 @@ export const ACTION_CATALOG: ActionCatalogEntry[] = [
     },
     {
         key: 'engine.approval', module: ModuleKey.AUTOMATION, name: 'Require approval', kind: AutomationActionKind.APPROVAL, executor: { type: 'builtin' },
-        description: 'Pauses the run until the chosen member approves or rejects. Rejection stops the run.',
+        description: 'Pauses the run until an approver decides: one member, or a reusable approval policy (several approvers, escalation, out-of-office delegation). First decision wins; rejection stops the run.',
         fields: [
-            { key: 'approver_membership_id', label: 'Approver', type: 'member', required: true },
+            { key: 'policy_id', label: 'Approval policy', type: 'approval_policy', help: 'Use a reusable policy, or pick one approver below.' },
+            { key: 'approver_membership_id', label: 'Approver', type: 'member', help: 'Used when no policy is chosen.' },
             { key: 'message', label: 'What is being approved', type: 'textarea', placeholder: 'Approve sending the renewal offer to {{event.payload.name}}' },
-            { key: 'expires_after_hours', label: 'Expires after (hours)', type: 'number', default: 48 },
+            { key: 'expires_after_hours', label: 'Expires after (hours)', type: 'number', default: 48, help: 'A policy\'s own expiry wins when set.' },
         ],
     },
     {
@@ -89,6 +90,19 @@ export const ACTION_CATALOG: ActionCatalogEntry[] = [
         fields: [
             { key: 'webhook_id', label: 'Endpoint', type: 'webhook', required: true },
             { key: 'payload', label: 'Payload (JSON, optional)', type: 'json', help: 'Defaults to the triggering event.' },
+        ],
+    },
+
+    {
+        key: 'ai.step', module: ModuleKey.AUTOMATION, name: 'AI step', kind: AutomationActionKind.AI_STEP, executor: { type: 'builtin' },
+        description: "Summarize, classify or draft text with the organization's own OpenAI key. The output is only used by later steps and is never sent by itself. Fails with a clear message when no AI provider is connected.",
+        retryable: true,
+        fields: [
+            { key: 'operation', label: 'Operation', type: 'select', required: true, default: 'SUMMARIZE', options: [{ id: 'SUMMARIZE', label: 'Summarize' }, { id: 'CLASSIFY', label: 'Classify' }, { id: 'DRAFT', label: 'Draft text' }] },
+            { key: 'text', label: 'Input text', type: 'textarea', required: true, default: '{{event.payload}}', help: 'What the AI reads. Use templates such as {{event.payload.description}}.' },
+            { key: 'instructions', label: 'Instructions', type: 'textarea', placeholder: 'Write a friendly reminder to the customer about the due invoice.' },
+            { key: 'labels', label: 'Labels (classify)', type: 'text', placeholder: 'billing, bug, feature request, other', help: 'Comma-separated. Classify picks exactly one.' },
+            { key: 'confidence_threshold', label: 'Minimum confidence % (classify)', type: 'number', help: 'Below it the run stops before the next step. Empty = organization default.' },
         ],
     },
 

@@ -8,7 +8,7 @@ import { CurrentOrg, RequirePermission } from '@/shared/authorization/decorators
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { ZodValidationPipe } from '@/shared/pipes/zod.validation.pipe';
 import { RulesService } from './rules.service';
-import { CreateRuleDto, CreateTemplateDto, ImportRuleDto, PublishRuleDto, RuleQuery, RuleQuerySchema, RunRuleDto, TestRuleDto, UpdateRuleDto } from './dto/rule.dto';
+import { CreateRuleDto, CreateTemplateDto, DatePreviewDto, ImportRuleDto, PublishRuleDto, RuleQuery, RuleQuerySchema, RunRuleDto, TestRuleDto, UpdateRuleDto } from './dto/rule.dto';
 
 const TemplateQuerySchema = z.object({ module: z.nativeEnum(ModuleKey).optional(), category: z.string().optional(), search: z.string().optional() });
 
@@ -31,6 +31,13 @@ export class RulesController {
     @ApiOperation({ summary: 'Create a workflow (DRAFT, disabled). Pass template_id to start from a template.' })
     create(@CurrentOrg() ctx: OrgContext, @Body() dto: CreateRuleDto) {
         return this.rules.create(ctx, dto as unknown as Record<string, unknown>);
+    }
+
+    @Post('rules/date-preview')
+    @RequirePermission('automation.rules.read')
+    @ApiOperation({ summary: 'Date-relative trigger preview: records that would fire today (needs the read key of the watched records)' })
+    datePreview(@CurrentOrg() ctx: OrgContext, @Body() dto: DatePreviewDto) {
+        return this.rules.previewDateTrigger(ctx, dto.trigger_key, dto.trigger_config ?? {});
     }
 
     @Post('rules/import')

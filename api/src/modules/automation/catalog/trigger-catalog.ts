@@ -1,4 +1,5 @@
 import { AutomationTriggerKind, ModuleKey, RecordEntityType } from 'generated/prisma';
+import { DATE_TRIGGER_SOURCES } from './date-trigger-catalog';
 
 /** A field of the trigger payload that the rule builder offers for conditions and input templates. */
 export interface CatalogField {
@@ -20,6 +21,8 @@ export interface TriggerCatalogEntry {
     /** Payload fields (relative to `event.payload`) for the condition builder. */
     fields?: CatalogField[];
     sample_payload?: Record<string, unknown>;
+    /** DATE_RELATIVE: label of the watched date ("due date"). */
+    date_label?: string;
 }
 
 const E = AutomationTriggerKind.EVENT;
@@ -105,6 +108,20 @@ export const TRIGGER_CATALOG: TriggerCatalogEntry[] = [
     // --- 20 Automation -------------------------------------------------------------------------------------
     { key: 'automation.rule_run_failed', module: ModuleKey.AUTOMATION, name: 'Workflow run failed', description: 'A workflow run failed permanently (dead-lettered).', kind: E, entity_type: RecordEntityType.AUTOMATION_RUN, required_permission: 'automation.runs.read', fields: [f('rule_name', 'Workflow'), f('error_message', 'Error')] },
     { key: 'automation.rule_run_completed', module: ModuleKey.AUTOMATION, name: 'Workflow run completed', description: 'A workflow run finished successfully.', kind: E, entity_type: RecordEntityType.AUTOMATION_RUN, required_permission: 'automation.runs.read', fields: [f('rule_name', 'Workflow')] },
+
+    // --- Date-relative (20 §3): `date.<source>` with { offset_days, direction } ---------------------------------
+    ...DATE_TRIGGER_SOURCES.map((s): TriggerCatalogEntry => ({
+        key: `date.${s.key}`,
+        module: s.module,
+        name: s.name,
+        description: `${s.description} Runs once per record when the date is the configured number of days away.`,
+        kind: AutomationTriggerKind.DATE_RELATIVE,
+        entity_type: s.entity_type,
+        required_permission: s.required_permission,
+        fields: [...s.fields, f('days_offset', 'Days offset', 'number'), f('direction', 'Direction')],
+        sample_payload: s.sample_payload,
+        date_label: s.date_label,
+    })),
 ];
 
 export const TRIGGER_BY_KEY = new Map(TRIGGER_CATALOG.map((t) => [t.key, t]));

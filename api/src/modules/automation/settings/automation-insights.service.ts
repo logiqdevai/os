@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AutomationApprovalDecision, AutomationRunMode, AutomationRunStatus, ModuleKey } from 'generated/prisma';
+import { AutomationApprovalDecision, AutomationRunMode, AutomationRunStatus, ModuleKey, Prisma } from 'generated/prisma';
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { McpRegistry } from '@/core/mcp/mcp.registry';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
@@ -76,6 +76,36 @@ export class AutomationInsightsService {
         return this.mcp.listFor(ctx).map((t) => ({ name: t.name, description: t.description, permission: t.permission, module: t.module, sensitive: !!t.sensitive, input_schema: this.mcp.jsonSchema(t) }));
     }
 
+    /**
+     * Pickers of the workflow builder and approval policies: branches, teams, roles (names only) and projects
+     * (only with projects.projects.read, narrowed to the caller's project scope).
+     */
+    async scopeOptions(ctx: OrgContext, search?: string) {
+        const q = search?.trim();
+        const name = q ? { name: { contains: q, mode: 'insensitive' as const } } : {};
+        const projectScope = ctx.scopeOf('projects.projects.read');
+        let projectWhere: Prisma.ProjectWhereInput | null = null;
+        if (ctx.can('projects.projects.read')) {
+            projectWhere = { organization_id: ctx.organization_id, archived_at: null, ...name };
+            if (projectScope && !projectScope.organization) {
+                const or: Prisma.ProjectWhereInput[] = [
+                    ...(projectScope.project_ids.length ? [{ id: { in: projectScope.project_ids } }] : []),
+                    ...(projectScope.team_ids.length ? [{ team_id: { in: projectScope.team_ids } }] : []),
+                    ...(projectScope.branch_ids.length ? [{ branch_id: { in: projectScope.branch_ids } }] : []),
+                    ...(ctx.membership_id ? [{ owner_membership_id: ctx.membership_id }] : []),
+                ];
+                projectWhere = or.length ? { ...projectWhere, OR: or } : null;
+            }
+        }
+        const [branches, teams, roles, projects] = await Promise.all([
+            this.prisma.branch.findMany({ where: { organization_id: ctx.organization_id, archived_at: null }, select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 200 }),
+            this.prisma.team.findMany({ where: { organization_id: ctx.organization_id, archived_at: null, ...name }, select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 200 }),
+            this.prisma.role.findMany({ where: { OR: [{ organization_id: ctx.organization_id }, { organization_id: null }] }, select: { id: true, name: true, organization_id: true }, orderBy: { name: 'asc' }, take: 200 }),
+            projectWhere ? this.prisma.project.findMany({ where: projectWhere, select: { id: true, name: true, code: true }, orderBy: { name: 'asc' }, take: 50 }) : [],
+        ]);
+        return { branches, teams, roles: roles.map((r) => ({ id: r.id, name: r.name, is_template: r.organization_id === null })), projects };
+    }
+
     async overview(ctx: OrgContext) {
         const since24 = new Date(Date.now() - DAY);
         const since7 = new Date(Date.now() - 7 * DAY);
@@ -116,6 +146,117 @@ export class AutomationInsightsService {
             failing_jobs: failingJobs,
             top_failing_rules: topFailing,
             recent_runs: recent,
+        };
+    }
+
+    /**
+     * 20 §12 — AI agents & MCP overview: tool-call statistics (only with organizations.mcp_calls.read) and the service
+     * accounts workflows run as. Read-only; management stays in Admin → Service accounts / MCP calls.
+     */
+    async agentsOverview(ctx: OrgContext, days: number) {
+        const since = new Date(Date.now() - days * DAY);
+        const settings = await this.prisma.automationSettings.findUnique({ where: { organization_id: ctx.organization_id }, select: { default_service_account_id: true } });
+        const scopedRules = await this.prisma.automationRule.findMany({
+            where: { organization_id: ctx.organization_id, archived_at: null, run_as_service_account_id: { not: null }, AND: [this.rules.scopeWhere(ctx)] },
+            select: { id: true, name: true, enabled: true, status: true, run_as_service_account_id: true },
+            orderBy: { name: 'asc' },
+            take: 1000,
+        });
+        const saIds = [...new Set([...scopedRules.map((r) => r.run_as_service_account_id as string), ...(settings?.default_service_account_id ? [settings.default_service_account_id] : [])])];
+        const [accounts, runRows] = await Promise.all([
+            saIds.length ? this.prisma.serviceAccount.findMany({ where: { id: { in: saIds }, organization_id: ctx.organization_id }, select: { id: true, name: true, purpose: true, status: true, expires_at: true, owner: { select: { id: true, user: { select: { display_name: true, first_name: true, last_name: true, email: true } } } } } }) : [],
+            saIds.length ? this.prisma.automationRun.findMany({ where: { organization_id: ctx.organization_id, run_as_service_account_id: { in: saIds }, created_at: { gte: since }, mode: AutomationRunMode.LIVE }, select: { run_as_service_account_id: true, status: true }, take: 50_000 }) : [],
+        ]);
+        const now = new Date();
+        const service_accounts = accounts.map((a) => {
+            const runs = runRows.filter((r) => r.run_as_service_account_id === a.id);
+            const total = runs.length;
+            const failed = runs.filter((r) => r.status === AutomationRunStatus.FAILED || r.status === AutomationRunStatus.DEAD_LETTERED).length;
+            return {
+                ...a,
+                is_default: a.id === settings?.default_service_account_id,
+                expired: !!a.expires_at && a.expires_at < now,
+                rule_count: scopedRules.filter((r) => r.run_as_service_account_id === a.id).length,
+                rules: scopedRules.filter((r) => r.run_as_service_account_id === a.id).slice(0, 10),
+                runs: total,
+                failed_runs: failed,
+            };
+        });
+
+        let mcp: Record<string, unknown> | null = null;
+        if (ctx.can('organizations.mcp_calls.read')) {
+            const where = { organization_id: ctx.organization_id, created_at: { gte: since } };
+            // One row query aggregated here (cheaper to type-check and run than five groupBy calls on a small table).
+            const [rows, awaiting] = await Promise.all([
+                this.prisma.mcpToolCall.findMany({
+                    where,
+                    select: { id: true, tool_name: true, status: true, error_code: true, client_name: true, created_at: true, service_account_id: true, api_key_id: true, automation_run_id: true, duration_ms: true },
+                    orderBy: { created_at: 'desc' },
+                    take: 20_000,
+                }),
+                this.prisma.mcpToolCall.count({ where: { organization_id: ctx.organization_id, status: 'AWAITING_CONFIRMATION' } }),
+            ]);
+            const tally = <K extends string>(keyOf: (r: (typeof rows)[number]) => K | null) => {
+                const m = new Map<K, number>();
+                for (const r of rows) {
+                    const k = keyOf(r);
+                    if (k !== null) m.set(k, (m.get(k) ?? 0) + 1);
+                }
+                return [...m.entries()].sort((a, b) => b[1] - a[1]);
+            };
+            const byStatus = tally((r) => r.status);
+            const byTool = tally((r) => r.tool_name).slice(0, 10);
+            const byAccount = tally((r) => r.service_account_id).slice(0, 10);
+            const byKey = tally((r) => r.api_key_id).slice(0, 10);
+            const byClient = tally((r) => r.client_name).slice(0, 10);
+            const durations = new Map<string, { sum: number; n: number }>();
+            for (const r of rows) {
+                if (r.duration_ms === null) continue;
+                const d = durations.get(r.tool_name) ?? { sum: 0, n: 0 };
+                d.sum += r.duration_ms;
+                d.n++;
+                durations.set(r.tool_name, d);
+            }
+            const [saNames, keyNames] = await Promise.all([
+                byAccount.length ? this.prisma.serviceAccount.findMany({ where: { id: { in: byAccount.map(([id]) => id) }, organization_id: ctx.organization_id }, select: { id: true, name: true } }) : [],
+                byKey.length ? this.prisma.apiKey.findMany({ where: { id: { in: byKey.map(([id]) => id) }, organization_id: ctx.organization_id }, select: { id: true, name: true, key_prefix: true } }) : [],
+            ]);
+            const byDay = new Map<string, { date: string; succeeded: number; failed: number }>();
+            for (let i = days - 1; i >= 0; i--) {
+                const d = new Date(Date.now() - i * DAY).toISOString().slice(0, 10);
+                byDay.set(d, { date: d, succeeded: 0, failed: 0 });
+            }
+            for (const r of rows) {
+                const row = byDay.get(r.created_at.toISOString().slice(0, 10));
+                if (!row) continue;
+                if (r.status === 'FAILED' || r.status === 'DENIED') row.failed++;
+                else row.succeeded++;
+            }
+            mcp = {
+                total: rows.length,
+                by_status: Object.fromEntries(byStatus),
+                awaiting_confirmation: awaiting,
+                from_automation: rows.filter((r) => r.automation_run_id).length,
+                top_tools: byTool.map(([tool, count]) => {
+                    const d = durations.get(tool);
+                    return { tool_name: tool, count, avg_duration_ms: d?.n ? Math.round(d.sum / d.n) : null };
+                }),
+                by_service_account: byAccount.map(([id, count]) => ({ id, name: saNames.find((n) => n.id === id)?.name ?? 'Removed account', count })),
+                by_api_key: byKey.map(([id, count]) => {
+                    const k = keyNames.find((n) => n.id === id);
+                    return { id, name: k?.name ?? 'Removed key', key_prefix: k?.key_prefix ?? null, count };
+                }),
+                by_client: byClient.map(([client_name, count]) => ({ client_name, count })),
+                by_day: [...byDay.values()],
+                recent_issues: rows.filter((r) => r.status === 'FAILED' || r.status === 'DENIED').slice(0, 8).map(({ duration_ms: _d, automation_run_id: _a, ...r }) => r),
+            };
+        }
+        return {
+            days,
+            service_accounts,
+            default_service_account_id: settings?.default_service_account_id ?? null,
+            mcp,
+            can: { mcp_calls: ctx.can('organizations.mcp_calls.read'), service_accounts: ctx.can('organizations.service_accounts.manage') },
         };
     }
 

@@ -10,7 +10,9 @@ import { AutomationInsightsService } from './settings/automation-insights.servic
 import { CreateRuleSchema, RuleQuerySchema, UpdateRuleSchema } from './rules/dto/rule.dto';
 import { EventQuerySchema, PublishEventSchema, RunQuerySchema } from './runs/dto/run.dto';
 import { JobQuerySchema } from './jobs/dto/job.dto';
-import { OutboundQuerySchema } from './webhooks/dto/webhook.dto';
+import { OutboundQuerySchema, UpdateInboundWebhookSchema } from './webhooks/dto/webhook.dto';
+import { ApprovalPoliciesService } from './approval-policies/approval-policies.service';
+import { ApprovalPolicyQuerySchema, CreateApprovalPolicySchema, UpdateApprovalPolicySchema } from './approval-policies/dto/approval-policy.dto';
 
 const id = z.object({ id: z.string().uuid() });
 const M = ModuleKey.AUTOMATION;
@@ -25,6 +27,7 @@ export class AutomationMcp implements OnModuleInit {
         private readonly jobs: JobsService,
         private readonly webhooks: WebhooksService,
         private readonly insights: AutomationInsightsService,
+        private readonly policies: ApprovalPoliciesService,
     ) { }
 
     onModuleInit() {
@@ -51,6 +54,12 @@ export class AutomationMcp implements OnModuleInit {
             { name: 'automation_events_publish', description: 'Publish a custom.* event on the bus so workflows and webhooks react to it.', permission: 'automation.runs.manage', module: M, resource_type: 'platform_event', sensitive: true, input: PublishEventSchema, handler: (ctx, a) => this.runs.publishCustom(ctx, a) },
             { name: 'automation_jobs_list', description: 'List scheduled jobs with next run and last result.', permission: 'automation.jobs.read', module: M, resource_type: 'scheduled_job', input: JobQuerySchema, handler: (ctx, a) => this.jobs.findAll(ctx, a) },
             { name: 'automation_jobs_run_now', description: 'Run a scheduled job now.', permission: 'automation.jobs.manage', module: M, resource_type: 'scheduled_job', sensitive: true, input: id, handler: (ctx, a) => this.jobs.runNow(ctx, a.id) },
+            { name: 'automation_approval_policies_list', description: 'List reusable approval policies (approvers, teams, roles, expiry, escalation) that approval steps can reference with policy_id.', permission: 'automation.rules.read', module: M, resource_type: 'automation_approval_policy', input: ApprovalPolicyQuerySchema, handler: (ctx, a) => this.policies.findAll(ctx, a) },
+            { name: 'automation_approval_policies_create', description: 'Create an approval policy: approver_membership_ids / approver_team_ids / approver_role_ids, optional expiry and escalation.', permission: 'automation.approval_policies.manage', module: M, resource_type: 'automation_approval_policy', sensitive: true, input: CreateApprovalPolicySchema, handler: (ctx, a) => this.policies.create(ctx, a) },
+            { name: 'automation_approval_policies_update', description: 'Change an approval policy.', permission: 'automation.approval_policies.manage', module: M, resource_type: 'automation_approval_policy', sensitive: true, input: UpdateApprovalPolicySchema.extend({ id: z.string().uuid() }), handler: (ctx, { id: policyId, ...rest }) => this.policies.update(ctx, policyId, rest) },
+            { name: 'automation_inbound_webhooks_list', description: 'List inbound webhook endpoints (URL path, auth scheme, linked workflow, counters; never the secret).', permission: 'automation.webhooks.read', module: M, resource_type: 'inbound_webhook', input: z.object({}), handler: (ctx) => this.webhooks.listInbound(ctx) },
+            { name: 'automation_inbound_webhooks_update', description: 'Edit an inbound endpoint: name, auth, IP allow-list, rate limit, pause/resume, or link the workflow it starts (rule_id; needs automation.rules.update).', permission: 'automation.webhooks.manage', module: M, resource_type: 'inbound_webhook', sensitive: true, input: UpdateInboundWebhookSchema, handler: (ctx, { id: hookId, ...rest }) => this.webhooks.updateInbound(ctx, hookId, rest) },
+            { name: 'automation_agents_overview', description: 'AI agents & MCP overview: tool-call counts by status, tool, account and client over N days (call stats need organizations.mcp_calls.read) and the service accounts workflows run as.', permission: 'automation.rules.read', module: M, input: z.object({ days: z.number().int().min(1).max(90).default(30) }), handler: (ctx, a) => this.insights.agentsOverview(ctx, a.days) },
             { name: 'automation_webhooks_list', description: 'List outbound webhook endpoints (secrets are never returned).', permission: 'automation.webhooks.read', module: M, resource_type: 'outbound_webhook', input: OutboundQuerySchema, handler: (ctx, a) => this.webhooks.listOutbound(ctx, a) },
         ]);
     }

@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
+import { AiIntegrationModule } from '@/integrations/ai/ai.module';
 import { AutomationMcp } from './automation.mcp';
 import { AutomationEngineService } from './engine/automation-engine.service';
 import { AutomationWorkerService } from './engine/automation-worker.service';
+import { DateTriggerService } from './engine/date-trigger.service';
+import { ApprovalPoliciesController } from './approval-policies/approval-policies.controller';
+import { ApprovalPoliciesService } from './approval-policies/approval-policies.service';
 import { JobHandlerRegistry } from './jobs/job-handler.registry';
 import { JobsController } from './jobs/jobs.controller';
 import { JobsService } from './jobs/jobs.service';
@@ -24,14 +28,17 @@ import { WebhooksService } from './webhooks/webhooks.service';
  *  - host recurring work with `JobHandlerRegistry.register(...)` + `SchedulerService.ensureJob(...)` (both exported).
  */
 @Module({
-    controllers: [RulesController, RunsController, WebhooksController, InboundReceiverController, JobsController, AutomationSettingsController],
+    imports: [AiIntegrationModule],
+    controllers: [ApprovalPoliciesController, RulesController, RunsController, WebhooksController, InboundReceiverController, JobsController, AutomationSettingsController],
     providers: [
         JobHandlerRegistry,
+        ApprovalPoliciesService,
         SchedulerService,
         AutomationSettingsService,
         WebhookDeliveryService,
         AutomationEngineService,
         AutomationWorkerService,
+        DateTriggerService,
         RulesService,
         RunsService,
         WebhooksService,
