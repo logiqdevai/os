@@ -3,8 +3,8 @@ import { ApiRoutes } from "@/config/api/routes";
 import type {
     ChecklistItemInput, CreateChecklistDto, CreateFormDto, CreatePageDto, CreateSpaceDto, CreateTemplateDto, CustomForm, CustomFormDetail, DocsDirectory,
     FillableForm, FormAssignment, FormRecipient, FormSubmission, FormSummary, MyFormAssignment, Paginated, UpdateFormDto, UpdatePageDto, UpdateSpaceDto,
-    WikiAcknowledgements, WikiChecklist, WikiChecklistRun, WikiChecklistRunDetail, WikiHome, WikiPageComment, WikiPageDetail, WikiPageLinks, WikiPageListItem,
-    WikiPageVersion, WikiSpace, WikiSpaceDetail, WikiTemplate, WikiTreeNode,
+    WikiAcknowledgements, WikiChecklist, WikiChecklistRun, WikiChecklistRunDetail, WikiHome, WikiPageComment, WikiPageDetail, WikiPageLinks, WikiPageListItem, WikiPagePermissions, SetPagePermissionsDto,
+    WikiPageVersion, WikiSpace, WikiSpaceDetail, WikiTemplate, WikiTreeNode, DocsAiAnswer, DocsAiStatus, DocsAnalytics, DocsExportScope, DocsImportResult, DocsTransferJob,
 } from "../interfaces/docs.interfaces";
 
 const R = () => ApiRoutes.docs;
@@ -46,6 +46,8 @@ export const addComment = ({ id, body, parent_comment_id }: { id: string; body: 
 export const commentAction = ({ id, commentId, action }: { id: string; commentId: string; action: "resolve" | "reopen" }) => post(R().pages.commentAction(id, commentId, action));
 export const deleteComment = ({ id, commentId }: { id: string; commentId: string }) => del(R().pages.comment(id, commentId));
 export const getLinks = (id: string) => get<WikiPageLinks>(R().pages.links(id));
+export const getPagePermissions = (id: string) => get<WikiPagePermissions>(R().pages.permissions(id));
+export const setPagePermissions = ({ id, ...dto }: SetPagePermissionsDto & { id: string }) => put<WikiPagePermissions>(R().pages.permissions(id), dto);
 export const getAcknowledgements = (id: string) => get<WikiAcknowledgements>(R().pages.acknowledgements(id));
 
 // Templates
@@ -87,3 +89,44 @@ export const reviewResponse = ({ id, submissionId, status, review_notes }: { id:
 // Public form (no credential)
 export const getPublicForm = (id: string) => get<FillableForm>(R().publicForms.detail(id));
 export const submitPublicForm = ({ id, answers }: { id: string; answers: Record<string, unknown> }) => post<{ confirmation_message?: string | null }>(R().publicForms.submit(id), { answers });
+
+// AI Q&A (15 §6)
+export const askDocs = (dto: { question: string; space_id?: string }) => post<DocsAiAnswer>(R().ai.ask, dto);
+export const getDocsAiStatus = () => get<DocsAiStatus>(R().ai.status);
+export const reindexDocsAi = () => post<{ pages: number; chunks: number; embedded: number; ai_configured: boolean }>(R().ai.reindex);
+
+// Analytics, import / export (15 §2)
+export const getDocsAnalytics = (params: Params) => get<DocsAnalytics>(R().analytics, params);
+/** Downloads the export ZIP with the caller's credentials; API errors (sent as a JSON blob) become readable messages. */
+export const exportDocs = async (params: { scope: DocsExportScope; page_id?: string; space_id?: string }) => {
+    let res;
+    try {
+        res = await axiosInstance.get<Blob>(R().export, { params, responseType: "blob" });
+    } catch (error) {
+        const data = (error as { response?: { data?: unknown } }).response?.data;
+        if (data instanceof Blob) {
+            const body = JSON.parse(await data.text().catch(() => "{}")) as { message?: string | string[] };
+            throw new Error(Array.isArray(body.message) ? body.message.join(". ") : body.message || "The export failed.");
+        }
+        throw error;
+    }
+    const name = /filename="?([^";]+)"?/.exec(String(res.headers["content-disposition"] ?? ""))?.[1] ?? "docs-export.zip";
+    const href = URL.createObjectURL(res.data);
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 1000);
+    return name;
+};
+export const importDocs = async ({ file, space_id, parent_page_id, publish }: { file: File; space_id: string; parent_page_id?: string; publish?: boolean }) => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("space_id", space_id);
+    if (parent_page_id) form.append("parent_page_id", parent_page_id);
+    if (publish) form.append("publish", "true");
+    return (await axiosInstance.post<DocsImportResult>(R().import, form, { headers: { "Content-Type": "multipart/form-data" } })).data;
+};
+export const getDocsTransfers = () => get<DocsTransferJob[]>(R().transfers);

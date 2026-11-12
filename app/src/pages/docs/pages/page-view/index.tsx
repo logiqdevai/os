@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Archive, ArchiveRestore, CheckCircle2, ChevronRight, FilePlus, History, Link2, MessageSquare, MoreHorizontal, Pencil, Rocket, Star, Trash2 } from "lucide-react";
+import { Download, FileUp, Lock, Archive, ArchiveRestore, CheckCircle2, ChevronRight, FilePlus, History, Link2, MessageSquare, MoreHorizontal, Pencil, Rocket, Star, Trash2 } from "lucide-react";
 import { Page } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,9 @@ import {
 } from "@/features/docs/hooks/use-docs";
 import type { WikiPageDetail } from "@/features/docs/interfaces/docs.interfaces";
 import { DocIcon, DocsStatusBadge, SpaceLayout } from "../../components/docs-ui";
+import { PermissionsPanel } from "./components/permissions-panel";
+import { ExportDocsDialog, ImportDocsDialog } from "../../components/transfer-dialogs";
+import { usePermissions } from "@/hooks/use-permission";
 
 /**
  * /docs/pages/:id — read a page (15 §3–6): content, children, comments, versions, backlinks, favorite, acknowledge
@@ -34,8 +37,10 @@ export default function PageViewPage() {
     const page = usePage(id);
     const favorite = useSetFavorite();
     const action = usePageAction();
-    const [panel, setPanel] = useState<null | "history" | "comments" | "links">(null);
+    const [panel, setPanel] = useState<null | "history" | "comments" | "links" | "permissions">(null);
     const [confirm, setConfirm] = useState<null | "trash" | "archive">(null);
+    const [transfer, setTransfer] = useState<null | "import" | "export">(null);
+    const perms = usePermissions();
     usePageMetadata({ title: page.data?.title });
 
     // Reader analytics: one view per open (the API de-duplicates).
@@ -83,6 +88,9 @@ export default function PageViewPage() {
                                 <DropdownMenuItem onSelect={() => setPanel("comments")}><MessageSquare /> Comments ({pg.comment_count})</DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => setPanel("history")}><History /> Version history</DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => setPanel("links")}><Link2 /> Backlinks ({pg.backlink_count})</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => setPanel("permissions")}><Lock /> Permissions</DropdownMenuItem>
+                                {perms.can("docs.pages.export") && <DropdownMenuItem onSelect={() => setTransfer("export")}><Download /> Export as Markdown</DropdownMenuItem>}
+                                {pg.can.edit && perms.can("docs.pages.import") && <DropdownMenuItem onSelect={() => setTransfer("import")}><FileUp /> Import sub-pages</DropdownMenuItem>}
                                 {pg.can.edit && <DropdownMenuItem onSelect={() => navigate(`/docs/pages/new?space=${pg.space_id}&parent=${pg.id}`)}><FilePlus /> Add sub-page</DropdownMenuItem>}
                                 {pg.can.publish && pg.status === "PUBLISHED" && <DropdownMenuItem onSelect={() => act("unpublish", "Page moved back to draft")}><Pencil /> Unpublish</DropdownMenuItem>}
                                 {pg.can.archive && (
@@ -119,11 +127,14 @@ export default function PageViewPage() {
                 )}
             </Page>
 
+            <ImportDocsDialog open={transfer === "import"} onOpenChange={(o) => setTransfer(o ? "import" : null)} spaceId={pg.space_id} parentPageId={pg.id} parentTitle={pg.title} />
+            <ExportDocsDialog open={transfer === "export"} onOpenChange={(o) => setTransfer(o ? "export" : null)} spaceId={pg.space_id} pageId={pg.id} />
             <Sheet open={!!panel} onOpenChange={(o) => !o && setPanel(null)}>
                 <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
                     {panel === "comments" && <CommentsPanel page={pg} />}
                     {panel === "history" && <HistoryPanel page={pg} />}
                     {panel === "links" && <LinksPanel pageId={pg.id} />}
+                    {panel === "permissions" && <PermissionsPanel page={pg} />}
                 </SheetContent>
             </Sheet>
             <ConfirmationDialog

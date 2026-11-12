@@ -17,9 +17,12 @@ import { ErrorState, NoAccessState, PageSkeleton } from "@/components/ui/states"
 import { usePermissions } from "@/hooks/use-permission";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { isAxiosError } from "axios";
+import { ConflictDialog } from "./components/conflict-dialog";
+import { mergeWithMarkers } from "../../utils/line-diff";
 import { WikiPageTypeFormOptions } from "@/config/constants/dropdowns/docs/docs.options";
 import { useCreatePage, useDocTemplates, usePage, useSpaces, useUpdatePage } from "@/features/docs/hooks/use-docs";
-import type { WikiPageType } from "@/features/docs/interfaces/docs.interfaces";
+import type { WikiPageConflict, WikiPageType } from "@/features/docs/interfaces/docs.interfaces";
 
 const NONE = "__none";
 const schema = z.object({
@@ -55,6 +58,9 @@ export default function PageEditorPage() {
     const textRef = useRef<HTMLTextAreaElement>(null);
     const [tab, setTab] = useState("write");
     const parent = sp.get("parent") ?? undefined;
+    // Optimistic concurrency: the version this editor started from (set once; refetches never reset the draft).
+    const [baseVersion, setBaseVersion] = useState<number | null>(null);
+    const [conflict, setConflict] = useState<WikiPageConflict | null>(null);
 
     const form = useForm<Values>({
         resolver: zodResolver(schema),
@@ -69,11 +75,12 @@ export default function PageEditorPage() {
         }
     }, [id, sp, templates.data, form]);
     useEffect(() => {
-        if (page.data) {
+        if (page.data && baseVersion === null) {
             const pg = page.data;
+            setBaseVersion(pg.current_version_number);
             form.reset({ title: pg.title, icon: pg.icon ?? "", space_id: pg.space_id, page_type: pg.page_type, template_id: NONE, content_markdown: pg.content_markdown ?? "", review_interval_days: pg.review_interval_days ? String(pg.review_interval_days) : "", requires_acknowledgement: pg.requires_acknowledgement, change_summary: "", publish: false });
         }
-    }, [page.data, form]);
+    }, [page.data, form, baseVersion]);
 
     const content = form.watch("content_markdown");
     const words = useMemo(() => (content.trim() ? content.trim().split(/\s+/).length : 0), [content]);
@@ -104,13 +111,17 @@ export default function PageEditorPage() {
         requestAnimationFrame(() => el.focus());
     };
 
-    const submit = form.handleSubmit((v) => {
-        const onError = (e: unknown) => toast({ variant: "destructive", title: "Could not save the page", description: getApiErrorMessage(e) });
+    const save = (v: Values, base: number | null) => {
+        const onError = (e: unknown) => {
+            const body = isAxiosError(e) ? (e.response?.data as WikiPageConflict | undefined) : undefined;
+            if (isAxiosError(e) && e.response?.status === 409 && body?.code === "wiki_page_version_conflict") { setConflict(body); return; }
+            toast({ variant: "destructive", title: "Could not save the page", description: getApiErrorMessage(e) });
+        };
         const review = v.review_interval_days ? Number(v.review_interval_days) : undefined;
         if (id) {
             update.mutate(
-                { id, title: v.title, icon: v.icon || undefined, page_type: v.page_type as WikiPageType, content_markdown: v.content_markdown, review_interval_days: review, requires_acknowledgement: v.requires_acknowledgement, change_summary: v.change_summary || undefined },
-                { onSuccess: () => { toast({ title: "Page saved" }); navigate(`/docs/pages/${id}`); }, onError },
+                { id, title: v.title, icon: v.icon || undefined, page_type: v.page_type as WikiPageType, content_markdown: v.content_markdown, review_interval_days: review, requires_acknowledgement: v.requires_acknowledgement, change_summary: v.change_summary || undefined, base_version_number: base ?? undefined },
+                { onSuccess: () => { setConflict(null); toast({ title: "Page saved" }); navigate(`/docs/pages/${id}`); }, onError },
             );
         } else {
             create.mutate(
@@ -123,7 +134,33 @@ export default function PageEditorPage() {
                 { onSuccess: (created) => { toast({ title: "Page created" }); navigate(`/docs/pages/${created.id}`); }, onError },
             );
         }
-    });
+    };
+    const submit = form.handleSubmit((v) => save(v, baseVersion));
+
+    // Conflict resolution: the newer version becomes the new base in every path.
+    const resolvedBase = conflict?.current_version_number ?? baseVersion;
+    const useTheirs = () => {
+        if (!conflict?.latest) return;
+        form.setValue("title", conflict.latest.title, { shouldDirty: true });
+        form.setValue("content_markdown", conflict.latest.content_markdown ?? "", { shouldDirty: true });
+        setBaseVersion(resolvedBase);
+        setConflict(null);
+        toast({ title: "Loaded the newer version", description: "Your unsaved changes were discarded." });
+    };
+    const keepMine = () => {
+        setBaseVersion(resolvedBase);
+        save(form.getValues(), resolvedBase);
+    };
+    const mergeInEditor = () => {
+        if (!conflict?.latest) return;
+        const merged = mergeWithMarkers(conflict.latest.content_markdown ?? "", form.getValues("content_markdown"), `Version ${conflict.current_version_number}`);
+        form.setValue("content_markdown", merged.text, { shouldDirty: true });
+        setBaseVersion(resolvedBase);
+        setConflict(null);
+        setTab("write");
+        toast({ title: merged.conflicts ? `${merged.conflicts} block(s) to resolve` : "No differences in the content", description: merged.conflicts ? "Keep the right lines between <<<<<<< and >>>>>>>, remove the markers, then save." : undefined });
+    };
+    const hasMarkers = /^<<<<<<< |^>>>>>>> Your changes$/m.test(content);
 
     return (
         <Page width="wide">
@@ -236,12 +273,26 @@ export default function PageEditorPage() {
                         )}
                     </div>
 
+                    {hasMarkers && (
+                        <div role="alert" className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-[13px] text-foreground">
+                            The content still has merge markers (&lt;&lt;&lt;&lt;&lt;&lt;&lt; / =======  / &gt;&gt;&gt;&gt;&gt;&gt;&gt;). Resolve each block before saving.
+                        </div>
+                    )}
                     <div className="sticky bottom-0 -mx-4 flex flex-col-reverse gap-2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:flex-row sm:justify-end md:-mx-6 md:px-6">
                         <Button type="button" variant="ghost" onClick={() => navigate(-1)} disabled={pending}>Cancel</Button>
                         <Button type="submit" loading={pending}><Save /> {id ? "Save" : "Create page"}</Button>
                     </div>
                 </form>
             </Form>
+            <ConflictDialog
+                conflict={conflict}
+                mine={{ title: form.watch("title"), content_markdown: content }}
+                pending={update.isPending}
+                onClose={() => setConflict(null)}
+                onUseTheirs={useTheirs}
+                onKeepMine={keepMine}
+                onMerge={mergeInEditor}
+            />
         </Page>
     );
 }

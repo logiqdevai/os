@@ -1,6 +1,6 @@
 import type {
     CustomFormFieldType, CustomFormKind, CustomFormStatus, FormSubmissionStatus, WikiChecklistAssigneeKind, WikiChecklistItemStatus, WikiChecklistKind,
-    WikiChecklistRunStatus, WikiPageStatus, WikiPageType, WikiSpaceKind, WikiVisibility,
+    WikiChecklistRunStatus, WikiPageStatus, WikiPageType, WikiPermissionLevel, WikiPrincipalType, WikiSpaceKind, WikiVisibility,
 } from "@/features/docs/interfaces/docs.interfaces";
 import type { DropdownOption } from "@/lib/dropdown-option-label.utils";
 
@@ -107,4 +107,37 @@ export const FormSubmissionStatusOptions: DropdownOption<FormSubmissionStatus>[]
     { id: "UNDER_REVIEW", label: "Under review" },
     { id: "REVIEWED", label: "Reviewed" },
     { id: "REJECTED", label: "Rejected" },
+];
+
+export const WikiPermissionLevelFormOptions: DropdownOption<WikiPermissionLevel>[] = [
+    { id: "VIEW", label: "Can view" },
+    { id: "COMMENT", label: "Can comment" },
+    { id: "EDIT", label: "Can edit" },
+    { id: "MANAGE", label: "Can manage" },
+];
+
+export const WikiPrincipalTypeFormOptions: DropdownOption<WikiPrincipalType>[] = [
+    { id: "MEMBERSHIP", label: "Member" },
+    { id: "TEAM", label: "Team" },
+    { id: "DEPARTMENT", label: "Department" },
+    { id: "BRANCH", label: "Branch" },
+    { id: "ROLE", label: "Role" },
+];
+
+/** Page access mode in the permissions panel: everyone, or only the people listed. */
+export const WikiAccessModeOptions: DropdownOption<"ORGANIZATION" | "RESTRICTED">[] = [
+    { id: "ORGANIZATION", label: "Everyone who can open the space" },
+    { id: "RESTRICTED", label: "Only the people and groups below" },
+];
+
+export const DocsAnalyticsPeriodOptions: DropdownOption<string>[] = [
+    { id: "7", label: "Last 7 days" },
+    { id: "30", label: "Last 30 days" },
+    { id: "90", label: "Last 90 days" },
+];
+
+export const DocsExportScopeOptions: DropdownOption<"PAGE" | "SUBTREE" | "SPACE">[] = [
+    { id: "PAGE", label: "This page only" },
+    { id: "SUBTREE", label: "This page and its sub-pages" },
+    { id: "SPACE", label: "The whole space" },
 ];

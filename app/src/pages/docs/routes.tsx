@@ -15,6 +15,8 @@ const FormsPage = lazy(() => import("./pages/forms"));
 const FormDetailPage = lazy(() => import("./pages/form-detail"));
 const FormFillPage = lazy(() => import("./pages/form-fill"));
 const TrashPage = lazy(() => import("./pages/trash"));
+const AskPage = lazy(() => import("./pages/ask"));
+const AnalyticsPage = lazy(() => import("./pages/analytics"));
 
 /** /docs/* — each route gated by its VIEW permission (app/mockups/modules/15-docs). */
 export default function DocsRoutes() {
@@ -34,6 +36,8 @@ export default function DocsRoutes() {
             <Route path="forms/new" element={<RequirePermission permission="docs.forms.create"><FormDetailPage /></RequirePermission>} />
             <Route path="forms/:id" element={<RequirePermission permission="docs.forms.read"><FormDetailPage /></RequirePermission>} />
             <Route path="forms/:id/fill" element={<FormFillPage />} />
+            <Route path="ask" element={<RequirePermission permission="docs.ai.query"><AskPage /></RequirePermission>} />
+            <Route path="analytics" element={<RequirePermission permission="docs.analytics.read"><AnalyticsPage /></RequirePermission>} />
             <Route path="trash" element={<RequirePermission permission="docs.pages.read"><TrashPage /></RequirePermission>} />
             <Route path="*" element={<Navigate to="/docs" replace />} />
         </Routes>

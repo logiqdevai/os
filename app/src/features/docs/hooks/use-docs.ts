@@ -40,6 +40,8 @@ export const useCommentAction = mutation(service.commentAction);
 export const useDeleteComment = mutation(service.deleteComment);
 export const usePageLinks = (id: string | undefined) => useQuery({ queryKey: [...KEY, "page", id, "links"], queryFn: () => service.getLinks(id as string), enabled: !!id });
 
+export const usePagePermissions = (id: string | undefined, enabled = true) => useQuery({ queryKey: [...KEY, "page", id, "permissions"], queryFn: () => service.getPagePermissions(id as string), enabled: !!id && enabled });
+export const useSetPagePermissions = mutation(service.setPagePermissions);
 export const useDocTemplates = (params: Params) => useQuery({ queryKey: [...KEY, "templates", params], queryFn: () => service.getTemplates(params) });
 export const useCreateDocTemplate = mutation(service.createTemplate);
 export const useUpdateDocTemplate = mutation(service.updateTemplate);
@@ -74,3 +76,11 @@ export const useReviewResponse = mutation(service.reviewResponse);
 
 export const usePublicForm = (id: string | undefined) => useQuery({ queryKey: ["public-form", id], queryFn: () => service.getPublicForm(id as string), enabled: !!id, retry: false });
 export const useSubmitPublicForm = () => useMutation({ mutationFn: service.submitPublicForm });
+
+export const useAskDocs = () => useMutation({ mutationFn: service.askDocs });
+export const useDocsAiStatus = (enabled = true) => useQuery({ queryKey: [...KEY, "ai-status"], queryFn: service.getDocsAiStatus, enabled });
+export const useReindexDocsAi = mutation(service.reindexDocsAi);
+export const useDocsAnalytics = (params: Params) => useQuery({ queryKey: [...KEY, "analytics", params], queryFn: () => service.getDocsAnalytics(params), placeholderData: keepPreviousData });
+export const useExportDocs = () => useMutation({ mutationFn: service.exportDocs });
+export const useImportDocs = mutation(service.importDocs);
+export const useDocsTransfers = (enabled = true) => useQuery({ queryKey: [...KEY, "transfers"], queryFn: service.getDocsTransfers, enabled });

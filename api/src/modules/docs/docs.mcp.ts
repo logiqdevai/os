@@ -10,6 +10,8 @@ import { CreatePageSchema, PageQuerySchema, SearchQuerySchema, UpdatePageSchema 
 import { SpaceQuerySchema } from './dto/space.dto';
 import { ChecklistQuerySchema, StartChecklistRunSchema } from './dto/checklist.dto';
 import { FormQuerySchema, SubmissionQuerySchema } from './dto/form.dto';
+import { AskDocsSchema } from './dto/ai-transfer.dto';
+import { DocsAiService } from './services/docs-ai.service';
 
 const id = z.object({ id: z.string().uuid() });
 
@@ -22,11 +24,17 @@ export class DocsMcp implements OnModuleInit {
         private readonly spaces: DocsSpacesService,
         private readonly checklists: DocsChecklistsService,
         private readonly forms: DocsFormsService,
+        private readonly ai: DocsAiService,
     ) { }
 
     onModuleInit() {
         const M = ModuleKey.BUSINESS_DOCS;
         this.registry.registerMany([
+            {
+                name: 'docs_ai_ask', description: 'Ask a question about the company wiki. Answers cite only pages the caller can read ([1], [2] …); without an AI connection returns the best matching passages.',
+                permission: 'docs.ai.query', module: M, resource_type: 'wiki_page', input: AskDocsSchema,
+                handler: (ctx, args) => this.ai.ask(ctx, args),
+            },
             {
                 name: 'docs_pages_search', description: 'Keyword search over internal wiki pages (title + content). Returns snippets; only pages the caller may read.',
                 permission: 'docs.pages.read', module: M, resource_type: 'wiki_page', input: SearchQuerySchema,

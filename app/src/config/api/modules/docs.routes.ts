@@ -4,6 +4,14 @@ export const DocsApiRoutes = {
     search: "/docs/search",
     trash: "/docs/trash",
     analytics: "/docs/analytics",
+    export: "/docs/export",
+    import: "/docs/import",
+    transfers: "/docs/transfers",
+    ai: {
+        ask: "/docs/ai/ask",
+        status: "/docs/ai/status",
+        reindex: "/docs/ai/reindex",
+    },
     spaces: {
         list: "/docs/spaces",
         directory: "/docs/spaces/directory",

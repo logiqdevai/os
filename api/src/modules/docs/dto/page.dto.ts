@@ -90,6 +90,12 @@ export class UpdatePageDto extends PartialType(OmitType(CreatePageDto, ['space_i
     @IsString()
     @MaxLength(500)
     change_summary?: string;
+
+    @ApiProperty({ required: false, description: 'Version the editor started from. When the page has a newer version, the save is rejected with 409 wiki_page_version_conflict (with the latest content) instead of overwriting it.' })
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    base_version_number?: number;
 }
 
 export class MovePageDto {
@@ -279,4 +285,5 @@ export const UpdatePageSchema = z.object({
     page_type: z.nativeEnum(WikiPageType).optional(),
     content_markdown: z.string().max(MAX_CONTENT).optional(),
     change_summary: z.string().max(500).optional(),
+    base_version_number: z.number().int().min(1).optional(),
 });

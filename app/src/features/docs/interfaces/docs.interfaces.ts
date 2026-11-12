@@ -193,6 +193,11 @@ export interface WikiPagePermissions {
     grants: WikiPageGrant[];
 }
 
+export interface SetPagePermissionsDto {
+    visibility: WikiVisibility;
+    grants: { principal_type: WikiPrincipalType; principal_id: string; level: WikiPermissionLevel; inherit?: boolean }[];
+}
+
 export interface WikiPageLinks {
     outgoing: { id: string; entity_type: string; entity_id: string; label: string | null; page: { id: string; title: string; icon: string | null } | null }[];
     backlinks: { id: string; page: { id: string; title: string; icon: string | null; space: { id: string; name: string } }; created_at: string }[];
@@ -453,6 +458,18 @@ export interface UpdatePageDto {
     customer_visible?: boolean;
     owner_membership_id?: string;
     change_summary?: string;
+    /** Version the editor started from; a newer saved version makes the API answer 409 wiki_page_version_conflict. */
+    base_version_number?: number;
+}
+
+/** Body of a 409 wiki_page_version_conflict (optimistic version check). */
+export interface WikiPageConflict {
+    code: "wiki_page_version_conflict";
+    message: string;
+    base_version_number: number;
+    current_version_number: number | null;
+    latest: { title: string; content_markdown: string | null; edited_at: string | null; edited_by: MemberRef | null } | null;
+    base: { title: string; content_markdown: string | null } | null;
 }
 
 export interface CreateTemplateDto {
@@ -499,3 +516,58 @@ export interface CreateFormDto {
     closes_at?: string;
 }
 export type UpdateFormDto = Partial<CreateFormDto>;
+
+export interface DocsAiCitation {
+    index: number;
+    page_id: string;
+    title: string;
+    icon: string | null;
+    space: { id: string; name: string } | null;
+    heading_path: string | null;
+    excerpt: string;
+    score: number;
+}
+
+export interface DocsAiAnswer {
+    question: string;
+    answer: string | null;
+    mode: "semantic" | "keyword";
+    ai_available: boolean;
+    reason: "ai_not_configured" | "ai_provider_error" | null;
+    model: string | null;
+    citations: DocsAiCitation[];
+}
+
+export interface DocsAiStatus {
+    ai_configured: boolean;
+    mode: "semantic" | "keyword";
+    chunks: number;
+    embedded_chunks: number;
+    indexed_pages: number;
+    last_indexed_at: string | null;
+}
+
+export type DocsExportScope = "PAGE" | "SUBTREE" | "SPACE";
+
+export interface DocsImportResult {
+    job_id: string;
+    page_count: number;
+    warnings: string[];
+    pages: { id: string; title: string }[];
+    root_page_id: string | null;
+}
+
+export interface DocsTransferJob {
+    id: string;
+    kind: "IMPORT" | "EXPORT";
+    format: string;
+    scope: DocsExportScope;
+    status: "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED";
+    page_count: number;
+    warning_count: number;
+    error_report: { error?: string; warnings?: string[] } | null;
+    created_at: string;
+    finished_at: string | null;
+    space: { id: string; name: string } | null;
+    page: { id: string; title: string } | null;
+}

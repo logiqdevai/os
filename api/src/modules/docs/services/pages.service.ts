@@ -311,8 +311,12 @@ export class DocsPagesService {
         if (dto.visibility && dto.visibility !== page.visibility) this.access.assert(level, 'MANAGE');
         await this.assertMembers(ctx, [dto.owner_membership_id, ...(dto.reviewer_ids ?? [])]);
 
-        const { reviewer_ids, change_summary, ...fields } = dto;
+        const { reviewer_ids, change_summary, base_version_number, ...fields } = dto;
         const contentChanged = (dto.content_markdown !== undefined && dto.content_markdown !== page.content_markdown) || (dto.title !== undefined && dto.title !== page.title);
+        // Optimistic concurrency (15 §2): an editor that started from an older version must merge first.
+        if (contentChanged && base_version_number !== undefined && base_version_number !== page.current_version_number) {
+            throw await this.versionConflict(id, base_version_number);
+        }
         const now = new Date();
         const data: Prisma.WikiPageUpdateInput = { ...fields, last_edited_at: now, last_edited_by_membership_id: ctx.membership_id };
         if (dto.content_markdown !== undefined) {
@@ -326,7 +330,12 @@ export class DocsPagesService {
         if (contentChanged) data.current_version_number = page.current_version_number + 1;
 
         const updated = await this.prisma.$transaction(async (tx) => {
-            const row = await tx.wikiPage.update({ where: { id }, data });
+            // The version guard in the WHERE makes concurrent saves safe: the second writer gets a conflict, not a silent overwrite.
+            const row = await tx.wikiPage.update({ where: { id, ...(contentChanged && { current_version_number: page.current_version_number }) }, data }).catch((error) => {
+                if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') return null;
+                throw error;
+            });
+            if (!row) throw await this.versionConflict(id, base_version_number ?? page.current_version_number);
             if (contentChanged) {
                 await tx.wikiPageVersion.create({
                     data: { page_id: id, version_number: row.current_version_number, title: row.title, content: { format: 'markdown' }, content_markdown: row.content_markdown, change_summary: change_summary ?? null, created_by_membership_id: ctx.membership_id },
@@ -909,6 +918,24 @@ export class DocsPagesService {
         if (targets.length) {
             await tx.wikiPageLink.createMany({ data: targets.map((t) => ({ page_id: pageId, entity_type: RecordEntityType.WIKI_PAGE, entity_id: t, created_by_user_id: ctx.user_id })), skipDuplicates: true });
         }
+    }
+
+    /** 409 with what the editor needs to merge: the latest title/content, who saved it and when. */
+    private async versionConflict(id: string, baseVersion: number) {
+        const latest = await this.prisma.wikiPage.findUnique({
+            where: { id },
+            select: { title: true, content_markdown: true, current_version_number: true, last_edited_at: true, last_edited_by_membership_id: true },
+        });
+        const editor = latest?.last_edited_by_membership_id ? await this.prisma.membership.findUnique({ where: { id: latest.last_edited_by_membership_id }, select: MEMBER_SELECT }) : null;
+        const base = await this.prisma.wikiPageVersion.findUnique({ where: { page_id_version_number: { page_id: id, version_number: baseVersion } }, select: { title: true, content_markdown: true } }).catch(() => null);
+        return new ConflictException({
+            message: 'This page changed while you were editing it. Review the newer version and merge your changes.',
+            code: 'wiki_page_version_conflict',
+            base_version_number: baseVersion,
+            current_version_number: latest?.current_version_number ?? null,
+            latest: latest ? { title: latest.title, content_markdown: latest.content_markdown, edited_at: latest.last_edited_at, edited_by: editor } : null,
+            base: base ?? null,
+        });
     }
 
     private assertCustomerVisible(ctx: OrgContext, space: { allow_customer_visible: boolean }) {

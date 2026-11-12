@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Archive, FilePlus, Lock, Pencil, Users } from "lucide-react";
+import { Archive, Download, FilePlus, FileUp, Lock, Pencil, Users } from "lucide-react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { WikiSpaceKindFormOptions } from "@/config/constants/dropdowns/docs/docs.options";
 import { useArchiveSpace, usePages, useSpace } from "@/features/docs/hooks/use-docs";
 import { DocIcon, DocsStatusBadge, SpaceFormDialog, SpaceLayout } from "../../components/docs-ui";
+import { ExportDocsDialog, ImportDocsDialog } from "../../components/transfer-dialogs";
 
 /**
  * /docs/spaces/:id — space overview with its page tree (15 §2–3)
@@ -29,6 +30,7 @@ export default function SpaceDetailPage() {
     const archive = useArchiveSpace();
     const [editOpen, setEditOpen] = useState(false);
     const [archiving, setArchiving] = useState(false);
+    const [transfer, setTransfer] = useState<null | "import" | "export">(null);
 
     if (space.isPending) return <PageSkeleton />;
     if (space.error) return <Page><ErrorState error={space.error} onRetry={() => space.refetch()} /></Page>;
@@ -47,6 +49,8 @@ export default function SpaceDetailPage() {
                     meta={<><Badge variant="outline">{getDropdownOptionLabel(WikiSpaceKindFormOptions, s.kind)}</Badge>{s.is_private && <Badge variant="neutral"><Lock className="size-3" /> Private</Badge>}{s.archived_at && <Badge variant="warning">Archived</Badge>}</>}
                     actions={
                         <>
+                            {canWrite && p.can("docs.pages.import") && <Button variant="outline" onClick={() => setTransfer("import")}><FileUp /> Import</Button>}
+                            {p.can("docs.pages.export") && <Button variant="outline" onClick={() => setTransfer("export")}><Download /> Export</Button>}
                             {canManage && <Button variant="outline" onClick={() => setEditOpen(true)}><Pencil /> Edit</Button>}
                             {canManage && !s.archived_at && <Button variant="outline" onClick={() => setArchiving(true)}><Archive /> Archive</Button>}
                             {canWrite && <Button asChild><Link to={`/docs/pages/new?space=${id}`}><FilePlus /> New page</Link></Button>}
@@ -77,6 +81,8 @@ export default function SpaceDetailPage() {
                 </Section>
             </Page>
             <SpaceFormDialog open={editOpen} onOpenChange={setEditOpen} space={s} />
+            <ImportDocsDialog open={transfer === "import"} onOpenChange={(o) => setTransfer(o ? "import" : null)} spaceId={s.id} />
+            <ExportDocsDialog open={transfer === "export"} onOpenChange={(o) => setTransfer(o ? "export" : null)} spaceId={s.id} />
             <ConfirmationDialog
                 isOpen={archiving}
                 onClose={() => setArchiving(false)}
