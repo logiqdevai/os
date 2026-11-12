@@ -15,8 +15,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { useSessionData } from "@/features/session/hooks/use-session";
 import { CannedScopeFilterOptions, CannedScopeOptions } from "@/config/constants/dropdowns/support/support.options";
@@ -105,37 +105,40 @@ export default function MacrosPage() {
                 description="It disappears from the composer for everyone it was shared with."
                 confirmText="Remove"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => { toast({ title: "Saved reply removed" }); setDeleting(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not remove", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (!deleting) return; remove.mutate(deleting.id); setDeleting(null); }}
             />
         </Page>
     );
 }
 
+const toCannedDto = (v: CannedFormValues) => ({ name: v.name, shortcut: v.shortcut || undefined, category: v.category || undefined, body: v.body, scope: v.scope });
+
+/** New reply: explicit Create. Existing reply: valid changes are saved as you edit (no Save button). */
 function CannedDialog({ open, onOpenChange, canned, canShare }: { open: boolean; onOpenChange: (o: boolean) => void; canned: CannedResponse | null; canShare: boolean }) {
     const create = useCreateCannedResponse();
     const update = useUpdateCannedResponse();
-    const pending = create.isPending || update.isPending;
     const form = useForm<CannedFormValues>({ resolver: zodResolver(cannedFormSchema), defaultValues: { name: "", shortcut: "", category: "", body: "", scope: "PERSONAL" } });
 
     useEffect(() => {
         if (open) form.reset({ name: canned?.name ?? "", shortcut: canned?.shortcut ?? "", category: canned?.category ?? "", body: canned?.body ?? "", scope: canned?.scope === "TEAM" ? "ORGANIZATION" : canned?.scope ?? (canShare ? "ORGANIZATION" : "PERSONAL") });
-    }, [open, canned, canShare, form]);
+        // Only when the dialog opens or switches reply: a background refresh after an autosave must not reset typing.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, canned?.id, canShare, form]);
 
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: (canned as CannedResponse).id, ...toCannedDto(v) }), { enabled: open && !!canned });
+    const close = () => { autosave.flush(); onOpenChange(false); };
     const submit = form.handleSubmit((v) => {
-        const dto = { name: v.name, shortcut: v.shortcut || undefined, category: v.category || undefined, body: v.body, scope: v.scope };
-        const opts = { onSuccess: () => { toast({ title: canned ? "Saved reply updated" : "Saved reply created" }); onOpenChange(false); }, onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save", description: getApiErrorMessage(e) }) };
-        if (canned) update.mutate({ id: canned.id, ...dto }, opts);
-        else create.mutate(dto, opts);
+        if (canned) return close();
+        create.mutate(toCannedDto(v), { onSuccess: () => onOpenChange(false) });
     });
 
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !create.isPending && close())}>
             <DialogContent className="sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
-                            <DialogTitle>{canned ? "Edit saved reply" : "New saved reply"}</DialogTitle>
+                            <DialogTitle className="flex flex-wrap items-center gap-2">{canned ? "Edit saved reply" : "New saved reply"}{canned && <SaveStatus state={autosave} className="font-normal" />}</DialogTitle>
                             <DialogDescription>Insert it from the reply composer or type its shortcut.</DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 sm:grid-cols-2">
@@ -151,8 +154,14 @@ function CannedDialog({ open, onOpenChange, canned, canShare }: { open: boolean;
                         </div>
                         <FormField control={form.control} name="body" render={({ field }) => (<FormItem><FormLabel>Reply</FormLabel><FormControl><Textarea rows={7} placeholder="Hi {{customer.first_name}}, …" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{canned ? "Save" : "Create"}</Button>
+                            {canned ? (
+                                <Button type="button" onClick={close}>Done</Button>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>Cancel</Button>
+                                    <Button type="submit" loading={create.isPending}>Create</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>

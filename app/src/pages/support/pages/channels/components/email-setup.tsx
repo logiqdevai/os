@@ -1,18 +1,15 @@
 import { useState } from "react";
-import { CheckCircle2, Copy, KeyRound, Mail, TriangleAlert } from "lucide-react";
+import { CheckCircle2, KeyRound, Mail, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime } from "@/lib/format";
 import { useEmailChannelSetup, useSetEmailInboundSecret } from "@/features/support/hooks/use-support";
 import type { SupportChannel } from "@/features/support/interfaces/support.interfaces";
-
-const copy = (value: string, what: string) =>
-    navigator.clipboard.writeText(value).then(() => toast({ title: `${what} copied` }), () => toast({ variant: "destructive", title: "Could not copy" }));
+import { CopyButton } from "../../../components/copy-button";
 
 /**
  * Email in/out of an EMAIL channel (13 §1, §10): outbound replies go through the organization's Resend connection (11, BYOK);
@@ -45,7 +42,7 @@ export function EmailSetup({ channel, canManage }: { channel: SupportChannel; ca
                     <p className="text-muted-foreground">Point a Resend inbound webhook (or your mail forwarder) at this URL. Requests must be signed with the channel secret.</p>
                     <div className="flex items-center gap-2">
                         <code className="min-w-0 flex-1 truncate rounded border border-border bg-background px-2 py-1 text-xs text-foreground">{s.inbound_url}</code>
-                        <Button size="icon-sm" variant="ghost" aria-label="Copy inbound URL" onClick={() => copy(s.inbound_url, "URL")}><Copy /></Button>
+                        <CopyButton size="icon-sm" variant="ghost" iconOnly text={s.inbound_url} aria-label="Copy inbound URL" />
                     </div>
                     <p className="text-xs text-muted-foreground">
                         {s.has_inbound_secret ? `Signing secret set${s.inbound_secret_set_at ? ` ${formatDateTime(s.inbound_secret_set_at)}` : ""}.` : "No signing secret yet — inbound email is rejected until you set one."}
@@ -72,12 +69,11 @@ function SecretDialog({ channelId, open, onOpenChange }: { channelId: string; op
         save.mutate(
             { id: channelId, secret },
             {
+                // A generated secret is shown once here; a pasted one closes the dialog and the card shows "Signing secret set".
                 onSuccess: (r) => {
-                    toast({ title: "Inbound secret saved" });
                     if (r.secret) setGenerated(r.secret);
                     else close(false);
                 },
-                onError: (e) => toast({ variant: "destructive", title: "Could not save the secret", description: getApiErrorMessage(e) }),
             },
         );
     return (
@@ -92,7 +88,7 @@ function SecretDialog({ channelId, open, onOpenChange }: { channelId: string; op
                         <Label>Your new secret — shown once</Label>
                         <div className="flex items-center gap-2">
                             <code className="min-w-0 flex-1 break-all rounded border border-border bg-secondary px-2 py-1 text-xs text-foreground">{generated}</code>
-                            <Button size="icon-sm" variant="ghost" aria-label="Copy secret" onClick={() => copy(generated, "Secret")}><Copy /></Button>
+                            <CopyButton size="icon-sm" variant="ghost" iconOnly text={generated} aria-label="Copy secret" />
                         </div>
                         <p className="text-xs text-muted-foreground">Sign each request with header <code>X-Logiq-Signature: t=&lt;unix&gt;,v1=&lt;hex HMAC-SHA256(secret, "t.body")&gt;</code>.</p>
                     </div>

@@ -9,8 +9,6 @@ import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePageMetadata } from "@/hooks/use-page-metadata";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { RuleStatusFormOptions } from "@/config/constants/dropdowns/automation/automation.options";
@@ -57,7 +55,7 @@ export default function SupportAutomationPage() {
                     checked={r.enabled}
                     disabled={!canEnable || r.status !== "PUBLISHED" || setEnabled.isPending}
                     aria-label={`${r.enabled ? "Turn off" : "Turn on"} ${r.name}`}
-                    onCheckedChange={(v) => setEnabled.mutate({ id: r.id, enabled: v }, { onSuccess: () => toast({ title: v ? "Rule turned on" : "Rule turned off" }), onError: (e) => toast({ variant: "destructive", title: "Could not change the rule", description: getApiErrorMessage(e) }) })}
+                    onCheckedChange={(v) => setEnabled.mutate({ id: r.id, enabled: v })}
                 />
             ),
         },

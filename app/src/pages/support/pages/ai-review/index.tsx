@@ -12,8 +12,6 @@ import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePageMetadata } from "@/hooks/use-page-metadata";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { AiSuggestionKindFilterOptions, AiSuggestionKindOptions, AiSuggestionStatusFilterOptions } from "@/config/constants/dropdowns/support/support.options";
@@ -86,12 +84,9 @@ function SuggestionCard({ suggestion: s }: { suggestion: AiSuggestion }) {
     const [draft, setDraft] = useState(text ?? "");
     const sends = MESSAGE_KINDS.includes(s.kind);
     const pending = s.status === "PENDING";
+    // Accept / reject are optimistic: the card shows its new state at once and rolls back if the API refuses.
     const busy = accept.isPending || reject.isPending;
-    const onAccept = (as: "AGENT" | "INTERNAL_NOTE" = "AGENT") =>
-        accept.mutate(
-            { id: s.id, body: editing && draft.trim() && draft !== text ? draft.trim() : undefined, as },
-            { onSuccess: () => toast({ title: sends ? (as === "AGENT" ? "Reply sent" : "Saved as internal note") : "Suggestion accepted" }), onError: (e) => toast({ variant: "destructive", title: "Could not accept", description: getApiErrorMessage(e) }) },
-        );
+    const onAccept = (as: "AGENT" | "INTERNAL_NOTE" = "AGENT") => accept.mutate({ id: s.id, body: editing && draft.trim() && draft !== text ? draft.trim() : undefined, as });
     return (
         <li className="rounded-lg border border-border bg-card p-4">
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -115,14 +110,14 @@ function SuggestionCard({ suggestion: s }: { suggestion: AiSuggestion }) {
                 <div className="mt-3 flex flex-wrap gap-2">
                     {sends ? (
                         <>
-                            <Button size="sm" loading={accept.isPending} disabled={busy || !canReply} title={canReply ? undefined : "Needs support.conversations.reply"} onClick={() => onAccept("AGENT")}><Check /> {editing ? "Send edited reply" : "Send reply"}</Button>
+                            <Button size="sm" disabled={busy || !canReply} title={canReply ? undefined : "Needs support.conversations.reply"} onClick={() => onAccept("AGENT")}><Check /> {editing ? "Send edited reply" : "Send reply"}</Button>
                             <Button size="sm" variant="outline" disabled={busy || !canReply} onClick={() => onAccept("INTERNAL_NOTE")}>Save as note</Button>
                         </>
                     ) : (
-                        <Button size="sm" loading={accept.isPending} disabled={busy} onClick={() => onAccept()}><Check /> Accept</Button>
+                        <Button size="sm" disabled={busy} onClick={() => onAccept()}><Check /> Accept</Button>
                     )}
                     {text && !editing && <Button size="sm" variant="ghost" disabled={busy} onClick={() => setEditing(true)}><Pencil /> Edit</Button>}
-                    <Button size="sm" variant="ghost" loading={reject.isPending} disabled={busy} onClick={() => reject.mutate({ id: s.id }, { onSuccess: () => toast({ title: "Suggestion rejected" }), onError: (e) => toast({ variant: "destructive", title: "Could not reject", description: getApiErrorMessage(e) }) })}>
+                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => reject.mutate({ id: s.id })}>
                         <X /> Reject
                     </Button>
                 </div>

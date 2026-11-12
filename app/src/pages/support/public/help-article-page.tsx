@@ -26,7 +26,7 @@ export default function HelpArticlePage() {
     const vote = (is_helpful: boolean) => {
         if (!orgSlug || !slug) return;
         setVoted(is_helpful);
-        feedback.mutate({ orgSlug, slug, is_helpful });
+        feedback.mutate({ orgSlug, slug, is_helpful }, { onError: () => setVoted(null) });
     };
 
     return (

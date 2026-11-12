@@ -18,8 +18,7 @@ import { MemberAvatar } from "@/components/ui/member-avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePageMetadata } from "@/hooks/use-page-metadata";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
+import { getApiErrorStatus } from "@/lib/api-error";
 import { formatDateTime, formatRelative, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import {
@@ -55,7 +54,7 @@ export default function IncidentPage() {
     }
     const inc = incident.data as IncidentDetail;
     const setStatus = (status: IncidentStatus) =>
-        update.mutate({ id: inc.id, status }, { onSuccess: () => toast({ title: `Incident ${getDropdownOptionLabel(IncidentStatusOptions, status).toLowerCase()}` }), onError: (e) => toast({ variant: "destructive", title: "Could not update incident", description: getApiErrorMessage(e) }) });
+        update.mutate({ id: inc.id, status });
 
     return (
         <Page width="wide">
@@ -72,7 +71,7 @@ export default function IncidentPage() {
                 actions={
                     canUpdate ? (
                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="outline" loading={update.isPending}>Change status</Button></DropdownMenuTrigger>
+                            <DropdownMenuTrigger asChild><Button variant="outline">Change status</Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 {IncidentStatusOptions.filter((o) => o.id !== inc.status).map((o) => <DropdownMenuItem key={o.id} onSelect={() => setStatus(o.id)}>{o.label}</DropdownMenuItem>)}
                             </DropdownMenuContent>
@@ -136,7 +135,7 @@ export default function IncidentPage() {
                                             </div>
                                         </div>
                                         {canUpdate && (
-                                            <Button size="icon-sm" variant="ghost" aria-label={`Remove ${t.reference}`} disabled={detach.isPending} onClick={() => detach.mutate({ id: inc.id, ticket_id: t.id }, { onSuccess: () => toast({ title: "Ticket removed from the incident" }), onError: (e) => toast({ variant: "destructive", title: "Could not remove ticket", description: getApiErrorMessage(e) }) })}>
+                                            <Button size="icon-sm" variant="ghost" aria-label={`Remove ${t.reference}`} onClick={() => detach.mutate({ id: inc.id, ticket_id: t.id })}>
                                                 <X />
                                             </Button>
                                         )}
@@ -156,12 +155,11 @@ function UpdateComposer({ incidentId }: { incidentId: string }) {
     const post = usePostIncidentUpdate();
     const canPublish = usePermission("support.incidents.publish");
     const form = useForm<IncidentUpdateFormValues>({ resolver: zodResolver(incidentUpdateFormSchema), defaultValues: { status: "INVESTIGATING", body: "", customer_visible: false } });
-    const submit = form.handleSubmit((v) =>
-        post.mutate(
-            { id: incidentId, ...v, customer_visible: canPublish && v.customer_visible },
-            { onSuccess: () => { toast({ title: v.customer_visible ? "Update published to customers" : "Update posted" }); form.reset({ status: v.status, body: "", customer_visible: v.customer_visible }); }, onError: (e) => toast({ variant: "destructive", title: "Could not post update", description: getApiErrorMessage(e) }) },
-        ),
-    );
+    // Posting is an explicit action; the update appears in the timeline at once and the text comes back if it fails.
+    const submit = form.handleSubmit((v) => {
+        form.reset({ status: v.status, body: "", customer_visible: v.customer_visible });
+        post.mutate({ id: incidentId, ...v, customer_visible: canPublish && v.customer_visible }, { onError: () => form.setValue("body", v.body) });
+    });
     return (
         <Form {...form}>
             <form onSubmit={submit} className="space-y-3 rounded-lg border border-border bg-card p-4">
@@ -177,7 +175,7 @@ function UpdateComposer({ incidentId }: { incidentId: string }) {
                             <div><FormLabel className="font-normal">Show to customers</FormLabel>{!canPublish && <FormDescription className="text-xs">Needs support.incidents.publish</FormDescription>}</div>
                         </FormItem>
                     )} />
-                    <Button type="submit" loading={post.isPending}>Post</Button>
+                    <Button type="submit">Post</Button>
                 </div>
             </form>
         </Form>
@@ -209,7 +207,7 @@ function AttachTicketsDialog({ incident, open, onOpenChange }: { incident: Incid
                             {linked.has(t.id) ? (
                                 <Badge variant="success">Linked</Badge>
                             ) : (
-                                <Button size="sm" variant="outline" disabled={attach.isPending} onClick={() => attach.mutate({ id: incident.id, ticket_ids: [t.id] }, { onSuccess: () => toast({ title: `${t.reference} linked` }), onError: (e) => toast({ variant: "destructive", title: "Could not link ticket", description: getApiErrorMessage(e) }) })}>
+                                <Button size="sm" variant="outline" onClick={() => attach.mutate({ id: incident.id, ticket_ids: [t.id], rows: [{ id: t.id, reference: t.reference, subject: t.subject, priority: t.priority, created_at: t.created_at, company: t.company ? { id: t.company.id, name: t.company.name } : null, status: t.status ? { name: t.status.name, category: t.status.category, color: t.status.color } : null }] })}>
                                     Link
                                 </Button>
                             )}

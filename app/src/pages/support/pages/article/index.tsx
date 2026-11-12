@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,8 +15,9 @@ import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
+import { SaveStatus } from "@/components/ui/save-status";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { useAutosave } from "@/hooks/use-autosave";
 import { formatDateTime } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { KnowledgeStatusOptions, KnowledgeStatusTone, KnowledgeVisibilityOptions } from "@/config/constants/dropdowns/support/support.options";
@@ -36,6 +37,16 @@ import type { ArticleDetail } from "@/features/support/interfaces/support.interf
 import { SUPPORT_PATHS } from "../../support-paths";
 
 const NONE = "__none";
+
+const toArticleDto = (v: ArticleFormValues) => ({
+    title: v.title.trim(),
+    summary: v.summary || undefined,
+    body: v.body,
+    category_id: v.category_id && v.category_id !== NONE ? v.category_id : null,
+    visibility: v.visibility,
+    is_faq: v.is_faq,
+    keywords: (v.keywords ?? "").split(",").map((k) => k.trim()).filter(Boolean),
+});
 
 /**
  * Article editor — /support/knowledge/new and /support/knowledge/:articleId (mockup 13-support `article`).
@@ -63,7 +74,7 @@ function Editor({ article }: { article: ArticleDetail | null }) {
     const canEdit = usePermission(article ? "support.knowledge.update" : "support.knowledge.create");
     const [preview, setPreview] = useState(false);
     const [deleting, setDeleting] = useState(false);
-    const form = useForm<ArticleFormValues>({ resolver: zodResolver(articleFormSchema), defaultValues: { title: "", summary: "", body: "", category_id: NONE, visibility: "PUBLIC", is_faq: false, keywords: "", change_note: "" } });
+    const form = useForm<ArticleFormValues>({ resolver: zodResolver(articleFormSchema), mode: "onChange", defaultValues: { title: "", summary: "", body: "", category_id: NONE, visibility: "PUBLIC", is_faq: false, keywords: "", change_note: "" } });
 
     useEffect(() => {
         form.reset({
@@ -76,26 +87,31 @@ function Editor({ article }: { article: ArticleDetail | null }) {
             keywords: article?.keywords.join(", ") ?? "",
             change_note: "",
         });
-    }, [article, form]);
+        // Only when another article opens: the refresh after each autosave must not reset what is being typed.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [article?.id, form]);
 
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
-    const saving = create.isPending || update.isPending;
+    // Existing articles save their draft as you edit (no Save button); every content change becomes a version, so the
+    // delay is longer than usual. The change note travels with the next save and is then cleared. Publish stays a button.
+    const json = JSON.stringify(form.watch());
+    const values = useMemo(() => JSON.parse(json) as ArticleFormValues, [json]);
+    const valid = articleFormSchema.safeParse(values).success;
+    const dto = useMemo(() => toArticleDto(values), [values]);
+    const autosave = useAutosave({
+        value: dto,
+        delay: 1500,
+        enabled: !!article && canEdit && valid && form.formState.isDirty,
+        save: async (d) => {
+            const note = form.getValues("change_note");
+            await update.mutateAsync({ id: (article as ArticleDetail).id, ...d, change_note: note || undefined });
+            if (note && form.getValues("change_note") === note) form.setValue("change_note", "");
+        },
+    });
+    const unsaved = autosave.status === "pending" || autosave.status === "saving";
 
     const save = form.handleSubmit((v) => {
-        const dto = {
-            title: v.title,
-            summary: v.summary || undefined,
-            body: v.body,
-            category_id: v.category_id && v.category_id !== NONE ? v.category_id : null,
-            visibility: v.visibility,
-            is_faq: v.is_faq,
-            keywords: (v.keywords ?? "").split(",").map((k) => k.trim()).filter(Boolean),
-        };
-        if (article) {
-            update.mutate({ id: article.id, ...dto, change_note: v.change_note || undefined }, { onSuccess: () => { toast({ title: "Article saved" }); form.setValue("change_note", ""); }, onError: fail("Could not save") });
-        } else {
-            create.mutate(dto, { onSuccess: (a) => { toast({ title: "Draft created" }); navigate(SUPPORT_PATHS.article(a.id), { replace: true }); }, onError: fail("Could not create") });
-        }
+        if (article) return autosave.flush();
+        create.mutate(toArticleDto(v), { onSuccess: (a) => navigate(SUPPORT_PATHS.article(a.id), { replace: true }) });
     });
 
     return (
@@ -103,7 +119,7 @@ function Editor({ article }: { article: ArticleDetail | null }) {
             <PageHeader
                 back={{ to: SUPPORT_PATHS.knowledge, label: "Help center" }}
                 title={article ? article.title : "New article"}
-                meta={article && <Badge variant={KnowledgeStatusTone[article.status]}>{getDropdownOptionLabel(KnowledgeStatusOptions, article.status)}</Badge>}
+                meta={article && <><Badge variant={KnowledgeStatusTone[article.status]}>{getDropdownOptionLabel(KnowledgeStatusOptions, article.status)}</Badge><SaveStatus state={autosave} /></>}
                 description={article ? `Version ${article.current_version} · updated ${formatDateTime(article.updated_at)}` : "Drafts are visible only to your team until published."}
                 actions={
                     article && (
@@ -111,18 +127,18 @@ function Editor({ article }: { article: ArticleDetail | null }) {
                             <Button variant="outline" size="sm" onClick={() => setPreview((p) => !p)}><Eye /> {preview ? "Edit" : "Preview"}</Button>
                             {article.status === "DRAFT" && (
                                 <Can permission="support.knowledge.update">
-                                    <Button variant="outline" size="sm" loading={review.isPending} onClick={() => review.mutate(article.id, { onSuccess: () => toast({ title: "Sent for review" }), onError: fail("Could not send for review") })}>Send for review</Button>
+                                    <Button variant="outline" size="sm" disabled={unsaved} onClick={() => review.mutate(article.id)}>Send for review</Button>
                                 </Can>
                             )}
                             <Can permission="support.knowledge.publish">
                                 {article.status === "PUBLISHED" ? (
-                                    <Button variant="outline" size="sm" loading={unpublish.isPending} onClick={() => unpublish.mutate(article.id, { onSuccess: () => toast({ title: "Unpublished" }), onError: fail("Could not unpublish") })}><Undo2 /> Unpublish</Button>
+                                    <Button variant="outline" size="sm" onClick={() => unpublish.mutate(article.id)}><Undo2 /> Unpublish</Button>
                                 ) : (
-                                    <Button size="sm" loading={publish.isPending} onClick={() => publish.mutate(article.id, { onSuccess: () => toast({ title: "Published" }), onError: fail("Could not publish") })}><Send /> Publish</Button>
+                                    <Button size="sm" disabled={unsaved} title={unsaved ? "Saving your latest changes…" : undefined} onClick={() => publish.mutate(article.id)}><Send /> Publish</Button>
                                 )}
                             </Can>
                             <Can permission="support.knowledge.archive">
-                                {article.status !== "ARCHIVED" && <Button variant="ghost" size="icon-sm" aria-label="Archive" onClick={() => archive.mutate(article.id, { onSuccess: () => { toast({ title: "Archived" }); navigate(SUPPORT_PATHS.knowledge); }, onError: fail("Could not archive") })}><Archive /></Button>}
+                                {article.status !== "ARCHIVED" && <Button variant="ghost" size="icon-sm" aria-label="Archive" onClick={() => { autosave.flush(); archive.mutate(article.id); navigate(SUPPORT_PATHS.knowledge); }}><Archive /></Button>}
                             </Can>
                             <Can permission="support.knowledge.delete">
                                 <Button variant="ghost" size="icon-sm" aria-label="Delete" onClick={() => setDeleting(true)}><Trash2 /></Button>
@@ -153,12 +169,17 @@ function Editor({ article }: { article: ArticleDetail | null }) {
                         )} />
                         {article && (
                             <FormField control={form.control} name="change_note" render={({ field }) => (
-                                <FormItem><FormLabel>Change note</FormLabel><FormControl><Input disabled={!canEdit} placeholder="What changed (saved with the version)" {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><FormLabel>Change note</FormLabel><FormControl><Input disabled={!canEdit} placeholder="What changed (saved with the next version)" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                         )}
-                        <div className="flex justify-end gap-2">
-                            <Button type="submit" loading={saving} disabled={!canEdit}>{article ? "Save" : "Create draft"}</Button>
-                        </div>
+                        {!article && (
+                            <>
+                                {create.error && <p role="alert" className="text-[13px] text-danger">{getApiErrorMessage(create.error)}</p>}
+                                <div className="flex justify-end gap-2">
+                                    <Button type="submit" loading={create.isPending} disabled={!canEdit}>Create draft</Button>
+                                </div>
+                            </>
+                        )}
                     </form>
                 </Form>
                 <aside className="space-y-5">
@@ -211,8 +232,7 @@ function Editor({ article }: { article: ArticleDetail | null }) {
                     description="The article and all its versions are deleted permanently. Archive it instead to keep the history."
                     confirmText="Delete"
                     variant="destructive"
-                    isLoading={remove.isPending}
-                    onConfirm={() => remove.mutate(article.id, { onSuccess: () => { toast({ title: "Article deleted" }); navigate(SUPPORT_PATHS.knowledge); }, onError: fail("Could not delete") })}
+                    onConfirm={() => { remove.mutate(article.id); navigate(SUPPORT_PATHS.knowledge); }}
                 />
             )}
         </Page>

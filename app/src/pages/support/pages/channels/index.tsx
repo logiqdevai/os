@@ -16,8 +16,8 @@ import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { RoutingStrategyOptions, SupportChannelTypeDescriptionOptions, SupportChannelTypeOptions } from "@/config/constants/dropdowns/support/support.options";
 import { useArchiveInbox, useChannels, useCreateChannel, useCreateInbox, useInboxes, useUpdateChannel, useUpdateInbox } from "@/features/support/hooks/use-support";
@@ -101,33 +101,36 @@ function InboxesTab() {
                 description="Its channels stop receiving conversations. Existing conversations stay."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate(archiving.id, { onSuccess: () => { toast({ title: "Inbox archived" }); setArchiving(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (!archiving) return; archive.mutate(archiving.id); setArchiving(null); }}
             />
         </>
     );
 }
 
+const toInboxDto = (v: InboxFormValues) => ({ name: v.name, description: v.description || undefined, routing_strategy: v.routing_strategy, signature: v.signature || null, auto_reply_body: v.auto_reply_body || null });
+
+/** New inbox: explicit Create. Existing inbox: valid changes are saved as you edit (no Save button). */
 function InboxDialog({ open, onOpenChange, inbox }: { open: boolean; onOpenChange: (o: boolean) => void; inbox: Inbox | null }) {
     const create = useCreateInbox();
     const update = useUpdateInbox();
-    const pending = create.isPending || update.isPending;
     const form = useForm<InboxFormValues>({ resolver: zodResolver(inboxFormSchema), defaultValues: { name: "", description: "", routing_strategy: "MANUAL", signature: "", auto_reply_body: "" } });
     useEffect(() => {
         if (open) form.reset({ name: inbox?.name ?? "", description: inbox?.description ?? "", routing_strategy: inbox?.routing_strategy ?? "MANUAL", signature: inbox?.signature ?? "", auto_reply_body: inbox?.auto_reply_body ?? "" });
-    }, [open, inbox, form]);
+        // Only when the dialog opens or switches inbox: a background refresh after an autosave must not reset typing.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, inbox?.id, form]);
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: (inbox as Inbox).id, ...toInboxDto(v) }), { enabled: open && !!inbox });
+    const close = () => { autosave.flush(); onOpenChange(false); };
     const submit = form.handleSubmit((v) => {
-        const dto = { name: v.name, description: v.description || undefined, routing_strategy: v.routing_strategy, signature: v.signature || null, auto_reply_body: v.auto_reply_body || null };
-        const opts = { onSuccess: () => { toast({ title: inbox ? "Inbox saved" : "Inbox created" }); onOpenChange(false); }, onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save inbox", description: getApiErrorMessage(e) }) };
-        if (inbox) update.mutate({ id: inbox.id, ...dto }, opts);
-        else create.mutate(dto, opts);
+        if (inbox) return close();
+        create.mutate(toInboxDto(v), { onSuccess: () => onOpenChange(false) });
     });
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !create.isPending && close())}>
             <DialogContent className="sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
-                        <DialogHeader><DialogTitle>{inbox ? "Edit inbox" : "New inbox"}</DialogTitle><DialogDescription>Conversations and tickets are routed into inboxes.</DialogDescription></DialogHeader>
+                        <DialogHeader><DialogTitle className="flex flex-wrap items-center gap-2">{inbox ? "Edit inbox" : "New inbox"}{inbox && <SaveStatus state={autosave} className="font-normal" />}</DialogTitle><DialogDescription>Conversations and tickets are routed into inboxes.</DialogDescription></DialogHeader>
                         <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input autoFocus {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                         <FormField control={form.control} name="routing_strategy" render={({ field }) => (
@@ -138,8 +141,14 @@ function InboxDialog({ open, onOpenChange, inbox }: { open: boolean; onOpenChang
                         <FormField control={form.control} name="auto_reply_body" render={({ field }) => (<FormItem><FormLabel>Automatic reply</FormLabel><FormControl><Textarea rows={3} placeholder="Thanks for reaching out — we usually reply within a few hours." {...field} /></FormControl><FormDescription>Sent on the first customer message. Leave empty for none.</FormDescription></FormItem>)} />
                         <FormField control={form.control} name="signature" render={({ field }) => (<FormItem><FormLabel>Signature</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>)} />
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{inbox ? "Save" : "Create inbox"}</Button>
+                            {inbox ? (
+                                <Button type="button" onClick={close}>Done</Button>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>Cancel</Button>
+                                    <Button type="submit" loading={create.isPending}>Create inbox</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>
@@ -179,7 +188,7 @@ function ChannelsTab() {
                                 {canManage && (
                                     <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
                                         Active
-                                        <Switch checked={c.is_active} onCheckedChange={(v) => update.mutate({ id: c.id, is_active: v }, { onError: (e) => toast({ variant: "destructive", title: "Could not update channel", description: getApiErrorMessage(e) }) })} aria-label={`${c.name} active`} />
+                                        <Switch checked={c.is_active} onCheckedChange={(v) => update.mutate({ id: c.id, is_active: v })} aria-label={`${c.name} active`} />
                                     </label>
                                 )}
                             </div>
@@ -206,7 +215,7 @@ function ChannelDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
     const submit = form.handleSubmit((v) =>
         create.mutate(
             { inbox_id: v.inbox_id, type: v.type, name: v.name, email_address: v.email_address || undefined, allowed_origins: (v.allowed_origins ?? "").split(/[\s,]+/).filter(Boolean) },
-            { onSuccess: () => { toast({ title: "Channel connected" }); onOpenChange(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not connect channel", description: getApiErrorMessage(e) }) },
+            { onSuccess: () => onOpenChange(false) },
         ),
     );
     return (

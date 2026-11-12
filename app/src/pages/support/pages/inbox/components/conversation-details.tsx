@@ -6,8 +6,6 @@ import { Section } from "@/components/ui/page";
 import { Markdown } from "@/components/ui/markdown";
 import { Can } from "@/components/access/can";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { SupportChannelTypeOptions } from "@/config/constants/dropdowns/support/support.options";
@@ -22,6 +20,7 @@ export function ConversationDetails({ conversation: c }: { conversation: Convers
     const canAi = usePermission("support.ai.use");
     const summarize = useSummarizeConversation();
     const [summary, setSummary] = useState<string | null>(c.ai_summary);
+    const [unavailable, setUnavailable] = useState<string | null>(null);
     const tickets = [...c.primary_tickets, ...c.ticket_links.map((l) => ({ ...l.ticket, sla_breached: false, sla_at_risk: false, resolution_due_at: null, first_response_due_at: null, priority: "NORMAL" as const }))];
 
     return (
@@ -80,10 +79,9 @@ export function ConversationDetails({ conversation: c }: { conversation: Convers
                             onClick={() =>
                                 summarize.mutate(c.id, {
                                     onSuccess: (r) => {
-                                        if (r.available) setSummary(r.summary);
-                                        else toast({ title: r.reason === "ai_not_configured" ? "Connect an AI provider in Admin → Integrations to use summaries" : "The AI provider did not respond" });
+                                        if (r.available) { setSummary(r.summary); setUnavailable(null); }
+                                        else setUnavailable(r.reason === "ai_not_configured" ? "Connect an AI provider in Admin → Integrations to use summaries." : "The AI provider did not respond. Try again later.");
                                     },
-                                    onError: (e) => toast({ variant: "destructive", title: "Could not summarize", description: getApiErrorMessage(e) }),
                                 })
                             }
                         >
@@ -91,6 +89,7 @@ export function ConversationDetails({ conversation: c }: { conversation: Convers
                         </Button>
                     }
                 >
+                    {unavailable && <p role="status" className="mb-1.5 text-xs text-warning">{unavailable}</p>}
                     {summary ? <Markdown source={summary} className="space-y-1.5 text-[13px]" /> : <p className="text-xs text-muted-foreground">No summary yet.</p>}
                 </Section>
             )}

@@ -7,8 +7,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { useCannedResponses, useRenderCannedResponse, useSuggestReply } from "@/features/support/hooks/use-support";
 import type { AiReplySuggestion } from "@/features/support/interfaces/support.interfaces";
@@ -21,8 +19,8 @@ export interface ComposerSendInput {
 }
 
 interface ReplyComposerProps {
-    onSend: (input: ComposerSendInput) => Promise<unknown>;
-    sending?: boolean;
+    /** Called once per send; the composer clears at once (the message shows in the thread as "Sending…"). */
+    onSend: (input: ComposerSendInput) => void;
     conversationId?: string | null;
     ticketId?: string | null;
     /** Show "Send and resolve". */
@@ -36,7 +34,7 @@ interface ReplyComposerProps {
  * Reply vs internal-note composer (13 §1): saved replies (rendered with placeholders), optional AI draft
  * (falls back to help-center matches when no AI provider is connected), Ctrl/⌘+Enter to send.
  */
-export function ReplyComposer({ onSend, sending, conversationId, ticketId, allowResolve, disabledReason, onTyping }: ReplyComposerProps) {
+export function ReplyComposer({ onSend, conversationId, ticketId, allowResolve, disabledReason, onTyping }: ReplyComposerProps) {
     const [kind, setKind] = useState<"AGENT" | "INTERNAL_NOTE">("AGENT");
     const [body, setBody] = useState("");
     const [cannedId, setCannedId] = useState<string | undefined>();
@@ -50,16 +48,12 @@ export function ReplyComposer({ onSend, sending, conversationId, ticketId, allow
     const note = kind === "INTERNAL_NOTE";
     const blocked = !canReply ? "You need support.conversations.reply to answer" : disabledReason;
 
-    const send = async (resolve = false) => {
+    const send = (resolve = false) => {
         if (!body.trim() || blocked) return;
-        try {
-            await onSend({ kind, body: body.trim(), canned_response_id: cannedId, resolve });
-            setBody("");
-            setCannedId(undefined);
-            setAi(null);
-        } catch (e) {
-            toast({ variant: "destructive", title: note ? "Could not add note" : "Could not send reply", description: getApiErrorMessage(e) });
-        }
+        onSend({ kind, body: body.trim(), canned_response_id: cannedId, resolve });
+        setBody("");
+        setCannedId(undefined);
+        setAi(null);
     };
 
     const insertCanned = (id: string) => {
@@ -71,7 +65,6 @@ export function ReplyComposer({ onSend, sending, conversationId, ticketId, allow
                     setBody((b) => (b.trim() ? `${b}\n\n${r.body}` : r.body));
                     setCannedId(id);
                 },
-                onError: (e) => toast({ variant: "destructive", title: "Could not insert reply", description: getApiErrorMessage(e) }),
             },
         );
     };
@@ -83,7 +76,6 @@ export function ReplyComposer({ onSend, sending, conversationId, ticketId, allow
                 setAi(r);
                 if (r.suggestion) setBody(r.suggestion.body);
             },
-            onError: (e) => toast({ variant: "destructive", title: "Could not draft a reply", description: getApiErrorMessage(e) }),
         });
     };
 
@@ -112,7 +104,7 @@ export function ReplyComposer({ onSend, sending, conversationId, ticketId, allow
                 onKeyDown={(e) => {
                     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                         e.preventDefault();
-                        void send();
+                        send();
                     }
                 }}
                 rows={4}
@@ -177,18 +169,18 @@ export function ReplyComposer({ onSend, sending, conversationId, ticketId, allow
                         </Tooltip>
                     ) : (
                         <>
-                            <Button size="sm" onClick={() => void send()} loading={sending} disabled={!body.trim()} className={cn(allowResolve && !note && "rounded-r-none")}>
+                            <Button size="sm" onClick={() => send()} disabled={!body.trim()} className={cn(allowResolve && !note && "rounded-r-none")}>
                                 <Send /> {note ? "Add note" : "Send"}
                             </Button>
                             {allowResolve && !note && (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button size="sm" className="rounded-l-none border-l border-primary-foreground/20 px-1.5" disabled={!body.trim() || sending} aria-label="More send options">
+                                        <Button size="sm" className="rounded-l-none border-l border-primary-foreground/20 px-1.5" disabled={!body.trim()} aria-label="More send options">
                                             <ChevronDown />
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onSelect={() => void send(true)}>Send and resolve</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => send(true)}>Send and resolve</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             )}

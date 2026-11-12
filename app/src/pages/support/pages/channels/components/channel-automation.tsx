@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime } from "@/lib/format";
 import { ChannelAiModeBadge, ChannelAiModeOptions, WeekdayOptions } from "@/config/constants/dropdowns/support/support.options";
@@ -73,22 +74,26 @@ function AiAgentDialog({ channel, automation, open, onOpenChange }: { channel: S
     const form = useForm<ChannelAiFormValues>({ resolver: zodResolver(channelAiFormSchema), defaultValues: { mode: "OFF", min_confidence_pct: 75, max_turns: 3, handover_phrases: "" } });
     useEffect(() => {
         if (open) form.reset({ mode: automation.ai.mode, min_confidence_pct: Math.round(automation.ai.min_confidence * 100), max_turns: automation.ai.max_turns, handover_phrases: automation.ai.handover_phrases.join(", ") });
-    }, [open, automation, form]);
+        // Only when the dialog opens: a background refresh after an autosave must not reset typing.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, form]);
     const mode = form.watch("mode");
-    const submit = form.handleSubmit((v) =>
-        save.mutate(
-            { id: channel.id, mode: v.mode, min_confidence: v.min_confidence_pct / 100, max_turns: v.max_turns, handover_phrases: (v.handover_phrases ?? "").split(",").map((p) => p.trim()).filter((p) => p.length >= 2) },
-            { onSuccess: () => { toast({ title: "AI answers saved" }); onOpenChange(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) },
-        ),
+    // Saves as you edit (no Save button); invalid fields keep their inline errors and are not sent.
+    const autosave = useFormAutosave(
+        form,
+        (v) => save.mutateAsync({ id: channel.id, mode: v.mode, min_confidence: v.min_confidence_pct / 100, max_turns: v.max_turns, handover_phrases: (v.handover_phrases ?? "").split(",").map((p) => p.trim()).filter((p) => p.length >= 2) }),
+        { enabled: open },
     );
+    const close = () => { autosave.flush(); onOpenChange(false); };
+    const submit = form.handleSubmit(close);
     const num = (v: string) => (v === "" ? Number.NaN : Number(v));
     return (
-        <Dialog open={open} onOpenChange={(o) => !save.isPending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : close())}>
             <DialogContent className="sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
-                            <DialogTitle>AI answers · {channel.name}</DialogTitle>
+                            <DialogTitle className="flex flex-wrap items-center gap-2">AI answers · {channel.name} <SaveStatus state={autosave} className="font-normal" /></DialogTitle>
                             <DialogDescription>The AI assistant answers from your published, public help articles only. Its replies are labelled as AI, link the articles used and never include internal notes.</DialogDescription>
                         </DialogHeader>
                         {ai.data && !ai.data.configured && (
@@ -122,8 +127,7 @@ function AiAgentDialog({ channel, automation, open, onOpenChange }: { channel: S
                             )} />
                         )}
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={save.isPending}>Cancel</Button>
-                            <Button type="submit" loading={save.isPending}>Save</Button>
+                            <Button type="submit">Done</Button>
                         </DialogFooter>
                     </form>
                 </Form>
@@ -149,30 +153,34 @@ function OfficeHoursDialog({ channel, automation, open, onOpenChange }: { channe
             }
         }
         form.reset({ enabled: oh.enabled, use_organization_hours: oh.use_organization_hours, timezone: oh.timezone ?? "", offline_message: oh.offline_message ?? "", days });
+        // Only when the dialog opens: a background refresh after an autosave must not reset typing.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, automation, form]);
+    }, [open, form]);
     const enabled = form.watch("enabled");
     const useOrg = form.watch("use_organization_hours");
-    const submit = form.handleSubmit((v) =>
-        save.mutate(
-            {
+    // Saves as you edit (no Save button); invalid fields keep their inline errors and are not sent.
+    const autosave = useFormAutosave(
+        form,
+        (v) =>
+            save.mutateAsync({
                 id: channel.id,
                 enabled: v.enabled,
                 use_organization_hours: v.use_organization_hours,
                 timezone: v.timezone || null,
                 offline_message: v.offline_message || null,
                 days: Object.fromEntries(Object.entries(v.days).map(([k, d]) => [k, d.open ? { start: d.start, end: d.end } : null])) as Partial<Record<WeekdayKey, { start: string; end: string } | null>>,
-            },
-            { onSuccess: () => { toast({ title: "Office hours saved" }); onOpenChange(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) },
-        ),
+            }),
+        { enabled: open },
     );
+    const close = () => { autosave.flush(); onOpenChange(false); };
+    const submit = form.handleSubmit(close);
     return (
-        <Dialog open={open} onOpenChange={(o) => !save.isPending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : close())}>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
-                            <DialogTitle>Office hours · {channel.name}</DialogTitle>
+                            <DialogTitle className="flex flex-wrap items-center gap-2">Office hours · {channel.name} <SaveStatus state={autosave} className="font-normal" /></DialogTitle>
                             <DialogDescription>Outside these hours the chat shows a "we'll reply by email" form (email required). Replies then go out by email when the inbox has an email channel.</DialogDescription>
                         </DialogHeader>
                         <FormField control={form.control} name="enabled" render={({ field }) => (
@@ -206,8 +214,7 @@ function OfficeHoursDialog({ channel, automation, open, onOpenChange }: { channe
                             </>
                         )}
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={save.isPending}>Cancel</Button>
-                            <Button type="submit" loading={save.isPending}>Save</Button>
+                            <Button type="submit">Done</Button>
                         </DialogFooter>
                     </form>
                 </Form>

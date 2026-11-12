@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Archive, Bell, BellOff, ListTodo, MoreHorizontal, TriangleAlert } from "lucide-react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,7 @@ import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatDateTime, formatMinutes, formatRelative, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { SlaMetricOptions, SupportChannelTypeOptions, TicketPriorityFormOptions, TicketSourceOptions, TicketTypeFormOptions } from "@/config/constants/dropdowns/support/support.options";
@@ -21,8 +20,11 @@ import {
     useAgents,
     useArchiveTicket,
     useAssignTicket,
+    patchTicketStatus,
     useChangeTicketStatus,
+    useDiscardOutgoing,
     useFollowTicket,
+    useOutbox,
     useReplyToTicket,
     useTicket,
     useTicketCategories,
@@ -70,7 +72,11 @@ function TicketView({ t }: { t: TicketDetail }) {
     const canAssign = usePermission("support.tickets.assign");
     const [convertOpen, setConvertOpen] = useState(false);
     const [archiving, setArchiving] = useState(false);
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
+    const outbox = useOutbox({ ticketId: t.id });
+    const discard = useDiscardOutgoing();
+    const qc = useQueryClient();
+    const navigate = useNavigate();
+    const setStatus = (id: string) => { const st = statuses.data?.find((x) => x.id === id); status.mutate({ id: t.id, status_id: id, optimistic: st ? { status: st } : undefined }); };
     const closed = t.status?.category === "RESOLVED" || t.status?.category === "CLOSED";
     const resolvedStatus = statuses.data?.find((s) => s.category === "RESOLVED");
     const converted = t.task_links.some((l) => l.kind === "CONVERTED");
@@ -92,7 +98,7 @@ function TicketView({ t }: { t: TicketDetail }) {
                 description={`${getDropdownOptionLabel(TicketSourceOptions, t.source)} · opened ${formatRelative(t.created_at)}${t.company ? ` · ${t.company.name}` : ""}`}
                 actions={
                     <>
-                        <Button variant="outline" size="sm" loading={follow.isPending || unfollow.isPending} onClick={() => (t.following && session?.active_organization ? unfollow.mutate({ id: t.id, membership_id: session.active_organization.membership_id }, { onError: fail("Could not unfollow") }) : follow.mutate(t.id, { onError: fail("Could not follow") }))}>
+                        <Button variant="outline" size="sm" aria-pressed={t.following} onClick={() => (t.following && session?.active_organization ? unfollow.mutate({ id: t.id, membership_id: session.active_organization.membership_id }) : follow.mutate(t.id))}>
                             {t.following ? <BellOff /> : <Bell />} {t.following ? "Unfollow" : "Follow"}
                         </Button>
                         <Can permission="support.tickets.convert_to_task">
@@ -102,7 +108,7 @@ function TicketView({ t }: { t: TicketDetail }) {
                         </Can>
                         <Can permission="support.tickets.update">
                             {!closed && resolvedStatus && (
-                                <Button size="sm" loading={status.isPending} onClick={() => status.mutate({ id: t.id, status_id: resolvedStatus.id }, { onSuccess: () => toast({ title: "Ticket resolved" }), onError: fail("Could not resolve") })}>
+                                <Button size="sm" onClick={() => setStatus(resolvedStatus.id)}>
                                     Resolve
                                 </Button>
                             )}
@@ -135,17 +141,17 @@ function TicketView({ t }: { t: TicketDetail }) {
                         </Section>
                     )}
                     <Section title="Conversation">
-                        {messages.isLoading ? <p className="text-[13px] text-muted-foreground">Loading messages…</p> : messages.error ? <ErrorState error={messages.error} onRetry={() => messages.refetch()} /> : <MessageThread messages={messages.data ?? []} />}
+                        {messages.isLoading ? <p className="text-[13px] text-muted-foreground">Loading messages…</p> : messages.error ? <ErrorState error={messages.error} onRetry={() => messages.refetch()} /> : <MessageThread messages={[...(messages.data ?? []), ...outbox]} onRetry={(m) => reply.mutate({ local_id: m.id, id: t.id, kind: m.kind as "AGENT" | "INTERNAL_NOTE", body: m.body })} onDiscard={(m) => discard({ ticketId: t.id }, m.id)} />}
                     </Section>
                     <ReplyComposer
                         ticketId={t.id}
                         conversationId={t.conversation_id}
                         allowResolve={!!resolvedStatus && canUpdate && !closed}
-                        sending={reply.isPending}
                         disabledReason={t.merged_into ? "This ticket was merged" : null}
-                        onSend={({ kind, body, canned_response_id, resolve }) =>
-                            reply.mutateAsync({ id: t.id, kind, body, canned_response_id, then_status_id: resolve ? resolvedStatus?.id : undefined }).then(() => toast({ title: kind === "AGENT" ? "Reply sent" : "Note added" }))
-                        }
+                        onSend={({ kind, body, canned_response_id, resolve }) => {
+                            reply.mutate({ id: t.id, kind, body, canned_response_id, then_status_id: resolve ? resolvedStatus?.id : undefined });
+                            if (resolve && resolvedStatus) patchTicketStatus(qc, t.id, resolvedStatus);
+                        }}
                     />
                     {t.status_history.length > 0 && (
                         <Section title="History">
@@ -165,7 +171,7 @@ function TicketView({ t }: { t: TicketDetail }) {
                 <aside className="space-y-5">
                     <div className="space-y-3 rounded-lg border border-border bg-card p-4">
                         <Field label="Status">
-                            <Select value={t.status?.id ?? NONE} disabled={!canUpdate} onValueChange={(v) => status.mutate({ id: t.id, status_id: v }, { onSuccess: () => toast({ title: "Status updated" }), onError: fail("Could not change status") })}>
+                            <Select value={t.status?.id ?? NONE} disabled={!canUpdate} onValueChange={setStatus}>
                                 <SelectTrigger className="h-8" aria-label="Status"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {!t.status && <SelectItem value={NONE}>No status</SelectItem>}
@@ -174,7 +180,7 @@ function TicketView({ t }: { t: TicketDetail }) {
                             </Select>
                         </Field>
                         <Field label="Priority">
-                            <Select value={t.priority} disabled={!canUpdate} onValueChange={(v) => update.mutate({ id: t.id, priority: v as TicketPriority }, { onSuccess: () => toast({ title: "Priority updated" }), onError: fail("Could not update") })}>
+                            <Select value={t.priority} disabled={!canUpdate} onValueChange={(v) => update.mutate({ id: t.id, priority: v as TicketPriority })}>
                                 <SelectTrigger className="h-8" aria-label="Priority"><SelectValue /></SelectTrigger>
                                 <SelectContent>{TicketPriorityFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                             </Select>
@@ -186,11 +192,11 @@ function TicketView({ t }: { t: TicketDetail }) {
                                 noneLabel="Unassigned"
                                 disabled={!canAssign}
                                 ariaLabel="Assignee"
-                                onChange={(v) => assign.mutate({ id: t.id, assignee_membership_id: v }, { onSuccess: () => toast({ title: v ? "Assigned" : "Unassigned" }), onError: fail("Could not assign") })}
+                                onChange={(v) => assign.mutate({ id: t.id, assignee_membership_id: v, optimistic: { assignee: agents.data?.find((a) => a.id === v) ?? null } })}
                             />
                         </Field>
                         <Field label="Category">
-                            <Select value={t.category?.id ?? NONE} disabled={!canUpdate} onValueChange={(v) => update.mutate({ id: t.id, category_id: v === NONE ? undefined : v }, { onError: fail("Could not update") })}>
+                            <Select value={t.category?.id ?? NONE} disabled={!canUpdate} onValueChange={(v) => update.mutate({ id: t.id, category_id: v === NONE ? undefined : v, optimistic: { category: categories.data?.find((c) => c.id === v) ?? null } })}>
                                 <SelectTrigger className="h-8" aria-label="Category"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value={NONE}>No category</SelectItem>
@@ -199,7 +205,7 @@ function TicketView({ t }: { t: TicketDetail }) {
                             </Select>
                         </Field>
                         <Field label="Type">
-                            <Select value={t.type} disabled={!canUpdate} onValueChange={(v) => update.mutate({ id: t.id, type: v as TicketDetail["type"] }, { onError: fail("Could not update") })}>
+                            <Select value={t.type} disabled={!canUpdate} onValueChange={(v) => update.mutate({ id: t.id, type: v as TicketDetail["type"] })}>
                                 <SelectTrigger className="h-8" aria-label="Type"><SelectValue /></SelectTrigger>
                                 <SelectContent>{TicketTypeFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                             </Select>
@@ -269,8 +275,7 @@ function TicketView({ t }: { t: TicketDetail }) {
                 description="Archived tickets are hidden from lists and their SLA timers stop."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archive.mutate(t.id, { onSuccess: () => { toast({ title: "Ticket archived" }); setArchiving(false); window.history.back(); }, onError: fail("Could not archive") })}
+                onConfirm={() => { archive.mutate(t.id); setArchiving(false); navigate(SUPPORT_PATHS.tickets); }}
             />
         </Page>
     );

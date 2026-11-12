@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { EntityPicker } from "@/components/ui/entity-picker";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { personName } from "@/lib/format";
 import { useAgents, useConvertTicketToTask } from "@/features/support/hooks/use-support";
@@ -33,23 +32,21 @@ export function ConvertToTaskDialog({ open, onOpenChange, ticket }: Props) {
 
     useEffect(() => {
         if (open) {
+            convert.reset();
             setTitle(ticket.subject);
             setProjectId(ticket.project?.id ?? null);
             setAssignee(ticket.assignee?.id ?? null);
             setVisible(false);
         }
-    }, [open, ticket]);
+        // Only when the dialog opens (a background refresh of the ticket must not wipe what was typed or the error).
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, ticket.id]);
 
     const submit = () =>
         convert.mutate(
             { id: ticket.id, title: title.trim() || undefined, project_id: projectId ?? undefined, team_id: ticket.team?.id, assignee_membership_id: assignee ?? undefined, customer_visible: visible },
-            {
-                onSuccess: (task) => {
-                    toast({ title: `Task ${task.identifier} created`, description: "It stays linked to this ticket." });
-                    onOpenChange(false);
-                },
-                onError: (e) => toast({ variant: "destructive", title: "Could not convert", description: getApiErrorMessage(e) }),
-            },
+            // The new task shows under "Linked work" (and the button turns into "Converted").
+            { onSuccess: () => onOpenChange(false) },
         );
 
     const projectItems = (projects.data ?? []).map((p) => ({ id: p.id, label: p.name, hint: p.code ?? undefined }));
@@ -87,6 +84,7 @@ export function ConvertToTaskDialog({ open, onOpenChange, ticket }: Props) {
                         </label>
                     </div>
                 )}
+                {convert.error && <p role="alert" className="text-[13px] text-danger">{getApiErrorMessage(convert.error)}</p>}
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={convert.isPending}>Cancel</Button>
                     <Button onClick={submit} loading={convert.isPending} disabled={!canCreateTask || !title.trim()}>Create task</Button>

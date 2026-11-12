@@ -16,8 +16,6 @@ import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePageMetadata } from "@/hooks/use-page-metadata";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import {
@@ -100,8 +98,7 @@ function IncidentDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
         create.mutate(
             { title: v.title, description: v.description || undefined, severity: v.severity, affected_services: (v.affected_services ?? "").split(",").map((x) => x.trim()).filter(Boolean) },
             {
-                onSuccess: (inc) => { toast({ title: "Incident declared" }); onOpenChange(false); form.reset(); navigate(SUPPORT_PATHS.incident(inc.id)); },
-                onError: (e) => toast({ variant: "destructive", title: "Could not declare incident", description: getApiErrorMessage(e) }),
+                onSuccess: (inc) => { onOpenChange(false); form.reset(); navigate(SUPPORT_PATHS.incident(inc.id)); },
             },
         ),
     );

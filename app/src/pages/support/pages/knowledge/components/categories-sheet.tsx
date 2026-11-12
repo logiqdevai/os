@@ -1,11 +1,9 @@
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { KnowledgeVisibilityOptions } from "@/config/constants/dropdowns/support/support.options";
@@ -20,30 +18,19 @@ import type { KnowledgeCategory } from "@/features/support/interfaces/support.in
 export function CategoriesSheet({ open, onOpenChange, canEdit }: { open: boolean; onOpenChange: (o: boolean) => void; canEdit: boolean }) {
     const categories = useKnowledgeCategories(open);
     const reorder = useReorderKnowledgeCategories();
-    const [items, setItems] = useState<KnowledgeCategory[]>([]);
+    // The cache is re-sorted optimistically by the mutation (rolled back if the API refuses).
+    const items: KnowledgeCategory[] = categories.data ?? [];
     const [dragId, setDragId] = useState<string | null>(null);
     const [announce, setAnnounce] = useState("");
 
-    useEffect(() => {
-        if (categories.data) setItems(categories.data);
-    }, [categories.data]);
-
-    const save = (next: KnowledgeCategory[], prev: KnowledgeCategory[]) => {
-        setItems(next);
-        reorder.mutate(next.map((c) => c.id), {
-            onError: (e) => {
-                setItems(prev);
-                toast({ variant: "destructive", title: "Could not save the order", description: getApiErrorMessage(e) });
-            },
-        });
-    };
+    const save = (next: KnowledgeCategory[]) => reorder.mutate(next.map((c) => c.id));
     const move = (index: number, to: number) => {
         if (to < 0 || to >= items.length || to === index) return;
         const next = [...items];
         const [row] = next.splice(index, 1);
         next.splice(to, 0, row);
         setAnnounce(`${row.name} moved to position ${to + 1} of ${next.length}`);
-        save(next, items);
+        save(next);
         requestAnimationFrame(() => document.getElementById(`kb-cat-${row.id}`)?.focus());
     };
     const onKey = (e: KeyboardEvent, index: number) => {
@@ -99,8 +86,8 @@ export function CategoriesSheet({ open, onOpenChange, canEdit }: { open: boolean
                                     <Badge variant="neutral" className="hidden sm:inline-flex">{getDropdownOptionLabel(KnowledgeVisibilityOptions, c.visibility)}</Badge>
                                     {canEdit && (
                                         <div className="flex shrink-0">
-                                            <Button size="icon-sm" variant="ghost" aria-label={`Move ${c.name} up`} disabled={i === 0 || reorder.isPending} onClick={() => move(i, i - 1)}><ArrowUp /></Button>
-                                            <Button size="icon-sm" variant="ghost" aria-label={`Move ${c.name} down`} disabled={i === items.length - 1 || reorder.isPending} onClick={() => move(i, i + 1)}><ArrowDown /></Button>
+                                            <Button size="icon-sm" variant="ghost" aria-label={`Move ${c.name} up`} disabled={i === 0} onClick={() => move(i, i - 1)}><ArrowUp /></Button>
+                                            <Button size="icon-sm" variant="ghost" aria-label={`Move ${c.name} down`} disabled={i === items.length - 1} onClick={() => move(i, i + 1)}><ArrowDown /></Button>
                                         </div>
                                     )}
                                 </li>

@@ -11,8 +11,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { KnowledgeStatusFilterOptions, KnowledgeStatusOptions, KnowledgeStatusTone, KnowledgeVisibilityFilterOptions, KnowledgeVisibilityOptions } from "@/config/constants/dropdowns/support/support.options";
@@ -127,7 +125,7 @@ function CategoryDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
                     <Button
                         loading={create.isPending}
                         disabled={!name.trim()}
-                        onClick={() => create.mutate({ name: name.trim(), visibility }, { onSuccess: () => { toast({ title: "Category created" }); setName(""); onOpenChange(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not create category", description: getApiErrorMessage(e) }) })}
+                        onClick={() => create.mutate({ name: name.trim(), visibility }, { onSuccess: () => { setName(""); onOpenChange(false); } })}
                     >
                         Create
                     </Button>

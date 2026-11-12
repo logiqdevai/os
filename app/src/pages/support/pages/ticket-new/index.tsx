@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EntityPicker } from "@/components/ui/entity-picker";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { personName } from "@/lib/format";
 import { TicketPriorityFormOptions, TicketTypeFormOptions } from "@/config/constants/dropdowns/support/support.options";
@@ -62,13 +61,7 @@ export default function NewTicketPage() {
                 requester_name: v.requester_name || undefined,
                 conversation_id: conversationId,
             },
-            {
-                onSuccess: (t) => {
-                    toast({ title: `Ticket ${t.reference} created` });
-                    navigate(SUPPORT_PATHS.ticket(t.reference));
-                },
-                onError: (e) => toast({ variant: "destructive", title: "Could not create ticket", description: getApiErrorMessage(e) }),
-            },
+            { onSuccess: (t) => navigate(SUPPORT_PATHS.ticket(t.reference)) },
         );
     });
 
@@ -141,6 +134,7 @@ export default function NewTicketPage() {
                             )} />
                         </div>
                     )}
+                    {create.error && <p role="alert" className="text-[13px] text-danger">{getApiErrorMessage(create.error)}</p>}
                     <div className="flex justify-end gap-2 pt-2">
                         <Button type="button" variant="ghost" onClick={() => navigate(-1)} disabled={create.isPending}>Cancel</Button>
                         <Button type="submit" loading={create.isPending}>Create ticket</Button>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { Archive, Pencil, Plus, Timer } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
@@ -14,14 +14,14 @@ import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useAutosave } from "@/hooks/use-autosave";
 import { formatMinutes } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { TicketPriorityFormOptions } from "@/config/constants/dropdowns/support/support.options";
 import { useArchiveSlaPolicy, useCreateSlaPolicy, useSlaPolicies, useUpdateSlaPolicy } from "@/features/support/hooks/use-support";
 import { slaFormSchema, type SlaFormValues } from "@/features/support/validation-schemas/support.schema";
-import type { SlaPolicy, TicketPriority } from "@/features/support/interfaces/support.interfaces";
+import type { SlaPolicy, SlaPolicyDto, TicketPriority } from "@/features/support/interfaces/support.interfaces";
 import { PriorityBadge } from "../../components/support-badges";
 
 const PRIORITIES: TicketPriority[] = ["URGENT", "HIGH", "NORMAL", "LOW"];
@@ -109,8 +109,7 @@ export default function SlaPage() {
                 description="New tickets stop using this policy. Running timers keep their targets."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate(archiving.id, { onSuccess: () => { toast({ title: "Policy archived" }); setArchiving(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (!archiving) return; archive.mutate(archiving.id); setArchiving(null); }}
             />
         </Page>
     );
@@ -118,15 +117,39 @@ export default function SlaPage() {
 
 const toNum = (v: unknown) => (v === "" || v === undefined || v === null ? null : Number(v));
 
+/** Form values → API body, or the first problem to show inline. */
+function toDto(raw: SlaFormValues): { dto?: SlaPolicyDto; error?: string } {
+    const parsed = slaFormSchema.safeParse(raw);
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Some values are invalid" };
+    const v = parsed.data;
+    for (const t of v.targets) {
+        const fr = toNum(t.first_response_minutes);
+        const res = toNum(t.resolution_minutes);
+        if (fr && res && res < fr) return { error: `Resolution must be at least the first response (${getDropdownOptionLabel(TicketPriorityFormOptions, t.priority)})` };
+    }
+    return {
+        dto: {
+            name: v.name,
+            description: v.description || undefined,
+            is_default: v.is_default,
+            use_business_hours: v.use_business_hours,
+            at_risk_threshold_percent: v.at_risk_threshold_percent,
+            targets: v.targets.map((t) => ({ priority: t.priority, first_response_minutes: toNum(t.first_response_minutes), next_response_minutes: toNum(t.next_response_minutes), resolution_minutes: toNum(t.resolution_minutes) })),
+        } as SlaPolicyDto,
+    };
+}
+
+/** New policy: explicit Create. Existing policy: every valid change is saved as you edit (no Save button). */
 function SlaPolicyDialog({ open, onOpenChange, policy }: { open: boolean; onOpenChange: (o: boolean) => void; policy: SlaPolicy | null }) {
     const create = useCreateSlaPolicy();
     const update = useUpdateSlaPolicy();
     const form = useForm<SlaFormValues>();
     const targets = useFieldArray({ control: form.control, name: "targets" });
-    const pending = create.isPending || update.isPending;
+    const [submitted, setSubmitted] = useState(false);
 
     useEffect(() => {
         if (!open) return;
+        setSubmitted(false);
         form.reset({
             name: policy?.name ?? "",
             description: policy?.description ?? "",
@@ -138,43 +161,33 @@ function SlaPolicyDialog({ open, onOpenChange, policy }: { open: boolean; onOpen
                 return { priority: pr, first_response_minutes: t?.first_response_minutes ?? "", next_response_minutes: t?.next_response_minutes ?? "", resolution_minutes: t?.resolution_minutes ?? "" };
             }),
         });
-    }, [open, policy, form]);
+        // Only when the dialog opens or switches policy: a background refresh after an autosave must not reset typing.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, policy?.id, form]);
 
-    const submit = form.handleSubmit((raw) => {
-        const parsed = slaFormSchema.safeParse(raw);
-        if (!parsed.success) {
-            toast({ variant: "destructive", title: "Check the policy", description: parsed.error.issues[0]?.message ?? "Some values are invalid" });
-            return;
-        }
-        const v = parsed.data;
-        for (const t of v.targets) {
-            const fr = toNum(t.first_response_minutes);
-            const res = toNum(t.resolution_minutes);
-            if (fr && res && res < fr) {
-                toast({ variant: "destructive", title: `Resolution must be at least the first response (${getDropdownOptionLabel(TicketPriorityFormOptions, t.priority)})` });
-                return;
-            }
-        }
-        const dto = {
-            name: v.name,
-            description: v.description || undefined,
-            is_default: v.is_default,
-            use_business_hours: v.use_business_hours,
-            at_risk_threshold_percent: v.at_risk_threshold_percent,
-            targets: v.targets.map((t) => ({ priority: t.priority, first_response_minutes: toNum(t.first_response_minutes), next_response_minutes: toNum(t.next_response_minutes), resolution_minutes: toNum(t.resolution_minutes) })),
-        };
-        const opts = { onSuccess: () => { toast({ title: policy ? "Policy saved" : "Policy created" }); onOpenChange(false); }, onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save policy", description: getApiErrorMessage(e) }) };
-        if (policy) update.mutate({ id: policy.id, ...dto }, opts);
-        else create.mutate(dto, opts);
+    const json = JSON.stringify(form.watch());
+    const result = useMemo(() => toDto(JSON.parse(json) as SlaFormValues), [json]);
+    const autosave = useAutosave({
+        value: result.dto ?? null,
+        enabled: open && !!policy && !!result.dto && form.formState.isDirty,
+        save: (dto) => update.mutateAsync({ id: (policy as SlaPolicy).id, ...(dto as SlaPolicyDto) }),
+    });
+    const showError = result.error && (submitted || (!!policy && form.formState.isDirty));
+    const close = () => { autosave.flush(); onOpenChange(false); };
+
+    const submit = form.handleSubmit(() => {
+        setSubmitted(true);
+        if (policy) return close();
+        if (result.dto) create.mutate(result.dto, { onSuccess: () => onOpenChange(false) });
     });
 
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !create.isPending && close())}>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
-                            <DialogTitle>{policy ? "Edit SLA policy" : "New SLA policy"}</DialogTitle>
+                            <DialogTitle className="flex flex-wrap items-center gap-2">{policy ? "Edit SLA policy" : "New SLA policy"}{policy && <SaveStatus state={autosave} className="font-normal" />}</DialogTitle>
                             <DialogDescription>Targets in minutes (60 = 1 hour, 1440 = 1 day). Leave empty to not track a metric.</DialogDescription>
                         </DialogHeader>
                         <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -214,9 +227,16 @@ function SlaPolicyDialog({ open, onOpenChange, policy }: { open: boolean; onOpen
                                 <FormItem><FormLabel>Default policy</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormDescription>Applies when nothing else matches.</FormDescription></FormItem>
                             )} />
                         </div>
+                        {showError && <p role="alert" className="text-[13px] text-danger">{result.error}</p>}
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{policy ? "Save" : "Create policy"}</Button>
+                            {policy ? (
+                                <Button type="button" onClick={close}>Done</Button>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>Cancel</Button>
+                                    <Button type="submit" loading={create.isPending}>Create policy</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>

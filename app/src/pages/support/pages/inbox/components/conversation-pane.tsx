@@ -11,17 +11,19 @@ import { ErrorState } from "@/components/ui/states";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Can } from "@/components/access/can";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useQueryClient } from "@tanstack/react-query";
 import { personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { SnoozeOptions, SupportChannelTypeOptions } from "@/config/constants/dropdowns/support/support.options";
 import {
     useAgents,
     useAssignConversation,
+    patchConversationStatus,
     useCloseConversation,
     useConversation,
+    useDiscardOutgoing,
     useMarkConversationRead,
+    useOutbox,
     usePostConversationMessage,
     useReopenConversation,
     useSnoozeConversation,
@@ -54,6 +56,9 @@ export function ConversationPane({ id, showDetailsInline, typing = [], onTyping 
     const close = useCloseConversation();
     const reopen = useReopenConversation();
     const markRead = useMarkConversationRead();
+    const outbox = useOutbox({ conversationId: id });
+    const discard = useDiscardOutgoing();
+    const qc = useQueryClient();
     const canAssign = usePermission("support.conversations.assign");
     const [detailsOpen, setDetailsOpen] = useState(false);
     const bottom = useRef<HTMLDivElement>(null);
@@ -65,9 +70,7 @@ export function ConversationPane({ id, showDetailsInline, typing = [], onTyping 
     }, [c?.id, c?.messages.length]);
     useEffect(() => {
         bottom.current?.scrollIntoView({ block: "end" });
-    }, [c?.id, c?.messages.length]);
-
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
+    }, [c?.id, c?.messages.length, outbox.length]);
 
     if (conv.isLoading) {
         return (
@@ -102,7 +105,7 @@ export function ConversationPane({ id, showDetailsInline, typing = [], onTyping 
                         <EntityPicker
                             items={assigneeItems}
                             value={c.assignee?.id ?? null}
-                            onChange={(v) => assign.mutate({ id: c.id, assignee_membership_id: v }, { onSuccess: () => toast({ title: v ? "Assigned" : "Unassigned" }), onError: fail("Could not assign") })}
+                            onChange={(v) => assign.mutate({ id: c.id, assignee_membership_id: v, optimistic: { assignee: agents.data?.find((a) => a.id === v) ?? null } })}
                             noneLabel="Unassigned"
                             ariaLabel="Assignee"
                             align="end"
@@ -126,7 +129,7 @@ export function ConversationPane({ id, showDetailsInline, typing = [], onTyping 
                                     <DropdownMenuLabel>Snooze until</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
                                     {SnoozeOptions.map((o) => (
-                                        <DropdownMenuItem key={o.id} onSelect={() => snooze.mutate({ id: c.id, until: snoozeUntil(o.id) }, { onSuccess: () => toast({ title: `Snoozed · ${o.label}` }), onError: fail("Could not snooze") })}>
+                                        <DropdownMenuItem key={o.id} onSelect={() => snooze.mutate({ id: c.id, until: snoozeUntil(o.id) })}>
                                             {o.label}
                                         </DropdownMenuItem>
                                     ))}
@@ -136,11 +139,11 @@ export function ConversationPane({ id, showDetailsInline, typing = [], onTyping 
                     </Can>
                     <Can permission="support.conversations.close">
                         {resolved || c.status === "SNOOZED" ? (
-                            <Button size="sm" variant="outline" loading={reopen.isPending} onClick={() => reopen.mutate(c.id, { onSuccess: () => toast({ title: "Reopened" }), onError: fail("Could not reopen") })}>
+                            <Button size="sm" variant="outline" onClick={() => reopen.mutate(c.id)}>
                                 {c.status === "SNOOZED" ? <AlarmClockOff /> : <RotateCcw />} <span className="hidden sm:inline">{c.status === "SNOOZED" ? "Unsnooze" : "Reopen"}</span>
                             </Button>
                         ) : (
-                            <Button size="sm" loading={close.isPending} onClick={() => close.mutate(c.id, { onSuccess: () => toast({ title: "Resolved" }), onError: fail("Could not resolve") })}>
+                            <Button size="sm" onClick={() => close.mutate(c.id)}>
                                 <CheckCircle2 /> <span className="hidden sm:inline">Resolve</span>
                             </Button>
                         )}
@@ -156,7 +159,11 @@ export function ConversationPane({ id, showDetailsInline, typing = [], onTyping 
                             Merged into <Link className="text-info hover:underline" to={SUPPORT_PATHS.conversation(c.merged_into.id)}>{c.merged_into.subject || "another conversation"}</Link>. Reply there.
                         </div>
                     )}
-                    <MessageThread messages={c.messages} />
+                    <MessageThread
+                        messages={[...c.messages, ...outbox]}
+                        onRetry={(m) => post.mutate({ local_id: m.id, id: c.id, kind: m.kind as "AGENT" | "INTERNAL_NOTE", body: m.body })}
+                        onDiscard={(m) => discard({ conversationId: c.id }, m.id)}
+                    />
                     <div ref={bottom} />
                 </div>
                 <AiSessionBanner conversationId={c.id} />
@@ -167,12 +174,12 @@ export function ConversationPane({ id, showDetailsInline, typing = [], onTyping 
                         conversationId={c.id}
                         ticketId={c.primary_tickets[0]?.id}
                         allowResolve
-                        sending={post.isPending}
                         disabledReason={c.merged_into ? "This conversation was merged" : null}
                         onTyping={onTyping}
-                        onSend={({ kind, body, canned_response_id, resolve }) =>
-                            post.mutateAsync({ id: c.id, kind, body, canned_response_id, then_status: resolve ? "RESOLVED" : undefined }).then(() => toast({ title: kind === "AGENT" ? (resolve ? "Sent and resolved" : "Reply sent") : "Note added" }))
-                        }
+                        onSend={({ kind, body, canned_response_id, resolve }) => {
+                            post.mutate({ id: c.id, kind, body, canned_response_id, then_status: resolve ? "RESOLVED" : undefined });
+                            if (resolve) patchConversationStatus(qc, c.id, "RESOLVED");
+                        }}
                     />
                 </div>
             </div>

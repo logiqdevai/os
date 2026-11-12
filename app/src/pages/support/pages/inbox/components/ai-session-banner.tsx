@@ -1,8 +1,6 @@
 import { Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { useAiSessions, useTakeOverFromAi } from "@/features/support/hooks/use-support";
 
 /**
@@ -26,8 +24,7 @@ export function AiSessionBanner({ conversationId }: { conversationId: string }) 
                     <Button
                         size="sm"
                         variant="outline"
-                        loading={takeOver.isPending}
-                        onClick={() => takeOver.mutate(conversationId, { onSuccess: () => toast({ title: "You took over from the AI assistant" }), onError: (e) => toast({ variant: "destructive", title: "Could not take over", description: getApiErrorMessage(e) }) })}
+                        onClick={() => takeOver.mutate(conversationId)}
                     >
                         Take over
                     </Button>
