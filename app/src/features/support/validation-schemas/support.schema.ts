@@ -92,3 +92,25 @@ export const incidentUpdateFormSchema = z.object({
     customer_visible: z.boolean(),
 });
 export type IncidentUpdateFormValues = z.infer<typeof incidentUpdateFormSchema>;
+
+/** AI auto-answer of a channel (PUT /support/channels/:id/ai-agent). Confidence is edited as a percentage. */
+export const channelAiFormSchema = z.object({
+    mode: z.enum(["OFF", "SUGGEST", "AUTO_REPLY"]),
+    min_confidence_pct: z.number({ error: "Enter a percentage" }).int("Whole percent").min(50, "At least 50%").max(99, "At most 99%"),
+    max_turns: z.number({ error: "Enter a number" }).int().min(1, "At least 1").max(10, "At most 10"),
+    handover_phrases: z.string().max(1200).optional(),
+});
+export type ChannelAiFormValues = z.infer<typeof channelAiFormSchema>;
+
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "HH:MM");
+const officeDay = z.object({ open: z.boolean(), start: hhmm, end: hhmm }).refine((d) => !d.open || d.end > d.start, { message: "End after start", path: ["end"] });
+
+/** Office hours of a widget channel (PUT /support/channels/:id/office-hours). */
+export const officeHoursFormSchema = z.object({
+    enabled: z.boolean(),
+    use_organization_hours: z.boolean(),
+    timezone: z.string().trim().max(64).optional(),
+    offline_message: z.string().trim().max(500).optional(),
+    days: z.object({ mon: officeDay, tue: officeDay, wed: officeDay, thu: officeDay, fri: officeDay, sat: officeDay, sun: officeDay }),
+});
+export type OfficeHoursFormValues = z.infer<typeof officeHoursFormSchema>;

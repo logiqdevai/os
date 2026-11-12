@@ -28,13 +28,15 @@ interface ReplyComposerProps {
     /** Show "Send and resolve". */
     allowResolve?: boolean;
     disabledReason?: string | null;
+    /** Called while typing (throttled by the caller); `internal` = writing an internal note. */
+    onTyping?: (internal: boolean) => void;
 }
 
 /**
  * Reply vs internal-note composer (13 §1): saved replies (rendered with placeholders), optional AI draft
  * (falls back to help-center matches when no AI provider is connected), Ctrl/⌘+Enter to send.
  */
-export function ReplyComposer({ onSend, sending, conversationId, ticketId, allowResolve, disabledReason }: ReplyComposerProps) {
+export function ReplyComposer({ onSend, sending, conversationId, ticketId, allowResolve, disabledReason, onTyping }: ReplyComposerProps) {
     const [kind, setKind] = useState<"AGENT" | "INTERNAL_NOTE">("AGENT");
     const [body, setBody] = useState("");
     const [cannedId, setCannedId] = useState<string | undefined>();
@@ -103,7 +105,10 @@ export function ReplyComposer({ onSend, sending, conversationId, ticketId, allow
             </div>
             <Textarea
                 value={body}
-                onChange={(e) => setBody(e.target.value)}
+                onChange={(e) => {
+                    setBody(e.target.value);
+                    if (e.target.value.trim()) onTyping?.(note);
+                }}
                 onKeyDown={(e) => {
                     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                         e.preventDefault();

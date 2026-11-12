@@ -5,6 +5,11 @@ export const SupportApiRoutes = {
     /** Public embeddable chat script of a WIDGET / LIVE_CHAT channel. */
     widgetScript: (key: string) => `/support/widget/${key}.js`,
     settings: "/support/settings",
+    /** Public help center (no login): PUBLIC, published articles only. */
+    help: {
+        article: (orgSlug: string, slug: string) => `/help/${encodeURIComponent(orgSlug)}/articles/${encodeURIComponent(slug)}`,
+        feedback: (orgSlug: string, slug: string) => `/help/${encodeURIComponent(orgSlug)}/articles/${encodeURIComponent(slug)}/feedback`,
+    },
     inboxes: { list: "/support/inboxes", detail: (id: string) => `/support/inboxes/${id}`, archive: (id: string) => `/support/inboxes/${id}/archive` },
     channels: {
         list: "/support/channels",

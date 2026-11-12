@@ -65,6 +65,9 @@ export const useChannels = (enabled = true) => useQuery({ queryKey: k("channels"
 export const useCreateChannel = () => useSupportMutation(s.createChannel);
 export const useUpdateChannel = () => useSupportMutation(s.updateChannel);
 export const useRotateWidgetKey = () => useSupportMutation(s.rotateWidgetKey);
+export const usePublicHelpArticle = (orgSlug: string | undefined, slug: string | undefined) =>
+    useQuery({ queryKey: k("help-article", orgSlug, slug), queryFn: () => s.getPublicHelpArticle(orgSlug as string, slug as string), enabled: !!orgSlug && !!slug, retry: false });
+export const useHelpArticleFeedback = () => useMutation({ mutationFn: s.sendHelpArticleFeedback });
 export const useChannelAutomation = (id: string | undefined, enabled = true) => useQuery({ queryKey: k("channel-automation", id), queryFn: () => s.getChannelAutomation(id as string), enabled: !!id && enabled });
 export const useSetChannelAiAgent = () => useSupportMutation(s.setChannelAiAgent);
 export const useSetChannelOfficeHours = () => useSupportMutation(s.setChannelOfficeHours);

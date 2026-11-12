@@ -95,7 +95,7 @@ export class InboxesController {
 
     @Put('channels/:id/office-hours')
     @RequirePermission('support.inboxes.manage')
-    @ApiOperation({ summary: 'Office hours of a widget / live chat channel (outside them visitors get a "we'll reply by email" form)' })
+    @ApiOperation({ summary: 'Office hours of a widget / live chat channel (outside them visitors get a "we will reply by email" form)' })
     setOfficeHours(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body(ZBody(OfficeHoursSchema)) dto: OfficeHoursConfig) {
         return this.inboxes.setOfficeHours(ctx, id, dto);
     }

@@ -26,10 +26,11 @@ import type { Inbox } from "@/features/support/interfaces/support.interfaces";
 import { useSearchParams } from "react-router-dom";
 import { WidgetSetup } from "./components/widget-setup";
 import { EmailSetup } from "./components/email-setup";
+import { ChannelAutomationRow } from "./components/channel-automation";
 
 /**
  * Inboxes and channels — /support/channels?tab=inboxes|channels (mockup 13-support `channels`, `channel-create`, `widget`).
- * @perm VIEW support.inboxes.read · create/edit/archive support.inboxes.manage
+ * @perm VIEW support.inboxes.read · create/edit/archive support.inboxes.manage · AI answers support.ai.configure · office hours support.inboxes.manage
  */
 export default function ChannelsPage() {
     const [sp, setSp] = useSearchParams();
@@ -184,6 +185,7 @@ function ChannelsTab() {
                             </div>
                             {c.widget_key && <WidgetSetup channel={c} canManage={canManage} />}
                             {c.type === "EMAIL" && <EmailSetup channel={c} canManage={canManage} />}
+                            <ChannelAutomationRow channel={c} />
                         </div>
                     ))}
                 </div>

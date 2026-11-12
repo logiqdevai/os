@@ -18,7 +18,7 @@ import { SUPPORT_PATHS } from "../../support-paths";
 export default function InboxPage() {
     usePageMetadata({ title: "Inbox" });
     const { conversationId } = useParams();
-    useSupportSocket(conversationId);
+    const live = useSupportSocket(conversationId);
     const [sp, setSp] = useSearchParams();
     const view = sp.get("view") ?? "mine";
     const status = sp.get("status") ?? "OPEN,PENDING";
@@ -73,7 +73,7 @@ export default function InboxPage() {
             </aside>
             <section className={cn("min-w-0 flex-1", conversationId ? "block" : "hidden md:block")}>
                 {conversationId ? (
-                    <ConversationPane key={conversationId} id={conversationId} showDetailsInline={wide} />
+                    <ConversationPane key={conversationId} id={conversationId} showDetailsInline={wide} typing={live.typing} onTyping={(internal) => live.sendTyping(conversationId, internal)} />
                 ) : (
                     <EmptyState icon={MessagesSquare} title="Pick a conversation" description="Select a conversation on the left to read and reply." className="h-full" />
                 )}

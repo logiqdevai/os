@@ -1,6 +1,7 @@
 import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
 import type {
+    PublicHelpArticle,
     ChannelAiConfig,
     ChannelAutomation,
     OfficeHoursConfig,
@@ -97,6 +98,8 @@ export const updateChannel = async ({ id, ...dto }: Params & { id: string }): Pr
 export const rotateWidgetKey = async (id: string): Promise<SupportChannel> => (await axiosInstance.post(R().channels.rotate(id))).data;
 export const getEmailChannelSetup = async (id: string): Promise<EmailChannelSetup> => (await axiosInstance.get(R().channels.emailSetup(id))).data;
 export const setEmailInboundSecret = async ({ id, secret }: { id: string; secret?: string }): Promise<{ inbound_url: string; secret: string | null }> => (await axiosInstance.post(R().channels.emailSecret(id), { secret })).data;
+export const getPublicHelpArticle = async (orgSlug: string, slug: string): Promise<PublicHelpArticle> => (await axiosInstance.get(R().help.article(orgSlug, slug))).data;
+export const sendHelpArticleFeedback = async ({ orgSlug, slug, is_helpful }: { orgSlug: string; slug: string; is_helpful: boolean }) => (await axiosInstance.post(R().help.feedback(orgSlug, slug), { is_helpful })).data;
 export const getChannelAutomation = async (id: string): Promise<ChannelAutomation> => (await axiosInstance.get(R().channels.automation(id))).data;
 export const setChannelAiAgent = async ({ id, ...dto }: ChannelAiConfig & { id: string }): Promise<ChannelAutomation> => (await axiosInstance.put(R().channels.aiAgent(id), dto)).data;
 export const setChannelOfficeHours = async ({ id, ...dto }: OfficeHoursConfig & { id: string }): Promise<ChannelAutomation> => (await axiosInstance.put(R().channels.officeHours(id), dto)).data;

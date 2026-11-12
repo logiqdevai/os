@@ -12,5 +12,6 @@ export const PUBLIC_ROUTES: { path: string; Component: LazyExoticComponent<Compo
     { path: "/sign/:token", Component: lazy(() => import("@/pages/contracts/public/sign-page")) },
     { path: "/print/invoices/:id", Component: lazy(() => import("@/pages/billing/print/invoice-print")) },
     { path: "/book/:orgSlug/:slug", Component: lazy(() => import("@/pages/calendar/public/booking-page")) },
+    { path: "/help/:orgSlug/articles/:slug", Component: lazy(() => import("@/pages/support/public/help-article-page")) },
     { path: "/portal/*", Component: lazy(() => import("@/pages/portal/routes")) },
 ];

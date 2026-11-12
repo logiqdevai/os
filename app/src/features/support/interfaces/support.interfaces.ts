@@ -597,3 +597,16 @@ export interface SupportTypingEvent {
     internal: boolean;
     active: boolean;
 }
+
+/** GET /help/:orgSlug/articles/:slug — public article (linked from AI answers). */
+export interface PublicHelpArticle {
+    id: string;
+    title: string;
+    slug: string;
+    summary: string | null;
+    body: string;
+    published_at: string | null;
+    updated_at: string;
+    category: { id: string; name: string; slug: string } | null;
+    related: { id: string; title: string; slug: string }[];
+}

@@ -30,6 +30,9 @@ import { ConversationStatusBadge, PriorityBadge } from "../../../components/supp
 import { MessageThread } from "../../../components/message-thread";
 import { ReplyComposer } from "../../../components/reply-composer";
 import { ConversationDetails } from "./conversation-details";
+import { AiSessionBanner } from "./ai-session-banner";
+import { TypingLine } from "./typing-line";
+import type { SupportTypingEvent } from "@/features/support/interfaces/support.interfaces";
 import { SUPPORT_PATHS } from "../../../support-paths";
 
 function snoozeUntil(option: string): string {
@@ -42,7 +45,7 @@ function snoozeUntil(option: string): string {
 }
 
 /** Middle pane: header actions (assign, snooze, resolve), the thread and the reply / note composer. */
-export function ConversationPane({ id, showDetailsInline }: { id: string; showDetailsInline: boolean }) {
+export function ConversationPane({ id, showDetailsInline, typing = [], onTyping }: { id: string; showDetailsInline: boolean; typing?: SupportTypingEvent[]; onTyping?: (internal: boolean) => void }) {
     const conv = useConversation(id);
     const agents = useAgents();
     const post = usePostConversationMessage();
@@ -156,6 +159,8 @@ export function ConversationPane({ id, showDetailsInline }: { id: string; showDe
                     <MessageThread messages={c.messages} />
                     <div ref={bottom} />
                 </div>
+                <AiSessionBanner conversationId={c.id} />
+                <TypingLine typing={typing} />
 
                 <div className="border-t border-border p-2 md:p-3">
                     <ReplyComposer
@@ -164,6 +169,7 @@ export function ConversationPane({ id, showDetailsInline }: { id: string; showDe
                         allowResolve
                         sending={post.isPending}
                         disabledReason={c.merged_into ? "This conversation was merged" : null}
+                        onTyping={onTyping}
                         onSend={({ kind, body, canned_response_id, resolve }) =>
                             post.mutateAsync({ id: c.id, kind, body, canned_response_id, then_status: resolve ? "RESOLVED" : undefined }).then(() => toast({ title: kind === "AGENT" ? (resolve ? "Sent and resolved" : "Reply sent") : "Note added" }))
                         }
