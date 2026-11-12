@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { patchEntity, useOptimisticMutation } from "@/lib/query/optimistic";
+import type { TimeTrackingSettings } from "../interfaces/time-settings.interfaces";
 import * as service from "../services/time-settings.services";
 
 /** Root query key of the Time area: entry writes invalidate everything under it. */
@@ -18,27 +20,39 @@ export const useTimeMembers = (scope: "team" | "all" = "all", enabled = true) =>
 export const useProjectTimeSettings = (search?: string) =>
     useQuery({ queryKey: [...KEY, "project-settings", search ?? ""], queryFn: () => service.getProjectTimeSettings(search) });
 
-function useInvalidate() {
+/*
+ * Settings writes: no success toasts (autosave shows <SaveStatus />, lists change in place); failures are toasted once
+ * globally unless `inline` (the form shows the error itself).
+ */
+function useSettingsMutation<A, R>(fn: (a: A) => Promise<R>, errorTitle: string, errorToast = true) {
     const qc = useQueryClient();
-    return () => qc.invalidateQueries({ queryKey: KEY });
+    return useMutation({ mutationFn: fn, meta: { errorTitle, errorToast }, onSettled: () => qc.invalidateQueries({ queryKey: KEY }) });
 }
-export const useUpdateTimeSettings = () => {
-    const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.updateTimeSettings, onSuccess: invalidate });
-};
-export const useCreateActivityType = () => {
-    const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.createActivityType, onSuccess: invalidate });
-};
-export const useUpdateActivityType = () => {
-    const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.updateActivityType, onSuccess: invalidate });
-};
-export const useArchiveActivityType = () => {
-    const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.archiveActivityType, onSuccess: invalidate });
-};
-export const useUpdateProjectTimeSettings = () => {
-    const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.updateProjectTimeSettings, onSuccess: invalidate });
-};
+/** Organization rules: optimistic (pickers that read the rules see them at once). */
+export const useUpdateTimeSettings = ({ inline = false }: { inline?: boolean } = {}) =>
+    useOptimisticMutation({
+        roots: [KEY],
+        meta: { errorTitle: "Could not save the time settings", errorToast: !inline },
+        mutationFn: service.updateTimeSettings,
+        apply: (qc, dto) => qc.setQueryData<TimeTrackingSettings>([...KEY, "org"], (s) => (s ? ({ ...s, ...dto } as TimeTrackingSettings) : s)),
+    });
+export const useCreateActivityType = () => useSettingsMutation(service.createActivityType, "Could not add the activity type");
+export const useUpdateActivityType = () =>
+    useOptimisticMutation({ roots: [KEY], meta: { errorTitle: "Could not update the activity type" }, mutationFn: service.updateActivityType, apply: (qc, { id, ...dto }) => patchEntity(qc, KEY, id, dto) });
+/** Archive / restore toggle: the row flips at once. */
+export const useArchiveActivityType = () =>
+    useOptimisticMutation({
+        roots: [KEY],
+        meta: { errorTitle: "Could not update the activity type" },
+        mutationFn: service.archiveActivityType,
+        apply: (qc, { id, restore }) => patchEntity(qc, KEY, id, { archived_at: restore ? null : new Date().toISOString() }),
+    });
+/** Per-project billing defaults: the row shows the new values at once; `inline` for the autosaving dialog. */
+export const useUpdateProjectTimeSettings = ({ inline = false }: { inline?: boolean } = {}) =>
+    useOptimisticMutation({
+        roots: [KEY],
+        meta: { errorTitle: "Could not save the project settings", errorToast: !inline },
+        mutationFn: service.updateProjectTimeSettings,
+        apply: (qc, { projectId, ...dto }) =>
+            patchEntity<{ settings: Record<string, unknown> | null }>(qc, KEY, projectId, (row) => ({ ...row, settings: { ...(row.settings ?? {}), ...dto } })),
+    });

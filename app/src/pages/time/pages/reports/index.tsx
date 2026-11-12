@@ -16,8 +16,6 @@ import type { ReportFilters, ReportGroupBy } from "@/features/time/reports/inter
 import { NonBillableCategoryFormOptions, ReportGroupByOptions, TimeScopeOptions } from "@/config/constants/dropdowns/time/time-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatMinutes, formatMoney, formatPercent, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { Panel } from "@/pages/people/components/person";
 
 /** Chart colors are theme tokens (light + dark defined in index.css). Billable = info, non-billable = recessive ash. */
@@ -61,7 +59,7 @@ export default function TimeReportsPage() {
         <Page>
             <PageHeader
                 title="Time reports"
-                actions={<Can permission="time.entries.export"><Button variant="outline" loading={download.isPending} onClick={() => download.mutate(f, { onSuccess: (r) => toast({ title: "Export ready", description: r.rows ? `${r.rows} rows` : undefined }), onError: (e) => toast({ variant: "destructive", title: "Export failed", description: getApiErrorMessage(e) }) })}><Download /> Export CSV</Button></Can>}
+                actions={<Can permission="time.entries.export"><Button variant="outline" loading={download.isPending} onClick={() => download.mutate(f)}><Download /> Export CSV</Button></Can>}
             />
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <Input type="date" value={f.from} onChange={(e) => setFilter("from", e.target.value)} className="h-8 w-full sm:w-40" aria-label="From" />

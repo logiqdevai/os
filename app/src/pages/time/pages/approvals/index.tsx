@@ -12,7 +12,6 @@ import { useApprovals, useApproveTimesheet, useBulkDecideTimesheets, useRejectTi
 import type { ApprovalRow } from "@/features/time/timesheets/interfaces/timesheets.interfaces";
 import { formatDate, formatMinutes, personName } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { TimePaths } from "../../paths";
 import { DecideDialog } from "../../components/decide-dialog";
 
@@ -29,7 +28,6 @@ export default function ApprovalsPage() {
     const [selected, setSelected] = useState<string[]>([]);
     const [deciding, setDeciding] = useState<{ row: ApprovalRow; mode: "approve" | "reject" } | null>(null);
     const rows = q.data?.data ?? [];
-    const fail = (e: unknown) => toast({ variant: "destructive", title: "Could not decide", description: getApiErrorMessage(e) });
 
     return (
         <Page>
@@ -37,10 +35,13 @@ export default function ApprovalsPage() {
                 title="Approvals"
                 description="Timesheets submitted for your approval."
                 actions={selected.length > 0 && (
-                    <Button loading={bulk.isPending} onClick={() => bulk.mutate({ ids: selected, action: "approve" }, {
-                        onSuccess: (r) => { toast({ variant: r.failed ? "destructive" : "default", title: `${r.succeeded} approved${r.failed ? `, ${r.failed} failed` : ""}`, description: r.results.filter((x) => !x.ok).map((x) => x.message).join(" · ") || undefined }); setSelected([]); },
-                        onError: fail,
-                    })}><CheckCheck /> Approve {selected.length}</Button>
+                    <Button onClick={() => {
+                        // Optimistic: the rows leave the queue at once. Only partial failures toast (they come back on refresh).
+                        bulk.mutateAsync({ ids: selected, action: "approve" }).then((r) => {
+                            if (r.failed) toast({ variant: "destructive", title: `${r.failed} of ${r.failed + r.succeeded} could not be approved`, description: r.results.filter((x) => !x.ok).map((x) => x.message).join(" · ") || undefined });
+                        }, () => undefined);
+                        setSelected([]);
+                    }}><CheckCheck /> Approve {selected.length}</Button>
                 )}
             />
             {q.isLoading ? <ListSkeleton /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : !rows.length ? (
@@ -82,13 +83,15 @@ export default function ApprovalsPage() {
                 mode={deciding?.mode ?? null}
                 title={deciding?.mode === "approve" ? `Approve ${personName(deciding.row.membership?.user)}'s week?` : "Return this timesheet?"}
                 description={deciding?.mode === "approve" ? "Entries are approved and, if configured, locked." : "The member can edit and resubmit."}
-                loading={approve.isPending || reject.isPending}
+                loading={false}
                 onClose={() => setDeciding(null)}
                 onConfirm={(comment) => {
                     if (!deciding) return;
-                    const done = { onSuccess: () => { toast({ title: deciding.mode === "approve" ? "Timesheet approved" : "Timesheet returned" }); setDeciding(null); }, onError: fail };
-                    if (deciding.mode === "approve") approve.mutate({ id: deciding.row.id, comment: comment || undefined }, done);
-                    else reject.mutate({ id: deciding.row.id, comment }, done);
+                    // Optimistic: the timesheet leaves the queue at once; a refusal brings it back with one error toast.
+                    if (deciding.mode === "approve") approve.mutate({ id: deciding.row.id, comment: comment || undefined });
+                    else reject.mutate({ id: deciding.row.id, comment });
+                    setSelected((prev) => prev.filter((x) => x !== deciding.row.id));
+                    setDeciding(null);
                 }}
             />
         </Page>

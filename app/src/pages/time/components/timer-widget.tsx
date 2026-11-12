@@ -4,15 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCurrentTimer, useDiscardTimer, usePauseTimer, useResumeTimer, useStartTimer, useStopTimer } from "@/features/time/timers/hooks/use-timer";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { isTempTimer, useCurrentTimer, useDiscardTimer, usePauseTimer, useResumeTimer, useStartTimer, useStopTimer } from "@/features/time/timers/hooks/use-timer";
 import { ProjectSelect, TaskSelect } from "./pickers";
 
 const clock = (s: number) => `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
 /**
- * Running timer (one per member). Stop turns it into a TimeEntry (source TIMER).
+ * Running timer (one per member). Stop turns it into a TimeEntry (source TIMER). Every action is optimistic: the clock
+ * starts / pauses / stops at once, failures roll back with one global error toast (no success toasts).
  * @perm time.entries.read_own · start/stop time.entries.create_own · @api /time/timers
  */
 export function TimerWidget({ canStart }: { canStart: boolean }) {
@@ -38,8 +37,8 @@ export function TimerWidget({ canStart }: { canStart: boolean }) {
         return () => clearInterval(t);
     }, [timer]);
 
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
-    const busy = start.isPending || stop.isPending || pause.isPending || resume.isPending || discard.isPending;
+    // Until the server confirms a just-started timer its id is temporary, so its actions wait a moment.
+    const busy = !!timer && isTempTimer(timer);
 
     if (q.isLoading) return <Skeleton className="h-14 w-full" />;
     if (timer) {
@@ -55,10 +54,10 @@ export function TimerWidget({ canStart }: { canStart: boolean }) {
                 <div className="flex items-center gap-2">
                     <span className="font-mono text-xl tabular text-foreground" aria-live="off">{clock(elapsed)}</span>
                     {timer.is_paused
-                        ? <Button size="icon" variant="outline" aria-label="Resume" disabled={busy} onClick={() => resume.mutate(timer.id, { onError: fail("Could not resume") })}><Play /></Button>
-                        : <Button size="icon" variant="outline" aria-label="Pause" disabled={busy} onClick={() => pause.mutate(timer.id, { onError: fail("Could not pause") })}><Pause /></Button>}
-                    <Button variant="destructive" loading={stop.isPending} disabled={busy} onClick={() => stop.mutate(timer.id, { onSuccess: () => toast({ title: "Timer stopped", description: "The time was added to your week." }), onError: fail("Could not stop the timer") })}><Square /> Stop</Button>
-                    <Button size="icon" variant="ghost" aria-label="Discard timer" disabled={busy} onClick={() => discard.mutate(timer.id, { onSuccess: () => toast({ title: "Timer discarded" }), onError: fail("Could not discard") })}><Trash2 /></Button>
+                        ? <Button size="icon" variant="outline" aria-label="Resume" disabled={busy} onClick={() => resume.mutate(timer.id)}><Play /></Button>
+                        : <Button size="icon" variant="outline" aria-label="Pause" disabled={busy} onClick={() => pause.mutate({ id: timer.id, elapsed_seconds: elapsed })}><Pause /></Button>}
+                    <Button variant="destructive" disabled={busy} onClick={() => stop.mutate(timer.id)}><Square /> Stop</Button>
+                    <Button size="icon" variant="ghost" aria-label="Discard timer" disabled={busy} onClick={() => discard.mutate(timer.id)}><Trash2 /></Button>
                 </div>
             </div>
         );
@@ -69,7 +68,7 @@ export function TimerWidget({ canStart }: { canStart: boolean }) {
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What are you working on?" className="md:flex-1" aria-label="Timer description" />
             <ProjectSelect value={projectId} onChange={(v) => { setProjectId(v); setTaskId(null); }} className="md:w-56" />
             <TaskSelect projectId={projectId} value={taskId} onChange={setTaskId} className="md:w-48" />
-            <Button loading={start.isPending} onClick={() => start.mutate({ project_id: projectId, task_id: taskId, description: description || null }, { onSuccess: () => setDescription(""), onError: fail("Could not start the timer") })}><Play /> Start</Button>
+            <Button onClick={() => { start.mutate({ project_id: projectId, task_id: taskId, description: description || null }); setDescription(""); }}><Play /> Start</Button>
         </div>
     );
 }

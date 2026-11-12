@@ -15,8 +15,8 @@ import { useProjectTimeSettings, useTimeMembers, useUpdateProjectTimeSettings } 
 import type { ProjectTimeSettingsRow, TimeNonBillableCategory, UpdateProjectTimeSettingsDto } from "@/features/time/settings/interfaces/time-settings.interfaces";
 import { NonBillableCategoryFormOptions, ProjectBillableDefaultOptions } from "@/config/constants/dropdowns/time/time-form.options";
 import { formatMinutes, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { ActivitySelect, NONE } from "../../components/pickers";
 
 /**
@@ -63,11 +63,13 @@ export default function ProjectTimeSettingsPage() {
     );
 }
 
+/** Project rules: every change autosaves (no Save button; "Done" closes) and the table row updates at once. */
 function EditDialog({ row, onClose }: { row: ProjectTimeSettingsRow | null; onClose: () => void }) {
     const members = useTimeMembers("all", !!row);
-    const save = useUpdateProjectTimeSettings();
+    const save = useUpdateProjectTimeSettings({ inline: true });
     const [f, setF] = useState<UpdateProjectTimeSettingsDto>({});
     const [alert, setAlert] = useState("");
+    const [dirty, setDirty] = useState(false);
     useEffect(() => {
         if (!row) return;
         const s = row.settings;
@@ -76,13 +78,17 @@ function EditDialog({ row, onClose }: { row: ProjectTimeSettingsRow | null; onCl
             default_non_billable_category: s?.default_non_billable_category ?? null, default_activity_type_id: s?.default_activity_type_id ?? null, approver_membership_id: s?.approver_membership_id ?? null,
         });
         setAlert(s?.hours_alert_percent?.toString() ?? "");
+        setDirty(false);
     }, [row]);
-    const set = <K extends keyof UpdateProjectTimeSettingsDto>(k: K, v: UpdateProjectTimeSettingsDto[K]) => setF((p) => ({ ...p, [k]: v }));
+    const set = <K extends keyof UpdateProjectTimeSettingsDto>(k: K, v: UpdateProjectTimeSettingsDto[K]) => { setDirty(true); setF((p) => ({ ...p, [k]: v })); };
+    const value = { ...f, hours_alert_percent: alert ? Number(alert) : null };
+    const autosave = useAutosave({ value, enabled: !!row && dirty, save: (v) => save.mutateAsync({ projectId: row!.id, ...v }) });
+    const close = () => { if (row && dirty) autosave.flush(); onClose(); };
     const billable = f.default_billable === null || f.default_billable === undefined ? "inherit" : f.default_billable ? "billable" : "non_billable";
     return (
-        <Dialog open={!!row} onOpenChange={(o) => !o && !save.isPending && onClose()}>
+        <Dialog open={!!row} onOpenChange={(o) => !o && close()}>
             <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
-                <DialogHeader><DialogTitle>{row?.name}</DialogTitle><DialogDescription>Time rules for this project.</DialogDescription></DialogHeader>
+                <DialogHeader><DialogTitle>{row?.name}</DialogTitle><DialogDescription>Time rules for this project. Changes save automatically.</DialogDescription><SaveStatus state={autosave} /></DialogHeader>
                 <div className="space-y-4">
                     <Row label="Time tracking enabled"><Switch checked={!!f.time_tracking_enabled} onCheckedChange={(v) => set("time_tracking_enabled", v)} /></Row>
                     <Row label="Only project members can log time"><Switch checked={!!f.members_only} onCheckedChange={(v) => set("members_only", v)} /></Row>
@@ -107,16 +113,12 @@ function EditDialog({ row, onClose }: { row: ProjectTimeSettingsRow | null; onCl
                     </div>
                     <div className="space-y-1.5">
                         <Label htmlFor="ps-alert">Alert at % of the hour budget</Label>
-                        <Input id="ps-alert" type="number" min={1} max={500} value={alert} onChange={(e) => setAlert(e.target.value)} className="w-28" disabled={!row?.budget_hours} />
+                        <Input id="ps-alert" type="number" min={1} max={500} value={alert} onChange={(e) => { setDirty(true); setAlert(e.target.value); }} className="w-28" disabled={!row?.budget_hours} />
                         <p className="text-xs text-muted-foreground">{row?.budget_hours ? `Budget ${Number(row.budget_hours)} h · logged ${formatMinutes(row.logged_minutes)}` : "Set an hour budget on the project first."}</p>
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={onClose}>Cancel</Button>
-                    <Button loading={save.isPending} onClick={() => row && save.mutate({ projectId: row.id, ...f, hours_alert_percent: alert ? Number(alert) : null }, {
-                        onSuccess: () => { toast({ title: "Project settings saved" }); onClose(); },
-                        onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }),
-                    })}>Save</Button>
+                    <Button onClick={close}>Done</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

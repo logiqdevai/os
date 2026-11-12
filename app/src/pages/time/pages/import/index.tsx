@@ -14,11 +14,9 @@ import { TimeImportStatusFormOptions, TimeImportStatusTone } from "@/config/cons
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatDateTime, formatMinutes, personName } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { Panel } from "@/pages/people/components/person";
 
 const IGNORE = "__ignore__";
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 /**
  * /time/import — CSV import of time entries: upload → map → check → import in the background. Rows for other members need time.entries.create_team.
@@ -44,7 +42,7 @@ function UploadStep({ onUploaded }: { onUploaded: (id: string) => void }) {
     const pick = async (file: File | undefined) => {
         if (!file) return;
         if (file.size > 5 * 1024 * 1024) return toast({ variant: "destructive", title: "The file is larger than 5 MB" });
-        upload.mutate({ file_name: file.name, csv: await file.text() }, { onSuccess: (j) => onUploaded(j.id), onError: fail("Could not read the file") });
+        upload.mutate({ file_name: file.name, csv: await file.text() }, { onSuccess: (j) => onUploaded(j.id) });
         if (input.current) input.current.value = "";
     };
     return (
@@ -107,11 +105,11 @@ function Flow({ job, onReset }: { job: TimeImportDetail; onReset: () => void }) 
                 </div>
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-xs text-muted-foreground">{ready ? "Ready to check." : "Map Date and a duration (Hours, Minutes, or Start and End)."}</p>
-                    <Button disabled={!ready} loading={check.isPending} onClick={() => check.mutate({ id: job.id, columns }, { onSuccess: setPreview, onError: fail("Could not check the file") })}>Check file</Button>
+                    <Button disabled={!ready} loading={check.isPending} onClick={() => check.mutate({ id: job.id, columns }, { onSuccess: setPreview })}>Check file</Button>
                 </div>
             </Panel>
             {preview && (
-                <Panel title="3 · Preview" actions={<Button disabled={!preview.counts.valid} loading={run.isPending} onClick={() => run.mutate(job.id, { onSuccess: () => toast({ title: "Import started" }), onError: fail("Could not start the import") })}><Play /> Import {preview.counts.valid} rows</Button>}>
+                <Panel title="3 · Preview" actions={<Button disabled={!preview.counts.valid} loading={run.isPending} onClick={() => run.mutate(job.id)}><Play /> Import {preview.counts.valid} rows</Button>}>
                     <div className="grid grid-cols-3 gap-3">
                         <Count label="Valid rows" value={preview.counts.valid} />
                         <Count label="Rows with errors" value={preview.counts.errors} danger={preview.counts.errors > 0} />

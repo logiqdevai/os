@@ -19,10 +19,9 @@ import { IsoWeekdayOptions, ReportFrequencyFormOptions, TimeScopeOptions } from 
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDateTime, personName } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { ProjectSelect } from "../../components/pickers";
-
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 /**
  * /time/schedules — e-mailed time reports on a schedule. A schedule runs as its creator with their scope at send time;
@@ -45,7 +44,7 @@ export default function SchedulesPage() {
         { key: "recipients", header: "Recipients", cell: (s) => <span className="text-[13px] tabular">{s.recipient_membership_ids.length + s.recipient_emails.length}</span>, hideBelow: "md" },
         { key: "next", header: "Next run", cell: (s) => <span className="tabular">{s.is_active && s.next_run_at ? formatDateTime(s.next_run_at) : "—"}</span>, hideBelow: "sm" },
         { key: "last", header: "Last run", cell: (s) => <div><span className="tabular">{s.last_run_at ? formatDateTime(s.last_run_at) : "Never"}</span>{s.last_error && <div className="line-clamp-1 text-xs text-danger">{s.last_error}</div>}</div>, hideBelow: "lg" },
-        { key: "status", header: "Status", cell: (s) => <Switch checked={s.is_active} aria-label={s.is_active ? "Pause" : "Resume"} onCheckedChange={(v) => update.mutate({ id: s.id, is_active: v }, { onError: fail("Could not update") })} /> },
+        { key: "status", header: "Status", cell: (s) => <Switch checked={s.is_active} aria-label={s.is_active ? "Pause" : "Resume"} onCheckedChange={(v) => update.mutate({ id: s.id, is_active: v })} /> },
         {
             key: "actions", header: <span className="sr-only">Actions</span>, className: "w-12",
             cell: (s) => (
@@ -53,8 +52,11 @@ export default function SchedulesPage() {
                     <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" aria-label={`Actions for ${s.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuItem onSelect={() => setEditing(s)}><Pencil /> Edit</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => run.mutate(s.id, { onSuccess: (r) => toast({ title: `Sent: ${r.row_count} entries`, description: r.error ?? `${r.emailed} e-mail(s) sent`, variant: r.error ? "destructive" : undefined }), onError: fail("Could not send the report") })}><Play /> Send now</DropdownMenuItem>
-                        {s.exports[0] && <DropdownMenuItem onSelect={() => download.mutate(s.exports[0].id, { onError: fail("Could not download") })}><Download /> Download last CSV</DropdownMenuItem>}
+                        <DropdownMenuItem onSelect={() => run.mutate(s.id, {
+                            // Success shows in the "Last run" column; only a delivery problem is worth a toast.
+                            onSuccess: (r) => { if (r.error) toast({ variant: "destructive", title: "The report was not delivered", description: r.error }); },
+                        })}><Play /> Send now</DropdownMenuItem>
+                        {s.exports[0] && <DropdownMenuItem onSelect={() => download.mutate(s.exports[0].id)}><Download /> Download last CSV</DropdownMenuItem>}
                         <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setDeleting(s)}><Trash2 /> Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -67,8 +69,8 @@ export default function SchedulesPage() {
             <DataTable columns={columns} data={q.data} rowKey={(s) => s.id} loading={q.isFetching} error={q.error} onRetry={() => q.refetch()} onRowClick={setEditing}
                 empty={{ icon: CalendarClock, title: "No scheduled reports", description: "Send hours by project, customer or person to your team or clients every day, week or month." }} />
             <ScheduleDialog value={editing} reports={reports.data ?? []} onClose={() => setEditing(null)} />
-            <ConfirmationDialog isOpen={!!deleting} onClose={() => setDeleting(null)} title={`Delete ${deleting?.name ?? "schedule"}?`} description="Past exports stay in the export history." confirmText="Delete" variant="destructive" isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => { toast({ title: "Schedule deleted" }); setDeleting(null); }, onError: fail("Could not delete") })} />
+            <ConfirmationDialog isOpen={!!deleting} onClose={() => setDeleting(null)} title={`Delete ${deleting?.name ?? "schedule"}?`} description="Past exports stay in the export history." confirmText="Delete" variant="destructive"
+                onConfirm={() => { if (deleting) remove.mutate(deleting.id); setDeleting(null); }} />
         </Page>
     );
 }
@@ -76,11 +78,13 @@ export default function SchedulesPage() {
 const tz = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } };
 const EMPTY = (): ReportScheduleDto => ({ name: "", report_key: "hours_by_project", filters: { scope: "team" }, frequency: "WEEKLY", day_of_week: 1, day_of_month: 1, time_of_day: "08:00", timezone: tz(), recipient_membership_ids: [], recipient_emails: [], is_active: true });
 
+/** New schedule (explicit "Create schedule") or edit one (autosaves valid changes; "Done" closes). */
 function ScheduleDialog({ value, reports, onClose }: { value: TimeReportSchedule | "new" | null; reports: { key: string; label: string }[]; onClose: () => void }) {
     const p = usePermissions();
     const members = useTimeMembers("all", !!value);
     const create = useCreateSchedule();
-    const update = useUpdateSchedule();
+    const update = useUpdateSchedule({ inline: true });
+    const [dirty, setDirty] = useState(false);
     const [f, setF] = useState<ReportScheduleDto>(EMPTY);
     const [emails, setEmails] = useState("");
     const [search, setSearch] = useState("");
@@ -90,23 +94,26 @@ function ScheduleDialog({ value, reports, onClose }: { value: TimeReportSchedule
         setF({ name: value.name, report_key: value.report_key, filters: value.filters ?? {}, frequency: value.frequency, day_of_week: value.day_of_week ?? 1, day_of_month: value.day_of_month ?? 1, time_of_day: value.time_of_day, timezone: value.timezone, recipient_membership_ids: value.recipient_membership_ids, recipient_emails: value.recipient_emails, is_active: value.is_active });
         setEmails(value.recipient_emails.join(", "));
     }, [value]);
-    const set = <K extends keyof ReportScheduleDto>(k: K, v: ReportScheduleDto[K]) => setF((prev) => ({ ...prev, [k]: v }));
+    useEffect(() => setDirty(false), [value]);
+    const set = <K extends keyof ReportScheduleDto>(k: K, v: ReportScheduleDto[K]) => { setDirty(true); setF((prev) => ({ ...prev, [k]: v })); };
     const list = useMemo(() => (members.data ?? []).filter((m) => !search || personName(m.user).toLowerCase().includes(search.toLowerCase())).slice(0, 40), [members.data, search]);
     const parsedEmails = emails.split(/[\s,;]+/).map((e) => e.trim()).filter(Boolean);
     const badEmail = parsedEmails.find((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
     const scopes = TimeScopeOptions.filter((o) => o.id !== "all" || p.can("time.entries.read_all"));
-    const pending = create.isPending || update.isPending;
-    const valid = f.name.trim() && !badEmail && (f.recipient_membership_ids.length || parsedEmails.length) && /^\d{2}:\d{2}$/.test(f.time_of_day);
+    const pending = create.isPending;
+    const valid = !!(f.name.trim() && !badEmail && (f.recipient_membership_ids.length || parsedEmails.length) && /^\d{2}:\d{2}$/.test(f.time_of_day));
+    const dto: ReportScheduleDto = { ...f, name: f.name.trim(), recipient_emails: parsedEmails, ...(f.frequency !== "WEEKLY" && { day_of_week: undefined }), ...(f.frequency !== "MONTHLY" && { day_of_month: undefined }) };
+    const existing = value && value !== "new" ? value : null;
+    const autosave = useAutosave({ value: dto, enabled: !!existing && dirty && valid, save: (v) => update.mutateAsync({ id: existing!.id, ...v }) });
+    const close = () => { if (existing && dirty && valid) autosave.flush(); onClose(); };
     const submit = () => {
-        const dto: ReportScheduleDto = { ...f, name: f.name.trim(), recipient_emails: parsedEmails, ...(f.frequency !== "WEEKLY" && { day_of_week: undefined }), ...(f.frequency !== "MONTHLY" && { day_of_month: undefined }) };
-        const done = { onSuccess: () => { toast({ title: "Schedule saved" }); onClose(); }, onError: fail("Could not save the schedule") };
-        if (value === "new") create.mutate(dto, done);
-        else if (value) update.mutate({ id: value.id, ...dto }, done);
+        if (existing) return close();
+        create.mutate(dto, { onSuccess: onClose });
     };
     return (
-        <Dialog open={!!value} onOpenChange={(o) => !o && !pending && onClose()}>
+        <Dialog open={!!value} onOpenChange={(o) => !o && !pending && close()}>
             <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
-                <DialogHeader><DialogTitle>{value === "new" ? "New scheduled report" : "Edit scheduled report"}</DialogTitle><DialogDescription>Runs as you: it contains only time you can see when it is sent.</DialogDescription></DialogHeader>
+                <DialogHeader><DialogTitle>{value === "new" ? "New scheduled report" : "Edit scheduled report"}</DialogTitle><DialogDescription>Runs as you: it contains only time you can see when it is sent.</DialogDescription>{existing && <SaveStatus state={autosave} />}</DialogHeader>
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="sc-name">Name</Label><Input id="sc-name" value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Weekly hours by project" /></div>
                     <div className="space-y-1.5"><Label>Report</Label>
@@ -142,12 +149,18 @@ function ScheduleDialog({ value, reports, onClose }: { value: TimeReportSchedule
                             {!list.length && <li className="px-3 py-2 text-xs text-muted-foreground">{members.isLoading ? "Loading…" : "No matches"}</li>}
                         </ul>
                     </div>
-                    <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="sc-emails">Other e-mail addresses</Label><Input id="sc-emails" value={emails} onChange={(e) => setEmails(e.target.value)} placeholder="client@example.com, pm@example.com" />{badEmail && <p className="text-xs text-danger">Not an e-mail address: {badEmail}</p>}</div>
+                    <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="sc-emails">Other e-mail addresses</Label><Input id="sc-emails" value={emails} onChange={(e) => { setDirty(true); setEmails(e.target.value); }} placeholder="client@example.com, pm@example.com" />{badEmail && <p className="text-xs text-danger">Not an e-mail address: {badEmail}</p>}</div>
                     <label className="flex items-center gap-2 text-[13px] text-foreground sm:col-span-2"><Switch checked={f.is_active} onCheckedChange={(v) => set("is_active", v)} /> Active</label>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={onClose}>Cancel</Button>
-                    <Button disabled={!valid} loading={pending} onClick={submit}>Save</Button>
+                    {existing ? (
+                        <Button onClick={close}>Done</Button>
+                    ) : (
+                        <>
+                            <Button variant="ghost" onClick={onClose}>Cancel</Button>
+                            <Button disabled={!valid} loading={pending} onClick={submit}>Create schedule</Button>
+                        </>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

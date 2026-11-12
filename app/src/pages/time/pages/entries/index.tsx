@@ -18,8 +18,6 @@ import type { TimeEntry, TimeScope } from "@/features/time/entries/interfaces/ti
 import { BillableFilterOptions, TimeEntryStatusFilterOptions, TimeEntryStatusFormOptions, TimeEntryStatusTone, TimeScopeOptions } from "@/config/constants/dropdowns/time/time-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatMinutes, formatMoney, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { EntryFormDialog } from "../../components/entry-form-dialog";
 
 /**
@@ -115,8 +113,7 @@ export default function EntriesPage() {
                 description={deleting ? `${formatMinutes(deleting.duration_minutes)} on ${formatDate(deleting.date)}.` : ""}
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => deleting && del.mutate(deleting.id, { onSuccess: () => { toast({ title: "Entry deleted" }); setDeleting(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not delete", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (deleting) del.mutate(deleting.id); setDeleting(null); }}
             />
             <Dialog open={!!unlocking} onOpenChange={(o) => { if (!o) { setUnlocking(null); setReason(""); } }}>
                 <DialogContent className="sm:max-w-md">
@@ -124,7 +121,7 @@ export default function EntriesPage() {
                     <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Wrong project" aria-label="Reason" />
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setUnlocking(null)}>Cancel</Button>
-                        <Button disabled={reason.trim().length < 3} loading={unlock.isPending} onClick={() => unlocking && unlock.mutate({ id: unlocking.id, reason: reason.trim() }, { onSuccess: () => { toast({ title: "Entry unlocked" }); setUnlocking(null); setReason(""); }, onError: (e) => toast({ variant: "destructive", title: "Could not unlock", description: getApiErrorMessage(e) }) })}>Unlock</Button>
+                        <Button disabled={reason.trim().length < 3} onClick={() => { if (unlocking) unlock.mutate({ id: unlocking.id, reason: reason.trim() }); setUnlocking(null); setReason(""); }}>Unlock</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

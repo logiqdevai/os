@@ -19,8 +19,8 @@ import type { BillingRate, BillingRateScope, TimeRateKind } from "@/features/tim
 import { RateKindFormOptions, RateScopeFormOptions, RateStatusFilterOptions } from "@/config/constants/dropdowns/time/time-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatMoney, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { ActivitySelect, ProjectSelect } from "../../components/pickers";
 
 /**
@@ -81,15 +81,18 @@ export default function RatesPage() {
             <DataTable columns={columns} data={rates.data?.data} rowKey={(r) => r.id} loading={rates.isFetching} error={rates.error} onRetry={() => rates.refetch()} pagination={rates.data?.pagination} onPageChange={setPage}
                 empty={{ icon: DollarSign, title: "No rate cards", description: "Billable time is valued at 0 until a rate exists. Start with an organization default." }} />
             <RateDialog open={creating || !!editing} rate={editing} defaultKind={kind} onOpenChange={(o) => { if (!o) { setCreating(false); setEditing(null); } }} />
-            <ConfirmationDialog isOpen={!!archiving} onClose={() => setArchiving(null)} title="Archive this rate?" description="It stops applying to new entries. Entries already priced keep their snapshot." confirmText="Archive" variant="destructive" isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate(archiving.id, { onSuccess: () => { toast({ title: "Rate archived" }); setArchiving(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }) })} />
+            <ConfirmationDialog isOpen={!!archiving} onClose={() => setArchiving(null)} title="Archive this rate?" description="It stops applying to new entries. Entries already priced keep their snapshot." confirmText="Archive" variant="destructive"
+                onConfirm={() => { if (archiving) archive.mutate(archiving.id); setArchiving(null); }} />
         </Page>
     );
 }
 
+/** New rate (explicit "Create rate") or edit one (autosaves the editable fields; "Done" closes). */
 function RateDialog({ open, rate, defaultKind, onOpenChange }: { open: boolean; rate: BillingRate | null; defaultKind: TimeRateKind; onOpenChange: (o: boolean) => void }) {
     const create = useCreateRate();
-    const update = useUpdateRate();
+    const update = useUpdateRate({ inline: true });
+    const [dirty, setDirty] = useState(false);
+    const touch = <T,>(set: (v: T) => void) => (v: T) => { setDirty(true); set(v); };
     const members = useTimeMembers("all", open);
     const [kind, setKind] = useState<TimeRateKind>(defaultKind);
     const [scope, setScope] = useState<BillingRateScope>("ORGANIZATION");
@@ -107,18 +110,21 @@ function RateDialog({ open, rate, defaultKind, onOpenChange }: { open: boolean; 
         setKind(rate?.kind ?? defaultKind); setScope(rate?.scope ?? "ORGANIZATION"); setProjectId(rate?.project_id ?? null); setMemberId(rate?.membership_id ?? "");
         setActivityId(rate?.activity_type_id ?? null); setName(rate?.name ?? ""); setAmount(rate?.hourly_rate ?? ""); setCurrency(rate?.currency ?? "EUR");
         setFrom(rate?.effective_from.slice(0, 10) ?? new Date().toISOString().slice(0, 10)); setTo(rate?.effective_to?.slice(0, 10) ?? "");
+        setDirty(false);
     }, [open, rate, defaultKind]);
 
     const needsProject = scope === "PROJECT" || scope === "PROJECT_MEMBER";
     const needsMember = scope === "MEMBER" || scope === "PROJECT_MEMBER";
     const valid = Number(amount) >= 0 && amount !== "" && /^[A-Z]{3}$/.test(currency) && !!from && (!needsProject || projectId) && (!needsMember || memberId) && scope !== "PRODUCT" && (!to || to >= from);
-    const pending = create.isPending || update.isPending;
-    const opts = { onSuccess: () => { toast({ title: rate ? "Rate updated" : "Rate created" }); onOpenChange(false); }, onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save rate", description: getApiErrorMessage(e) }) };
+    const pending = create.isPending;
+    const editDto = { name: name || undefined, hourly_rate: Number(amount), currency, effective_from: from, effective_to: to || null };
+    const autosave = useAutosave({ value: editDto, enabled: open && !!rate && dirty && valid, save: (v) => update.mutateAsync({ id: rate!.id, ...v }) });
+    const close = () => { if (rate && dirty && valid) autosave.flush(); onOpenChange(false); };
 
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !pending && close())}>
             <DialogContent className="sm:max-w-lg">
-                <DialogHeader><DialogTitle>{rate ? "Edit rate" : "New rate"}</DialogTitle><DialogDescription>To change a price that was already used, end-date it and create a new rate.</DialogDescription></DialogHeader>
+                <DialogHeader><DialogTitle>{rate ? "Edit rate" : "New rate"}</DialogTitle><DialogDescription>To change a price that was already used, end-date it and create a new rate.</DialogDescription>{rate && <SaveStatus state={autosave} />}</DialogHeader>
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5"><Label>Kind</Label>
                         <Select value={kind} onValueChange={(v) => setKind(v as TimeRateKind)} disabled={!!rate}><SelectTrigger aria-label="Kind"><SelectValue /></SelectTrigger><SelectContent>{RateKindFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent></Select>
@@ -133,18 +139,24 @@ function RateDialog({ open, rate, defaultKind, onOpenChange }: { open: boolean; 
                         </div>
                     )}
                     {!rate && <div className="space-y-1.5 sm:col-span-2"><Label>Activity (optional)</Label><ActivitySelect value={activityId} onChange={setActivityId} /></div>}
-                    <div className="space-y-1.5"><Label htmlFor="rate-amount">Hourly rate</Label><Input id="rate-amount" type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
-                    <div className="space-y-1.5"><Label htmlFor="rate-cur">Currency</Label><Input id="rate-cur" maxLength={3} value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} /></div>
-                    <div className="space-y-1.5"><Label htmlFor="rate-from">Valid from</Label><Input id="rate-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
-                    <div className="space-y-1.5"><Label htmlFor="rate-to">Valid to</Label><Input id="rate-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
-                    <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="rate-name">Name (optional)</Label><Input id="rate-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Senior developer rate" /></div>
+                    <div className="space-y-1.5"><Label htmlFor="rate-amount">Hourly rate</Label><Input id="rate-amount" type="number" min={0} step="0.01" value={amount} onChange={(e) => touch(setAmount)(e.target.value)} /></div>
+                    <div className="space-y-1.5"><Label htmlFor="rate-cur">Currency</Label><Input id="rate-cur" maxLength={3} value={currency} onChange={(e) => touch(setCurrency)(e.target.value.toUpperCase())} /></div>
+                    <div className="space-y-1.5"><Label htmlFor="rate-from">Valid from</Label><Input id="rate-from" type="date" value={from} onChange={(e) => touch(setFrom)(e.target.value)} /></div>
+                    <div className="space-y-1.5"><Label htmlFor="rate-to">Valid to</Label><Input id="rate-to" type="date" value={to} onChange={(e) => touch(setTo)(e.target.value)} /></div>
+                    <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="rate-name">Name (optional)</Label><Input id="rate-name" value={name} onChange={(e) => touch(setName)(e.target.value)} placeholder="Senior developer rate" /></div>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button disabled={!valid} loading={pending} onClick={() => {
-                        if (rate) update.mutate({ id: rate.id, name: name || undefined, hourly_rate: Number(amount), currency, effective_from: from, effective_to: to || null }, opts);
-                        else create.mutate({ kind, scope, project_id: projectId ?? undefined, membership_id: memberId || undefined, activity_type_id: activityId ?? undefined, name: name || undefined, currency, hourly_rate: Number(amount), effective_from: from, effective_to: to || null }, opts);
-                    }}>{rate ? "Save" : "Create rate"}</Button>
+                    {rate ? (
+                        <Button onClick={close}>Done</Button>
+                    ) : (
+                        <>
+                            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                            <Button disabled={!valid} loading={pending} onClick={() => create.mutate(
+                                { kind, scope, project_id: projectId ?? undefined, membership_id: memberId || undefined, activity_type_id: activityId ?? undefined, name: name || undefined, currency, hourly_rate: Number(amount), effective_from: from, effective_to: to || null },
+                                { onSuccess: () => onOpenChange(false) },
+                            )}>Create rate</Button>
+                        </>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

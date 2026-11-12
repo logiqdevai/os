@@ -11,4 +11,5 @@ export const useUtilizationReport = (params: ReportFilters, enabled = true) =>
     useQuery({ queryKey: [...KEY, "utilization", params], queryFn: () => service.getUtilizationReport(params), placeholderData: keepPreviousData, enabled });
 export const useUnbilled = (params: Record<string, unknown>) =>
     useQuery({ queryKey: [...KEY, "unbilled", params], queryFn: () => service.getUnbilled(params), placeholderData: keepPreviousData });
-export const useDownloadTimeCsv = () => useMutation({ mutationFn: service.downloadTimeCsv });
+/** The browser download is the visible result; only a failure toasts (globally). */
+export const useDownloadTimeCsv = () => useMutation({ mutationFn: service.downloadTimeCsv, meta: { errorTitle: "Could not export the CSV" } });

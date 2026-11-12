@@ -14,10 +14,8 @@ import { SuggestionSourceFormOptions } from "@/config/constants/dropdowns/time/t
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatMinutes } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { ActivitySelect, ProjectSelect, TaskSelect, parseDuration, toClock } from "../../components/pickers";
 
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 const time = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : null);
 
 /**
@@ -28,15 +26,18 @@ const time = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString([],
 export default function SuggestionsPage() {
     const q = useSuggestions();
     const generate = useGenerateSuggestions();
+    const autoScan = useGenerateSuggestions({ silent: true });
     const acceptMany = useAcceptSuggestions();
     const [editing, setEditing] = useState<TimeSuggestion | null>(null);
+    /** Shown next to "Scan again" when a manual scan found nothing new (instead of a toast). */
+    const [scanNote, setScanNote] = useState<string | null>(null);
     const scanned = useRef(false);
 
     // Scan once when the page opens so new meetings and finished tasks show up without a click.
     useEffect(() => {
         if (scanned.current) return;
         scanned.current = true;
-        generate.mutate(undefined, { onError: () => undefined });
+        autoScan.mutate();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -54,11 +55,15 @@ export default function SuggestionsPage() {
                 description="Time we noticed from your calendar and tasks. Nothing is logged until you accept."
                 actions={
                     <>
-                        <Button variant="outline" loading={generate.isPending} onClick={() => generate.mutate(undefined, { onSuccess: (r) => toast({ title: r.created ? `${r.created} new suggestion${r.created === 1 ? "" : "s"}` : "No new suggestions" }), onError: fail("Could not scan") })}><RefreshCw /> Scan again</Button>
-                        {list.length > 1 && <Button loading={acceptMany.isPending} onClick={() => acceptMany.mutate(list.map((s) => s.id), {
-                            onSuccess: (r) => toast({ title: `${r.accepted} entr${r.accepted === 1 ? "y" : "ies"} logged`, description: r.accepted < list.length ? r.results.find((x) => !x.ok)?.error : undefined, variant: r.accepted < list.length ? "destructive" : undefined }),
-                            onError: fail("Could not accept"),
-                        })}><CheckCheck /> Accept all</Button>}
+                        {scanNote && <span role="status" className="self-center text-xs text-muted-foreground">{scanNote}</span>}
+                        <Button variant="outline" loading={generate.isPending} onClick={() => { setScanNote(null); generate.mutate(undefined, { onSuccess: (r) => setScanNote(r.created ? null : "No new suggestions") }); }}><RefreshCw /> Scan again</Button>
+                        {list.length > 1 && <Button onClick={() => {
+                            const total = list.length;
+                            // Optimistic: the list empties at once. Only partial failures toast (they come back on refresh).
+                            acceptMany.mutateAsync(list.map((s) => s.id)).then((r) => {
+                                if (r.accepted < total) toast({ variant: "destructive", title: `${total - r.accepted} of ${total} could not be logged`, description: r.results.find((x) => !x.ok)?.error });
+                            }, () => undefined);
+                        }}><CheckCheck /> Accept all</Button>}
                     </>
                 }
             />
@@ -102,9 +107,9 @@ function SuggestionRow({ s, onEdit }: { s: TimeSuggestion; onEdit: () => void })
             <div className="flex items-center justify-between gap-2 sm:justify-end">
                 <span className="text-[13px] font-medium tabular text-foreground">{formatMinutes(s.duration_minutes)}</span>
                 <div className="flex gap-1">
-                    <Button size="icon" variant="ghost" aria-label="Dismiss" loading={dismiss.isPending} onClick={() => dismiss.mutate(s.id, { onError: fail("Could not dismiss") })}><X /></Button>
+                    <Button size="icon" variant="ghost" aria-label="Dismiss" onClick={() => dismiss.mutate(s.id)}><X /></Button>
                     <Button size="icon" variant="ghost" aria-label="Edit and accept" onClick={onEdit}><Pencil /></Button>
-                    <Button size="sm" loading={accept.isPending} onClick={() => accept.mutate({ id: s.id }, { onSuccess: () => toast({ title: "Time logged" }), onError: fail("Could not log the time") })}><Check /> Accept</Button>
+                    <Button size="sm" onClick={() => accept.mutate({ id: s.id })}><Check /> Accept</Button>
                 </div>
             </div>
         </li>
@@ -128,7 +133,7 @@ function EditDialog({ suggestion, onClose }: { suggestion: TimeSuggestion | null
     }, [suggestion]);
     const minutes = parseDuration(duration);
     return (
-        <Dialog open={!!suggestion} onOpenChange={(o) => !o && !accept.isPending && onClose()}>
+        <Dialog open={!!suggestion} onOpenChange={(o) => !o && onClose()}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader><DialogTitle>Edit and accept</DialogTitle><DialogDescription>{suggestion && formatDate(suggestion.date, "EEEE, d MMM")}</DialogDescription></DialogHeader>
                 <div className="space-y-4">
@@ -140,10 +145,11 @@ function EditDialog({ suggestion, onClose }: { suggestion: TimeSuggestion | null
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={onClose}>Cancel</Button>
-                    <Button disabled={!minutes} loading={accept.isPending} onClick={() => suggestion && minutes && accept.mutate({ id: suggestion.id, duration_minutes: minutes, project_id: projectId, task_id: taskId, activity_type_id: activityId, description: description.trim() || null }, {
-                        onSuccess: () => { toast({ title: "Time logged" }); onClose(); },
-                        onError: fail("Could not log the time"),
-                    })}>Accept</Button>
+                    <Button disabled={!minutes} onClick={() => {
+                        if (!suggestion || !minutes) return;
+                        accept.mutate({ id: suggestion.id, duration_minutes: minutes, project_id: projectId, task_id: taskId, activity_type_id: activityId, description: description.trim() || null });
+                        onClose();
+                    }}>Accept</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

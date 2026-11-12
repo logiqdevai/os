@@ -12,8 +12,6 @@ import type { TimeEntry } from "@/features/time/entries/interfaces/time-entries.
 import { TimeEntryStatusFormOptions, TimeEntryStatusTone, TimesheetStatusFormOptions, TimesheetStatusTone } from "@/config/constants/dropdowns/time/time-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatDateTime, formatMinutes, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { Panel } from "@/pages/people/components/person";
 import { TimePaths } from "../../paths";
 import { DecideDialog } from "../../components/decide-dialog";
@@ -34,7 +32,6 @@ export default function TimesheetDetailPage() {
     if (q.isLoading) return <PageSkeleton />;
     if (q.error || !q.data) return <Page><PageHeader title="Timesheet" back={{ to: TimePaths.approvals, label: "Approvals" }} /><ErrorState error={q.error} onRetry={() => q.refetch()} /></Page>;
     const t = q.data;
-    const fail = (e: unknown) => toast({ variant: "destructive", title: "Action failed", description: getApiErrorMessage(e) });
     const columns: DataTableColumn<TimeEntry>[] = [
         { key: "date", header: "Date", cell: (e) => <span className="tabular">{formatDate(e.date, "EEE d MMM")}</span> },
         { key: "work", header: "Work", cell: (e) => <div className="min-w-0"><div className="truncate text-foreground">{e.project?.name ?? "Internal"}{e.task ? ` · ${e.task.title}` : ""}</div><div className="truncate text-xs text-muted-foreground">{e.description}</div></div> },
@@ -51,7 +48,7 @@ export default function TimesheetDetailPage() {
                 actions={
                     <>
                         {t.can_approve && t.status === "SUBMITTED" && <><Button variant="outline" onClick={() => setMode("reject")}><X /> Return</Button><Button onClick={() => setMode("approve")}><Check /> Approve</Button></>}
-                        {t.status === "REJECTED" && p.canAny("time.timesheets.submit_own", "time.timesheets.approve") && <Button variant="outline" loading={reopen.isPending} onClick={() => reopen.mutate({ id: t.id }, { onSuccess: () => toast({ title: "Timesheet reopened" }), onError: fail })}><RotateCcw /> Reopen</Button>}
+                        {t.status === "REJECTED" && p.canAny("time.timesheets.submit_own", "time.timesheets.approve") && <Button variant="outline" onClick={() => reopen.mutate({ id: t.id })}><RotateCcw /> Reopen</Button>}
                         {["APPROVED", "LOCKED"].includes(t.status) && p.can("time.entries.unlock") && <Button variant="outline" onClick={() => setMode("unlock")}><Unlock /> Unlock</Button>}
                     </>
                 }
@@ -86,13 +83,13 @@ export default function TimesheetDetailPage() {
             <DecideDialog
                 mode={mode}
                 title={mode === "approve" ? "Approve this timesheet?" : mode === "reject" ? "Return this timesheet?" : "Unlock this timesheet?"}
-                loading={approve.isPending || reject.isPending || unlock.isPending}
+                loading={unlock.isPending}
                 onClose={() => setMode(null)}
                 onConfirm={(comment) => {
-                    const done = { onSuccess: () => { toast({ title: "Done" }); setMode(null); }, onError: fail };
-                    if (mode === "approve") approve.mutate({ id: t.id, comment: comment || undefined }, done);
-                    if (mode === "reject") reject.mutate({ id: t.id, comment }, done);
-                    if (mode === "unlock") unlock.mutate({ id: t.id, reason: comment }, done);
+                    // Approve / return are optimistic (the status badge changes at once); unlock waits for the server.
+                    if (mode === "approve") { approve.mutate({ id: t.id, comment: comment || undefined }); setMode(null); }
+                    if (mode === "reject") { reject.mutate({ id: t.id, comment }); setMode(null); }
+                    if (mode === "unlock") unlock.mutate({ id: t.id, reason: comment }, { onSuccess: () => setMode(null) });
                 }}
             />
         </Page>

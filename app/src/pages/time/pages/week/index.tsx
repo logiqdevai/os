@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { addDays, format, parseISO } from "date-fns";
-import { ChevronLeft, ChevronRight, Lock, Plus, Save, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock, Plus, Send } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,8 @@ import { TimesheetStatusFormOptions, TimesheetStatusTone } from "@/config/consta
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatMinutes } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { cn } from "@/lib/utils";
 import { TimerWidget } from "../../components/timer-widget";
 import { EntryFormDialog } from "../../components/entry-form-dialog";
@@ -41,7 +42,8 @@ const LOCKED: TimeEntry["status"][] = ["SUBMITTED", "APPROVED", "INVOICED", "LOC
 const rowKey = (r: { project_id: string | null; task_id: string | null; activity_type_id: string | null; is_billable: boolean }) => `${r.project_id ?? "-"}|${r.task_id ?? "-"}|${r.activity_type_id ?? "-"}|${r.is_billable ? 1 : 0}`;
 
 /**
- * /time — my week: grid of project/task/activity rows × 7 days with inline hours, timer, submit for approval.
+ * /time — my week: grid of project/task/activity rows × 7 days with inline hours (autosaved — no Save button; a quiet
+ * "Saving… / Saved" status sits in the header), timer, and an explicit "Submit week" for approval.
  * Below md the grid collapses to a day list. @perm time.entries.read_own · edit update_own/create_own · submit time.timesheets.submit_own
  * @api GET /time/timesheets/current · PUT /time/entries/bulk · POST /time/timesheets/submit
  */
@@ -49,7 +51,7 @@ export default function MyWeekPage() {
     const p = usePermissions();
     const [sp, setSp] = useSearchParams();
     const week = useWeek({ period_start: sp.get("start") ?? undefined });
-    const save = useSaveWeekGrid();
+    const save = useSaveWeekGrid({ inline: true });
     const submit = useSubmitTimesheet();
     const [edits, setEdits] = useState<Record<string, Record<string, string>>>({});
     const [extraRows, setExtraRows] = useState<GridRow[]>([]);
@@ -77,8 +79,8 @@ export default function MyWeekPage() {
     const status = d?.timesheet?.status ?? "OPEN";
     const weekLocked = ["SUBMITTED", "APPROVED", "LOCKED"].includes(status);
     const canEdit = p.can("time.entries.update_own") && p.can("time.entries.create_own") && !weekLocked;
-    const cellMinutes = (r: GridRow, day: string) => {
-        const edit = edits[r.key]?.[day];
+    const cellMinutes = (r: GridRow, day: string, from = edits) => {
+        const edit = from[r.key]?.[day];
         if (edit !== undefined) return parseDuration(edit) ?? 0;
         return (r.cells[day] ?? []).reduce((s, e) => s + e.duration_minutes, 0);
     };
@@ -89,22 +91,30 @@ export default function MyWeekPage() {
     const maxPerDay = d?.rules.max_hours_per_day ? Number(d.rules.max_hours_per_day) * 60 : null;
 
     const go = (n: number) => d && setSp((prev) => { const next = new URLSearchParams(prev); next.set("start", format(addDays(parseISO(d.period_start), n * 7), "yyyy-MM-dd")); return next; });
-    const saveGrid = () => {
+    /**
+     * Autosave: typed hours are sent after a short pause. The cells keep showing the typed values until the refreshed
+     * week arrives, then those edits are dropped (edits typed meanwhile stay and are saved next). Only problems toast.
+     */
+    const saveGrid = async (sent: typeof edits) => {
         if (!d) return;
-        const payload = rows.filter((r) => edits[r.key]).map((r) => ({
+        const payload = rows.filter((r) => sent[r.key]).map((r) => ({
             project_id: r.project_id, task_id: r.task_id, activity_type_id: r.activity_type_id, is_billable: r.is_billable,
-            days: Object.fromEntries(Object.keys(edits[r.key]).map((day) => [day, cellMinutes(r, day)])),
+            days: Object.fromEntries(Object.keys(sent[r.key]).map((day) => [day, cellMinutes(r, day, sent)])),
         }));
-        save.mutate({ period_start: d.period_start, rows: payload }, {
-            onSuccess: (res) => {
-                setEdits({});
-                setExtraRows([]);
-                const problems = res.errors.length + res.skipped.length;
-                toast({ variant: problems ? "destructive" : "default", title: problems ? "Saved with problems" : "Week saved", description: problems ? [...res.errors.map((e) => `${e.date}: ${e.message}`), ...res.skipped.map((s) => `${s.date}: ${s.reason.replace(/_/g, " ")}`)].join(" · ") : `${res.created} added · ${res.updated} changed · ${res.deleted} removed` });
-            },
-            onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }),
+        const res = await save.mutateAsync({ period_start: d.period_start, rows: payload });
+        await week.refetch();
+        setEdits((cur) => {
+            const next: typeof cur = {};
+            for (const [k, days] of Object.entries(cur)) {
+                const left = Object.fromEntries(Object.entries(days).filter(([day, v]) => sent[k]?.[day] !== v));
+                if (Object.keys(left).length) next[k] = left;
+            }
+            return next;
         });
+        const problems = res.errors.length + res.skipped.length;
+        if (problems) toast({ variant: "destructive", title: "Some hours were not saved", description: [...res.errors.map((e) => `${e.date}: ${e.message}`), ...res.skipped.map((s) => `${s.date}: ${s.reason.replace(/_/g, " ")}`)].join(" · ") });
     };
+    const autosave = useAutosave({ value: edits, enabled: canEdit && dirty && !invalid, save: saveGrid, delay: 900 });
 
     return (
         <Page>
@@ -115,12 +125,12 @@ export default function MyWeekPage() {
                 actions={
                     <>
                         <div className="flex items-center gap-1">
-                            <Button variant="outline" size="icon" aria-label="Previous week" onClick={() => go(-1)}><ChevronLeft /></Button>
-                            <Button variant="outline" onClick={() => setSp(new URLSearchParams())}>This week</Button>
-                            <Button variant="outline" size="icon" aria-label="Next week" onClick={() => go(1)}><ChevronRight /></Button>
+                            <Button variant="outline" size="icon" aria-label="Previous week" onClick={() => { autosave.flush(); go(-1); }}><ChevronLeft /></Button>
+                            <Button variant="outline" onClick={() => { autosave.flush(); setSp(new URLSearchParams()); }}>This week</Button>
+                            <Button variant="outline" size="icon" aria-label="Next week" onClick={() => { autosave.flush(); go(1); }}><ChevronRight /></Button>
                         </div>
                         {p.can("time.entries.create_own") && <Button variant="outline" onClick={() => setEntryDialog({})}><Plus /> Log time</Button>}
-                        {dirty && <Button loading={save.isPending} disabled={invalid} onClick={saveGrid}><Save /> Save</Button>}
+                        <SaveStatus state={autosave} />
                         {!dirty && p.can("time.timesheets.submit_own") && ["OPEN", "REJECTED"].includes(status) && d?.rules.require_approval && (
                             <Button disabled={!weekTotal} onClick={() => setSubmitting(true)}><Send /> Submit week</Button>
                         )}
@@ -238,9 +248,9 @@ export default function MyWeekPage() {
                 )}
             </div>
             <AddRowDialog open={adding} onOpenChange={setAdding} onAdd={(r) => setExtraRows((prev) => [...prev, r])} />
+            {/* Submitting is an outward action: explicit button; the status badge shows the result (no toast). */}
             <SubmitDialog open={submitting} onOpenChange={setSubmitting} total={weekTotal} loading={submit.isPending} onSubmit={(comment) => d && submit.mutate({ period_start: d.period_start, comment }, {
-                onSuccess: () => { toast({ title: "Week submitted for approval" }); setSubmitting(false); },
-                onError: (e) => toast({ variant: "destructive", title: "Could not submit", description: getApiErrorMessage(e) }),
+                onSuccess: () => setSubmitting(false),
             })} />
             <EntryFormDialog open={!!entryDialog} onOpenChange={(o) => !o && setEntryDialog(null)} entry={entryDialog?.entry} defaultDate={entryDialog?.date} />
         </Page>
