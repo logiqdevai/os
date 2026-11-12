@@ -1,10 +1,12 @@
 import { useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { AtSign, Bookmark, ChevronDown, Hash, Lock, MessagesSquare, Plus, Search } from "lucide-react";
+import { AtSign, Bookmark, ChevronDown, Hash, Headphones, Lock, MessagesSquare, Plus, Search, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
+import { usePermissions } from "@/hooks/use-permission";
+import { MESSAGING_ADMIN_LINKS } from "../pages/admin/admin-nav";
 import { cn } from "@/lib/utils";
 import { useMyChannels } from "@/features/messaging/hooks/use-messaging";
 import type { MyChannel } from "@/features/messaging/interfaces/messaging.interfaces";
@@ -74,6 +76,8 @@ function Group({ title, action, children }: { title: string; action?: ReactNode;
 export function ChannelSidebar({ onNewDm, onNavigate, className }: { onNewDm: () => void; onNavigate?: () => void; className?: string }) {
     const channels = useMyChannels();
     const { connected } = useMessaging();
+    const { can } = usePermissions();
+    const adminLink = MESSAGING_ADMIN_LINKS.find((l) => l.anyOf.some((k) => can(k)));
     const all = (channels.data?.data ?? []).filter((c) => c.status === "ACTIVE");
     const favorites = all.filter((c) => c.is_favorite);
     const rooms = all.filter((c) => !c.is_favorite && !isDm(c)).sort((a, b) => a.label.localeCompare(b.label));
@@ -100,6 +104,8 @@ export function ChannelSidebar({ onNewDm, onNavigate, className }: { onNewDm: ()
                     {link(MessagesPaths.mentions, "Mentions", AtSign)}
                     {link(MessagesPaths.saved, "Saved", Bookmark)}
                     {link(MessagesPaths.search, "Search", Search)}
+                    {link(MessagesPaths.calls, "Huddles & calls", Headphones)}
+                    {adminLink && link(adminLink.to, "Admin", Shield)}
                 </div>
                 {channels.isPending ? (
                     <div className="space-y-1.5 px-1">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-7 w-full" />)}</div>

@@ -9,12 +9,13 @@ import { InboxQuery, MessageListQuery, SearchMessagesQuery } from '../dto/messag
 import { parseBody, preview } from '../utils/message-format.utils';
 import { ACTIVE_MEMBER, ChannelWithMe, MEMBERSHIP_PERSON_SELECT, MessagingAccessService, USER_PUBLIC_SELECT, personName } from './messaging-access.service';
 import { MessagingRealtimeService } from './messaging-realtime.service';
+import { attachmentKind } from './attachments.service';
 
 export const MESSAGE_INCLUDE = {
     author: { select: MEMBERSHIP_PERSON_SELECT },
     author_user: { select: USER_PUBLIC_SELECT },
     reactions: { select: { emoji: true, membership_id: true, external_user_id: true, created_at: true }, orderBy: { created_at: 'asc' } },
-    attachments: { select: { id: true, document_id: true, kind: true, file_name: true, mime_type: true, size_bytes: true, preview: true }, orderBy: { sort_order: 'asc' } },
+    attachments: { select: { id: true, document_id: true, kind: true, file_name: true, mime_type: true, size_bytes: true, preview: true, duration_seconds: true }, orderBy: { sort_order: 'asc' } },
     mentions: { select: { kind: true, membership_id: true } },
 } satisfies Prisma.MessageInclude;
 
@@ -48,6 +49,7 @@ export function serializeMessage(m: MessageRow, extra: { is_saved?: boolean } = 
         deleted_at: m.deleted_at,
         pinned_at: m.pinned_at,
         system_event: m.system_event,
+        integration_source: m.integration_source,
         client_message_id: m.client_message_id,
         has_attachments: m.has_attachments,
         created_at: m.created_at,
@@ -164,6 +166,7 @@ export class MessagesService {
         const authorId = this.access.requireMembership(ctx);
         const channel = await this.access.channelForMember(ctx, channelId);
         this.access.assertCanPost(channel, channel.me);
+        await this.access.assertNotRestricted(ctx, channelId);
 
         if (dto.client_message_id) {
             const existing = await this.prisma.message.findFirst({ where: { channel_id: channelId, client_message_id: dto.client_message_id }, include: MESSAGE_INCLUDE });
@@ -194,8 +197,17 @@ export class MessagesService {
         const notifiedMemberIds = [...notified].filter((id) => memberIds.includes(id));
 
         const attachments = dto.attachments ?? [];
+        if (!dto.body.trim() && !attachments.length) throw new BadRequestException({ message: 'Write a message or attach a file', code: 'message_empty' });
         if (attachments.length) {
-            const docs = await this.prisma.document.count({ where: { id: { in: attachments.map((a) => a.document_id) }, organization_id: ctx.organization_id } });
+            // Only files uploaded to this channel or owned by the author can be attached (no linking of other people's documents).
+            const docs = await this.prisma.document.count({
+                where: {
+                    id: { in: attachments.map((a) => a.document_id) },
+                    organization_id: ctx.organization_id,
+                    deleted_at: null,
+                    OR: [{ owner_membership_id: authorId }, { attachments: { some: { entity_type: RecordEntityType.CHANNEL, entity_id: channelId } } }],
+                },
+            });
             if (docs !== new Set(attachments.map((a) => a.document_id)).size) throw new NotFoundException({ message: 'Attachment file not found', code: 'document_not_found' });
         }
 
@@ -227,7 +239,7 @@ export class MessagesService {
                         create: attachments.map((a, i) => ({
                             channel_id: channelId,
                             document_id: a.document_id,
-                            kind: a.kind ?? 'OTHER',
+                            kind: a.kind ?? attachmentKind(a.mime_type, a.file_name),
                             file_name: a.file_name,
                             mime_type: a.mime_type ?? null,
                             size_bytes: a.size_bytes ?? null,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, useState, type ReactNode } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { RequirePermission } from "@/components/access/can";
 import { usePermission } from "@/hooks/use-permission";
@@ -10,10 +10,20 @@ import ConversationPage, { ConversationNotSelected } from "./pages/conversation"
 import { BrowseChannelsPage, MentionsPage, SavedPage, SearchPage, ThreadsInboxPage } from "./pages/inbox";
 import { MessagesPaths } from "./messages-paths";
 
+const CallsPage = lazy(() => import("./pages/calls"));
+const AdminOverviewPage = lazy(() => import("./pages/admin/overview"));
+const ModerationPage = lazy(() => import("./pages/admin/moderation"));
+const GuestsPage = lazy(() => import("./pages/admin/guests"));
+const RetentionPage = lazy(() => import("./pages/admin/retention"));
+const SettingsPage = lazy(() => import("./pages/admin/settings"));
+const IntegrationsPage = lazy(() => import("./pages/admin/integrations"));
+
+const gate = (anyOf: string[], element: ReactNode) => <RequirePermission anyOf={anyOf}>{element}</RequirePermission>;
+
 /**
  * /messages/* — module 12 Messaging. Slack-like layout that fills the main area: channel sidebar + conversation (+ thread panel).
  * Mobile (< md): the channel list and the conversation are separate screens.
- * @perm messaging.channels.read (app) · messaging.messages.read (conversations)
+ * @perm messaging.channels.read (app) · messaging.messages.read (conversations) · admin screens: see MESSAGING_ADMIN_LINKS
  */
 function MessagesLayout() {
     const location = useLocation();
@@ -36,6 +46,13 @@ function MessagesLayout() {
                         <Route path="saved" element={<SavedPage />} />
                         <Route path="search" element={<SearchPage />} />
                         <Route path="channels/*" element={<BrowseChannelsPage onCreate={() => navigate(MessagesPaths.create)} />} />
+                        <Route path="calls" element={<CallsPage />} />
+                        <Route path="admin" element={gate(["messaging.analytics.read", "messaging.settings.manage"], <AdminOverviewPage />)} />
+                        <Route path="admin/moderation" element={gate(["messaging.moderation.manage"], <ModerationPage />)} />
+                        <Route path="admin/guests" element={gate(["messaging.external_users.manage"], <GuestsPage />)} />
+                        <Route path="admin/retention" element={gate(["messaging.retention.manage", "messaging.data.export", "messaging.audit.read"], <RetentionPage />)} />
+                        <Route path="admin/settings" element={gate(["messaging.settings.manage", "messaging.audit.read"], <SettingsPage />)} />
+                        <Route path="admin/integrations" element={gate(["messaging.integrations.manage"], <IntegrationsPage />)} />
                         <Route path="*" element={<ConversationNotSelected />} />
                     </Routes>
                 </main>

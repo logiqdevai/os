@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AtSign, SendHorizontal } from "lucide-react";
+import { AtSign, Paperclip, SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
@@ -9,7 +9,9 @@ import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { messagingKeys, upsertChannelMessage, upsertThreadReply, useDraft, usePostMessage, useSaveDraft } from "@/features/messaging/hooks/use-messaging";
-import type { Message } from "@/features/messaging/interfaces/messaging.interfaces";
+import type { Message, UploadedAttachment } from "@/features/messaging/interfaces/messaging.interfaces";
+import { useUploadAttachment } from "@/features/messaging/hooks/use-messaging-admin";
+import { PendingAttachments, type PendingFile } from "./pending-attachments";
 import { useSessionData } from "@/features/session/hooks/use-session";
 import { personName } from "@/lib/format";
 import { textToTokens, tokensToText, type MentionMap } from "../utils/message-body";
@@ -50,6 +52,28 @@ export function Composer({ channelId, threadRootId, placeholder, disabled, disab
     const ref = useRef<HTMLTextAreaElement>(null);
     const loadedDraft = useRef(false);
     const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const fileRef = useRef<HTMLInputElement>(null);
+    const upload = useUploadAttachment();
+    const [files, setFiles] = useState<PendingFile[]>([]);
+    const uploading = files.some((f) => f.state === "uploading");
+    const ready = files.filter((f): f is PendingFile & { uploaded: UploadedAttachment } => f.state === "done" && !!f.uploaded);
+
+    const addFiles = (list: FileList | File[]) => {
+        for (const file of Array.from(list).slice(0, 10 - files.length)) {
+            const key = crypto.randomUUID();
+            setFiles((prev) => [...prev, { key, name: file.name, size: file.size, progress: 0, state: "uploading" }]);
+            upload.mutate(
+                { channelId, file, onProgress: (progress) => setFiles((prev) => prev.map((f) => (f.key === key ? { ...f, progress } : f))) },
+                {
+                    onSuccess: (uploaded) => setFiles((prev) => prev.map((f) => (f.key === key ? { ...f, state: "done", progress: 100, uploaded } : f))),
+                    onError: (e) => {
+                        setFiles((prev) => prev.map((f) => (f.key === key ? { ...f, state: "failed", error: getApiErrorMessage(e) } : f)));
+                        toast({ variant: "destructive", title: `${file.name} was not uploaded`, description: getApiErrorMessage(e) });
+                    },
+                },
+            );
+        }
+    };
 
     useEffect(() => {
         if (loadedDraft.current || draft.isPending) return;
@@ -119,7 +143,8 @@ export function Composer({ channelId, threadRootId, placeholder, disabled, disab
 
     const send = () => {
         const trimmed = text.trim();
-        if (!trimmed || disabled) return;
+        if ((!trimmed && !ready.length) || disabled || uploading) return;
+        const attachments = ready.map((f) => f.uploaded);
         const body = textToTokens(trimmed, mentions);
         const client_message_id = crypto.randomUUID();
         const user = session?.user;
@@ -143,7 +168,7 @@ export function Composer({ channelId, threadRootId, placeholder, disabled, disab
             created_at: new Date().toISOString(),
             author: { membership_id: myMembershipId ?? null, user_id: user?.id ?? "", name: personName(user), profile_photo_url: user?.profile_photo_url ?? null, job_title: null, external: false },
             reactions: [],
-            attachments: [],
+            attachments: attachments.map((a) => ({ id: a.document_id, document_id: a.document_id, kind: a.kind, file_name: a.file_name, mime_type: a.mime_type, size_bytes: a.size_bytes })),
             mentioned_membership_ids: Object.values(mentions),
             mentions_channel: false,
             pending: "sending",
@@ -154,15 +179,17 @@ export function Composer({ channelId, threadRootId, placeholder, disabled, disab
         setText("");
         setMentions({});
         setQuery(null);
+        setFiles([]);
         qc.setQueryData(messagingKeys.draft(channelId, threadRootId), null);
         post.mutate(
-            { channelId, body, parent_message_id: threadRootId, client_message_id },
+            { channelId, body, parent_message_id: threadRootId, client_message_id, ...(attachments.length && { attachments }) },
             {
                 onError: (e) => {
                     const failed = { ...optimistic, pending: "failed" as const };
                     if (threadRootId) upsertThreadReply(qc, failed);
                     else upsertChannelMessage(qc, failed);
                     setText(trimmed);
+                    setFiles(attachments.map((a) => ({ key: a.document_id, name: a.file_name, size: a.size_bytes, progress: 100, state: "done" as const, uploaded: a })));
                     toast({ variant: "destructive", title: "Message not sent", description: getApiErrorMessage(e) });
                 },
             },
@@ -190,24 +217,36 @@ export function Composer({ channelId, threadRootId, placeholder, disabled, disab
     return (
         <Popover open={open} onOpenChange={(o) => !o && setQuery(null)}>
             <PopoverAnchor asChild>
-                <div className="flex items-end gap-2 rounded-lg border border-border bg-card p-1.5 focus-within:border-border-strong">
+                <div
+                    className="rounded-lg border border-border bg-card p-1.5 focus-within:border-border-strong"
+                    onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) e.preventDefault(); }}
+                    onDrop={(e) => { if (e.dataTransfer.files.length) { e.preventDefault(); addFiles(e.dataTransfer.files); } }}
+                >
+                <PendingAttachments files={files} onRemove={(key) => setFiles((prev) => prev.filter((f) => f.key !== key))} />
+                <div className="flex items-end gap-2">
                     <Textarea
                         ref={ref}
                         value={text}
                         onChange={(e) => onChange(e.target.value)}
                         onKeyDown={onKeyDown}
+                        onPaste={(e) => { if (e.clipboardData.files.length) { e.preventDefault(); addFiles(e.clipboardData.files); } }}
                         placeholder={placeholder}
                         autoFocus={autoFocus}
                         rows={1}
                         aria-label={placeholder}
                         className="max-h-48 min-h-9 flex-1 resize-none border-0 bg-transparent px-1.5 py-1.5 text-[13.5px] shadow-none focus-visible:ring-0 [field-sizing:content]"
                     />
+                    <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
+                    <Button type="button" variant="ghost" size="icon-sm" aria-label="Attach files" onClick={() => fileRef.current?.click()} disabled={files.length >= 10}>
+                        <Paperclip />
+                    </Button>
                     <Button type="button" variant="ghost" size="icon-sm" aria-label="Mention someone" onClick={() => { onChange(`${text}${text && !text.endsWith(" ") ? " " : ""}@`); ref.current?.focus(); }}>
                         <AtSign />
                     </Button>
-                    <Button type="button" size="icon-sm" onClick={send} disabled={!text.trim()} aria-label="Send">
+                    <Button type="button" size="icon-sm" onClick={send} disabled={(!text.trim() && !ready.length) || uploading} aria-label="Send">
                         <SendHorizontal />
                     </Button>
+                </div>
                 </div>
             </PopoverAnchor>
             <PopoverContent side="top" align="start" className="w-72 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>

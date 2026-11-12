@@ -112,6 +112,8 @@ export function useMessagingSocket(myMembershipId: string | undefined): Messagin
         socket.on("channel.updated", refreshChannel);
         socket.on("channel.removed", refreshChannel);
         socket.on("member.updated", refreshChannel);
+        // Huddles / calls (12 §44): refresh the call bar and the calls page.
+        socket.on("call.updated", () => qc.invalidateQueries({ queryKey: ["messaging", "calls"] }));
 
         socket.on("typing", (e: TypingEvent) => {
             if (e.membership_id === myMembershipId) return;

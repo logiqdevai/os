@@ -9,4 +9,11 @@ export const MessagesPaths = {
     search: "/messages/search",
     browse: "/messages/channels",
     create: "/messages/channels/new",
+    calls: "/messages/calls",
+    admin: "/messages/admin",
+    adminModeration: "/messages/admin/moderation",
+    adminGuests: "/messages/admin/guests",
+    adminRetention: "/messages/admin/retention",
+    adminSettings: "/messages/admin/settings",
+    adminIntegrations: "/messages/admin/integrations",
 } as const;

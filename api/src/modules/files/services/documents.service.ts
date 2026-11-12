@@ -57,6 +57,11 @@ export interface AttachFileInput {
     role?: string;
     source?: DocumentSource;
     source_module?: ModuleKey;
+    /**
+     * The calling module already authorized this write on its own record (e.g. 12 Messaging: the caller may post in the
+     * channel). Skips the documents.documents.create check; size, type, quota, audit and events still apply.
+     */
+    authorized_by_module?: boolean;
 }
 
 const LIST_INCLUDE = (membershipId: string | null) =>
@@ -276,7 +281,7 @@ export class DocumentsService {
      * Upload a file as a new document, or as a new version of `fields.document_id`.
      * Used by `POST /files/upload` and by other modules (via `attachToEntity`).
      */
-    async upload(ctx: OrgContext, file: IncomingFile, fields: UploadFields, opts: { source?: DocumentSource; source_module?: ModuleKey; role?: string } = {}) {
+    async upload(ctx: OrgContext, file: IncomingFile, fields: UploadFields, opts: { source?: DocumentSource; source_module?: ModuleKey; role?: string; authorized_by_module?: boolean } = {}) {
         if (!file?.buffer) throw new BadRequestException({ message: 'A file is required (multipart field "file")', code: 'file_required' });
         const settings = await this.settings.get(ctx.organization_id);
         this.validateFile(settings, file);
@@ -285,7 +290,7 @@ export class DocumentsService {
 
         const existing = fields.document_id ? await this.getAccessible(ctx, fields.document_id) : null;
         if (existing && !ctx.can(DOC_UPDATE)) throw new ForbiddenException({ message: 'You do not have permission to add versions (documents.documents.update)', code: 'permission_denied', permissions: [DOC_UPDATE] });
-        if (!existing && !ctx.can(DOC_CREATE)) throw new ForbiddenException({ message: 'You do not have permission to upload (documents.documents.create)', code: 'permission_denied', permissions: [DOC_CREATE] });
+        if (!existing && !opts.authorized_by_module && !ctx.can(DOC_CREATE)) throw new ForbiddenException({ message: 'You do not have permission to upload (documents.documents.create)', code: 'permission_denied', permissions: [DOC_CREATE] });
 
         const placement = existing ? null : await this.resolvePlacement(ctx, fields);
         const documentId = existing?.id ?? randomUUID();
@@ -435,7 +440,7 @@ export class DocumentsService {
                 entity_type: input.entity_type,
                 entity_id: input.entity_id,
             },
-            { source: input.source ?? DocumentSource.GENERATED, source_module: input.source_module, role: input.role },
+            { source: input.source ?? DocumentSource.GENERATED, source_module: input.source_module, role: input.role, authorized_by_module: input.authorized_by_module },
         );
     }
 
@@ -508,6 +513,20 @@ export class DocumentsService {
             await this.audit.record(ctx, 'document.downloaded', { resource_type: 'document', resource_id: id, branch_id: doc.branch_id, metadata: { version_id: version.id, version_number: version.version_number } });
         }
         return { path: `/files/public/download/${token}`, expires_at: new Date(exp * 1000), filename: version.filename, mimetype: version.mimetype, size_bytes: version.size_bytes };
+    }
+
+    /**
+     * Signed URL for a file attached to a record of another module, after THAT module checked the caller may see the
+     * record (e.g. 12: the message is in a channel the caller can read). No documents.documents.read scope check here.
+     */
+    async issueRecordDownloadUrl(organizationId: string, documentId: string, disposition: 'inline' | 'attachment' = 'attachment') {
+        const doc = await this.prisma.document.findFirst({ where: { id: documentId, organization_id: organizationId, deleted_at: null }, include: { current_version: true } });
+        const version = doc?.current_version;
+        if (!doc || !version || version.status !== DocumentVersionStatus.AVAILABLE) throw new NotFoundException({ message: 'File not found', code: 'file_not_found' });
+        const settings = await this.settings.get(organizationId);
+        const exp = Math.floor(Date.now() / 1000) + settings.signed_url_ttl_seconds;
+        const token = signDownloadToken({ v: version.id, o: organizationId, d: disposition, e: exp });
+        return { path: `/files/public/download/${token}`, expires_at: new Date(exp * 1000), filename: version.filename, mimetype: version.mimetype, size_bytes: Number(version.size_bytes) };
     }
 
     /** Preview metadata of a version (kind + signed inline URL, or UNSUPPORTED → download only). */

@@ -108,6 +108,15 @@ export interface MessageAttachment {
     size_bytes: number | null;
 }
 
+/** File uploaded for a message (POST /messaging/channels/:id/attachments), posted with the message. */
+export interface UploadedAttachment {
+    document_id: string;
+    file_name: string;
+    mime_type: string | null;
+    size_bytes: number;
+    kind: string;
+}
+
 export interface Message {
     id: string;
     channel_id: string;
@@ -124,6 +133,8 @@ export interface Message {
     deleted_at: string | null;
     pinned_at: string | null;
     system_event: string | null;
+    /** INTEGRATION messages: the bot / source shown instead of an author. */
+    integration_source?: string | null;
     client_message_id: string | null;
     created_at: string;
     author: { membership_id: string | null; user_id: string; name: string; profile_photo_url: string | null; job_title: string | null; external: boolean } | null;
@@ -217,6 +228,7 @@ export interface PostMessageDto {
     body: string;
     parent_message_id?: string;
     client_message_id?: string;
+    attachments?: UploadedAttachment[];
 }
 
 export interface TypingEvent {

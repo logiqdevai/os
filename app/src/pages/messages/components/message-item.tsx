@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bookmark, BookmarkCheck, MessageSquareReply, MoreHorizontal, Pencil, Pin, PinOff, SmilePlus, Trash2, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, Flag, MessageSquareReply, MoreHorizontal, Pencil, Pin, PinOff, SmilePlus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -18,6 +18,8 @@ import { textToTokens, tokensToText } from "../utils/message-body";
 import { MessageBody } from "./message-body";
 import { useMessaging } from "./messaging-context";
 import { PersonAvatar } from "./person-avatar";
+import { MessageAttachments } from "./message-attachments";
+import { ReportMessageDialog } from "./report-message-dialog";
 
 interface MessageItemProps {
     message: Message;
@@ -41,6 +43,7 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
     const [editing, setEditing] = useState<{ text: string; mentions: Record<string, string> } | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [pickerOpen, setPickerOpen] = useState(false);
+    const [reporting, setReporting] = useState(false);
 
     const mine = !!m.author?.membership_id && m.author.membership_id === myMembershipId;
     const pending = !!m.pending;
@@ -84,6 +87,9 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
 
     const canDelete = mine || can("messaging.messages.delete_any");
     const canPin = can("messaging.messages.pin");
+    const integration = m.kind === "INTEGRATION";
+    const authorName = integration ? m.integration_source ?? "Integration" : m.author?.name ?? "Unknown";
+    const canReport = !mine && !integration && !!myMembershipId;
 
     return (
         <div className={cn("group relative flex gap-3 px-4 hover:bg-accent/40", compact ? "py-0.5" : "pt-2 pb-0.5", m.pinned_at && "bg-warning-soft/40")}>
@@ -91,13 +97,14 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
                 {compact ? (
                     <span className="invisible block pt-1 text-[10px] text-muted-foreground tabular group-hover:visible">{formatDate(m.created_at, "HH:mm")}</span>
                 ) : (
-                    <PersonAvatar name={m.author?.name ?? "Unknown"} src={m.author?.profile_photo_url} presence={m.author?.membership_id ? presenceOf(m.author.membership_id) : undefined} />
+                    <PersonAvatar name={authorName} src={m.author?.profile_photo_url} presence={m.author?.membership_id ? presenceOf(m.author.membership_id) : undefined} />
                 )}
             </div>
             <div className="min-w-0 flex-1">
                 {!compact && (
                     <div className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="text-[13.5px] font-semibold text-foreground">{m.author?.name ?? "Unknown"}</span>
+                        <span className="text-[13.5px] font-semibold text-foreground">{authorName}</span>
+                        {integration && <span className="rounded-xs bg-info-soft px-1 text-[10px] font-medium text-info">App</span>}
                         {m.author?.external && <span className="rounded-xs bg-violet-soft px-1 text-[10px] font-medium text-violet">External</span>}
                         <time className="text-[11px] text-muted-foreground" dateTime={m.created_at} title={formatDateTime(m.created_at)}>{formatDate(m.created_at, "HH:mm")}</time>
                         {m.pinned_at && <span className="flex items-center gap-0.5 text-[11px] text-warning"><Pin className="size-3" /> Pinned</span>}
@@ -124,13 +131,7 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
                         <button type="button" className="underline" onClick={() => patchMessageEverywhere(qc, m.channel_id, m.id, () => null)}>Dismiss</button>
                     </div>
                 )}
-                {m.attachments.length > 0 && (
-                    <ul className="mt-1 flex flex-wrap gap-2">
-                        {m.attachments.map((a) => (
-                            <li key={a.id} className="rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground">{a.file_name}</li>
-                        ))}
-                    </ul>
-                )}
+                {m.attachments.length > 0 && <MessageAttachments attachments={m.attachments} pending={pending} />}
                 {m.reactions.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                         {m.reactions.map((r) => {
@@ -179,7 +180,7 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
                     <Button variant="ghost" size="icon-sm" aria-label={m.is_saved ? "Remove from saved" : "Save"} onClick={() => save.mutate({ id: m.id, saved: !m.is_saved, channel_id: m.channel_id }, { onSuccess: (r) => toast({ title: r.is_saved ? "Saved" : "Removed from saved" }), onError: onError("Could not save") })}>
                         {m.is_saved ? <BookmarkCheck className="text-primary" /> : <Bookmark />}
                     </Button>
-                    {(mine || canPin || canDelete) && (
+                    {(mine || canPin || canDelete || canReport) && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="More actions"><MoreHorizontal /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -189,6 +190,7 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
                                         {m.pinned_at ? <PinOff /> : <Pin />} {m.pinned_at ? "Unpin" : "Pin to channel"}
                                     </DropdownMenuItem>
                                 )}
+                                {canReport && <DropdownMenuItem onSelect={() => setReporting(true)}><Flag /> Report message</DropdownMenuItem>}
                                 {canDelete && (
                                     <>
                                         <DropdownMenuSeparator />
@@ -202,6 +204,7 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
             )}
             {pending && m.pending === "failed" && <X className="absolute right-4 top-2 size-4 text-danger" aria-hidden />}
 
+            {reporting && <ReportMessageDialog messageId={m.id} open={reporting} onOpenChange={setReporting} />}
             <ConfirmationDialog
                 isOpen={deleting}
                 onClose={() => setDeleting(false)}

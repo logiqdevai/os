@@ -87,6 +87,26 @@ export class MessagingAccessService {
         }
     }
 
+    /** Moderation (12 §49–50): an active MUTED / BANNED restriction in this channel or organization-wide blocks posting. */
+    async assertNotRestricted(ctx: OrgContext, channelId: string) {
+        if (!ctx.membership_id) return;
+        const now = new Date();
+        const r = await this.prisma.channelMemberRestriction.findFirst({
+            where: {
+                organization_id: ctx.organization_id,
+                membership_id: ctx.membership_id,
+                lifted_at: null,
+                OR: [{ channel_id: channelId }, { channel_id: null }],
+                AND: [{ OR: [{ expires_at: null }, { expires_at: { gt: now } }] }],
+            },
+            select: { kind: true, expires_at: true, channel_id: true },
+        });
+        if (r) {
+            const until = r.expires_at ? ` until ${r.expires_at.toISOString().slice(0, 16).replace('T', ' ')} UTC` : '';
+            throw new ForbiddenException({ message: `You were ${r.kind === 'BANNED' ? 'banned' : 'muted'} ${r.channel_id ? 'in this channel' : 'in messaging'}${until} by a moderator`, code: 'messaging_restricted' });
+        }
+    }
+
     /** Channel admin: OWNER/ADMIN member role, or the organization-wide messaging.channels.manage permission. */
     isChannelAdmin(ctx: OrgContext, me: ChannelMember | null) {
         return ctx.can('messaging.channels.manage') || me?.role === ChannelMemberRole.OWNER || me?.role === ChannelMemberRole.ADMIN;

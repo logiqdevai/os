@@ -39,9 +39,8 @@ export class MessageAttachmentInputDto {
  * notify every member of the channel (subject to MessagingSettings.broadcast_mention_policy).
  */
 export class PostMessageDto {
-    @ApiProperty({ example: 'Hi @[Anna Meyer](2b1d…) — the new homepage is up for review.' })
+    @ApiProperty({ example: 'Hi @[Anna Meyer](2b1d…) — the new homepage is up for review.', description: 'May be empty when the message carries attachments.' })
     @IsString()
-    @MinLength(1)
     @MaxLength(MESSAGE_MAX_LENGTH)
     body: string;
 

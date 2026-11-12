@@ -27,6 +27,7 @@ import { TypingIndicator } from "../components/typing-indicator";
 import { ChannelDetailsDialog, ChannelMembersDialog } from "../components/messaging-dialogs";
 import { useMessaging } from "../components/messaging-context";
 import { PersonAvatar } from "../components/person-avatar";
+import { ActiveCallBar, StartHuddleButton } from "../components/call-bar";
 import { MessagesPaths } from "../messages-paths";
 
 /**
@@ -153,6 +154,7 @@ export default function ConversationPage() {
                         </div>
                     </PopoverContent>
                 </Popover>
+                {c.is_member && <StartHuddleButton channelId={c.id} disabled={archived} />}
                 <Button variant="ghost" size="sm" onClick={() => setMembersOpen(true)} aria-label="Members"><Users /> <span className="tabular">{c.member_count}</span></Button>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="Conversation settings"><MoreHorizontal /></Button></DropdownMenuTrigger>
@@ -177,6 +179,7 @@ export default function ConversationPage() {
                     </DropdownMenuContent>
                 </DropdownMenu>
             </header>
+            <ActiveCallBar channelId={c.id} myMembershipId={myMembershipId ?? null} />
 
             {messages.error ? (
                 <div className="flex-1 p-4"><ErrorState error={messages.error} onRetry={() => messages.refetch()} /></div>
