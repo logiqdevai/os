@@ -266,3 +266,7 @@ export interface TaskReport {
     } | null;
 }
 
+/** POST /releases/:id/notes/draft — AI notes (not saved) or, without AI, a draft grouped from the task list. */
+export type ReleaseNotesDraft =
+    | { available: true; notes: string; model: string; fallback: string; task_count: number }
+    | { available: false; reason: string; message: string; fallback: string; task_count: number };

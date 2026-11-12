@@ -73,3 +73,5 @@ export const useCompleteCycle = () => useTaskMutation(service.completeCycle, "Cy
 export const useCreateRelease = () => useTaskMutation(service.createRelease, "Release created", "Could not create release");
 export const useUpdateRelease = () => useTaskMutation(service.updateRelease, "Release updated", "Could not update release");
 export const useAddReleaseDeployment = () => useTaskMutation(service.addReleaseDeployment, "Deployment recorded", "Could not record deployment");
+export const useDraftReleaseNotes = () => useTaskMutation(service.draftReleaseNotes, null, "Could not draft release notes");
+export const usePublishReleaseNotes = () => useTaskMutation(service.publishReleaseNotes, "Release notes published", "Could not publish release notes");

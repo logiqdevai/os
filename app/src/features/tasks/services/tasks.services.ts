@@ -8,6 +8,7 @@ import type {
     CycleDetail,
     Paginated,
     Release,
+    ReleaseNotesDraft,
     Task,
     TaskActivity,
     TaskComment,
@@ -82,3 +83,5 @@ export const createRelease = async (dto: Params): Promise<Release> => (await axi
 export const updateRelease = async ({ id, ...dto }: Params & { id: string }) => (await axiosInstance.patch(R.release(id), dto)).data;
 export const addReleaseDeployment = async ({ id, ...dto }: Params & { id: string }) => (await axiosInstance.post(R.releaseDeployments(id), dto)).data;
 export const getTaskPeople = async (params: Params): Promise<MemberRef[]> => (await axiosInstance.get(R.people, { params })).data;
+export const draftReleaseNotes = async (id: string): Promise<ReleaseNotesDraft> => (await axiosInstance.post(R.releaseNotesDraft(id))).data;
+export const publishReleaseNotes = async ({ id, notes }: { id: string; notes: string }): Promise<Release> => (await axiosInstance.post(R.releaseNotesPublish(id), { notes })).data;

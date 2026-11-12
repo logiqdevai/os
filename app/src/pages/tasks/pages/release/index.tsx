@@ -18,11 +18,12 @@ import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { TaskList } from "../../components/task-list";
 import { deploymentVariant, releaseVariant } from "../../components/task-badges";
+import { ReleaseNotesEditor } from "../../components/release-notes-editor";
 
 /**
  * /tasks/releases/:releaseId — release tasks, notes and deployments.
  * @perm VIEW tasks.tasks.read · manage tasks.releases.manage
- * @api GET/PATCH /releases/:id · POST /releases/:id/deployments
+ * @api GET/PATCH /releases/:id · POST /releases/:id/deployments · POST /releases/:id/notes/draft|publish
  */
 export default function ReleaseDetailPage() {
     const { releaseId } = useParams();
@@ -82,11 +83,7 @@ export default function ReleaseDetailPage() {
                             )}
                         </div>
                     </Section>
-                    {r.notes && (
-                        <Section title="Release notes">
-                            <p className="whitespace-pre-wrap rounded-lg border border-border bg-card p-3 text-[13px] text-body">{r.notes}</p>
-                        </Section>
-                    )}
+                    <ReleaseNotesEditor release={r} />
                 </div>
             </div>
             <ConfirmationDialog

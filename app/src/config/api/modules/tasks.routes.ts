@@ -40,4 +40,6 @@ export const TasksApiRoutes = {
     release: (id: string) => `/releases/${id}`,
     releaseTasks: (id: string) => `/releases/${id}/tasks`,
     releaseDeployments: (id: string) => `/releases/${id}/deployments`,
+    releaseNotesDraft: (id: string) => `/releases/${id}/notes/draft`,
+    releaseNotesPublish: (id: string) => `/releases/${id}/notes/publish`,
 };

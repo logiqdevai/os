@@ -13,6 +13,7 @@ import type {
     ProjectMember,
     ProjectStatus,
     ProjectTimeline,
+    StatusUpdateDraftResult,
     ProjectTemplate,
     ProjectType,
     UpdateProjectDto,
@@ -41,6 +42,9 @@ export const postGovernance = async ({ id, path, dto }: { id: string; path: stri
 export const patchGovernance = async ({ id, path, dto }: { id: string; path: string; dto: Params }): Promise<unknown> => (await axiosInstance.patch(R.governance(id, path), dto)).data;
 export const putGovernance = async ({ id, path, dto }: { id: string; path: string; dto: Params }): Promise<unknown> => (await axiosInstance.put(R.governance(id, path), dto)).data;
 export const deleteGovernance = async ({ id, path }: { id: string; path: string }): Promise<unknown> => (await axiosInstance.delete(R.governance(id, path))).data;
+
+export const draftStatusUpdate = async ({ id, ...dto }: { id: string; period_start?: string; period_end?: string }): Promise<StatusUpdateDraftResult> =>
+    (await axiosInstance.post(R.statusUpdateDraft(id), dto)).data;
 
 export const createProject = async (dto: CreateProjectDto): Promise<ProjectDetail> => (await axiosInstance.post(R.list, dto)).data;
 export const updateProject = async ({ id, ...dto }: UpdateProjectDto & { id: string }): Promise<ProjectDetail> => (await axiosInstance.patch(R.detail(id), dto)).data;

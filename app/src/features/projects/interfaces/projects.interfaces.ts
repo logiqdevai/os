@@ -244,13 +244,36 @@ export interface StatusUpdate {
     upcoming_work: string | null;
     risks_summary: string | null;
     blockers_summary: string | null;
+    decisions_summary: string | null;
+    required_actions: string | null;
+    period_start: string | null;
+    period_end: string | null;
     progress_percent: number | null;
     health: ProjectHealth | null;
     customer_visible: boolean;
     published_at: string | null;
+    is_ai_generated: boolean;
     created_at: string;
     owner: MemberRef | null;
 }
+
+/** Fields of a status update draft (AI or fact-based). */
+export interface StatusUpdateDraftFields {
+    summary: string;
+    completed_work: string;
+    current_work: string;
+    upcoming_work: string;
+    risks_summary: string;
+    blockers_summary: string;
+    decisions_summary: string;
+    required_actions: string;
+    health: ProjectHealth;
+}
+
+/** POST /projects/:id/status-updates/draft — AI draft (saved unpublished) or, without AI, the facts and a fact-based draft. */
+export type StatusUpdateDraftResult =
+    | { available: true; draft: StatusUpdate; model: string; facts: Record<string, number | boolean>; fallback: StatusUpdateDraftFields }
+    | { available: false; reason: string; message: string; facts: Record<string, number | boolean>; fallback: StatusUpdateDraftFields };
 
 export interface ChangeRequest {
     id: string;

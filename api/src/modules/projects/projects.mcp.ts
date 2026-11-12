@@ -7,6 +7,7 @@ import { ProjectItemsService } from './services/project-items.service';
 import { ProjectTimelineService } from './services/project-timeline.service';
 import { PortfolioTimelineQuerySchema, ProjectTimelineToolSchema } from './dto/project-timeline.schema';
 import { ProjectGovernanceService } from './services/project-governance.service';
+import { DraftStatusUpdateToolSchema, ProjectAiService } from './services/project-ai.service';
 import { CloseProjectToolSchema, CreateGateToolSchema, CreateHandoverToolSchema, CreateReviewToolSchema, DecideGateToolSchema, ProjectIdSchema, UpdateChecklistItemToolSchema } from './dto/project-governance.schema';
 import { CreateProjectSchema, UpdateProjectSchema } from './dto/create-project.dto';
 import { LookupQuerySchema, MilestoneQuerySchema, ProjectQuerySchema, RaidQuerySchema } from './dto/project-query.schema';
@@ -23,6 +24,7 @@ export class ProjectsMcp implements OnModuleInit {
         private readonly items: ProjectItemsService,
         private readonly timeline: ProjectTimelineService,
         private readonly governance: ProjectGovernanceService,
+        private readonly ai: ProjectAiService,
     ) { }
 
     onModuleInit() {
@@ -51,6 +53,10 @@ export class ProjectsMcp implements OnModuleInit {
             {
                 ...base, name: 'projects_project_timeline_read', description: 'One project timeline: workstreams, milestones, dated tasks, task and project dependencies, unscheduled tasks.', permission: 'projects.projects.read', input: ProjectTimelineToolSchema,
                 handler: (ctx, { project_id, ...q }) => this.timeline.project(ctx, project_id, q),
+            },
+            {
+                ...base, resource_type: 'project_status_update', name: 'projects_status_updates_draft', description: 'Draft (never publish) a status update from recent task, milestone, risk, blocker and decision changes using the organization AI key. Without AI, returns the facts and a fact-based starting point.', permission: 'projects.status_updates.publish', input: DraftStatusUpdateToolSchema,
+                handler: (ctx, { project_id, ...dto }) => this.ai.draftStatusUpdate(ctx, project_id, dto),
             },
             { ...base, resource_type: 'project_gate', name: 'projects_gates_list', description: 'Approval and quality gates of a project (status PENDING/PASSED/FAILED/WAIVED, blocks_completion, approver).', permission: 'projects.projects.read', input: ProjectIdSchema, handler: (ctx, a) => this.governance.listGates(ctx, a.project_id) },
             {

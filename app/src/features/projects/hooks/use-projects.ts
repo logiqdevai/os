@@ -75,3 +75,5 @@ export const useGovernancePost = (success: string | null, failure = "Could not s
 export const useGovernancePatch = (success: string | null, failure = "Could not save") => useProjectMutation(service.patchGovernance, success, failure);
 export const useGovernancePut = (success: string | null, failure = "Could not save") => useProjectMutation(service.putGovernance, success, failure);
 export const useGovernanceDelete = (success: string | null, failure = "Could not delete") => useProjectMutation(service.deleteGovernance, success, failure);
+/** AI status-update draft: no success toast (the caller opens the draft or shows why AI is unavailable). */
+export const useDraftStatusUpdate = () => useProjectMutation(service.draftStatusUpdate, null, "Could not draft the update");

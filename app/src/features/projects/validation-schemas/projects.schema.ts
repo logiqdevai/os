@@ -87,8 +87,12 @@ export const statusUpdateFormSchema = z.object({
     health: z.enum(["HEALTHY", "AT_RISK", "BLOCKED", "CRITICAL", "UNKNOWN"]),
     progress_percent: z.string().optional().refine((v) => !v || (Number(v) >= 0 && Number(v) <= 100), "0–100"),
     completed_work: z.string().trim().max(10000).optional(),
+    current_work: z.string().trim().max(10000).optional(),
     upcoming_work: z.string().trim().max(10000).optional(),
     risks_summary: z.string().trim().max(5000).optional(),
+    blockers_summary: z.string().trim().max(5000).optional(),
+    decisions_summary: z.string().trim().max(5000).optional(),
+    required_actions: z.string().trim().max(5000).optional(),
     customer_visible: z.boolean(),
 });
 export type StatusUpdateFormValues = z.infer<typeof statusUpdateFormSchema>;

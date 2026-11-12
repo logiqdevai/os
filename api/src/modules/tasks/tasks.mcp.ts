@@ -8,6 +8,7 @@ import { CyclesService } from './services/cycles.service';
 import { TaskConfigService } from './services/task-config.service';
 import { TaskReportsService } from './services/task-reports.service';
 import { TaskReportQuerySchema } from './dto/task-reports.schema';
+import { PublishReleaseNotesToolSchema, ReleaseIdToolSchema, ReleaseNotesService } from './services/release-notes.service';
 import { AssignTaskSchema, BulkTaskSchema, CommentTaskSchema, CreateTaskSchema, UpdateTaskSchema } from './dto/create-task.dto';
 import { CycleQuerySchema, TaskLookupSchema, TaskQuerySchema, TaskWorkloadSchema } from './dto/task-query.schema';
 
@@ -23,6 +24,7 @@ export class TasksMcp implements OnModuleInit {
         private readonly cycles: CyclesService,
         private readonly config: TaskConfigService,
         private readonly reports: TaskReportsService,
+        private readonly releaseNotes: ReleaseNotesService,
     ) { }
 
     onModuleInit() {
@@ -45,6 +47,11 @@ export class TasksMcp implements OnModuleInit {
             { ...base, name: 'tasks_bulk_execute', description: 'Bulk change status/priority/assignee/cycle/project/due date, add or remove labels, archive or delete up to 200 tasks.', permission: 'tasks.bulk.execute', sensitive: true, input: BulkTaskSchema, handler: (ctx, a) => this.tasks.bulk(ctx, a) },
             { ...base, name: 'tasks_workload_read', description: 'Open tasks per person: in progress, overdue, blocked, points, due this week.', permission: 'tasks.workload.read', input: TaskWorkloadSchema, handler: (ctx, a) => this.tasks.workload(ctx, a) },
             { ...base, name: 'tasks_reports_read', description: 'Task flow report for a team/project and date range: throughput per week, created vs completed, median lead and cycle time, open/overdue/blocked, by assignee/label/priority, and a cycle burn-up (cycle_id).', permission: 'tasks.tasks.read', input: TaskReportQuerySchema, handler: (ctx, a) => this.reports.report(ctx, a) },
+            { ...base, resource_type: 'release', name: 'tasks_releases_notes_draft', description: 'Draft release notes from the tasks of a release with the organization AI key (returned, not saved). Without AI, returns a task-list draft and a message.', permission: 'tasks.releases.manage', input: ReleaseIdToolSchema, handler: (ctx, a) => this.releaseNotes.draft(ctx, a.id) },
+            {
+                ...base, resource_type: 'release', name: 'tasks_releases_notes_publish', description: 'Save and publish release notes (Markdown) on a release; customer-visible releases announce them to customers.', permission: 'tasks.releases.manage', sensitive: true, input: PublishReleaseNotesToolSchema,
+                handler: (ctx, { id, ...dto }) => this.releaseNotes.publish(ctx, id, dto),
+            },
             { ...base, resource_type: 'cycle', name: 'tasks_cycles_list', description: 'List cycles (sprints) with progress.', permission: 'tasks.tasks.read', input: CycleQuerySchema, handler: (ctx, a) => this.cycles.list(ctx, a) },
             { ...base, resource_type: 'task_status', name: 'tasks_workflows_read', description: 'Statuses of every team workflow (use the ids for status_id).', permission: 'tasks.tasks.read', input: z.object({}), handler: (ctx) => this.config.workflows(ctx) },
         ]);
