@@ -349,7 +349,8 @@ export class TasksService {
             event_key: 'tasks.task.created', module: ModuleKey.TASKS, entity_type: RecordEntityType.TASK, entity_id: task.id,
             payload: {
                 identifier, title: task.title, project_id: task.project_id, team_id: task.team_id, priority: task.priority, due_date: task.due_date,
-                assignee_membership_ids: assigneeIds, mentioned_membership_ids: (dto.mentioned_membership_ids ?? []).filter((id) => id !== me),
+                // Not `assignee_membership_ids`: the separate `tasks.task.assigned` event below notifies the assignees (one notification per person).
+                initial_assignee_membership_ids: assigneeIds, mentioned_membership_ids: (dto.mentioned_membership_ids ?? []).filter((id) => id !== me),
             },
             activity: { summary: `created ${identifier} ${task.title}`, entity_label: `${identifier} ${task.title}`, project_id: task.project_id, company_id: refs.project?.company_id ?? null, customer_visible: task.customer_visible },
         });
