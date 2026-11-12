@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Lock, Play, ShieldAlert } from "lucide-react";
+import { useAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +23,6 @@ import {
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatNumber, formatRelative } from "@/lib/format";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 /**
  * Data retention — /admin/retention   (mockup 01-admin `retention`, spec §100, §134)
@@ -42,17 +42,11 @@ export default function RetentionPage() {
     const onHold = list.some((p) => p.legal_hold);
     const holdReason = list.find((p) => p.legal_hold)?.legal_hold_reason;
 
-    const runNow = () =>
-        run.mutate(undefined, {
-            onSuccess: (res) => {
-                const touched = res.results.filter((r) => r.affected > 0);
-                toast({
-                    title: touched.length ? `Removed or anonymized ${touched.reduce((n, r) => n + r.affected, 0)} rows` : "Nothing to clean up",
-                    description: res.results.filter((r) => r.skipped).map((r) => `${getDropdownOptionLabel(RetentionDataClassOptions, r.data_class)} ${getDropdownOptionLabel(RetentionSkipOptions, r.skipped)}`).join(" · ") || undefined,
-                });
-            },
-            onError: (e) => toast({ variant: "destructive", title: "Could not run retention", description: getApiErrorMessage(e) }),
-        });
+    // The result of the last manual run is shown under the header (no toast).
+    const runNow = () => run.mutate(undefined);
+    const lastRun = run.data?.results;
+    const touched = lastRun?.reduce((n, r) => n + r.affected, 0) ?? 0;
+    const skipped = lastRun?.filter((r) => r.skipped).map((r) => `${getDropdownOptionLabel(RetentionDataClassOptions, r.data_class)} ${getDropdownOptionLabel(RetentionSkipOptions, r.skipped)}`).join(" · ");
 
     return (
         <Page width="narrow">
@@ -62,6 +56,11 @@ export default function RetentionPage() {
                 actions={<Button variant="outline" onClick={runNow} loading={run.isPending} disabled={onHold}><Play /> Run now</Button>}
             />
             <div className="space-y-6">
+                {lastRun && (
+                    <p role="status" className="text-[13px] text-muted-foreground">
+                        Last run: {touched ? `removed or anonymized ${formatNumber(touched)} rows` : "nothing to clean up"}.{skipped ? ` ${skipped}.` : ""}
+                    </p>
+                )}
                 <div className="flex items-start gap-2 rounded-lg border border-border bg-warning-soft p-3 text-[13px] text-warning">
                     <Lock className="mt-0.5 size-4 flex-none" />
                     <span>Audit events are evidence and are never deleted: after the period they are archived or anonymized. A legal hold suspends every clean-up.</span>
@@ -107,13 +106,13 @@ function PolicyRow({ policy: p }: { policy: RetentionPolicy }) {
 
     const periodOptions = RetentionPeriodOptions.filter((o) => o.id === "forever" || Number(o.id) >= p.min_days);
     const options = p.retention_days !== null && !periodOptions.some((o) => o.id === String(p.retention_days)) ? [...periodOptions, { id: String(p.retention_days), label: `${p.retention_days} days` }] : periodOptions;
-    const dirty = days !== (p.retention_days === null ? "forever" : String(p.retention_days)) || action !== p.action;
-
-    const save = () =>
-        update.mutate(
-            { data_class: p.data_class, retention_days: days === "forever" ? null : Number(days), action },
-            { onSuccess: () => toast({ title: `${getDropdownOptionLabel(RetentionDataClassOptions, p.data_class)} saved` }), onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) }
-        );
+    /** Saved as soon as a value is picked (no Save button); a refusal shows next to the row with Retry. */
+    const autosave = useAutosave({
+        value: { days, action },
+        enabled: canManage,
+        delay: 300,
+        save: (v) => update.mutateAsync({ data_class: p.data_class, retention_days: v.days === "forever" ? null : Number(v.days), action: v.action }),
+    });
 
     return (
         <div className="space-y-3 px-4 py-3">
@@ -133,7 +132,7 @@ function PolicyRow({ policy: p }: { policy: RetentionPolicy }) {
                     <SelectTrigger className="sm:w-44" aria-label={`Then for ${p.data_class}`}><SelectValue /></SelectTrigger>
                     <SelectContent>{RetentionActionOptions.filter((o) => p.allowed_actions.includes(o.id)).map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                 </Select>
-                <Button size="sm" className="sm:ml-auto" disabled={!dirty} loading={update.isPending} onClick={save}>Save</Button>
+                <SaveStatus state={autosave} className="sm:ml-auto" />
             </div>
         </div>
     );
@@ -147,7 +146,7 @@ function LegalHoldDialog({ open, onOpenChange, enabled }: { open: boolean; onOpe
     const confirm = () =>
         hold.mutate(
             { enabled: turnOn, reason: turnOn ? reason.trim() : null },
-            { onSuccess: () => { toast({ title: turnOn ? "Legal hold on: clean-up suspended" : "Legal hold lifted" }); onOpenChange(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not change the legal hold", description: getApiErrorMessage(e) }) }
+            { onSuccess: () => onOpenChange(false) }
         );
     return (
         <Dialog open={open} onOpenChange={(o) => !hold.isPending && onOpenChange(o)}>

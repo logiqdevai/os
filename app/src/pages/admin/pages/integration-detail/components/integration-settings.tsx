@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { Section } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +11,6 @@ import { useSessionData } from "@/features/session/hooks/use-session";
 import { useReplaceSecrets, useUpdateIntegration } from "@/features/admin/integrations/hooks/use-integrations";
 import type { IntegrationDetail, IntegrationProviderSpec } from "@/features/admin/integrations/interfaces/integrations.interfaces";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 const ALL = "__all";
 
@@ -24,21 +25,26 @@ export function IntegrationSettings({ row, spec, canManage }: { row: Integration
     const [branch, setBranch] = useState(row.branch_id ?? ALL);
     const disconnected = row.status === "DISCONNECTED";
 
+    // Loaded once per integration; afterwards the fields are the source of truth (refreshes never overwrite typing).
     useEffect(() => {
         setName(row.name);
         setConfig(row.config ?? {});
         setBranch(row.branch_id ?? ALL);
-    }, [row]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [row.id]);
 
-    const saveSettings = (e: React.FormEvent) => {
-        e.preventDefault();
-        update.mutate({ id: row.id, name, config, branch_id: branch === ALL ? null : branch }, { onSuccess: () => toast({ title: "Settings saved" }), onError: (err) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(err) }) });
-    };
+    /** Settings autosave (no Save button); a refusal shows in <SaveStatus /> with Retry. */
+    const autosave = useAutosave({
+        value: { name: name.trim(), config, branch },
+        enabled: canManage && !disconnected && name.trim().length >= 2,
+        save: (v) => update.mutateAsync({ id: row.id, name: v.name, config: v.config, branch_id: v.branch === ALL ? null : v.branch }),
+    });
+    const saveSettings = (e: React.FormEvent) => { e.preventDefault(); autosave.flush(); };
     const saveSecrets = (e: React.FormEvent) => {
         e.preventDefault();
         replace.mutate({ id: row.id, secrets }, {
-            onSuccess: (r) => { setSecrets({}); toast(r.status === "ERROR" ? { variant: "destructive", title: "Key replaced, but verification failed", description: r.last_error ?? undefined } : { title: "Key replaced" }); },
-            onError: (err) => toast({ variant: "destructive", title: "Could not replace the key", description: getApiErrorMessage(err) }),
+            // Replacing is an explicit action (new credentials are verified); the new hint shows in the label. Only a failed check is toasted.
+            onSuccess: (r) => { setSecrets({}); if (r.status === "ERROR") toast({ variant: "destructive", title: "Key replaced, but verification failed", description: r.last_error ?? undefined }); },
         });
     };
 
@@ -62,7 +68,7 @@ export function IntegrationSettings({ row, spec, canManage }: { row: Integration
                     )}
                 </form>
             </Section>
-            <Section title="Settings">
+            <Section title="Settings" actions={<SaveStatus state={autosave} />}>
                 <form onSubmit={saveSettings} className="space-y-3 rounded-lg border border-border bg-card p-4">
                     <div className="space-y-1.5">
                         <Label htmlFor="i-name">Name</Label>
@@ -84,7 +90,6 @@ export function IntegrationSettings({ row, spec, canManage }: { row: Integration
                             </SelectContent>
                         </Select>
                     </div>
-                    {canManage && <div className="flex justify-end"><Button type="submit" variant="outline" loading={update.isPending} disabled={name.trim().length < 2}>Save settings</Button></div>}
                 </form>
             </Section>
         </div>

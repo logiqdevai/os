@@ -12,7 +12,6 @@ import type { McpCall } from "@/features/admin/mcp-calls/interfaces/mcp-calls.in
 import { McpCallStatusFilterOptions } from "@/config/constants/dropdowns/admin/developer-form.options";
 import { formatDateTime, formatRelative, personName } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { McpCallStatusBadge } from "../../components/status-badges";
 
 const caller = (c: McpCall) => c.service_account?.name ?? (c.actor_member ? personName(c.actor_member) : "Unknown");
@@ -31,13 +30,13 @@ export default function McpCallsPage() {
 
     const decide = () => {
         if (!deciding) return;
-        const onError = (e: unknown) => toast({ variant: "destructive", title: "Could not decide", description: getApiErrorMessage(e) });
+        // Confirming runs the tool, so it waits for the result (the row shows it; a failed run is toasted as destructive).
         if (deciding.kind === "confirm")
             confirm.mutate(deciding.call.id, {
-                onSuccess: (res) => { toast({ title: res.call.status === "SUCCEEDED" ? "Confirmed and run" : "Confirmed, but the tool failed", variant: res.call.status === "SUCCEEDED" ? undefined : "destructive" }); setDeciding(null); },
-                onError,
+                onSuccess: (res) => { if (res.call.status !== "SUCCEEDED") toast({ variant: "destructive", title: "Confirmed, but the tool failed" }); setDeciding(null); },
             });
-        else reject.mutate(deciding.call.id, { onSuccess: () => { toast({ title: "Call rejected" }); setDeciding(null); }, onError });
+        // Rejecting is optimistic: the row shows Rejected at once.
+        else { reject.mutate(deciding.call.id); setDeciding(null); }
     };
 
     const columns: DataTableColumn<McpCall>[] = [
@@ -126,7 +125,7 @@ export default function McpCallsPage() {
                 description={deciding?.kind === "confirm" ? `It runs now as ${caller(deciding.call)}, with that caller's permissions — not yours.` : "The agent is told the call was rejected. Nothing runs."}
                 confirmText={deciding?.kind === "confirm" ? "Confirm and run" : "Reject"}
                 variant={deciding?.kind === "confirm" ? "default" : "destructive"}
-                isLoading={confirm.isPending || reject.isPending}
+                isLoading={confirm.isPending}
                 onConfirm={decide}
             />
         </Page>

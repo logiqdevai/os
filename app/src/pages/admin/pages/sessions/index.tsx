@@ -15,8 +15,6 @@ import { useSessionData } from "@/features/session/hooks/use-session";
 import { useAdminSessions, useRevokeAllSessions, useRevokeSession } from "@/features/admin/sessions/hooks/use-admin-sessions";
 import type { AdminSessionRow } from "@/features/admin/sessions/interfaces/sessions.interfaces";
 import { formatDate, formatDateTime, formatRelative, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { MemberPicker } from "../../components/member-picker";
 import { PersonCell } from "../../components/person-cell";
 
@@ -175,17 +173,19 @@ function RevokeDialog({ target, onClose }: { target: RevokeTarget | null; onClos
     const [reason, setReason] = useState("");
     const pending = revoke.isPending || revokeAll.isPending;
     const close = () => { if (!pending) { setReason(""); onClose(); } };
-    const fail = (e: unknown) => toast({ variant: "destructive", title: "Could not revoke", description: getApiErrorMessage(e) });
 
     const confirm = () => {
         if (!target) return;
         const r = reason.trim() || undefined;
         if (target.kind === "one") {
-            revoke.mutate({ id: target.session.id, reason: r }, { onSuccess: () => { toast({ title: "Session revoked" }); setReason(""); onClose(); }, onError: fail });
+            // Optimistic: the row disappears at once.
+            revoke.mutate({ id: target.session.id, reason: r });
+            setReason("");
+            onClose();
         } else {
             revokeAll.mutate(
                 { member_id: target.kind === "member" ? target.memberId : undefined, reason: r },
-                { onSuccess: (res) => { toast({ title: `${res.revoked} session${res.revoked === 1 ? "" : "s"} revoked` }); setReason(""); onClose(); }, onError: fail }
+                { onSuccess: () => { setReason(""); onClose(); } }
             );
         }
     };

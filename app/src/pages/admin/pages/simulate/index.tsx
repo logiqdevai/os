@@ -12,8 +12,6 @@ import { useSimulate } from "@/features/admin/permissions/hooks/use-permissions-
 import { AccessReasonOptions } from "@/config/constants/dropdowns/admin/access-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { MemberPicker } from "../../components/member-picker";
 import { PermissionPicker } from "../../components/permission-picker";
@@ -38,7 +36,7 @@ export default function SimulatePage() {
 
     const run = () =>
         memberId && key &&
-        simulate.mutate({ membership_id: memberId, permission_key: key, ...(branchId !== ANY && { branch_id: branchId }) }, { onError: (e) => toast({ variant: "destructive", title: "Could not check", description: getApiErrorMessage(e) }) });
+        simulate.mutate({ membership_id: memberId, permission_key: key, ...(branchId !== ANY && { branch_id: branchId }) });
 
     return (
         <Page width="wide">

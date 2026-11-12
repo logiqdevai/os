@@ -14,8 +14,8 @@ import { TimezoneOptions } from "@/config/constants/dropdowns/timezone.options";
 import { useCreateBranch, useUpdateBranch } from "@/features/admin/branches/hooks/use-branches";
 import type { Branch } from "@/features/admin/branches/interfaces/branches.interfaces";
 import { branchFormSchema, type BranchFormValues } from "@/features/admin/branches/validation-schemas/branches.schema";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useFormAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 
 const NONE = "__none";
 
@@ -31,7 +31,8 @@ interface BranchFormDialogProps {
 export function BranchFormDialog({ open, onOpenChange, branch, branches, defaultParentId }: BranchFormDialogProps) {
     const navigate = useNavigate();
     const create = useCreateBranch();
-    const update = useUpdateBranch();
+    // Editing autosaves (failures show in the dialog's <SaveStatus />); creating keeps its Create button.
+    const update = useUpdateBranch(false);
     const form = useForm<BranchFormValues>({ resolver: zodResolver(branchFormSchema) });
 
     useEffect(() => {
@@ -50,38 +51,39 @@ export function BranchFormDialog({ open, onOpenChange, branch, branches, default
             timezone: branch?.timezone ?? NONE,
             currency: branch?.currency ?? "",
         });
-    }, [open, branch, defaultParentId, form]);
+        // Reset when the dialog opens (or another branch is edited), not on every optimistic patch of `branch`.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, branch?.id, defaultParentId, form]);
 
     const parentOptions = branches.filter((b) => !branch || (b.id !== branch.id && !b.path.split("/").includes(branch.id)));
-    const pending = create.isPending || update.isPending;
 
+    const toDto = (v: BranchFormValues) => ({
+        name: v.name,
+        code: v.code || undefined,
+        kind: v.kind,
+        status: v.status,
+        parent_branch_id: v.parent_branch_id === NONE ? (branch ? null : undefined) : v.parent_branch_id,
+        is_headquarters: v.is_headquarters,
+        country: v.country === NONE ? undefined : v.country,
+        city: v.city || undefined,
+        email: v.email,
+        phone: v.phone || undefined,
+        timezone: v.timezone === NONE ? undefined : v.timezone,
+        currency: v.currency || undefined,
+    });
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: branch!.id, ...toDto(v) }), { enabled: open && !!branch });
     const submit = form.handleSubmit((v) => {
-        const dto = {
-            name: v.name,
-            code: v.code || undefined,
-            kind: v.kind,
-            status: v.status,
-            parent_branch_id: v.parent_branch_id === NONE ? (branch ? null : undefined) : v.parent_branch_id,
-            is_headquarters: v.is_headquarters,
-            country: v.country === NONE ? undefined : v.country,
-            city: v.city || undefined,
-            email: v.email,
-            phone: v.phone || undefined,
-            timezone: v.timezone === NONE ? undefined : v.timezone,
-            currency: v.currency || undefined,
-        };
-        const onError = (e: unknown) => toast({ variant: "destructive", title: "Could not save branch", description: getApiErrorMessage(e) });
-        if (branch) update.mutate({ id: branch.id, ...dto }, { onSuccess: () => { toast({ title: "Branch updated" }); onOpenChange(false); }, onError });
-        else create.mutate(dto, { onSuccess: (b) => { toast({ title: "Branch created" }); onOpenChange(false); navigate(`/admin/branches/${b.id}`); }, onError });
+        if (branch) return autosave.flush();
+        create.mutate(toDto(v), { onSuccess: (b) => { onOpenChange(false); navigate(`/admin/branches/${b.id}`); } });
     });
 
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => !create.isPending && onOpenChange(o)}>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
-                            <DialogTitle>{branch ? "Edit branch" : "New branch"}</DialogTitle>
+                            <DialogTitle className="flex items-center justify-between gap-3">{branch ? "Edit branch" : "New branch"}{branch && <SaveStatus state={autosave} className="font-normal" />}</DialogTitle>
                             <DialogDescription>Branches are offices, regions or units inside your organization. Roles can be limited to a branch.</DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
@@ -156,8 +158,14 @@ export function BranchFormDialog({ open, onOpenChange, branch, branches, default
                             </FormItem>
                         )} />
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{branch ? "Save changes" : "Create branch"}</Button>
+                            {branch ? (
+                                <Button type="button" onClick={() => { autosave.flush(); onOpenChange(false); }}>Done</Button>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>Cancel</Button>
+                                    <Button type="submit" loading={create.isPending}>Create branch</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>

@@ -14,8 +14,6 @@ import { useArchiveTeam, useTeams } from "@/features/admin/teams/hooks/use-teams
 import type { Team } from "@/features/admin/teams/interfaces/teams.interfaces";
 import { TeamKindFilterOptions, TeamKindFormOptions } from "@/config/constants/dropdowns/admin/team-kind-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { TeamFormDialog } from "./components/team-form-dialog";
 
 /**
@@ -123,14 +121,7 @@ export default function TeamsPage() {
                 description="Archived teams are hidden from pickers. Members keep their other teams."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() =>
-                    archiving &&
-                    archive.mutate(archiving.id, {
-                        onSuccess: () => { toast({ title: "Team archived" }); setArchiving(null); },
-                        onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }),
-                    })
-                }
+                onConfirm={() => { if (archiving) archive.mutate(archiving.id); setArchiving(null); }}
             />
         </Page>
     );

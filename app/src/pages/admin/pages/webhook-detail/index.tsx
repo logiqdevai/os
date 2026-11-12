@@ -14,7 +14,6 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { usePermissions } from "@/hooks/use-permission";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { DeliveryStatusFilterOptions } from "@/config/constants/dropdowns/automation/automation.options";
 import { useDeleteOutboundWebhook, useDeliveries, useDelivery, useOutboundAction, useOutboundWebhook, useRetryDelivery } from "@/features/automation/hooks/use-automation";
@@ -57,15 +56,15 @@ export default function WebhookDetailPage() {
 
     const h = hook.data;
     const canManage = p.can("automation.webhooks.manage");
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
     const run = (a: "pause" | "resume" | "test" | "rotate-secret") =>
         action.mutate({ id: h.id, action: a }, {
             onSuccess: (res) => {
                 if (a === "rotate-secret" && res.secret) { setSecret({ title: `New signing secret for ${h.name}`, secret: res.secret, note: "The previous secret keeps working for 24 hours." }); setConfirm(null); }
-                else if (a === "test") toast({ title: res.status === "SUCCEEDED" ? `Test delivered (HTTP ${res.response_status_code})` : "Test delivery failed", description: res.error_message ?? undefined, variant: res.status === "SUCCEEDED" ? "default" : "destructive" });
-                else toast({ title: a === "pause" ? "Webhook disabled" : "Webhook enabled" });
+                // A successful test shows in the delivery log below; only a failed one is toasted.
+                else if (a === "test" && res.status !== "SUCCEEDED") toast({ variant: "destructive", title: "Test delivery failed", description: res.error_message ?? undefined });
+                else setConfirm(null);
             },
-            onError: (e) => { fail("Could not update the webhook")(e); setConfirm(null); },
+            onError: () => setConfirm(null),
         });
 
     const stats = h.stats_7d ?? {};
@@ -162,7 +161,7 @@ export default function WebhookDetailPage() {
                 confirmText="Delete"
                 variant="destructive"
                 isLoading={remove.isPending}
-                onConfirm={() => remove.mutate(h.id, { onSuccess: () => { toast({ title: "Webhook deleted" }); navigate("/admin/webhooks", { replace: true }); }, onError: (e) => { fail("Could not delete")(e); setConfirm(null); } })}
+                onConfirm={() => remove.mutate(h.id, { onSuccess: () => { navigate("/admin/webhooks", { replace: true }); }, onError: () => setConfirm(null) })}
             />
         </Page>
     );
@@ -229,7 +228,7 @@ function DeliveryDetail({ id }: { id: string | null }) {
                 {x.response_status_code && <Badge variant="outline">HTTP {x.response_status_code}</Badge>}
                 <Can permission="automation.webhooks.manage">
                     {x.status !== "SUCCEEDED" && (
-                        <Button size="sm" variant="outline" loading={retry.isPending} onClick={() => retry.mutate(x.id, { onSuccess: (r) => toast({ title: r.status === "SUCCEEDED" ? "Delivered" : "Retry failed", variant: r.status === "SUCCEEDED" ? "default" : "destructive" }), onError: (e) => toast({ variant: "destructive", title: "Could not retry", description: getApiErrorMessage(e) }) })}>
+                        <Button size="sm" variant="outline" loading={retry.isPending} onClick={() => retry.mutate(x.id, { onSuccess: (r) => { if (r.status !== "SUCCEEDED") toast({ variant: "destructive", title: "Retry failed" }); } })}>
                             <RotateCcw /> Retry now
                         </Button>
                     )}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Info, Save, ShieldAlert } from "lucide-react";
+import { Info, ShieldAlert } from "lucide-react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,8 @@ import {
 } from "@/config/constants/dropdowns/admin/security-form.options";
 import type { DropdownOption } from "@/lib/dropdown-option-label.utils";
 import { formatDateTime, formatMinutes } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { TagListInput } from "../../components/tag-list-input";
 
 type Draft = Omit<SecurityPolicy, "organization_id" | "updated_at" | "is_default" | "context">;
@@ -74,12 +74,15 @@ export default function SecurityPolicyPage() {
     const policy = useSecurityPolicy();
     const update = useUpdateSecurityPolicy();
     const [draft, setDraft] = useState<Draft | null>(null);
-    const [confirming, setConfirming] = useState(false);
+    /** A risky change waiting for confirmation before it goes into the (autosaved) draft. */
+    const [pendingRisk, setPendingRisk] = useState<{ apply: () => void; message: string } | null>(null);
 
+    // Loaded once; afterwards the draft is the source of truth. A refused save keeps the draft so it can be fixed.
     useEffect(() => {
-        if (policy.data) setDraft(toDraft(policy.data));
-    }, [policy.data]);
+        if (policy.data && !draft) setDraft(toDraft(policy.data));
+    }, [policy.data, draft]);
 
+    /** Fields that differ from what the server has (only these are sent). */
     const changes = useMemo<UpdateSecurityPolicyDto>(() => {
         if (!policy.data || !draft) return {};
         const base = toDraft(policy.data);
@@ -87,26 +90,34 @@ export default function SecurityPolicyPage() {
     }, [policy.data, draft]);
     const dirty = Object.keys(changes).length > 0;
 
+    /**
+     * Autosave (no Save button). The API may refuse a change (e.g. lock-out protection on the IP allow-list, SSO
+     * required without a working provider): <SaveStatus /> shows why with Retry and the field keeps its value.
+     */
+    const autosave = useAutosave({ value: changes, enabled: dirty, save: (dto) => update.mutateAsync(dto) });
+
     if (policy.isPending) return <PageSkeleton />;
     if (policy.error || !policy.data) return <Page><PageHeader title="Sign-in & security" /><ErrorState error={policy.error} onRetry={() => policy.refetch()} /></Page>;
     if (!draft) return <PageSkeleton />;
 
-    const ctx = policy.data.context;
-    const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => (d ? { ...d, [key]: value } : d));
+    const saved = policy.data;
+    const ctx = saved.context;
+    const apply = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => (d ? { ...d, [key]: value } : d));
 
-    const risky: string[] = [];
-    if (changes.mfa_policy && changes.mfa_policy !== "OPTIONAL") risky.push("Members without MFA will have to set it up before they can work, including you if you have not.");
-    if (changes.allowed_ip_ranges && draft.allowed_ip_ranges.length) risky.push("Sign-in from any address outside the allowed ranges is blocked.");
-    if (changes.session_duration_minutes && changes.session_duration_minutes < policy.data.session_duration_minutes) risky.push("New sessions will expire sooner; existing sessions keep their current expiry.");
-    if (changes.idle_timeout_minutes) risky.push(`Sessions idle for more than ${formatMinutes(changes.idle_timeout_minutes)} are signed out, including sessions open right now.`);
-    if (changes.sso_required) risky.push("Members must sign in with your identity provider.");
-    if (changes.password_min_length && changes.password_min_length > policy.data.password_min_length) risky.push("New passwords must follow the longer minimum; existing passwords keep working.");
-
-    const save = () =>
-        update.mutate(changes, {
-            onSuccess: () => { toast({ title: "Security policy saved" }); setConfirming(false); },
-            onError: (e) => { toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }); setConfirming(false); },
-        });
+    /** What a change to `key` would do that needs a confirmation first (null = safe to save right away). */
+    const riskOf = <K extends keyof Draft>(key: K, value: Draft[K]): string | null => {
+        if (key === "mfa_policy" && value !== "OPTIONAL" && value !== saved.mfa_policy) return "Members without MFA will have to set it up before they can work, including you if you have not.";
+        if (key === "allowed_ip_ranges" && (value as string[]).length > draft.allowed_ip_ranges.length) return "Sign-in from any address outside the allowed ranges is blocked.";
+        if (key === "session_duration_minutes" && (value as number) < saved.session_duration_minutes) return "New sessions will expire sooner; existing sessions keep their current expiry.";
+        if (key === "idle_timeout_minutes" && value !== null && value !== saved.idle_timeout_minutes) return `Sessions idle for more than ${formatMinutes(value as number)} are signed out, including sessions open right now.`;
+        if (key === "sso_required" && value === true && !saved.sso_required) return "Members must sign in with your identity provider.";
+        return null;
+    };
+    const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
+        const message = riskOf(key, value);
+        if (message) setPendingRisk({ message, apply: () => apply(key, value) });
+        else apply(key, value);
+    };
 
     const ssoReady = ctx.sso_enabled && ctx.verified_domains > 0;
 
@@ -118,8 +129,9 @@ export default function SecurityPolicyPage() {
                 meta={policy.data.is_default ? <Badge variant="neutral">Defaults</Badge> : undefined}
                 actions={
                     <>
-                        <Button variant="ghost" disabled={!dirty || update.isPending} onClick={() => setDraft(toDraft(policy.data!))}>Discard</Button>
-                        <Button disabled={!dirty} loading={update.isPending} onClick={() => (risky.length ? setConfirming(true) : save())}><Save /> Save changes</Button>
+                        <SaveStatus state={autosave} />
+                        {/* After a refused save: put back what is saved (the draft otherwise keeps the refused value to fix it). */}
+                        {autosave.status === "error" && <Button variant="ghost" size="sm" onClick={() => setDraft(toDraft(saved))}>Revert</Button>}
                     </>
                 }
             />
@@ -209,14 +221,13 @@ export default function SecurityPolicyPage() {
             </div>
 
             <ConfirmationDialog
-                isOpen={confirming}
-                onClose={() => setConfirming(false)}
-                title="Apply these security changes?"
-                description={risky.join(" ")}
-                confirmText="Apply changes"
+                isOpen={!!pendingRisk}
+                onClose={() => setPendingRisk(null)}
+                title="Apply this security change?"
+                description={pendingRisk?.message ?? ""}
+                confirmText="Apply change"
                 variant="destructive"
-                isLoading={update.isPending}
-                onConfirm={save}
+                onConfirm={() => { pendingRisk?.apply(); setPendingRisk(null); }}
             />
         </Page>
     );

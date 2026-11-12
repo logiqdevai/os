@@ -14,8 +14,6 @@ import type { SsoConfiguration, SsoGroupMapping } from "@/features/admin/sso/int
 import { SsoProtocolFormOptions, SsoStatusOptions } from "@/config/constants/dropdowns/admin/sso-form.options";
 import { ModuleKeyOptions } from "@/config/constants/dropdowns/admin/module-key.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { CopyField } from "../../components/copy-field";
 import { ProviderDialog } from "./components/provider-dialog";
 import { MappingDialog } from "./components/mapping-dialog";
@@ -70,8 +68,7 @@ export default function SsoPage() {
                 description="The provider settings, the encrypted secret and all group mappings are removed."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => { toast({ title: "Identity provider deleted" }); setDeleting(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not delete", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (deleting) remove.mutate(deleting.id); setDeleting(null); }}
             />
         </Page>
     );
@@ -127,7 +124,7 @@ function ProviderCard({ provider: p, onEdit, onDelete }: { provider: SsoConfigur
                             aria-label="Auto-provision members"
                             checked={p.auto_provision}
                             disabled={settings.isPending}
-                            onCheckedChange={(v) => settings.mutate({ id: p.id, auto_provision: v }, { onSuccess: () => toast({ title: "Saved" }), onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) })}
+                            onCheckedChange={(v) => settings.mutate({ id: p.id, auto_provision: v })}
                         />
                     </div>
                 </div>
@@ -164,7 +161,7 @@ function ProviderCard({ provider: p, onEdit, onDelete }: { provider: SsoConfigur
                                                         <DropdownMenuItem onSelect={() => setMappingDialog({ open: true, mapping: m })}><Pencil /> Edit</DropdownMenuItem>
                                                         <DropdownMenuItem
                                                             className="text-danger focus:text-danger"
-                                                            onSelect={() => removeMapping.mutate({ configId: p.id, mappingId: m.id }, { onSuccess: () => toast({ title: "Mapping removed" }), onError: (e) => toast({ variant: "destructive", title: "Could not remove", description: getApiErrorMessage(e) }) })}
+                                                            onSelect={() => removeMapping.mutate({ configId: p.id, mappingId: m.id })}
                                                         >
                                                             <Trash2 /> Remove
                                                         </DropdownMenuItem>

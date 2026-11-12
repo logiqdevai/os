@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { SsoConfiguration } from "../interfaces/sso.interfaces";
+import { useEntityRemove, useEntityUpdate, useOptimisticMutation } from "@/lib/query/optimistic";
 import * as service from "../services/sso.services";
 
 const KEY = ["admin", "sso"] as const;
@@ -12,29 +14,24 @@ function useInvalidate() {
 
 export const useCreateSsoConfiguration = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.createSsoConfiguration, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.createSsoConfiguration, meta: { errorTitle: "Could not create SSO configuration" }, onSettled: invalidate });
 };
 export const useUpdateSsoConfiguration = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.updateSsoConfiguration, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.updateSsoConfiguration, meta: { errorTitle: "Could not update SSO configuration" }, onSettled: invalidate });
 };
-export const useUpdateSsoSettings = () => {
-    const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.updateSsoSettings, onSuccess: invalidate });
-};
-export const useDeleteSsoConfiguration = () => {
-    const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.deleteSsoConfiguration, onSuccess: invalidate });
-};
+/** Optimistic: the auto-provision switch / name change at once. */
+export const useUpdateSsoSettings = () => useEntityUpdate({ root: KEY, mutationFn: service.updateSsoSettings, meta: { errorTitle: "Could not update the SSO settings" } });
+/** Optimistic: the provider disappears at once. */
+export const useDeleteSsoConfiguration = () => useEntityRemove({ root: KEY, mutationFn: service.deleteSsoConfiguration, meta: { errorTitle: "Could not delete the SSO provider" } });
 export const useAddGroupMapping = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.addGroupMapping, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.addGroupMapping, meta: { errorTitle: "Could not add group mapping" }, onSettled: invalidate });
 };
 export const useUpdateGroupMapping = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.updateGroupMapping, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.updateGroupMapping, meta: { errorTitle: "Could not update group mapping" }, onSettled: invalidate });
 };
-export const useDeleteGroupMapping = () => {
-    const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.deleteGroupMapping, onSuccess: invalidate });
-};
+/** Optimistic: the mapping disappears at once. */
+export const useDeleteGroupMapping = () =>
+    useOptimisticMutation({ roots: [KEY], mutationFn: service.deleteGroupMapping, meta: { errorTitle: "Could not delete the group mapping" }, apply: (qc, v) => qc.setQueryData<SsoConfiguration[]>(KEY, (list) => list?.map((c) => (c.id === v.configId ? { ...c, group_mappings: c.group_mappings.filter((m) => m.id !== v.mappingId) } : c))) });

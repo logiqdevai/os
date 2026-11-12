@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Archive, Copy, Info, Rocket, Save } from "lucide-react";
+import { Archive, Copy, Info, Rocket } from "lucide-react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermission } from "@/hooks/use-permission";
+import { useAutosave, useFormAutosave, type AutosaveState } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { useDeprecateRole, usePublishRole, useRole, useUpdateRole } from "@/features/admin/roles/hooks/use-roles";
 import type { PermissionEffect } from "@/features/admin/roles/interfaces/roles.interfaces";
 import { roleDetailsSchema, type RoleDetailsFormValues } from "@/features/admin/roles/validation-schemas/roles.schema";
@@ -22,8 +24,6 @@ import { RoleTypeFormOptions } from "@/config/constants/dropdowns/admin/access-f
 import { ScopeTypeFormOptions } from "@/config/constants/dropdowns/admin/scope-type-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDateTime } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { RoleStatusBadge } from "../../components/status-badges";
 import { CreateRoleDialog } from "../roles/components/create-role-dialog";
 import { PermissionMatrix } from "./components/permission-matrix";
@@ -37,7 +37,7 @@ export default function RoleDetailPage() {
     const { id } = useParams();
     const role = useRole(id);
     const canManage = usePermission("users.roles.manage");
-    const update = useUpdateRole();
+    const update = useUpdateRole(false);
     const publish = usePublishRole();
     const deprecate = useDeprecateRole();
     const [perms, setPerms] = useState<Map<string, PermissionEffect>>(new Map());
@@ -48,25 +48,36 @@ export default function RoleDetailPage() {
     const form = useForm<RoleDetailsFormValues>({ resolver: zodResolver(roleDetailsSchema), defaultValues: { name: "", description: "", default_scope: "ORGANIZATION" } });
 
     const original = useMemo(() => new Map((role.data?.permissions ?? []).map((p) => [p.permission.key, p.effect] as const)), [role.data]);
+    // Loaded once per role; afterwards the editor is the source of truth (a refresh after an autosave never overwrites edits).
+    const roleId = role.data?.id;
     useEffect(() => {
         if (!role.data) return;
         setPerms(new Map(original));
         form.reset({ name: role.data.name, description: role.data.description ?? "", default_scope: role.data.default_scope });
-    }, [role.data, original, form]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [roleId, form]);
+
+    const readOnly = !role.data || !canManage || role.data.is_template || role.data.status === "DEPRECATED";
+    const permsDirty = perms.size !== original.size || [...perms].some(([k, e]) => original.get(k) !== e);
+
+    /**
+     * Autosave (no Save button): details save after a short pause, permission ticks right after you stop clicking.
+     * On a published role the change applies to its holders right away, as the old Save did.
+     */
+    const detailsAutosave = useFormAutosave(form, (v) => update.mutateAsync({ id: roleId as string, name: v.name, description: v.description, default_scope: v.default_scope }), { enabled: !readOnly });
+    const permsAutosave = useAutosave({
+        value: [...perms].sort(([a], [b]) => a.localeCompare(b)),
+        enabled: !readOnly && permsDirty,
+        delay: 600,
+        save: (list) => update.mutateAsync({ id: roleId as string, permissions: list.map(([key, effect]) => ({ key, effect })) }),
+    });
+    const busy = (s: AutosaveState) => s.status === "pending" || s.status === "saving" || s.status === "error";
+    const unsaved = busy(detailsAutosave) || busy(permsAutosave);
 
     if (role.isPending) return <PageSkeleton />;
     if (role.error) return <Page><PageHeader title="Role" back={{ to: "/admin/roles", label: "Roles" }} /><ErrorState error={role.error} onRetry={() => role.refetch()} /></Page>;
     const r = role.data;
-    const readOnly = !canManage || r.is_template || r.status === "DEPRECATED";
-    const permsDirty = perms.size !== original.size || [...perms].some(([k, e]) => original.get(k) !== e);
-    const dirty = permsDirty || form.formState.isDirty;
-
-    const save = form.handleSubmit((v) =>
-        update.mutate(
-            { id: r.id, name: v.name, description: v.description, default_scope: v.default_scope, ...(permsDirty && { permissions: [...perms].map(([key, effect]) => ({ key, effect })) }) },
-            { onSuccess: () => toast({ title: r.status === "PUBLISHED" ? "Role saved — changes apply right away" : "Draft saved" }), onError: (e) => toast({ variant: "destructive", title: "Could not save the role", description: getApiErrorMessage(e) }) }
-        )
-    );
+    const save = (e: React.FormEvent) => { e.preventDefault(); detailsAutosave.flush(); };
 
     return (
         <Page width="wide">
@@ -80,9 +91,9 @@ export default function RoleDetailPage() {
                         {canManage && r.type !== "CUSTOMER_PORTAL" && <Button variant="outline" onClick={() => setCloneOpen(true)}><Copy /> Clone</Button>}
                         {!readOnly && (
                             <>
+                                <SaveStatus state={permsAutosave.status === "idle" || detailsAutosave.status === "error" ? detailsAutosave : permsAutosave} />
                                 {r.status === "PUBLISHED" && <Button variant="destructive" onClick={() => setDeprecating(true)}><Archive /> Deprecate</Button>}
-                                <Button variant="outline" onClick={save} loading={update.isPending} disabled={!dirty}><Save /> Save</Button>
-                                <Button onClick={() => { setNote(""); setPublishOpen(true); }} disabled={dirty}><Rocket /> Publish{r.status === "PUBLISHED" ? " new version" : ""}</Button>
+                                <Button onClick={() => { setNote(""); setPublishOpen(true); }} disabled={unsaved}><Rocket /> Publish{r.status === "PUBLISHED" ? " new version" : ""}</Button>
                             </>
                         )}
                     </>
@@ -90,7 +101,7 @@ export default function RoleDetailPage() {
             />
 
             {r.is_template && <Alert className="mb-4"><Info className="size-4" /><AlertDescription>System templates are maintained by Logiqdev and cannot be edited. Clone this template to adjust it for your organization.</AlertDescription></Alert>}
-            {r.status === "DRAFT" && !r.is_template && <Alert className="mb-4"><Info className="size-4" /><AlertDescription>This role is a draft: it grants nothing until you publish it.{dirty ? " Save your changes first." : ""}</AlertDescription></Alert>}
+            {r.status === "DRAFT" && !r.is_template && <Alert className="mb-4"><Info className="size-4" /><AlertDescription>This role is a draft: it grants nothing until you publish it. Changes save automatically.</AlertDescription></Alert>}
             {r.status === "DEPRECATED" && <Alert className="mb-4"><Info className="size-4" /><AlertDescription>Deprecated: people who hold it keep it, but it cannot be assigned again.</AlertDescription></Alert>}
 
             <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
@@ -144,7 +155,7 @@ export default function RoleDetailPage() {
                     <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What changed (optional)" aria-label="Version note" maxLength={500} />
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setPublishOpen(false)} disabled={publish.isPending}>Cancel</Button>
-                        <Button loading={publish.isPending} onClick={() => publish.mutate({ id: r.id, note: note || undefined }, { onSuccess: () => { toast({ title: "Role published" }); setPublishOpen(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not publish", description: getApiErrorMessage(e) }) })}>Publish</Button>
+                        <Button loading={publish.isPending} onClick={() => publish.mutate({ id: r.id, note: note || undefined }, { onSuccess: () => setPublishOpen(false) })}>Publish</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -156,7 +167,7 @@ export default function RoleDetailPage() {
                 confirmText="Deprecate"
                 variant="destructive"
                 isLoading={deprecate.isPending}
-                onConfirm={() => deprecate.mutate(r.id, { onSuccess: () => { toast({ title: "Role deprecated" }); setDeprecating(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not deprecate", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => deprecate.mutate(r.id, { onSuccess: () => setDeprecating(false) })}
             />
             <CreateRoleDialog open={cloneOpen} onOpenChange={setCloneOpen} templateId={r.id} />
         </Page>

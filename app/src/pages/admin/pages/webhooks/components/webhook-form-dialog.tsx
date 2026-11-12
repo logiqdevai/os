@@ -11,8 +11,6 @@ import { MultiPicker } from "@/components/ui/multi-picker";
 import { useCreateOutboundWebhook, useTriggerCatalog, useUpdateOutboundWebhook } from "@/features/automation/hooks/use-automation";
 import type { OutboundWebhook } from "@/features/automation/interfaces/automation.interfaces";
 import { EVENT_PATTERN, outboundWebhookSchema, type OutboundWebhookFormValues } from "@/features/automation/validation-schemas/outbound-webhook.schema";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 /**
  * Create / edit an outbound webhook (OutboundWebhook, owned by 20 Automation, administered here).
@@ -56,9 +54,8 @@ export function WebhookFormDialog({ open, onOpenChange, hook, onCreated }: { ope
     const pending = create.isPending || update.isPending;
     const submit = form.handleSubmit((v) => {
         const dto = { ...v, description: v.description || undefined };
-        const onError = (e: unknown) => toast({ variant: "destructive", title: "Could not save the webhook", description: getApiErrorMessage(e) });
-        if (hook) update.mutate({ id: hook.id, ...dto }, { onSuccess: () => { toast({ title: "Webhook updated" }); onOpenChange(false); }, onError });
-        else create.mutate(dto, { onSuccess: (h) => { onOpenChange(false); onCreated?.(h); }, onError });
+        if (hook) update.mutate({ id: hook.id, ...dto }, { onSuccess: () => onOpenChange(false) });
+        else create.mutate(dto, { onSuccess: (h) => { onOpenChange(false); onCreated?.(h); } });
     });
 
     const addPattern = () => {

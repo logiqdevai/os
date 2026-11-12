@@ -12,8 +12,6 @@ import { SsoProtocolFormOptions } from "@/config/constants/dropdowns/admin/sso-f
 import { ssoProviderFormSchema, type SsoProviderFormValues } from "@/features/admin/sso/validation-schemas/sso.schema";
 import { useCreateSsoConfiguration, useUpdateSsoConfiguration } from "@/features/admin/sso/hooks/use-sso";
 import type { SaveSsoConfigurationDto, SsoConfiguration } from "@/features/admin/sso/interfaces/sso.interfaces";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 interface ProviderDialogProps {
     open: boolean;
@@ -74,8 +72,8 @@ export function ProviderDialog({ open, onOpenChange, provider }: ProviderDialogP
                     ...(v.client_secret && { secrets: { client_secret: v.client_secret } }),
                 };
         const options = {
-            onSuccess: () => { toast({ title: provider ? "Identity provider saved" : "Identity provider added" }); form.setValue("client_secret", ""); onOpenChange(false); },
-            onError: (e: unknown) => { form.setValue("client_secret", ""); toast({ variant: "destructive" as const, title: "Could not save", description: getApiErrorMessage(e) }); },
+            onSuccess: () => { form.setValue("client_secret", ""); onOpenChange(false); },
+            onError: () => form.setValue("client_secret", ""), // the global error toast explains why
         };
         if (provider) update.mutate({ id: provider.id, ...dto }, options);
         else create.mutate(dto, options);

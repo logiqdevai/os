@@ -17,8 +17,6 @@ import { InvitationStatusFilterOptions } from "@/config/constants/dropdowns/admi
 import { MembershipTypeFormOptions } from "@/config/constants/dropdowns/admin/membership-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatRelative, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { InvitationStatusBadge } from "../../components/status-badges";
 import { CopyField } from "../../components/copy-field";
 import { InviteDialog } from "./components/invite-dialog";
@@ -47,8 +45,8 @@ export default function InvitationsPage({ openInvite = false }: { openInvite?: b
 
     const doResend = (i: Invitation) =>
         resend.mutate(i.id, {
-            onSuccess: (r) => (r.invite_url ? setResent(r) : toast({ title: `Invitation sent again to ${i.email}` })),
-            onError: (e) => toast({ variant: "destructive", title: "Could not resend", description: getApiErrorMessage(e) }),
+            // A new link is shown in a dialog; an emailed invitation needs no confirmation (the row's sent date updates).
+            onSuccess: (r) => { if (r.invite_url) setResent(r); },
         });
 
     const columns: DataTableColumn<Invitation>[] = [
@@ -123,8 +121,7 @@ export default function InvitationsPage({ openInvite = false }: { openInvite?: b
                 description="The link stops working. You can invite them again later."
                 confirmText="Cancel invitation"
                 variant="destructive"
-                isLoading={cancel.isPending}
-                onConfirm={() => cancelling && cancel.mutate(cancelling.id, { onSuccess: () => { toast({ title: "Invitation cancelled" }); setCancelling(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not cancel", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (cancelling) cancel.mutate(cancelling.id); setCancelling(null); }}
             />
             <Dialog open={!!resent} onOpenChange={(o) => !o && setResent(null)}>
                 <DialogContent className="sm:max-w-lg">

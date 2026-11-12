@@ -7,5 +7,6 @@ export const useSecurityPolicy = () => useQuery({ queryKey: KEY, queryFn: servic
 
 export const useUpdateSecurityPolicy = () => {
     const qc = useQueryClient();
-    return useMutation({ mutationFn: service.updateSecurityPolicy, onSuccess: (data) => qc.setQueryData(KEY, data) });
+    // Autosaved: a refusal (e.g. lock-out protection) is shown by the page's <SaveStatus />, not a toast.
+    return useMutation({ mutationFn: service.updateSecurityPolicy, meta: { errorToast: false }, onSuccess: (data) => qc.setQueryData(KEY, data) });
 };

@@ -27,17 +27,18 @@ function useInvalidate() {
 
 export const useCreateRole = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.createRole, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.createRole, meta: { errorTitle: "Could not create role" }, onSettled: invalidate });
 };
-export const useUpdateRole = () => {
+/** `errorToast: false` when autosaved (the role page shows failures in its <SaveStatus />). */
+export const useUpdateRole = (errorToast = true) => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.updateRole, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.updateRole, meta: { errorTitle: "Could not update the role", errorToast }, onSettled: invalidate });
 };
 export const usePublishRole = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.publishRole, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.publishRole, meta: { errorTitle: "Could not publish role" }, onSettled: invalidate });
 };
 export const useDeprecateRole = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.deprecateRole, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.deprecateRole, meta: { errorTitle: "Could not deprecate role" }, onSettled: invalidate });
 };

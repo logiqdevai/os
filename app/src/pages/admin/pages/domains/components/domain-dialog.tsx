@@ -10,8 +10,6 @@ import type { OrganizationDomain } from "@/features/admin/domains/interfaces/dom
 import { DomainCheckErrorOptions } from "@/config/constants/dropdowns/admin/domain-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatRelative } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { CopyField } from "../../../components/copy-field";
 
 interface DomainDialogProps {
@@ -40,17 +38,14 @@ export function DomainDialog({ open, onOpenChange, domain }: DomainDialogProps) 
     const add = () =>
         create.mutate(
             { domain: name, allow_discovery: discovery },
-            { onSuccess: (d) => setCurrent(d), onError: (e) => toast({ variant: "destructive", title: "Could not add the domain", description: getApiErrorMessage(e) }) }
+            { onSuccess: (d) => setCurrent(d) }
         );
 
     const check = () =>
         current &&
         verify.mutate(current.id, {
-            onSuccess: (d) => {
-                setCurrent(d);
-                if (d.dns_check?.txt?.ok) toast({ title: `${d.domain} verified` });
-            },
-            onError: (e) => toast({ variant: "destructive", title: "Could not check DNS", description: getApiErrorMessage(e) }),
+            // The dialog shows the verified state (or what DNS returned) from `current`; no toast.
+            onSuccess: (d) => setCurrent(d),
         });
 
     const txt = current?.dns_check?.txt;

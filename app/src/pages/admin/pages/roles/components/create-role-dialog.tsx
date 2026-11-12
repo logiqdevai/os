@@ -11,8 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCreateRole, useRoles } from "@/features/admin/roles/hooks/use-roles";
 import { roleFormSchema, type RoleFormValues } from "@/features/admin/roles/validation-schemas/roles.schema";
 import { CustomRoleTypeOptions } from "@/config/constants/dropdowns/admin/access-form.options";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 const BLANK = "__blank";
 
@@ -34,8 +32,7 @@ export function CreateRoleDialog({ open, onOpenChange, templateId }: { open: boo
         create.mutate(
             { name: v.name, description: v.description || undefined, type: v.type, ...(v.template_role_id !== BLANK && { template_role_id: v.template_role_id }) },
             {
-                onSuccess: (role) => { toast({ title: "Draft role created", description: "Pick its permissions, then publish it." }); onOpenChange(false); navigate(`/admin/roles/${role.id}`); },
-                onError: (e) => toast({ variant: "destructive", title: "Could not create the role", description: getApiErrorMessage(e) }),
+                onSuccess: (role) => { onOpenChange(false); navigate(`/admin/roles/${role.id}`); },
             }
         )
     );

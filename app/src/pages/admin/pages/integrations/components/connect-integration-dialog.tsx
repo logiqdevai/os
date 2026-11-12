@@ -12,8 +12,6 @@ import { useCreateIntegration } from "@/features/admin/integrations/hooks/use-in
 import type { IntegrationMode, IntegrationProviderSpec } from "@/features/admin/integrations/interfaces/integrations.interfaces";
 import { IntegrationCategoryFormOptions, IntegrationModeFormOptions } from "@/config/constants/dropdowns/admin/developer-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 /**
  * Connect a provider with the organization's own credentials. Fields come from the provider registry
@@ -40,12 +38,11 @@ export function ConnectIntegrationDialog({ spec, onClose }: { spec: IntegrationP
         create.mutate(
             { provider: spec.provider, name: name.trim(), mode, secrets: pick(spec.secrets.map((f) => f.key)), config: pick(spec.config.map((f) => f.key)), make_default: makeDefault },
             {
+                // No toast: the integration page shows the status (and the verification error, if any).
                 onSuccess: (row) => {
-                    toast(row.status === "ACTIVE" ? { title: `${spec.label} connected`, description: "The credentials were verified." } : row.status === "ERROR" ? { variant: "destructive", title: "Saved, but verification failed", description: row.last_error ?? undefined } : { title: `${spec.label} saved`, description: "It could not be verified automatically." });
                     onClose();
                     navigate(`/admin/integrations/${row.id}`);
                 },
-                onError: (err) => toast({ variant: "destructive", title: "Could not connect", description: getApiErrorMessage(err) }),
             }
         );
     };

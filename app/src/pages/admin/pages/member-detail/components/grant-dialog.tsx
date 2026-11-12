@@ -8,8 +8,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useCreateGrant } from "@/features/admin/permissions/hooks/use-permissions-admin";
 import { PermissionEffectFormOptions } from "@/config/constants/dropdowns/admin/access-form.options";
 import type { ScopeType } from "@/config/constants/dropdowns/admin/scope-type-form.options";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { PermissionPicker } from "../../../components/permission-picker";
 import { ScopeFields, scopeComplete } from "../../../components/scope-fields";
 
@@ -33,7 +31,7 @@ export function GrantDialog({ open, onOpenChange, membershipId }: { open: boolea
         if (!key || !valid) return;
         create.mutate(
             { membership_id: membershipId, permission_key: key, effect, scope_type: scopeType, scope_id: scopeId, valid_until: until ? new Date(`${until}T23:59:59`).toISOString() : undefined, reason: reason || undefined },
-            { onSuccess: () => { toast({ title: effect === "ALLOW" ? "Permission granted" : "Permission denied" }); onOpenChange(false); }, onError: (err) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(err) }) }
+            { onSuccess: () => onOpenChange(false) }
         );
     };
 

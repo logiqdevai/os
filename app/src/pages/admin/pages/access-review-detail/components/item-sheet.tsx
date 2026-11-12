@@ -13,8 +13,6 @@ import type { ModuleKey } from "@/config/apps/app.types";
 import { ModuleKeyOptions } from "@/config/constants/dropdowns/admin/module-key.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatDateTime, formatRelative, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { MemberPicker } from "../../../components/member-picker";
 import { useScopeLabel } from "../../../components/use-scope-label";
@@ -58,12 +56,12 @@ export function ItemSheet({ item, onOpenChange, canManage, reviewOpen }: ItemShe
     const changeCount = changes.remove_role_assignment_ids.length + changes.revoke_grant_ids.length + changes.disable_modules.length;
     const valid = !!choice && (!needsComment || comment.trim().length > 0) && (choice !== "MODIFIED" || changeCount > 0);
 
-    const save = () =>
-        choice &&
-        decide.mutate(
-            { itemId: item.id, decision: choice, comment: comment.trim() || undefined, ...(choice === "MODIFIED" && { changes }) },
-            { onSuccess: () => { toast({ title: "Decision saved" }); onOpenChange(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not save the decision", description: getApiErrorMessage(e) }) }
-        );
+    /** Optimistic: the decision shows in the list at once, so the sheet closes right away. */
+    const save = () => {
+        if (!choice) return;
+        decide.mutate({ itemId: item.id, decision: choice, comment: comment.trim() || undefined, ...(choice === "MODIFIED" && { changes }) });
+        onOpenChange(false);
+    };
 
     return (
         <Sheet open={!!item} onOpenChange={onOpenChange}>
@@ -150,7 +148,7 @@ export function ItemSheet({ item, onOpenChange, canManage, reviewOpen }: ItemShe
                                     <Textarea id="review-comment" rows={2} value={comment} maxLength={1000} onChange={(e) => setComment(e.target.value)} placeholder={choice === "REVOKED" ? "Left the team in October" : ""} />
                                 </div>
                                 {choice === "REVOKED" && <p className="flex items-start gap-1.5 text-xs text-warning"><ShieldAlert className="mt-0.5 size-3.5 flex-none" /> When applied, every role and allow grant of this member is removed.</p>}
-                                <Button className="w-full" disabled={!valid} loading={decide.isPending} onClick={save}>Save decision</Button>
+                                <Button className="w-full" disabled={!valid} onClick={save}>Save decision</Button>
                             </>
                         ) : !item.can_decide && item.decision === "PENDING" && reviewOpen ? (
                             <p className="text-xs text-muted-foreground">Only the assigned reviewer can decide. A reviewer never reviews their own access.</p>
@@ -162,7 +160,7 @@ export function ItemSheet({ item, onOpenChange, canManage, reviewOpen }: ItemShe
                                     value={item.reviewer_membership_id ?? undefined}
                                     valueLabel={item.reviewer ? personName(item.reviewer.user) : undefined}
                                     exclude={[item.membership_id]}
-                                    onChange={(id) => reassign.mutate({ itemId: item.id, reviewer_membership_id: id }, { onSuccess: () => toast({ title: "Reviewer changed" }), onError: (e) => toast({ variant: "destructive", title: "Could not change the reviewer", description: getApiErrorMessage(e) }) })}
+                                    onChange={(id) => reassign.mutate({ itemId: item.id, reviewer_membership_id: id })}
                                 />
                             </div>
                         )}

@@ -10,8 +10,6 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { usePermissions } from "@/hooks/use-permission";
 import { useMember, useOffboardMember, useReactivateMember, useSuspendMember } from "@/features/admin/members/hooks/use-members";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { personName } from "@/lib/format";
 import { PersonCell } from "../../components/person-cell";
 import { MemberStatusBadge } from "../../components/status-badges";
@@ -44,13 +42,11 @@ export default function MemberDetailPage() {
     const name = personName(m.user);
 
     const run = () => {
-        const opts = {
-            onSuccess: () => { toast({ title: action === "suspend" ? "Member suspended" : action === "reactivate" ? "Member reactivated" : "Member offboarded" }); setAction(null); },
-            onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not update the member", description: getApiErrorMessage(e) }),
-        };
-        if (action === "suspend") suspend.mutate(m.id, opts);
-        if (action === "reactivate") reactivate.mutate(m.id, opts);
-        if (action === "offboard") offboard.mutate({ id: m.id }, opts);
+        // Optimistic: the status badge changes at once, so the confirmation closes right away.
+        if (action === "suspend") suspend.mutate(m.id);
+        if (action === "reactivate") reactivate.mutate(m.id);
+        if (action === "offboard") offboard.mutate({ id: m.id });
+        setAction(null);
     };
 
     return (
@@ -107,7 +103,6 @@ export default function MemberDetailPage() {
                 }
                 confirmText={action === "suspend" ? "Suspend" : action === "reactivate" ? "Reactivate" : "Offboard"}
                 variant={action === "reactivate" ? "default" : "destructive"}
-                isLoading={suspend.isPending || reactivate.isPending || offboard.isPending}
                 onConfirm={run}
             />
         </Page>

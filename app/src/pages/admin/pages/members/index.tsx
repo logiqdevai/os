@@ -18,8 +18,6 @@ import type { MemberListItem } from "@/features/admin/members/interfaces/members
 import { MembershipStatusFilterOptions, MembershipTypeFilterOptions, MembershipTypeFormOptions } from "@/config/constants/dropdowns/admin/membership-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatRelative, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { PersonCell } from "../../components/person-cell";
 import { MemberStatusBadge } from "../../components/status-badges";
 
@@ -44,17 +42,11 @@ export default function MembersPage() {
     const runAction = () => {
         if (!pending) return;
         const { kind, member } = pending;
-        const name = personName(member.user);
-        const opts = {
-            onSuccess: () => {
-                toast({ title: kind === "suspend" ? `${name} suspended` : kind === "reactivate" ? `${name} reactivated` : `${name} offboarded` });
-                setPending(null);
-            },
-            onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not update the member", description: getApiErrorMessage(e) }),
-        };
-        if (kind === "suspend") suspend.mutate(member.id, opts);
-        else if (kind === "reactivate") reactivate.mutate(member.id, opts);
-        else offboard.mutate({ id: member.id }, opts);
+        // Optimistic: the status badge changes at once, so the confirmation closes right away.
+        if (kind === "suspend") suspend.mutate(member.id);
+        else if (kind === "reactivate") reactivate.mutate(member.id);
+        else offboard.mutate({ id: member.id });
+        setPending(null);
     };
 
     const columns: DataTableColumn<MemberListItem>[] = [
@@ -160,7 +152,6 @@ export default function MembersPage() {
                 description={pending ? confirmCopy[pending.kind].description : ""}
                 confirmText={pending ? confirmCopy[pending.kind].cta : "Confirm"}
                 variant={pending?.kind === "reactivate" ? "default" : "destructive"}
-                isLoading={suspend.isPending || reactivate.isPending || offboard.isPending}
                 onConfirm={runAction}
             />
         </Page>

@@ -11,8 +11,6 @@ import { usePermission } from "@/hooks/use-permission";
 import { useAssignServiceAccountRole, useRemoveServiceAccountRole, useServiceAccount, useSetServiceAccountStatus } from "@/features/admin/service-accounts/hooks/use-service-accounts";
 import { useRevokeApiKey } from "@/features/admin/api-keys/hooks/use-api-keys";
 import { formatDate, formatRelative, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { ServiceAccountStatusBadge } from "../../components/status-badges";
 import { AssignRoleDialog } from "../../components/assign-role-dialog";
 import { SecretOnceDialog } from "../../components/secret-once-dialog";
@@ -46,14 +44,13 @@ export default function ServiceAccountDetailPage() {
     if (account.error) return <Page><PageHeader title="Service account" back={{ to: "/admin/service-accounts", label: "Service accounts" }} /><ErrorState error={account.error} onRetry={() => account.refetch()} /></Page>;
     const a = account.data;
     const revoked = a.status === "REVOKED";
-    const onError = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
-
+    /** All optimistic: the status / role / key changes at once, so the confirmation closes right away. */
     const runConfirm = () => {
         if (!confirm) return;
-        const done = (title: string) => ({ onSuccess: () => { toast({ title }); setConfirm(null); }, onError: onError("Could not update") });
-        if (confirm.kind === "suspend" || confirm.kind === "reactivate" || confirm.kind === "revoke") setStatus.mutate({ id: a.id, action: confirm.kind }, done(confirm.kind === "suspend" ? "Suspended" : confirm.kind === "reactivate" ? "Reactivated" : "Revoked"));
-        if (confirm.kind === "remove-role") removeRole.mutate({ id: a.id, assignment_id: confirm.id }, done("Role removed"));
-        if (confirm.kind === "revoke-key") revokeKey.mutate(confirm.id, done("Key revoked"));
+        if (confirm.kind === "suspend" || confirm.kind === "reactivate" || confirm.kind === "revoke") setStatus.mutate({ id: a.id, action: confirm.kind });
+        if (confirm.kind === "remove-role") removeRole.mutate({ id: a.id, assignment_id: confirm.id });
+        if (confirm.kind === "revoke-key") revokeKey.mutate(confirm.id);
+        setConfirm(null);
     };
 
     return (
@@ -117,7 +114,7 @@ export default function ServiceAccountDetailPage() {
             </div>
             <ServiceAccountFormDialog open={editOpen} onOpenChange={setEditOpen} account={a} />
             <AssignRoleDialog open={assignOpen} onOpenChange={setAssignOpen} title={`Assign a role to ${a.name}`} withReason={false} pending={assign.isPending}
-                onSubmit={({ reason: _r, ...v }) => assign.mutate({ id: a.id, ...v }, { onSuccess: () => { toast({ title: "Role assigned" }); setAssignOpen(false); }, onError: onError("Could not assign the role") })} />
+                onSubmit={({ reason: _r, ...v }) => assign.mutate({ id: a.id, ...v }, { onSuccess: () => setAssignOpen(false) })} />
             <ApiKeyFormDialog open={keyOpen} onOpenChange={setKeyOpen} serviceAccountId={a.id} onCreated={setSecret} />
             <SecretOnceDialog secret={secret} title={`API key for ${a.name}`} onClose={() => setSecret(null)} />
             <ConfirmationDialog
@@ -133,7 +130,6 @@ export default function ServiceAccountDetailPage() {
                 }
                 confirmText={confirm?.kind === "reactivate" ? "Reactivate" : confirm?.kind === "suspend" ? "Suspend" : confirm?.kind === "remove-role" ? "Remove" : "Revoke"}
                 variant={confirm?.kind === "reactivate" ? "default" : "destructive"}
-                isLoading={setStatus.isPending || removeRole.isPending || revokeKey.isPending}
                 onConfirm={runConfirm}
             />
         </Page>

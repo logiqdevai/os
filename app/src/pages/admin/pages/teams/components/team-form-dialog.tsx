@@ -12,8 +12,8 @@ import { teamFormSchema, type TeamFormValues } from "@/features/admin/teams/vali
 import { useCreateTeam, useUpdateTeam } from "@/features/admin/teams/hooks/use-teams";
 import type { Team } from "@/features/admin/teams/interfaces/teams.interfaces";
 import { useSessionData } from "@/features/session/hooks/use-session";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useFormAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 
 const ORG_WIDE = "__org";
 
@@ -27,7 +27,8 @@ interface TeamFormDialogProps {
 export function TeamFormDialog({ open, onOpenChange, team }: TeamFormDialogProps) {
     const session = useSessionData();
     const create = useCreateTeam();
-    const update = useUpdateTeam();
+    // Editing autosaves (optimistic; failures show in the dialog's <SaveStatus />); creating keeps its Create button.
+    const update = useUpdateTeam(false);
     const form = useForm<TeamFormValues>({ resolver: zodResolver(teamFormSchema), defaultValues: { name: "", description: "", kind: "TEAM", task_key: "", branch_id: ORG_WIDE } });
 
     useEffect(() => {
@@ -40,36 +41,31 @@ export function TeamFormDialog({ open, onOpenChange, team }: TeamFormDialogProps
                 branch_id: team?.branch_id ?? ORG_WIDE,
             });
         }
-    }, [open, team, form]);
+        // Reset when the dialog opens (or another team is edited), not on every optimistic patch of `team`.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, team?.id, form]);
 
-    const pending = create.isPending || update.isPending;
+    const toDto = (values: TeamFormValues) => ({
+        name: values.name,
+        description: values.description || undefined,
+        kind: values.kind,
+        task_key: values.task_key || undefined,
+        branch_id: values.branch_id && values.branch_id !== ORG_WIDE ? values.branch_id : undefined,
+    });
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: team!.id, ...toDto(v) }), { enabled: open && !!team });
 
     const submit = form.handleSubmit((values) => {
-        const dto = {
-            name: values.name,
-            description: values.description || undefined,
-            kind: values.kind,
-            task_key: values.task_key || undefined,
-            branch_id: values.branch_id && values.branch_id !== ORG_WIDE ? values.branch_id : undefined,
-        };
-        const options = {
-            onSuccess: () => {
-                toast({ title: team ? "Team updated" : "Team created" });
-                onOpenChange(false);
-            },
-            onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save team", description: getApiErrorMessage(e) }),
-        };
-        if (team) update.mutate({ id: team.id, ...dto }, options);
-        else create.mutate(dto, options);
+        if (team) return autosave.flush();
+        create.mutate(toDto(values), { onSuccess: () => onOpenChange(false) });
     });
 
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => !create.isPending && onOpenChange(o)}>
             <DialogContent className="sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
-                            <DialogTitle>{team ? "Edit team" : "New team"}</DialogTitle>
+                            <DialogTitle className="flex items-center justify-between gap-3">{team ? "Edit team" : "New team"}{team && <SaveStatus state={autosave} className="font-normal" />}</DialogTitle>
                             <DialogDescription>Teams group members for assignment, scope and task keys.</DialogDescription>
                         </DialogHeader>
                         <FormField
@@ -160,8 +156,14 @@ export function TeamFormDialog({ open, onOpenChange, team }: TeamFormDialogProps
                             )}
                         />
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{team ? "Save changes" : "Create team"}</Button>
+                            {team ? (
+                                <Button type="button" onClick={() => { autosave.flush(); onOpenChange(false); }}>Done</Button>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>Cancel</Button>
+                                    <Button type="submit" loading={create.isPending}>Create team</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>

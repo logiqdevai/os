@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
-import { Button } from "@/components/ui/button";
+import { useFormAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,8 +13,6 @@ import { organizationProfileSchema, type OrganizationProfileFormValues } from "@
 import { CountryOptions } from "@/config/constants/dropdowns/country.options";
 import { TimezoneOptions } from "@/config/constants/dropdowns/timezone.options";
 import { WeekStartOptions } from "@/config/constants/dropdowns/admin/access-form.options";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 const NONE = "__none";
 
@@ -27,9 +26,12 @@ export default function OrganizationProfilePage() {
     const update = useUpdateOrganization();
     const form = useForm<OrganizationProfileFormValues>({ resolver: zodResolver(organizationProfileSchema) });
 
+    // Loaded once; afterwards the form is the source of truth (a refresh after an autosave never overwrites typing).
+    const loaded = useRef(false);
     useEffect(() => {
         const o = org.data;
-        if (!o) return;
+        if (!o || loaded.current) return;
+        loaded.current = true;
         form.reset({
             display_name: o.display_name, legal_name: o.legal_name, short_name: o.short_name ?? "", website: o.website ?? "", contact_email: o.contact_email ?? "",
             contact_phone: o.contact_phone ?? "", country: o.country ?? NONE, default_currency: o.default_currency, default_timezone: o.default_timezone,
@@ -37,15 +39,13 @@ export default function OrganizationProfilePage() {
         });
     }, [org.data, form]);
 
+    /** Autosave (no Save button): valid changes are saved after a short pause; failures show in <SaveStatus />. */
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ ...v, country: v.country === NONE ? "" : v.country, week_start: Number(v.week_start) }), { enabled: !!org.data });
+
     if (org.isPending) return <PageSkeleton />;
     if (org.error) return <Page><PageHeader title="Organization profile" /><ErrorState error={org.error} onRetry={() => org.refetch()} /></Page>;
 
-    const submit = form.handleSubmit((v) =>
-        update.mutate(
-            { ...v, country: v.country === NONE ? "" : v.country, week_start: Number(v.week_start) },
-            { onSuccess: () => { toast({ title: "Organization saved" }); form.reset(form.getValues()); }, onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) }
-        )
-    );
+    const submit = (e: React.FormEvent) => { e.preventDefault(); autosave.flush(); };
 
     const text = (name: keyof OrganizationProfileFormValues, label: string, props: React.ComponentProps<typeof Input> = {}) => (
         <FormField control={form.control} name={name} render={({ field }) => (
@@ -55,7 +55,7 @@ export default function OrganizationProfilePage() {
 
     return (
         <Page width="narrow">
-            <PageHeader title="Organization profile" description="Your agency's identity and defaults. Branches and people can override the defaults." />
+            <PageHeader title="Organization profile" description="Your agency's identity and defaults. Branches and people can override the defaults." actions={<SaveStatus state={autosave} />} />
             <Form {...form}>
                 <form onSubmit={submit} className="space-y-6">
                     <Section title="Identity">
@@ -96,10 +96,6 @@ export default function OrganizationProfilePage() {
                             )} />
                         </div>
                     </Section>
-                    <div className="flex justify-end gap-2">
-                        <Button type="button" variant="ghost" disabled={!form.formState.isDirty || update.isPending} onClick={() => form.reset()}>Discard</Button>
-                        <Button type="submit" loading={update.isPending} disabled={!form.formState.isDirty}>Save changes</Button>
-                    </div>
                 </form>
             </Form>
         </Page>

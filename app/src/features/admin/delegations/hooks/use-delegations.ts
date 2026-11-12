@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SESSION_QUERY_KEY } from "@/features/session/hooks/use-session";
+import { patchEntity, useOptimisticMutation } from "@/lib/query/optimistic";
 import * as service from "../services/delegations.services";
 
 const KEY = ["admin", "delegations"] as const;
@@ -18,9 +19,14 @@ function useInvalidate() {
 
 export const useCreateDelegation = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.createDelegation, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.createDelegation, meta: { errorTitle: "Could not create delegation" }, onSettled: invalidate });
 };
-export const useRevokeDelegation = () => {
-    const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.revokeDelegation, onSuccess: invalidate });
-};
+/** Optimistic: the delegation shows Revoked at once. */
+export const useRevokeDelegation = () =>
+    useOptimisticMutation({
+        roots: [KEY],
+        alsoInvalidate: [SESSION_QUERY_KEY],
+        mutationFn: service.revokeDelegation,
+        meta: { errorTitle: "Could not revoke the delegation" },
+        apply: (qc, v) => patchEntity(qc, KEY, v.id, { status: "REVOKED", revoked_at: new Date().toISOString() }),
+    });

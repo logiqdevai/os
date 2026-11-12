@@ -13,8 +13,6 @@ import { useApiKeys, useRevokeApiKey, useRotateApiKey } from "@/features/admin/a
 import type { ApiKey } from "@/features/admin/api-keys/interfaces/api-keys.interfaces";
 import { ApiKeyStatusFilterOptions } from "@/config/constants/dropdowns/admin/developer-form.options";
 import { formatDate, formatRelative, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { SecretOnceDialog } from "../../components/secret-once-dialog";
 import { ApiKeyFormDialog } from "./components/api-key-form-dialog";
 
@@ -37,9 +35,9 @@ export default function ApiKeysPage() {
 
     const run = () => {
         if (!action) return;
-        const onError = (e: unknown) => toast({ variant: "destructive", title: `Could not ${action.kind} the key`, description: getApiErrorMessage(e) });
-        if (action.kind === "rotate") rotate.mutate(action.key.id, { onSuccess: (k) => { setAction(null); setSecret(k.secret); }, onError });
-        else revoke.mutate(action.key.id, { onSuccess: () => { toast({ title: "Key revoked" }); setAction(null); }, onError });
+        // Rotating shows the new secret once, so it waits for the API; revoking is optimistic and closes at once.
+        if (action.kind === "rotate") rotate.mutate(action.key.id, { onSuccess: (k) => { setAction(null); setSecret(k.secret); } });
+        else { revoke.mutate(action.key.id); setAction(null); }
     };
 
     const columns: DataTableColumn<ApiKey>[] = [
@@ -108,7 +106,7 @@ export default function ApiKeysPage() {
                 description={action?.kind === "rotate" ? "A new secret is issued and the current one stops working immediately. Update every place that uses it." : "Anything using this key stops working immediately. This cannot be undone."}
                 confirmText={action?.kind === "rotate" ? "Rotate" : "Revoke"}
                 variant="destructive"
-                isLoading={rotate.isPending || revoke.isPending}
+                isLoading={rotate.isPending}
                 onConfirm={run}
             />
         </Page>

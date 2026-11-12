@@ -16,8 +16,6 @@ import { useAssignableRoles } from "@/features/admin/roles/hooks/use-roles";
 import { useTeams } from "@/features/admin/teams/hooks/use-teams";
 import { useSessionData } from "@/features/session/hooks/use-session";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 const NONE = "__none";
 
@@ -60,8 +58,7 @@ export function MappingDialog({ open, onOpenChange, configId, mapping }: Mapping
             modules: v.modules as ModuleKey[],
         };
         const options = {
-            onSuccess: () => { toast({ title: mapping ? "Mapping saved" : "Mapping added" }); onOpenChange(false); },
-            onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save the mapping", description: getApiErrorMessage(e) }),
+            onSuccess: () => onOpenChange(false),
         };
         if (mapping) update.mutate({ configId, mappingId: mapping.id, ...dto }, options);
         else add.mutate({ configId, ...dto }, options);

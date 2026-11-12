@@ -17,8 +17,8 @@ import { memberProfileSchema, type MemberProfileFormValues } from "@/features/ad
 import { MembershipTypeFormOptions, ProvisioningSourceOptions } from "@/config/constants/dropdowns/admin/membership-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatDateTime, formatRelative } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { useFormAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 
 const NONE = "__none";
 
@@ -27,19 +27,22 @@ export function MemberProfileTab({ member }: { member: MemberDetail }) {
     const canManage = usePermission("users.members.manage");
     const canExternal = usePermission("users.external_collaborators.manage");
     const session = useSessionData();
-    const update = useUpdateMember();
+    const update = useUpdateMember(false);
     const form = useForm<MemberProfileFormValues>({ resolver: zodResolver(memberProfileSchema), defaultValues: { job_title: "", type: "INTERNAL", default_branch_id: NONE } });
 
+    // Loaded once per member; afterwards the form is the source of truth (optimistic patches never overwrite typing).
     useEffect(() => {
         form.reset({ job_title: member.job_title ?? "", type: member.type, default_branch_id: member.default_branch_id ?? NONE });
-    }, [member, form]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [member.id, form]);
 
-    const submit = form.handleSubmit((v) =>
-        update.mutate(
-            { id: member.id, job_title: v.job_title, type: v.type, ...(v.default_branch_id !== NONE && { default_branch_id: v.default_branch_id }) },
-            { onSuccess: () => toast({ title: "Member updated" }), onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) }
-        )
+    /** Autosave (optimistic, no Save button); a refusal shows in <SaveStatus /> with Retry. */
+    const autosave = useFormAutosave(
+        form,
+        (v) => update.mutateAsync({ id: member.id, job_title: v.job_title, type: v.type, ...(v.default_branch_id !== NONE && { default_branch_id: v.default_branch_id }) }),
+        { enabled: canManage },
     );
+    const submit = (e: React.FormEvent) => { e.preventDefault(); autosave.flush(); };
 
     return (
         <div className="grid gap-6 lg:grid-cols-2">
@@ -60,7 +63,7 @@ export function MemberProfileTab({ member }: { member: MemberDetail }) {
                 </div>
                 <SignInMethods member={member} canManage={canManage} />
             </Section>
-            <Section title="Membership" description="Defaults only pre-fill new records; they never limit access.">
+            <Section title="Membership" description="Defaults only pre-fill new records; they never limit access." actions={<SaveStatus state={autosave} />}>
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4 rounded-lg border border-border bg-card p-4">
                         <FormField control={form.control} name="job_title" render={({ field }) => (
@@ -93,11 +96,6 @@ export function MemberProfileTab({ member }: { member: MemberDetail }) {
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        {canManage && (
-                            <div className="flex justify-end">
-                                <Button type="submit" loading={update.isPending} disabled={!form.formState.isDirty}>Save changes</Button>
-                            </div>
-                        )}
                     </form>
                 </Form>
             </Section>
@@ -142,8 +140,8 @@ function SignInMethods({ member, canManage }: { member: MemberDetail; canManage:
                 isLoading={reset.isPending}
                 onConfirm={() =>
                     reset.mutate(member.id, {
-                        onSuccess: () => { toast({ title: "Two-step verification reset" }); setConfirming(false); },
-                        onError: (e) => { toast({ variant: "destructive", title: "Could not reset", description: getApiErrorMessage(e) }); setConfirming(false); },
+                        onSuccess: () => setConfirming(false),
+                        onError: () => setConfirming(false),
                     })
                 }
             />

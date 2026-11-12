@@ -12,15 +12,12 @@ import { useSessionData } from "@/features/session/hooks/use-session";
 import { useAddMemberBranch, useAssignRole, useRemoveMemberBranch, useRemoveRole } from "@/features/admin/members/hooks/use-members";
 import { useAddTeamMember, useRemoveTeamMember, useTeams } from "@/features/admin/teams/hooks/use-teams";
 import type { MemberDetail } from "@/features/admin/members/interfaces/members.interfaces";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate } from "@/lib/format";
 import { AssignRoleDialog } from "../../../components/assign-role-dialog";
 import { useScopeLabel } from "../../../components/use-scope-label";
 
 type Removal = { kind: "role"; id: string; label: string } | { kind: "branch"; id: string; label: string } | { kind: "team"; id: string; label: string } | null;
 
-const errorToast = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 /** Roles (scope + expiry), branches and teams of one member. */
 export function MemberAccessTab({ member }: { member: MemberDetail }) {
@@ -46,10 +43,11 @@ export function MemberAccessTab({ member }: { member: MemberDetail }) {
 
     const confirmRemoval = () => {
         if (!removal) return;
-        const done = { onSuccess: () => { toast({ title: "Removed" }); setRemoval(null); }, onError: errorToast("Could not remove") };
-        if (removal.kind === "role") removeRole.mutate({ id: member.id, assignment_id: removal.id }, done);
-        if (removal.kind === "branch") removeBranch.mutate({ id: member.id, branch_id: removal.id }, done);
-        if (removal.kind === "team") removeTeam.mutate({ id: removal.id, membership_id: member.id }, done);
+        // Optimistic: the row disappears at once, so the confirmation closes right away.
+        if (removal.kind === "role") removeRole.mutate({ id: member.id, assignment_id: removal.id });
+        if (removal.kind === "branch") removeBranch.mutate({ id: member.id, branch_id: removal.id });
+        if (removal.kind === "team") removeTeam.mutate({ id: removal.id, membership_id: member.id });
+        setRemoval(null);
     };
 
     return (
@@ -88,7 +86,7 @@ export function MemberAccessTab({ member }: { member: MemberDetail }) {
                 <Section
                     title="Branches"
                     actions={canBranches && freeBranches.length > 0 && (
-                        <Select value="" onValueChange={(v) => addBranch.mutate({ id: member.id, branch_id: v, is_primary: member.branches.length === 0 }, { onSuccess: () => toast({ title: "Added to branch" }), onError: errorToast("Could not add to branch") })}>
+                        <Select value="" onValueChange={(v) => addBranch.mutate({ id: member.id, branch_id: v, is_primary: member.branches.length === 0 })}>
                             <SelectTrigger className="h-7 w-40" aria-label="Add to branch"><SelectValue placeholder="Add to branch" /></SelectTrigger>
                             <SelectContent>{freeBranches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                         </Select>
@@ -106,7 +104,7 @@ export function MemberAccessTab({ member }: { member: MemberDetail }) {
                                 {canBranches && (
                                     <div className="flex flex-none items-center">
                                         {!b.is_primary && (
-                                            <Button variant="ghost" size="sm" onClick={() => addBranch.mutate({ id: member.id, branch_id: b.branch_id, is_primary: true }, { onSuccess: () => toast({ title: "Primary branch changed" }), onError: errorToast("Could not change") })}>Make primary</Button>
+                                            <Button variant="ghost" size="sm" onClick={() => addBranch.mutate({ id: member.id, branch_id: b.branch_id, is_primary: true })}>Make primary</Button>
                                         )}
                                         <Button variant="ghost" size="icon-sm" aria-label={`Remove from ${b.branch.name}`} onClick={() => setRemoval({ kind: "branch", id: b.branch_id, label: b.branch.name })}><Trash2 /></Button>
                                     </div>
@@ -119,7 +117,7 @@ export function MemberAccessTab({ member }: { member: MemberDetail }) {
                 <Section
                     title="Teams"
                     actions={canTeams && freeTeams.length > 0 && (
-                        <Select value="" onValueChange={(v) => addTeam.mutate({ id: v, membership_id: member.id }, { onSuccess: () => toast({ title: "Added to team" }), onError: errorToast("Could not add to team") })}>
+                        <Select value="" onValueChange={(v) => addTeam.mutate({ id: v, membership_id: member.id })}>
                             <SelectTrigger className="h-7 w-40" aria-label="Add to team"><SelectValue placeholder="Add to team" /></SelectTrigger>
                             <SelectContent>{freeTeams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
                         </Select>
@@ -146,7 +144,7 @@ export function MemberAccessTab({ member }: { member: MemberDetail }) {
                 onOpenChange={setAssignOpen}
                 title="Assign a role"
                 pending={assign.isPending}
-                onSubmit={(values) => assign.mutate({ id: member.id, ...values }, { onSuccess: () => { toast({ title: "Role assigned" }); setAssignOpen(false); }, onError: errorToast("Could not assign the role") })}
+                onSubmit={(values) => assign.mutate({ id: member.id, ...values }, { onSuccess: () => setAssignOpen(false) })}
             />
             <ConfirmationDialog
                 isOpen={!!removal}
@@ -155,7 +153,6 @@ export function MemberAccessTab({ member }: { member: MemberDetail }) {
                 description={removal?.kind === "role" ? "The member loses the permissions of this role right away." : "Access scoped to it stops right away."}
                 confirmText="Remove"
                 variant="destructive"
-                isLoading={removeRole.isPending || removeBranch.isPending || removeTeam.isPending}
                 onConfirm={confirmRemoval}
             />
         </div>

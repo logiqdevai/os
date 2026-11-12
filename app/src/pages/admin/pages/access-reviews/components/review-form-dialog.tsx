@@ -16,8 +16,6 @@ import type { ModuleKey } from "@/config/apps/app.types";
 import { ModuleKeyOptions } from "@/config/constants/dropdowns/admin/module-key.options";
 import { ReviewerStrategyFormOptions, getReviewerStrategyDescription } from "@/config/constants/dropdowns/admin/access-review-form.options";
 import { personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { ScopeFields } from "../../../components/scope-fields";
 
 const inDays = (n: number) => new Date(Date.now() + n * 86400_000).toISOString().slice(0, 10);
@@ -52,11 +50,9 @@ export function ReviewFormDialog({ open, onOpenChange }: { open: boolean; onOpen
                 },
                 {
                     onSuccess: (r) => {
-                        toast({ title: start ? `Review started · ${r.stats.total} members` : "Draft saved" });
                         onOpenChange(false);
                         navigate(`/admin/access-reviews/${r.id}`);
                     },
-                    onError: (e) => toast({ variant: "destructive", title: "Could not create the review", description: getApiErrorMessage(e) }),
                 }
             )
         )();

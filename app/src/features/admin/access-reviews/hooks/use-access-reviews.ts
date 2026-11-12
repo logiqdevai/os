@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SESSION_QUERY_KEY } from "@/features/session/hooks/use-session";
 import * as service from "../services/access-reviews.services";
+import { patchEntity, useOptimisticMutation } from "@/lib/query/optimistic";
 
 const KEY = ["admin", "access-reviews"] as const;
 
@@ -23,30 +24,34 @@ function useInvalidate(alsoSession = false) {
 
 export const useCreateAccessReview = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.createAccessReview, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.createAccessReview, meta: { errorTitle: "Could not create access review" }, onSettled: invalidate });
 };
 export const useStartAccessReview = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.startAccessReview, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.startAccessReview, meta: { errorTitle: "Could not start access review" }, onSettled: invalidate });
 };
 /** Applying changes roles / grants / module access, so member data and the session are refreshed too. */
 export const useApplyAccessReview = () => {
     const invalidate = useInvalidate(true);
-    return useMutation({ mutationFn: service.applyAccessReview, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.applyAccessReview, meta: { errorTitle: "Could not apply access review" }, onSettled: invalidate });
 };
 export const useCompleteAccessReview = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.completeAccessReview, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.completeAccessReview, meta: { errorTitle: "Could not complete access review" }, onSettled: invalidate });
 };
 export const useCancelAccessReview = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.cancelAccessReview, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.cancelAccessReview, meta: { errorTitle: "Could not cancel access review" }, onSettled: invalidate });
 };
-export const useDecideAccessReviewItem = () => {
-    const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.decideAccessReviewItem, onSuccess: invalidate });
-};
+/** Optimistic: the item shows Kept / Revoked / Changed at once; counts refresh after. */
+export const useDecideAccessReviewItem = () =>
+    useOptimisticMutation({
+        roots: [KEY],
+        mutationFn: service.decideAccessReviewItem,
+        meta: { errorTitle: "Could not save the decision" },
+        apply: (qc, v) => patchEntity(qc, KEY, v.itemId, { decision: v.decision, comment: v.comment ?? null, decided_at: new Date().toISOString() }),
+    });
 export const useReassignAccessReviewItem = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.reassignAccessReviewItem, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.reassignAccessReviewItem, meta: { errorTitle: "Could not reassign access review item" }, onSettled: invalidate });
 };

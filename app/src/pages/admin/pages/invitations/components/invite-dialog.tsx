@@ -19,7 +19,6 @@ import { MembershipTypeFormOptions } from "@/config/constants/dropdowns/admin/me
 import { InvitationExpiryOptions } from "@/config/constants/dropdowns/admin/access-form.options";
 import type { ScopeType } from "@/config/constants/dropdowns/admin/scope-type-form.options";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { CopyField } from "../../../components/copy-field";
 import { ScopeFields, scopeComplete } from "../../../components/scope-fields";
 
@@ -65,14 +64,8 @@ export function InviteDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                 ...(v.valid_until && { valid_until: new Date(`${v.valid_until}T23:59:59`).toISOString() }),
                 ...(v.message && { message: v.message }),
             },
-            {
-                onSuccess: (res) => {
-                    const invited = res.results.filter((r) => r.status === "invited").length;
-                    toast({ title: invited ? `${invited} invitation${invited > 1 ? "s" : ""} created` : "Nobody new to invite" });
-                    setResults(res.results);
-                },
-                onError: (e) => toast({ variant: "destructive", title: "Could not send invitations", description: getApiErrorMessage(e) }),
-            }
+            // The dialog switches to the per-email results (links, already-member notes) instead of a toast.
+            { onSuccess: (res) => setResults(res.results) }
         );
     });
 

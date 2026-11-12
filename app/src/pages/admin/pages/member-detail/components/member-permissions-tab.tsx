@@ -11,8 +11,6 @@ import { useEffectivePermissions } from "@/features/admin/members/hooks/use-memb
 import { useGrants, useRevokeGrant } from "@/features/admin/permissions/hooks/use-permissions-admin";
 import type { MemberDetail, PermissionScopeValue } from "@/features/admin/members/interfaces/members.interfaces";
 import type { PermissionGrant } from "@/features/admin/permissions/interfaces/permissions.interfaces";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate } from "@/lib/format";
 import { useScopeLabel } from "../../../components/use-scope-label";
 import { GrantDialog } from "./grant-dialog";
@@ -119,8 +117,7 @@ export function MemberPermissionsTab({ member }: { member: MemberDetail }) {
                 description="Access goes back to what the member's roles give."
                 confirmText="Remove"
                 variant="destructive"
-                isLoading={revoke.isPending}
-                onConfirm={() => revoking && revoke.mutate(revoking.id, { onSuccess: () => { toast({ title: "Exception removed" }); setRevoking(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not remove", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (revoking) revoke.mutate(revoking.id); setRevoking(null); }}
             />
         </div>
     );

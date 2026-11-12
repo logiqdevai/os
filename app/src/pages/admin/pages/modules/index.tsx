@@ -9,8 +9,6 @@ import { useOrganizationModules, useSetModule } from "@/features/admin/organizat
 import type { OrganizationModuleRow } from "@/features/admin/organization/interfaces/organization.interfaces";
 import { ModuleKeyOptions, getModuleKeyDescription } from "@/config/constants/dropdowns/admin/module-key.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 /**
  * Module access — /admin/modules
@@ -22,11 +20,11 @@ export default function ModulesPage() {
     const setModule = useSetModule();
     const [disabling, setDisabling] = useState<OrganizationModuleRow | null>(null);
 
-    const toggle = (m: OrganizationModuleRow, enabled: boolean) =>
-        setModule.mutate({ module: m.module, enabled }, {
-            onSuccess: () => { toast({ title: `${getDropdownOptionLabel(ModuleKeyOptions, m.module)} ${enabled ? "enabled" : "disabled"}` }); setDisabling(null); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not update", description: getApiErrorMessage(e) }),
-        });
+    /** Optimistic: the switch flips at once (disabling still asks first). */
+    const toggle = (m: OrganizationModuleRow, enabled: boolean) => {
+        setModule.mutate({ module: m.module, enabled });
+        setDisabling(null);
+    };
 
     return (
         <Page width="narrow">
@@ -60,7 +58,6 @@ export default function ModulesPage() {
                 description="Nobody can open it or use its API and agent tools until you turn it back on. Its data is kept."
                 confirmText="Disable"
                 variant="destructive"
-                isLoading={setModule.isPending}
                 onConfirm={() => disabling && toggle(disabling, false)}
             />
         </Page>

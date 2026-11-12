@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEntityRemove } from "@/lib/query/optimistic";
 import * as service from "../services/permissions.services";
 
 export const useCatalog = (params: Record<string, unknown> = {}, enabled = true) =>
@@ -17,10 +18,9 @@ function useInvalidate() {
 
 export const useCreateGrant = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.createGrant, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.createGrant, meta: { errorTitle: "Could not create grant" }, onSettled: invalidate });
 };
-export const useRevokeGrant = () => {
-    const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.revokeGrant, onSuccess: invalidate });
-};
-export const useSimulate = () => useMutation({ mutationFn: service.simulate });
+/** Optimistic: the exception disappears at once (from grant lists and the member detail). */
+export const useRevokeGrant = () =>
+    useEntityRemove({ root: ["admin", "grants"], alsoInvalidate: [["admin", "members"]], mutationFn: service.revokeGrant, meta: { errorTitle: "Could not remove the exception" } });
+export const useSimulate = () => useMutation({ mutationFn: service.simulate, meta: { errorTitle: "Could not simulate" } });

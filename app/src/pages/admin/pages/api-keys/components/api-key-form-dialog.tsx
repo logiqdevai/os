@@ -15,8 +15,6 @@ import { useCreateApiKey } from "@/features/admin/api-keys/hooks/use-api-keys";
 import { useServiceAccounts } from "@/features/admin/service-accounts/hooks/use-service-accounts";
 import { apiKeyFormSchema, parseList, type ApiKeyFormValues } from "@/features/admin/api-keys/validation-schemas/api-keys.schema";
 import { ApiKeyExpiryOptions } from "@/config/constants/dropdowns/admin/developer-form.options";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { PermissionPicker } from "../../../components/permission-picker";
 
 const ME = "__me";
@@ -53,7 +51,7 @@ export function ApiKeyFormDialog({ open, onOpenChange, onCreated, serviceAccount
                 ...(v.expiry !== "never" && { expires_at: new Date(Date.now() + Number(v.expiry) * 86400000).toISOString() }),
                 allowed_ip_ranges: parseList(v.allowed_ip_ranges),
             },
-            { onSuccess: (key) => { onOpenChange(false); onCreated(key.secret); }, onError: (e) => toast({ variant: "destructive", title: "Could not create the key", description: getApiErrorMessage(e) }) }
+            { onSuccess: (key) => { onOpenChange(false); onCreated(key.secret); } }
         )
     );
 

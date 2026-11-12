@@ -15,8 +15,6 @@ import { DelegationStatusFilterOptions, DelegationStatusFormOptions } from "@/co
 import { ScopeTypeFormOptions } from "@/config/constants/dropdowns/admin/scope-type-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { PersonCell } from "../../components/person-cell";
 import { useScopeLabel } from "../../components/use-scope-label";
 import { DelegationDialog } from "./components/delegation-dialog";
@@ -125,8 +123,7 @@ export default function DelegationsPage() {
                 description="The delegated permissions stop working right away."
                 confirmText="Revoke"
                 variant="destructive"
-                isLoading={revoke.isPending}
-                onConfirm={() => revoking && revoke.mutate({ id: revoking.id }, { onSuccess: () => { toast({ title: "Delegation revoked" }); setRevoking(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not revoke", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (revoking) revoke.mutate({ id: revoking.id }); setRevoking(null); }}
             />
         </Page>
     );

@@ -28,7 +28,6 @@ import { ScopeTypeFormOptions } from "@/config/constants/dropdowns/admin/scope-t
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, personName } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { PersonCell } from "../../components/person-cell";
 import { AccessReviewDecisionBadge, AccessReviewStatusBadge } from "../access-reviews/components/review-badges";
 import { ItemSheet } from "./components/item-sheet";
@@ -64,18 +63,16 @@ export default function AccessReviewDetailPage() {
     const missingKey = r.reviewers.filter((x) => !x.has_decide_permission);
 
     const run = (action: Action) => {
-        const fail = (e: unknown) => { toast({ variant: "destructive", title: "Could not do that", description: getApiErrorMessage(e) }); setConfirm(null); };
-        const done = (title: string) => () => { toast({ title }); setConfirm(null); };
-        if (action === "start") start.mutate(r.id, { onSuccess: (x) => done(`Started · ${x.stats.total} members to review`)(), onError: fail });
-        if (action === "complete") complete.mutate(r.id, { onSuccess: done("Review completed"), onError: fail });
-        if (action === "cancel") cancel.mutate(r.id, { onSuccess: done("Review cancelled"), onError: fail });
+        // No success toasts: the status, progress and counts on this page show the result. Failures are toasted globally.
+        const close = { onSettled: () => setConfirm(null) };
+        if (action === "start") start.mutate(r.id, close);
+        if (action === "complete") complete.mutate(r.id, close);
+        if (action === "cancel") cancel.mutate(r.id, close);
         if (action === "apply")
             apply.mutate(r.id, {
-                onSuccess: (res) => {
-                    toast(res.failed ? { variant: "destructive", title: `${res.applied} applied, ${res.failed} failed`, description: res.results.find((x) => x.error)?.error } : { title: `${res.applied} decision${res.applied === 1 ? "" : "s"} applied` });
-                    setConfirm(null);
-                },
-                onError: fail,
+                ...close,
+                // A partial failure is still worth a (destructive) toast: some decisions were not applied.
+                onSuccess: (res) => { if (res.failed) toast({ variant: "destructive", title: `${res.applied} applied, ${res.failed} failed`, description: res.results.find((x) => x.error)?.error }); },
             });
     };
     const pending = start.isPending || apply.isPending || complete.isPending || cancel.isPending;

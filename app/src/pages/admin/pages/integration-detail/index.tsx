@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { CircleAlert, Pause, Play, RefreshCw, Star, Unplug } from "lucide-react";
+import { Check, CircleAlert, Pause, Play, RefreshCw, Star, Unplug } from "lucide-react";
 import { KeyValueList, Page, PageHeader, Section } from "@/components/ui/page";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -14,7 +14,6 @@ import { IntegrationCategoryFormOptions, IntegrationModeFormOptions } from "@/co
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { IntegrationStatusBadge } from "../../components/status-badges";
 import { CopyField } from "../../components/copy-field";
 import { IntegrationSettings } from "./components/integration-settings";
@@ -35,13 +34,22 @@ export default function IntegrationDetailPage() {
     const setEnabled = useSetIntegrationEnabled();
     const disconnect = useDisconnectIntegration();
     const [disconnecting, setDisconnecting] = useState(false);
+    /** Result of the last Test, shown on the button for a few seconds (no success toast). */
+    const [tested, setTested] = useState<"ok" | "manual" | null>(null);
+    const test = (id: string) =>
+        verify.mutate(id, {
+            onSuccess: (r) => {
+                if (!r.verification?.ok) return void toast({ variant: "destructive", title: "Verification failed", description: r.verification?.error ?? undefined });
+                setTested(r.verification.automatic ? "ok" : "manual");
+                setTimeout(() => setTested(null), 3000);
+            },
+        });
 
     if (row.isPending) return <PageSkeleton />;
     if (row.error) return <Page><PageHeader title="Integration" back={{ to: "/admin/integrations", label: "Integrations" }} /><ErrorState error={row.error} onRetry={() => row.refetch()} /></Page>;
     const c = row.data;
     const spec = providers.data?.find((p) => p.provider === c.provider);
     const disconnected = c.status === "DISCONNECTED";
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
     const capabilities = Object.entries(c.capabilities ?? {}).filter(([, v]) => v !== null && v !== undefined);
 
     return (
@@ -53,11 +61,13 @@ export default function IntegrationDetailPage() {
                 description={`${spec?.label ?? c.provider} · ${getDropdownOptionLabel(IntegrationCategoryFormOptions, c.category)} · ${getDropdownOptionLabel(IntegrationModeFormOptions, c.mode)}`}
                 actions={canManage && !disconnected && (
                     <>
-                        <Button variant="outline" loading={verify.isPending} onClick={() => verify.mutate(c.id, { onSuccess: (r) => toast(r.verification?.ok ? { title: r.verification.automatic ? "Credentials work" : "Saved — this provider cannot be tested automatically" } : { variant: "destructive", title: "Verification failed", description: r.verification?.error ?? undefined }), onError: fail("Could not verify") })}><RefreshCw /> Test</Button>
-                        {!c.is_default && c.status !== "DISABLED" && <Button variant="outline" loading={setDefault.isPending} onClick={() => setDefault.mutate(c.id, { onSuccess: () => toast({ title: "Default changed" }), onError: fail("Could not change the default") })}><Star /> Make default</Button>}
+                        <Button variant="outline" loading={verify.isPending} onClick={() => test(c.id)} title={tested === "manual" ? "This provider cannot be tested automatically" : undefined}>
+                            {tested ? <><Check className="text-success" /> {tested === "ok" ? "Credentials work" : "Saved"}</> : <><RefreshCw /> Test</>}
+                        </Button>
+                        {!c.is_default && c.status !== "DISABLED" && <Button variant="outline" onClick={() => setDefault.mutate(c.id)}><Star /> Make default</Button>}
                         {c.status === "DISABLED"
-                            ? <Button variant="outline" loading={setEnabled.isPending} onClick={() => setEnabled.mutate({ id: c.id, enabled: true }, { onSuccess: () => toast({ title: "Enabled" }), onError: fail("Could not enable") })}><Play /> Enable</Button>
-                            : <Button variant="outline" loading={setEnabled.isPending} onClick={() => setEnabled.mutate({ id: c.id, enabled: false }, { onSuccess: () => toast({ title: "Disabled — the key is kept" }), onError: fail("Could not disable") })}><Pause /> Disable</Button>}
+                            ? <Button variant="outline" onClick={() => setEnabled.mutate({ id: c.id, enabled: true })}><Play /> Enable</Button>
+                            : <Button variant="outline" onClick={() => setEnabled.mutate({ id: c.id, enabled: false })}><Pause /> Disable</Button>}
                         <Button variant="destructive" onClick={() => setDisconnecting(true)}><Unplug /> Disconnect</Button>
                     </>
                 )}
@@ -118,7 +128,7 @@ export default function IntegrationDetailPage() {
                 confirmText="Disconnect"
                 variant="destructive"
                 isLoading={disconnect.isPending}
-                onConfirm={() => disconnect.mutate(c.id, { onSuccess: () => { toast({ title: "Disconnected" }); setDisconnecting(false); navigate("/admin/integrations"); }, onError: fail("Could not disconnect") })}
+                onConfirm={() => disconnect.mutate(c.id, { onSuccess: () => { setDisconnecting(false); navigate("/admin/integrations"); } })}
             />
         </Page>
     );

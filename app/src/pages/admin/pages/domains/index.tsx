@@ -14,8 +14,6 @@ import type { OrganizationDomain } from "@/features/admin/domains/interfaces/dom
 import { DomainStatusFilterOptions, DomainStatusFormOptions } from "@/config/constants/dropdowns/admin/domain-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { DomainDialog } from "./components/domain-dialog";
 
 const tone: Record<string, BadgeVariant> = { VERIFIED: "success", PENDING: "info", FAILED: "warning", REVOKED: "neutral" };
@@ -34,10 +32,9 @@ export default function DomainsPage() {
     const remove = useDeleteDomain();
     const [dialog, setDialog] = useState<{ open: boolean; domain: OrganizationDomain | null }>({ open: false, domain: null });
     const [removing, setRemoving] = useState<OrganizationDomain | null>(null);
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
     const toggle = (d: OrganizationDomain, field: "allow_discovery" | "auto_provision", value: boolean) =>
-        update.mutate({ id: d.id, [field]: value }, { onSuccess: () => toast({ title: "Domain updated" }), onError: fail("Could not update the domain") });
+        update.mutate({ id: d.id, [field]: value });
 
     const columns: DataTableColumn<OrganizationDomain>[] = [
         {
@@ -84,7 +81,7 @@ export default function DomainsPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         {d.status !== "VERIFIED" && (
-                            <DropdownMenuItem onSelect={() => verify.mutate(d.id, { onSuccess: (r) => toast({ title: r.status === "VERIFIED" ? `${r.domain} verified` : "Record not found yet", description: r.status === "VERIFIED" ? undefined : "Open the DNS record to see what was found." }), onError: fail("Could not check DNS") })}>
+                            <DropdownMenuItem onSelect={() => verify.mutate(d.id)}>
                                 <Zap /> Check DNS now
                             </DropdownMenuItem>
                         )}
@@ -134,8 +131,7 @@ export default function DomainsPage() {
                 description="SSO discovery and invitation rules stop using this domain. Members keep their accounts."
                 confirmText="Remove"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => removing && remove.mutate(removing.id, { onSuccess: () => { toast({ title: "Domain removed" }); setRemoving(null); }, onError: fail("Could not remove the domain") })}
+                onConfirm={() => { if (removing) remove.mutate(removing.id); setRemoving(null); }}
             />
         </Page>
     );

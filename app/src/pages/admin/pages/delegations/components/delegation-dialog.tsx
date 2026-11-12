@@ -15,8 +15,6 @@ import { useCreateDelegation } from "@/features/admin/delegations/hooks/use-dele
 import { delegationFormSchema, type DelegationFormValues } from "@/features/admin/delegations/validation-schemas/delegations.schema";
 import { ModuleKeyOptions } from "@/config/constants/dropdowns/admin/module-key.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { MemberPicker } from "../../../components/member-picker";
 import { ScopeFields } from "../../../components/scope-fields";
 
@@ -65,8 +63,7 @@ export function DelegationDialog({ open, onOpenChange }: { open: boolean; onOpen
                 reason: v.reason,
             },
             {
-                onSuccess: (d) => { toast({ title: d.status === "ACTIVE" ? "Delegation is active" : "Delegation scheduled" }); onOpenChange(false); },
-                onError: (e) => toast({ variant: "destructive", title: "Could not create the delegation", description: getApiErrorMessage(e) }),
+                onSuccess: () => onOpenChange(false),
             }
         )
     );

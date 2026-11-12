@@ -7,8 +7,6 @@ import { usePermission } from "@/hooks/use-permission";
 import { useResetModuleAccess, useSetModuleAccess } from "@/features/admin/members/hooks/use-members";
 import type { MemberDetail } from "@/features/admin/members/interfaces/members.interfaces";
 import { ModuleKeyOptions, getModuleKeyDescription } from "@/config/constants/dropdowns/admin/module-key.options";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 
 /** Per-member module access (01 §56–57): blocks a module for this person even when the organization has it on. */
 export function MemberModulesTab({ member }: { member: MemberDetail }) {
@@ -36,7 +34,7 @@ export function MemberModulesTab({ member }: { member: MemberDetail }) {
                             <div className="flex flex-none items-center gap-1">
                                 {override && canManage && (
                                     <Button variant="ghost" size="icon-sm" aria-label={`Follow the organization setting for ${mod.label}`} disabled={pending}
-                                        onClick={() => reset.mutate({ id: member.id, module: mod.id }, { onSuccess: () => toast({ title: `${mod.label} follows the organization setting` }), onError: (e) => toast({ variant: "destructive", title: "Could not update", description: getApiErrorMessage(e) }) })}>
+                                        onClick={() => reset.mutate({ id: member.id, module: mod.id })}>
                                         <RotateCcw />
                                     </Button>
                                 )}
@@ -44,10 +42,7 @@ export function MemberModulesTab({ member }: { member: MemberDetail }) {
                                     checked={enabled}
                                     disabled={!canManage || locked || pending || member.status === "DEACTIVATED"}
                                     aria-label={`${mod.label} for this member`}
-                                    onCheckedChange={(v) => setAccess.mutate({ id: member.id, module: mod.id, enabled: v }, {
-                                        onSuccess: () => toast({ title: `${mod.label} ${v ? "allowed" : "blocked"} for this member` }),
-                                        onError: (e) => toast({ variant: "destructive", title: "Could not update", description: getApiErrorMessage(e) }),
-                                    })}
+                                    onCheckedChange={(v) => setAccess.mutate({ id: member.id, module: mod.id, enabled: v })}
                                 />
                             </div>
                         </div>

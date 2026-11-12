@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEntityRemove, useEntityUpdate } from "@/lib/query/optimistic";
 import * as service from "../services/domains.services";
 
 const KEY = ["admin", "domains"] as const;
@@ -13,17 +14,13 @@ function useInvalidate() {
 
 export const useCreateDomain = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.createDomain, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.createDomain, meta: { errorTitle: "Could not create domain" }, onSettled: invalidate });
 };
-export const useUpdateDomain = () => {
-    const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.updateDomain, onSuccess: invalidate });
-};
+/** Optimistic: the discovery / auto-provision switches flip at once. */
+export const useUpdateDomain = () => useEntityUpdate({ root: KEY, mutationFn: service.updateDomain, meta: { errorTitle: "Could not update the domain" } });
 export const useVerifyDomain = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.verifyDomain, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.verifyDomain, meta: { errorTitle: "Could not verify domain" }, onSettled: invalidate });
 };
-export const useDeleteDomain = () => {
-    const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.deleteDomain, onSuccess: invalidate });
-};
+/** Optimistic: the domain disappears at once. */
+export const useDeleteDomain = () => useEntityRemove({ root: KEY, mutationFn: service.deleteDomain, meta: { errorTitle: "Could not delete the domain" } });

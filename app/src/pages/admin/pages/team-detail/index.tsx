@@ -13,8 +13,6 @@ import type { TeamMemberRow } from "@/features/admin/teams/interfaces/teams.inte
 import { TeamKindFormOptions } from "@/config/constants/dropdowns/admin/team-kind-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, personName } from "@/lib/format";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { PersonCell } from "../../components/person-cell";
 import { MemberPicker } from "../../components/member-picker";
 import { TeamFormDialog } from "../teams/components/team-form-dialog";
@@ -42,8 +40,7 @@ export default function TeamDetailPage() {
     const addMember = () =>
         picked &&
         add.mutate({ id: t.id, membership_id: picked }, {
-            onSuccess: () => { toast({ title: "Member added" }); setPicked(undefined); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not add", description: getApiErrorMessage(e) }),
+            onSuccess: () => setPicked(undefined),
         });
 
     return (
@@ -101,8 +98,7 @@ export default function TeamDetailPage() {
                 description="Roles scoped to this team stop applying to them."
                 confirmText="Remove"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => removing && remove.mutate({ id: t.id, membership_id: removing.membership.id }, { onSuccess: () => { toast({ title: "Member removed" }); setRemoving(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not remove", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (removing) remove.mutate({ id: t.id, membership_id: removing.membership.id }); setRemoving(null); }}
             />
         </Page>
     );

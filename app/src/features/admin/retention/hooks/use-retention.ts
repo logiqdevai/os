@@ -12,13 +12,13 @@ function useInvalidate() {
 
 export const useUpdateRetentionPolicy = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.updateRetentionPolicy, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.updateRetentionPolicy, meta: { errorToast: false } /* autosaved per row; the row's <SaveStatus /> shows failures */, onSettled: invalidate });
 };
 export const useSetLegalHold = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.setLegalHold, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.setLegalHold, meta: { errorTitle: "Could not set legal hold" }, onSettled: invalidate });
 };
 export const useRunRetention = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.runRetention, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.runRetention, meta: { errorTitle: "Could not run retention" }, onSettled: invalidate });
 };

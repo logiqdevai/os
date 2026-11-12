@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { removeEntity, useOptimisticMutation } from "@/lib/query/optimistic";
 import * as service from "../services/sessions.services";
 
 const KEY = ["admin", "sessions"] as const;
@@ -11,11 +12,10 @@ function useInvalidate() {
     return () => qc.invalidateQueries({ queryKey: KEY });
 }
 
-export const useRevokeSession = () => {
-    const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.revokeSession, onSuccess: invalidate });
-};
+/** Optimistic: the session row disappears at once. */
+export const useRevokeSession = () =>
+    useOptimisticMutation({ roots: [KEY], mutationFn: service.revokeSession, meta: { errorTitle: "Could not revoke the session" }, apply: (qc, v) => removeEntity(qc, KEY, v.id) });
 export const useRevokeAllSessions = () => {
     const invalidate = useInvalidate();
-    return useMutation({ mutationFn: service.revokeAllSessions, onSuccess: invalidate });
+    return useMutation({ mutationFn: service.revokeAllSessions, meta: { errorTitle: "Could not revoke all sessions" }, onSettled: invalidate });
 };

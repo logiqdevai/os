@@ -10,8 +10,6 @@ import { Can } from "@/components/access/can";
 import { usePermission } from "@/hooks/use-permission";
 import { useArchiveBranch, useBranches, useRestoreBranch } from "@/features/admin/branches/hooks/use-branches";
 import type { Branch } from "@/features/admin/branches/interfaces/branches.interfaces";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { BranchFormDialog } from "./components/branch-form-dialog";
 import { BranchDetailPanel } from "./components/branch-detail-panel";
@@ -71,7 +69,7 @@ export default function BranchesPage() {
                                     </NavLink>
                                     {showArchived && canManage && (
                                         <Button size="sm" variant="ghost" loading={restore.isPending && restore.variables === b.id}
-                                            onClick={() => restore.mutate(b.id, { onSuccess: () => toast({ title: `${b.name} restored` }), onError: (e) => toast({ variant: "destructive", title: "Could not restore", description: getApiErrorMessage(e) }) })}>
+                                            onClick={() => restore.mutate(b.id)}>
                                             Restore
                                         </Button>
                                     )}
@@ -104,8 +102,7 @@ export default function BranchesPage() {
                 description="It disappears from pickers. Members keep their other branches; roles scoped to it stop matching new records."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate(archiving.id, { onSuccess: () => { toast({ title: "Branch archived" }); setArchiving(null); navigate("/admin/branches"); }, onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (!archiving) return; archive.mutate(archiving.id); setArchiving(null); navigate("/admin/branches"); }}
             />
         </Page>
     );

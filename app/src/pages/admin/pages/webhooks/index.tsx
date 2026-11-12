@@ -11,7 +11,6 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatRelative } from "@/lib/format";
 import { OutboundWebhookStatusOptions } from "@/config/constants/dropdowns/automation/automation.options";
 import { useDeleteOutboundWebhook, useOutboundAction, useOutboundWebhooks } from "@/features/automation/hooks/use-automation";
@@ -43,14 +42,12 @@ export default function WebhooksAdminPage() {
 
     if (!p.can("automation.webhooks.read")) return <Page><NoAccessState /></Page>;
 
-    const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
     const run = (h: OutboundWebhook, a: "pause" | "resume" | "test") =>
         action.mutate({ id: h.id, action: a }, {
+            // Pause / resume show in the status column; only a failed test delivery is toasted.
             onSuccess: (res) => {
-                if (a === "test") toast({ title: res.status === "SUCCEEDED" ? `Test delivered (HTTP ${res.response_status_code})` : "Test delivery failed", description: res.error_message ?? undefined, variant: res.status === "SUCCEEDED" ? "default" : "destructive" });
-                else toast({ title: a === "pause" ? "Webhook paused" : "Webhook enabled" });
+                if (a === "test" && res.status !== "SUCCEEDED") toast({ variant: "destructive", title: "Test delivery failed", description: res.error_message ?? undefined });
             },
-            onError: fail("Could not update the webhook"),
         });
 
     const columns: DataTableColumn<OutboundWebhook>[] = [
@@ -144,7 +141,7 @@ export default function WebhooksAdminPage() {
                 confirmText="Delete"
                 variant="destructive"
                 isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => { toast({ title: "Webhook deleted" }); setDeleting(null); }, onError: fail("Could not delete") })}
+                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => setDeleting(null) })}
             />
         </Page>
     );
