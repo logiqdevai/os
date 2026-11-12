@@ -32,7 +32,7 @@ type DeliveryWithContext = Prisma.NotificationDeliveryGetPayload<{
             include: {
                 recipient_membership: { select: { id: true; user: { select: typeof recipientUserSelect } } };
                 actor: { select: { user: { select: { display_name: true; first_name: true; last_name: true; email: true } } } };
-                organization: { select: { name: true; default_timezone: true } };
+                organization: { select: { display_name: true; default_timezone: true } };
             };
         };
     };
@@ -298,7 +298,7 @@ export class NotificationDeliveryService {
         const rendered = await this.render(d);
         const n = d.notification;
         const payload = {
-            title: rendered.previewHidden ? `New notification · ${n.organization.name}` : rendered.pushTitle,
+            title: rendered.previewHidden ? `New notification · ${n.organization.display_name}` : rendered.pushTitle,
             body: rendered.previewHidden ? null : rendered.pushBody,
             url: n.action_url ?? `/notifications/${n.id}`,
             tag: n.id,
@@ -339,7 +339,7 @@ export class NotificationDeliveryService {
                     include: {
                         recipient_membership: { select: { id: true, user: { select: recipientUserSelect } } },
                         actor: { select: { user: { select: { display_name: true, first_name: true, last_name: true, email: true } } } },
-                        organization: { select: { name: true, default_timezone: true } },
+                        organization: { select: { display_name: true, default_timezone: true } },
                     },
                 },
             },
@@ -362,7 +362,7 @@ export class NotificationDeliveryService {
         const url = this.appUrl(n.action_url ?? `/notifications/${n.id}`);
         const ctx: Record<string, unknown> = {
             ...((n.data as Record<string, unknown> | null) ?? {}),
-            title: n.title, body: n.body ?? '', entity_label: n.entity_label ?? '', url, link: url, organization: { name: n.organization.name },
+            title: n.title, body: n.body ?? '', entity_label: n.entity_label ?? '', url, link: url, organization: { name: n.organization.display_name },
             actor: { name: n.actor ? displayName(n.actor.user) : 'Someone' }, recipient: { name: displayName(user) },
         };
         const subject = (template?.subject ? renderVars(template.subject, ctx) : n.title).slice(0, 250) || n.title;
@@ -371,13 +371,13 @@ export class NotificationDeliveryService {
         const cta = { label: template?.cta_label ? renderVars(template.cta_label, ctx) : 'Open', url: template?.cta_url ? renderVars(template.cta_url, ctx) || url : url };
         const html = !previewHidden && template?.html_body
             ? renderVars(template.html_body, ctx, true)
-            : emailLayout({ orgName: n.organization.name, heading: previewHidden ? 'New notification' : heading, paragraphs: [bodyText], cta, footer: 'You get this email because of your notification settings. Change them in Notifications → Preferences.' });
+            : emailLayout({ orgName: n.organization.display_name, heading: previewHidden ? 'New notification' : heading, paragraphs: [bodyText], cta, footer: 'You get this email because of your notification settings. Change them in Notifications → Preferences.' });
         // SMS: plain text with the link; previews hidden → no content at all.
-        const smsCore = previewHidden ? `New notification from ${n.organization.name}.` : `${n.organization.name}: ${heading}${bodyText ? ` — ${bodyText}` : ''}`;
+        const smsCore = previewHidden ? `New notification from ${n.organization.display_name}.` : `${n.organization.display_name}: ${heading}${bodyText ? ` — ${bodyText}` : ''}`;
         const smsLink = ` ${cta.url}`;
         const sms = (smsCore.length + smsLink.length > SMS_MAX ? `${smsCore.slice(0, SMS_MAX - smsLink.length - 1)}…` : smsCore) + smsLink;
         return {
-            subject: previewHidden ? `New notification from ${n.organization.name}` : subject,
+            subject: previewHidden ? `New notification from ${n.organization.display_name}` : subject,
             html,
             text: `${previewHidden ? 'New notification' : heading}\n\n${bodyText}\n\n${cta.label}: ${cta.url}`,
             sms,
@@ -475,7 +475,7 @@ export class NotificationDeliveryService {
             where: { id: digestId },
             include: {
                 membership: { select: { id: true, user: { select: { email: true, display_name: true, first_name: true, last_name: true, timezone: true } } } },
-                organization: { select: { name: true, default_timezone: true } },
+                organization: { select: { display_name: true, default_timezone: true } },
                 deliveries: { include: { notification: { select: { id: true, title: true, body: true, action_url: true, created_at: true, read_at: true, archived_at: true } } }, orderBy: { created_at: 'asc' } },
             },
         });
@@ -503,7 +503,7 @@ export class NotificationDeliveryService {
             const label = g.frequency === NotificationDigestFrequency.WEEKLY ? 'weekly' : g.frequency === NotificationDigestFrequency.HOURLY ? 'hourly' : 'daily';
             const subject = `Your ${label} summary: ${items.length} notification${items.length === 1 ? '' : 's'}`;
             const html = emailLayout({
-                orgName: g.organization.name, heading: subject, paragraphs: [`Here is what happened since ${fmt(g.period_start)}.`],
+                orgName: g.organization.display_name, heading: subject, paragraphs: [`Here is what happened since ${fmt(g.period_start)}.`],
                 items: items.slice(0, 50).map((d) => ({ title: d.notification.title, body: d.notification.body, url: this.appUrl(d.notification.action_url ?? `/notifications/${d.notification.id}`), when: fmt(d.notification.created_at) })),
                 cta: { label: 'Open notifications', url: this.appUrl('/notifications') },
                 footer: 'You get summaries instead of single emails because of your notification settings (Notifications → Preferences).',

@@ -240,11 +240,11 @@ export class DocsFormsService {
     }
 
     async publicForm(id: string) {
-        const form = await this.prisma.customForm.findUnique({ where: { id }, include: { organization: { select: { id: true, name: true } } } });
+        const form = await this.prisma.customForm.findUnique({ where: { id }, include: { organization: { select: { id: true, display_name: true } } } });
         if (!form || !this.publicEnabled(form) || !this.isOpen(form)) throw new NotFoundException({ message: 'This form is not available', code: 'form_not_available' });
         const version = await this.latestVersion(form.id);
         return {
-            id: form.id, name: form.name, description: form.description, organization_name: form.organization.name,
+            id: form.id, name: form.name, description: form.description, organization_name: form.organization.display_name,
             confirmation_message: form.confirmation_message, closes_at: form.closes_at, version_number: version.version_number, fields: version.fields_schema,
         };
     }

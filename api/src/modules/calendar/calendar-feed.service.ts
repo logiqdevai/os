@@ -94,7 +94,7 @@ export class CalendarFeedService {
         if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) throw new NotFoundException({ message: 'Feed not found', code: 'feed_not_found' });
         const calendar = await this.prisma.calendar.findFirst({
             where: { feed_token: hashToken(token), archived_at: null },
-            include: { organization: { select: { default_timezone: true, name: true } } },
+            include: { organization: { select: { default_timezone: true, display_name: true } } },
         });
         if (!calendar) throw new NotFoundException({ message: 'Feed not found', code: 'feed_not_found' });
         const tz = [calendar.timezone, calendar.organization.default_timezone].find(isValidZone) ?? 'UTC';
