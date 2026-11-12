@@ -88,7 +88,7 @@ export default function CustomerDetailPage() {
             </div>
             <Dialog open={editing} onOpenChange={setEditing}>
                 <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
-                    <DialogHeader><DialogTitle>Edit billing profile</DialogTitle><DialogDescription>Changes apply to new invoices.</DialogDescription></DialogHeader>
+                    <DialogHeader><DialogTitle>Edit billing profile</DialogTitle><DialogDescription>Changes save as you type and apply to new invoices.</DialogDescription></DialogHeader>
                     <BillingProfileForm profile={p} onDone={() => setEditing(false)} onCancel={() => setEditing(false)} />
                 </DialogContent>
             </Dialog>

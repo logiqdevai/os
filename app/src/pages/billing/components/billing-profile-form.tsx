@@ -6,18 +6,25 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { useSessionData } from "@/features/session/hooks/use-session";
 import { billingProfileFormSchema, type BillingProfileFormValues } from "@/features/billing/validation-schemas/billing.schema";
 import { useCreateBillingProfile, useUpdateBillingProfile } from "@/features/billing/hooks/use-billing";
 import type { BillingProfile } from "@/features/billing/interfaces/billing.interfaces";
 import { CompanyPicker } from "./billing-pickers";
 
-/** Create / edit a customer billing profile (company from CRM 02). */
+/**
+ * Create / edit a customer billing profile (company from CRM 02).
+ * Create: explicit "Create profile" button. Edit: every valid change autosaves (optimistic) with a <SaveStatus />; "Done" just closes.
+ */
 export function BillingProfileForm({ profile, onDone, onCancel }: { profile?: BillingProfile | null; onDone: (p: BillingProfile) => void; onCancel?: () => void }) {
     const session = useSessionData();
     const create = useCreateBillingProfile();
     const update = useUpdateBillingProfile();
     const form = useForm<BillingProfileFormValues>({ resolver: zodResolver(billingProfileFormSchema) });
+    // Reset only when a different profile is opened, so refetches after an autosave never overwrite what is being typed.
+    const profileKey = profile?.id ?? null;
     useEffect(() => {
         form.reset({
             company_id: profile?.company_id ?? "", legal_name: profile?.legal_name ?? "", billing_email: profile?.billing_email ?? "", vat_number: profile?.vat_number ?? "", tax_id: profile?.tax_id ?? "",
@@ -25,16 +32,18 @@ export function BillingProfileForm({ profile, onDone, onCancel }: { profile?: Bi
             reverse_charge: profile?.reverse_charge ?? false, line1: profile?.billing_address?.line1 ?? "", city: profile?.billing_address?.city ?? "", postal_code: profile?.billing_address?.postal_code ?? "",
             country: profile?.billing_address?.country ?? "", notes: profile?.notes ?? "",
         });
-    }, [profile, form, session?.active_organization?.default_currency]);
-    const pending = create.isPending || update.isPending;
-    const submit = form.handleSubmit((v) => {
-        const dto = {
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [profileKey, form, session?.active_organization?.default_currency]);
+    const pending = create.isPending;
+    const toDto = (v: BillingProfileFormValues) => ({
             legal_name: v.legal_name, billing_email: v.billing_email || null, vat_number: v.vat_number || null, tax_id: v.tax_id || null, currency: v.currency.toUpperCase(),
             payment_terms_days: Number(v.payment_terms_days), tax_exempt: v.tax_exempt, reverse_charge: v.reverse_charge, notes: v.notes || null,
             billing_address: v.line1 || v.city || v.country ? { line1: v.line1 || undefined, city: v.city || undefined, postal_code: v.postal_code || undefined, country: v.country ? v.country.toUpperCase() : undefined } : null,
-        };
-        if (profile) update.mutate({ id: profile.id, ...dto }, { onSuccess: onDone });
-        else create.mutate({ company_id: v.company_id, ...dto }, { onSuccess: onDone });
+    });
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: profile!.id, ...toDto(v) }), { enabled: !!profile });
+    const submit = form.handleSubmit((v) => {
+        if (profile) { autosave.flush(); onDone(profile); return; }
+        create.mutate({ company_id: v.company_id, ...toDto(v) }, { onSuccess: onDone });
     });
     return (
         <Form {...form}>
@@ -61,10 +70,17 @@ export function BillingProfileForm({ profile, onDone, onCancel }: { profile?: Bi
                     <FormField control={form.control} name="reverse_charge" render={({ field }) => (<FormItem className="flex items-center justify-between rounded-md border border-border p-3"><FormLabel>EU reverse charge</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
                 </div>
                 <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Internal notes</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>)} />
-                <div className="flex justify-end gap-2">
-                    {onCancel && <Button type="button" variant="ghost" onClick={onCancel} disabled={pending}>Cancel</Button>}
-                    <Button type="submit" loading={pending}>{profile ? "Save" : "Create profile"}</Button>
-                </div>
+                {profile ? (
+                    <div className="flex items-center justify-end gap-3">
+                        <SaveStatus state={autosave} className="mr-auto" />
+                        <Button type="button" variant="outline" onClick={() => { autosave.flush(); onDone(profile); }}>Done</Button>
+                    </div>
+                ) : (
+                    <div className="flex justify-end gap-2">
+                        {onCancel && <Button type="button" variant="ghost" onClick={onCancel} disabled={pending}>Cancel</Button>}
+                        <Button type="submit" loading={pending}>Create profile</Button>
+                    </div>
+                )}
             </form>
         </Form>
     );

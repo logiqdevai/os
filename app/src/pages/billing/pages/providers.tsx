@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Copy, Plug, Plus, RefreshCw, Unplug } from "lucide-react";
+import { Plug, Plus, RefreshCw, Unplug } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,12 +12,12 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
-import { toast } from "@/hooks/use-toast";
 import { useConnectProvider, useProviderAction, useProviders } from "@/features/billing/hooks/use-billing";
 import type { ProviderConnection } from "@/features/billing/interfaces/billing.interfaces";
 import { connectProviderSchema, type ConnectProviderFormValues } from "@/features/billing/validation-schemas/billing.schema";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { ProviderStatusBadge } from "../components/billing-badges";
+import { CopyButton } from "../components/copy-button";
 
 /**
  * /billing/providers — payment provider connections (BYOK: the organization's own Stripe keys, stored encrypted, never shown again).
@@ -54,11 +54,11 @@ export default function ProvidersPage() {
                             </dl>
                             <div className="rounded-md border border-border bg-secondary p-2">
                                 <div className="text-xs text-muted-foreground">Webhook endpoint (add in Stripe → Developers → Webhooks)</div>
-                                <div className="mt-1 flex items-center gap-2"><code className="min-w-0 flex-1 truncate text-xs">{c.webhook_url}</code><Button variant="ghost" size="icon-sm" aria-label="Copy webhook URL" onClick={() => { void navigator.clipboard?.writeText(c.webhook_url); toast({ title: "Copied" }); }}><Copy /></Button></div>
+                                <div className="mt-1 flex items-center gap-2"><code className="min-w-0 flex-1 truncate text-xs">{c.webhook_url}</code><CopyButton text={c.webhook_url} iconOnly variant="ghost" size="icon-sm" aria-label="Copy webhook URL" /></div>
                             </div>
                             {c.status !== "DISCONNECTED" && (
                                 <div className="flex flex-wrap gap-2">
-                                    <Button size="sm" variant="outline" loading={act.isPending && act.variables?.id === c.id && act.variables.action === "verify"} onClick={() => act.mutate({ id: c.id, action: "verify" }, { onSuccess: (r) => toast({ title: r.status === "ACTIVE" ? "Connection works" : "Verification failed", description: r.last_error ?? undefined, variant: r.status === "ACTIVE" ? undefined : "destructive" }) })}><RefreshCw /> Test connection</Button>
+                                    <Button size="sm" variant="outline" loading={act.isPending && act.variables?.id === c.id && act.variables.action === "verify"} onClick={() => act.mutate({ id: c.id, action: "verify" })}><RefreshCw /> Test connection</Button>
                                     <Button size="sm" variant="destructive" onClick={() => setDisconnecting(c)}><Unplug /> Disconnect</Button>
                                 </div>
                             )}
@@ -74,8 +74,7 @@ export default function ProvidersPage() {
                 description="Past payments stay linked. Active subscriptions or saved cards on this account block disconnecting."
                 confirmText="Disconnect"
                 variant="destructive"
-                isLoading={act.isPending}
-                onConfirm={() => disconnecting && act.mutate({ id: disconnecting.id, action: "disconnect" }, { onSuccess: () => { toast({ title: "Disconnected" }); setDisconnecting(null); } })}
+                onConfirm={() => { if (disconnecting) act.mutate({ id: disconnecting.id, action: "disconnect" }); setDisconnecting(null); }}
             />
         </Page>
     );

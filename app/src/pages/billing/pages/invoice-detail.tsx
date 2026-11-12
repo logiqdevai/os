@@ -10,13 +10,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
 import { useCreditNoteAction, useDeleteInvoice, useDownloadInvoicePdf, useInvoice, useInvoiceAction, useInvoiceCheckout } from "@/features/billing/hooks/use-billing";
 import type { InvoiceDetail } from "@/features/billing/interfaces/billing.interfaces";
 import { BillingEventLabelOptions, PaymentMethodTypeOptions } from "@/config/constants/dropdowns/billing/billing.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatDateTime, formatMoney, personName } from "@/lib/format";
 import { CreditNoteStatusBadge, InvoiceStatusBadge, PaymentStatusBadge } from "../components/billing-badges";
+import { CopyButton } from "../components/copy-button";
 import { CreditNoteDialog, ReasonDialog, RecordPaymentDialog, SendInvoiceDialog } from "../components/billing-dialogs";
 
 const OPEN = ["OPEN", "PENDING", "PARTIALLY_PAID", "OVERDUE"];
@@ -38,6 +38,8 @@ export default function InvoiceDetailPage() {
     const remove = useDeleteInvoice();
     const cnAction = useCreditNoteAction();
     const [dialog, setDialog] = useState<null | "pay" | "send" | "void" | "writeoff" | "reject" | "credit" | "delete">(null);
+    /** The online payment link just created (copied to the clipboard and shown inline, no toast). */
+    const [payLink, setPayLink] = useState<{ url: string; via: string } | null>(null);
 
     if (q.isPending) return <PageSkeleton />;
     if (q.error || !q.data) return <Page><ErrorState error={q.error} onRetry={() => q.refetch()} /></Page>;
@@ -47,7 +49,8 @@ export default function InvoiceDetailPage() {
     const open = OPEN.includes(inv.status);
     const needsApproval = draft && inv.approval.required && !inv.approval.approved;
 
-    const run = (act: string, body?: Record<string, unknown>, ok?: string) => action.mutate({ id: inv.id, action: act, body }, { onSuccess: () => { if (ok) toast({ title: ok }); setDialog(null); } });
+    // No success toast: the status badge, totals and timeline update when the invoice refreshes.
+    const run = (act: string, body?: Record<string, unknown>) => action.mutate({ id: inv.id, action: act, body }, { onSuccess: () => setDialog(null) });
 
     return (
         <Page width="wide">
@@ -60,7 +63,7 @@ export default function InvoiceDetailPage() {
                     <>
                         {draft && p.can("finance.invoices.update") && <Button variant="outline" asChild><Link to={`/billing/invoices/${inv.id}/edit`}><Pencil /> Edit</Link></Button>}
                         {draft && p.can("finance.invoices.approve") && (inv.approval.required || !inv.approval.approved) && (
-                            <Button variant={needsApproval ? "default" : "outline"} loading={action.isPending && action.variables?.action === "approve"} onClick={() => run("approve", {}, "Invoice approved")}><CheckCircle2 /> Approve</Button>
+                            <Button variant={needsApproval ? "default" : "outline"} loading={action.isPending && action.variables?.action === "approve"} onClick={() => run("approve", {})}><CheckCircle2 /> Approve</Button>
                         )}
                         {(draft || open) && p.can("finance.invoices.send") && !needsApproval && <Button onClick={() => setDialog("send")}><Send /> {inv.sent_at ? "Send again" : "Send"}</Button>}
                         {open && p.can("finance.payments.record") && <Button variant="outline" onClick={() => setDialog("pay")}><CreditCard /> Record payment</Button>}
@@ -69,8 +72,8 @@ export default function InvoiceDetailPage() {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem disabled={pdf.isPending} onSelect={() => pdf.mutate(inv.id)}><Download /> Download PDF</DropdownMenuItem>
                                 <DropdownMenuItem asChild><a href={`/print/invoices/${inv.id}`} target="_blank" rel="noreferrer"><Printer /> Print</a></DropdownMenuItem>
-                                {open && p.can("finance.invoices.send") && <DropdownMenuItem onSelect={() => checkout.mutate(inv.id, { onSuccess: (r) => { void navigator.clipboard?.writeText(r.url); toast({ title: "Payment link copied", description: `Collected through ${r.connection.display_name}` }); } })}><Link2 /> Online payment link</DropdownMenuItem>}
-                                {open && p.can("finance.invoices.send") && <DropdownMenuItem onSelect={() => run("remind", {}, "Reminder logged")}><Bell /> Send reminder</DropdownMenuItem>}
+                                {open && p.can("finance.invoices.send") && <DropdownMenuItem onSelect={() => checkout.mutate(inv.id, { onSuccess: (r) => { void navigator.clipboard?.writeText(r.url); setPayLink({ url: r.url, via: r.connection.display_name }); } })}><Link2 /> Online payment link</DropdownMenuItem>}
+                                {open && p.can("finance.invoices.send") && <DropdownMenuItem onSelect={() => run("remind", {})}><Bell /> Send reminder</DropdownMenuItem>}
                                 {draft && p.can("finance.invoices.approve") && inv.approval.history.some((h) => h.decision === "PENDING") && <DropdownMenuItem onSelect={() => setDialog("reject")}><XCircle /> Reject approval</DropdownMenuItem>}
                                 {p.can("finance.invoices.create") && <DropdownMenuItem onSelect={() => action.mutate({ id: inv.id, action: "duplicate" }, { onSuccess: (r) => navigate(`/billing/invoices/${r.id}`) })}><Copy /> Duplicate</DropdownMenuItem>}
                                 {!draft && inv.status !== "VOID" && p.can("finance.credit_notes.manage") && <DropdownMenuItem onSelect={() => setDialog("credit")}><FileMinus /> Credit note</DropdownMenuItem>}
@@ -84,6 +87,14 @@ export default function InvoiceDetailPage() {
                 }
             />
 
+            {payLink && (
+                <div role="status" className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-[13px]">
+                    <span className="text-muted-foreground">Payment link copied · collected through {payLink.via}</span>
+                    <code className="min-w-0 flex-1 truncate text-xs text-foreground">{payLink.url}</code>
+                    <CopyButton text={payLink.url} size="sm" variant="outline" label="Copy again" />
+                    <Button size="sm" variant="ghost" onClick={() => setPayLink(null)}>Dismiss</Button>
+                </div>
+            )}
             {needsApproval && (
                 <div className="mb-4 rounded-lg border border-border bg-warning-soft px-4 py-3 text-[13px] text-warning">
                     Needs approval under “{inv.approval.rule?.name}” before it can be sent.{inv.approval.rule?.require_distinct_user ? " The creator cannot approve it." : ""}
@@ -227,10 +238,10 @@ export default function InvoiceDetailPage() {
             <RecordPaymentDialog open={dialog === "pay"} onOpenChange={(o) => setDialog(o ? "pay" : null)} invoice={{ id: inv.id, number: inv.number, amount_due: inv.amount_due, currency: cur, billing_profile_id: inv.billing_profile_id }} />
             <SendInvoiceDialog open={dialog === "send"} onOpenChange={(o) => setDialog(o ? "send" : null)} invoiceId={inv.id} defaultEmail={inv.billing_profile.billing_email} needsFinalize={draft} />
             <CreditNoteDialog open={dialog === "credit"} onOpenChange={(o) => setDialog(o ? "credit" : null)} invoice={inv} />
-            <ReasonDialog open={dialog === "void"} onOpenChange={(o) => setDialog(o ? "void" : null)} title={`Void ${inv.number}?`} description="The invoice stays for the audit trail but is no longer owed. Its income record is voided." confirmText="Void invoice" destructive pending={action.isPending} onConfirm={(reason) => run("void", { reason }, "Invoice voided")} />
-            <ReasonDialog open={dialog === "writeoff"} onOpenChange={(o) => setDialog(o ? "writeoff" : null)} title="Mark as uncollectible?" description={`${formatMoney(inv.amount_due, cur)} is written off. The invoice stays overdue for reporting.`} confirmText="Write off" destructive pending={action.isPending} onConfirm={(reason) => run("write-off", { reason }, "Invoice written off")} />
-            <ReasonDialog open={dialog === "reject"} onOpenChange={(o) => setDialog(o ? "reject" : null)} title="Reject approval" confirmText="Reject" destructive pending={action.isPending} onConfirm={(reason) => run("reject", { reason }, "Approval rejected")} />
-            <ConfirmationDialog isOpen={dialog === "delete"} onClose={() => setDialog(null)} title="Delete this draft?" description="Drafts have no number yet, so nothing is lost from the sequence." confirmText="Delete" variant="destructive" isLoading={remove.isPending} onConfirm={() => remove.mutate(inv.id, { onSuccess: () => navigate("/billing/invoices") })} />
+            <ReasonDialog open={dialog === "void"} onOpenChange={(o) => setDialog(o ? "void" : null)} title={`Void ${inv.number}?`} description="The invoice stays for the audit trail but is no longer owed. Its income record is voided." confirmText="Void invoice" destructive pending={action.isPending} onConfirm={(reason) => run("void", { reason })} />
+            <ReasonDialog open={dialog === "writeoff"} onOpenChange={(o) => setDialog(o ? "writeoff" : null)} title="Mark as uncollectible?" description={`${formatMoney(inv.amount_due, cur)} is written off. The invoice stays overdue for reporting.`} confirmText="Write off" destructive pending={action.isPending} onConfirm={(reason) => run("write-off", { reason })} />
+            <ReasonDialog open={dialog === "reject"} onOpenChange={(o) => setDialog(o ? "reject" : null)} title="Reject approval" confirmText="Reject" destructive pending={action.isPending} onConfirm={(reason) => run("reject", { reason })} />
+            <ConfirmationDialog isOpen={dialog === "delete"} onClose={() => setDialog(null)} title="Delete this draft?" description="Drafts have no number yet, so nothing is lost from the sequence." confirmText="Delete" variant="destructive" isLoading={remove.isPending} onConfirm={() => { remove.mutate(inv.id); navigate("/billing/invoices"); }} />
         </Page>
     );
 }

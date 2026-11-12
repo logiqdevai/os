@@ -1,23 +1,34 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { patchEntity, useEntityRemove, useEntityUpdate, useOptimisticMutation } from "@/lib/query/optimistic";
 import * as s from "../services/billing.services";
+import type { ApprovalInbox } from "../interfaces/billing.interfaces";
 
-/** 08 Billing query + mutation hooks. Every mutation invalidates the whole billing cache (and the ledger, which mirrors it). */
+/**
+ * 08 Billing query + mutation hooks. Every mutation refreshes the whole billing cache (and the ledger, which mirrors it)
+ * when it settles. No success toasts (the UI shows the result); failures are toasted once by the global MutationCache
+ * with the given title.
+ */
 const KEY = ["billing"] as const;
+const LEDGER = ["expenses"] as const;
 type P = Record<string, unknown>;
 
-function useBillingMutation<TVars, TData = unknown>(fn: (v: TVars) => Promise<TData>, success?: string | ((d: TData) => string), errorTitle = "Something went wrong") {
+function useBillingMutation<TVars, TData = unknown>(fn: (v: TVars) => Promise<TData>, errorTitle = "Something went wrong", errorToast = true) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: fn,
-        onSuccess: (data) => {
+        meta: { errorTitle, errorToast },
+        onSettled: () => {
             qc.invalidateQueries({ queryKey: KEY });
-            qc.invalidateQueries({ queryKey: ["expenses"] });
-            if (success) toast({ title: typeof success === "function" ? success(data) : success });
+            qc.invalidateQueries({ queryKey: LEDGER });
         },
-        onError: (e) => toast({ variant: "destructive", title: errorTitle, description: getApiErrorMessage(e) }),
     });
+}
+
+/** Drop an invoice / refund from the cached approvals inbox (the approver sees it leave at once). */
+function dropFromApprovals(qc: QueryClient, match: (i: ApprovalInbox["items"][number]) => boolean, invoiceId?: string) {
+    qc.setQueriesData<ApprovalInbox>({ queryKey: [...KEY, "approvals"] }, (d) =>
+        d ? { ...d, items: d.items.filter((i) => !match(i)), invoices_awaiting: invoiceId ? d.invoices_awaiting.filter((i) => i.id !== invoiceId) : d.invoices_awaiting } : d,
+    );
 }
 
 // --- Queries -------------------------------------------------------------------------------------
@@ -45,32 +56,73 @@ export const useCompanyLookup = (search: string, enabled = true) => useQuery({ q
 export const useProjectLookup = (search: string, enabled = true) => useQuery({ queryKey: ["projects", "lookup", search], queryFn: () => s.lookupProjects(search), enabled, placeholderData: keepPreviousData, retry: false });
 
 // --- Mutations ------------------------------------------------------------------------------------
-export const useCreateInvoice = () => useBillingMutation(s.createInvoice, "Draft invoice created", "Could not create the invoice");
-export const useUpdateInvoice = () => useBillingMutation(s.updateInvoice, "Invoice saved", "Could not save the invoice");
-export const useDeleteInvoice = () => useBillingMutation(s.deleteInvoice, "Draft deleted", "Could not delete the draft");
-export const useDownloadInvoicePdf = () => useBillingMutation(s.downloadInvoicePdf, (name) => `Downloaded ${name}`, "Could not create the PDF");
-export const useInvoiceAction = () => useBillingMutation(s.invoiceAction, undefined, "Could not update the invoice");
-export const useInvoiceCheckout = () => useBillingMutation(s.invoiceCheckout, "Payment link created", "Could not create the payment link");
-export const useCreateCreditNote = () => useBillingMutation(s.createCreditNote, "Credit note created", "Could not create the credit note");
-export const useCreditNoteAction = () => useBillingMutation(s.creditNoteAction, "Credit note updated", "Could not update the credit note");
-export const useRecordPayment = () => useBillingMutation(s.recordPayment, "Payment recorded", "Could not record the payment");
-export const useRefundPayment = () => useBillingMutation(s.refundPayment, "Refund requested", "Could not refund");
-export const useRefundDecision = () => useBillingMutation(s.refundDecision, "Refund updated", "Could not update the refund");
-export const useCreateSubscription = () => useBillingMutation(s.createSubscription, "Subscription created", "Could not create the subscription");
-export const useSubscriptionAction = () => useBillingMutation(s.subscriptionAction, "Subscription updated", "Could not update the subscription");
-export const useCreateProduct = () => useBillingMutation(s.createProduct, "Product created", "Could not create the product");
-export const useUpdateProduct = () => useBillingMutation(s.updateProduct, "Product saved", "Could not save the product");
-export const useArchiveProduct = () => useBillingMutation(s.archiveProduct, "Product archived", "Could not archive");
-export const useAddPrice = () => useBillingMutation(s.addPrice, "Price added", "Could not add the price");
-export const useCreateTaxRate = () => useBillingMutation(s.createTaxRate, "Tax rate created", "Could not create the tax rate");
-export const useUpdateTaxRate = () => useBillingMutation(s.updateTaxRate, "Tax rate saved", "Could not save the tax rate");
-export const useCreateCoupon = () => useBillingMutation(s.createCoupon, "Coupon created", "Could not create the coupon");
-export const useCouponAction = () => useBillingMutation(s.couponAction, "Coupon updated", "Could not update the coupon");
-export const useCreateBillingProfile = () => useBillingMutation(s.createBillingProfile, "Billing profile created", "Could not create the profile");
-export const useUpdateBillingProfile = () => useBillingMutation(s.updateBillingProfile, "Billing profile saved", "Could not save the profile");
-export const useConnectProvider = () => useBillingMutation(s.connectProvider, "Payment provider connected", "Could not connect the provider");
-export const useUpdateProvider = () => useBillingMutation(s.updateProvider, "Connection saved", "Could not save the connection");
-export const useProviderAction = () => useBillingMutation(s.providerAction, undefined, "Could not update the connection");
-export const useCreatePaymentLink = () => useBillingMutation(s.createPaymentLink, "Payment link created", "Could not create the link");
-export const useDisablePaymentLink = () => useBillingMutation(s.disablePaymentLink, "Payment link disabled", "Could not disable the link");
-export const useSaveDunningPolicy = () => useBillingMutation(s.saveDunningPolicy, "Dunning policy saved", "Could not save the policy");
+export const useCreateInvoice = () => useBillingMutation(s.createInvoice, "Could not create the invoice");
+/** Used by the autosaving draft editor: failures show in its <SaveStatus />, not as a toast. */
+export const useUpdateInvoice = () => useBillingMutation(s.updateInvoice, "Could not save the invoice", false);
+export const useDeleteInvoice = () => useEntityRemove({ root: KEY, mutationFn: s.deleteInvoice, alsoInvalidate: [LEDGER], meta: { errorTitle: "Could not delete the draft" } });
+/** The browser download is the feedback. */
+export const useDownloadInvoicePdf = () => useMutation({ mutationFn: s.downloadInvoicePdf, meta: { errorTitle: "Could not create the PDF" } });
+/** Lifecycle actions. Approving removes the invoice from the approvals inbox at once. */
+export const useInvoiceAction = () =>
+    useOptimisticMutation({
+        roots: [[...KEY, "approvals"]],
+        alsoInvalidate: [KEY, LEDGER],
+        meta: { errorTitle: "Could not update the invoice" },
+        mutationFn: s.invoiceAction,
+        apply: (qc, v) => { if (v.action === "approve") dropFromApprovals(qc, (i) => i.invoice?.id === v.id || i.entity_id === v.id, v.id); },
+    });
+export const useInvoiceCheckout = () => useBillingMutation(s.invoiceCheckout, "Could not create the payment link");
+export const useCreateCreditNote = () => useBillingMutation(s.createCreditNote, "Could not create the credit note");
+export const useCreditNoteAction = () => useBillingMutation(s.creditNoteAction, "Could not update the credit note");
+export const useRecordPayment = () => useBillingMutation(s.recordPayment, "Could not record the payment");
+export const useRefundPayment = () => useBillingMutation(s.refundPayment, "Could not refund");
+/** Approve / reject a refund: it leaves the approvals inbox at once. */
+export const useRefundDecision = () =>
+    useOptimisticMutation({
+        roots: [[...KEY, "approvals"]],
+        alsoInvalidate: [KEY, LEDGER],
+        meta: { errorTitle: "Could not update the refund" },
+        mutationFn: s.refundDecision,
+        apply: (qc, v) => dropFromApprovals(qc, (i) => i.entity_id === v.id || i.refund?.id === v.id),
+    });
+export const useCreateSubscription = () => useBillingMutation(s.createSubscription, "Could not create the subscription");
+export const useSubscriptionAction = () => useBillingMutation(s.subscriptionAction, "Could not update the subscription");
+export const useCreateProduct = () => useBillingMutation(s.createProduct, "Could not create the product");
+export const useUpdateProduct = () => useEntityUpdate({ root: KEY, mutationFn: s.updateProduct, alsoInvalidate: [LEDGER], meta: { errorTitle: "Could not save the product" } });
+export const useArchiveProduct = () => useEntityRemove({ root: [...KEY, "products"], mutationFn: s.archiveProduct, alsoInvalidate: [KEY], meta: { errorTitle: "Could not archive" } });
+export const useAddPrice = () => useBillingMutation(s.addPrice, "Could not add the price");
+export const useCreateTaxRate = () => useBillingMutation(s.createTaxRate, "Could not create the tax rate");
+/** Optimistic: the rate row (and the active switch) change at once. */
+export const useUpdateTaxRate = () => useEntityUpdate({ root: KEY, mutationFn: s.updateTaxRate, alsoInvalidate: [LEDGER], meta: { errorTitle: "Could not save the tax rate" } });
+export const useCreateCoupon = () => useBillingMutation(s.createCoupon, "Could not create the coupon");
+/** Optimistic activate / deactivate. */
+export const useCouponAction = () =>
+    useOptimisticMutation({
+        roots: [KEY],
+        meta: { errorTitle: "Could not update the coupon" },
+        mutationFn: s.couponAction,
+        apply: (qc, v) => patchEntity(qc, KEY, v.id, { is_active: v.action === "activate" }),
+    });
+export const useCreateBillingProfile = () => useBillingMutation(s.createBillingProfile, "Could not create the profile");
+/** Autosaved edit form: failures show in its <SaveStatus />. */
+export const useUpdateBillingProfile = () => useEntityUpdate({ root: KEY, mutationFn: s.updateBillingProfile, meta: { errorTitle: "Could not save the profile", errorToast: false } });
+export const useConnectProvider = () => useBillingMutation(s.connectProvider, "Could not connect the provider", false);
+export const useUpdateProvider = () => useEntityUpdate({ root: KEY, mutationFn: s.updateProvider, meta: { errorTitle: "Could not save the connection" } });
+/** Verify / disconnect: the card shows the new status and last error (no toast). Disconnect is optimistic. */
+export const useProviderAction = () =>
+    useOptimisticMutation({
+        roots: [[...KEY, "providers"]],
+        meta: { errorTitle: "Could not update the connection" },
+        mutationFn: s.providerAction,
+        apply: (qc, v) => { if (v.action === "disconnect") patchEntity(qc, [...KEY, "providers"], v.id, { status: "DISCONNECTED" }); },
+    });
+export const useCreatePaymentLink = () => useBillingMutation(s.createPaymentLink, "Could not create the link");
+/** Optimistic: the link shows Disabled at once. */
+export const useDisablePaymentLink = () =>
+    useOptimisticMutation({
+        roots: [[...KEY, "links"]],
+        meta: { errorTitle: "Could not disable the link" },
+        mutationFn: s.disablePaymentLink,
+        apply: (qc, id) => patchEntity(qc, [...KEY, "links"], id, { status: "DISABLED" }),
+    });
+export const useSaveDunningPolicy = () => useBillingMutation(s.saveDunningPolicy, "Could not save the policy");

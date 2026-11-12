@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EntityPicker } from "@/components/ui/entity-picker";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { useBillingProfile, useCoupons, useCreateInvoice, useInvoice, useProducts, useTaxRates, useUpdateInvoice } from "@/features/billing/hooks/use-billing";
 import { invoiceFormSchema, type InvoiceFormValues } from "@/features/billing/validation-schemas/billing.schema";
 import type { Coupon, InvoiceInput, TaxRate } from "@/features/billing/interfaces/billing.interfaces";
@@ -38,6 +40,8 @@ function lineTotals(line: InvoiceFormValues["lines"][number], rates: TaxRate[]) 
 
 /**
  * /billing/invoices/new and /billing/invoices/:id/edit — draft editor with line items and live totals.
+ * New: explicit "Create draft" (redirects to the invoice). Edit: the draft autosaves every valid change (<SaveStatus /> in
+ * the header, no Save button); only DRAFT invoices are editable, issued ones are read-only.
  * @perm finance.invoices.create (new) / finance.invoices.update (edit) · only DRAFT invoices are editable
  * @api POST /finance/invoices · PATCH /finance/invoices/:id
  */
@@ -67,9 +71,12 @@ export default function InvoiceEditorPage() {
         if (!id && def && form.getValues("lines.0.tax_rate_id") === null) form.setValue("lines.0.tax_rate_id", def.id);
     }, [rates, id, form]);
 
+    // Load the draft into the form once per invoice: refetches after an autosave must not overwrite what is being typed.
+    const loadedId = useRef<string | null>(null);
     useEffect(() => {
         const inv = existing.data;
-        if (!inv) return;
+        if (!inv || loadedId.current === inv.id) return;
+        loadedId.current = inv.id;
         form.reset({
             billing_profile_id: inv.billing_profile_id, project_id: inv.project_id, issue_date: inv.issue_date?.slice(0, 10) ?? "", due_date: inv.due_date?.slice(0, 10) ?? "",
             coupon_id: inv.coupon_id ?? NONE, notes: inv.notes ?? "", payment_instructions: inv.payment_instructions ?? "",
@@ -101,17 +108,20 @@ export default function InvoiceEditorPage() {
         if (p.default_tax_rate_id) form.setValue(`lines.${index}.tax_rate_id`, p.default_tax_rate_id);
     };
 
-    const pending = create.isPending || update.isPending;
-    const submit = form.handleSubmit((v) => {
-        const dto: InvoiceInput = {
+    const toDto = (v: InvoiceFormValues): InvoiceInput => ({
             billing_profile_id: v.billing_profile_id, project_id: v.project_id || null, issue_date: v.issue_date || null, due_date: v.due_date || null,
             coupon_id: v.coupon_id && v.coupon_id !== NONE ? v.coupon_id : null, notes: v.notes || null, payment_instructions: v.payment_instructions || null,
             lines: v.lines.map((l) => ({ product_id: l.product_id || null, price_id: l.price_id || null, description: l.description, quantity: l.quantity, unit_amount: l.unit_amount, discount_amount: l.discount_amount || "0", tax_rate_id: l.tax_rate_id || null, tax_percent: l.tax_rate_id ? null : "0" })),
-        };
-        if (id) {
-            const { billing_profile_id: _b, ...rest } = dto;
-            update.mutate({ id, ...rest }, { onSuccess: () => navigate(`/billing/invoices/${id}`) });
-        } else create.mutate(dto, { onSuccess: (inv) => navigate(`/billing/invoices/${inv.id}`) });
+    });
+    // Edit mode: autosave the draft (the customer cannot change once the draft exists).
+    const editable = !!id && existing.data?.status === "DRAFT";
+    const autosave = useFormAutosave(form, (v) => {
+        const { billing_profile_id: _b, ...rest } = toDto(v);
+        return update.mutateAsync({ id: id as string, ...rest });
+    }, { enabled: editable });
+    const submit = form.handleSubmit((v) => {
+        if (id) { autosave.flush(); navigate(`/billing/invoices/${id}`); return; }
+        create.mutate(toDto(v), { onSuccess: (inv) => navigate(`/billing/invoices/${inv.id}`) });
     });
 
     if (id && existing.isPending) return <PageSkeleton />;
@@ -122,7 +132,7 @@ export default function InvoiceEditorPage() {
 
     return (
         <Page width="wide">
-            <PageHeader title={id ? "Edit draft invoice" : "New invoice"} back={{ to: id ? `/billing/invoices/${id}` : "/billing/invoices", label: id ? "Invoice" : "Invoices" }} description="Drafts get their number when they are approved or sent." />
+            <PageHeader title={id ? "Edit draft invoice" : "New invoice"} back={{ to: id ? `/billing/invoices/${id}` : "/billing/invoices", label: id ? "Invoice" : "Invoices" }} description={id ? "Changes save automatically. Drafts get their number when they are approved or sent." : "Drafts get their number when they are approved or sent."} meta={id ? <SaveStatus state={autosave} /> : undefined} />
             <Form {...form}>
                 <form onSubmit={submit} className="space-y-6">
                     <Section title="Customer">
@@ -227,8 +237,14 @@ export default function InvoiceEditorPage() {
                         </div>
                     </Section>
                     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                        <Button type="button" variant="ghost" onClick={() => navigate(-1)} disabled={pending}>Cancel</Button>
-                        <Button type="submit" loading={pending}>{id ? "Save draft" : "Create draft"}</Button>
+                        {id ? (
+                            <Button type="submit" variant="outline">Done</Button>
+                        ) : (
+                            <>
+                                <Button type="button" variant="ghost" onClick={() => navigate(-1)} disabled={create.isPending}>Cancel</Button>
+                                <Button type="submit" loading={create.isPending}>Create draft</Button>
+                            </>
+                        )}
                     </div>
                 </form>
             </Form>

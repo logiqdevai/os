@@ -101,7 +101,7 @@ export default function CatalogPage() {
             </Tabs>
             <ProductDialog open={productOpen} onOpenChange={setProductOpen} product={editing} />
             <CouponDialog open={couponOpen} onOpenChange={setCouponOpen} />
-            <ConfirmationDialog isOpen={!!archiving} onClose={() => setArchiving(null)} title={`Archive ${archiving?.name}?`} description="It disappears from pickers. Existing invoices keep their lines." confirmText="Archive" variant="destructive" isLoading={archive.isPending} onConfirm={() => archiving && archive.mutate(archiving.id, { onSuccess: () => setArchiving(null) })} />
+            <ConfirmationDialog isOpen={!!archiving} onClose={() => setArchiving(null)} title={`Archive ${archiving?.name}?`} description="It disappears from pickers. Existing invoices keep their lines." confirmText="Archive" variant="destructive" onConfirm={() => { if (archiving) archive.mutate(archiving.id); setArchiving(null); }} />
         </Page>
     );
 }

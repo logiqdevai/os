@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Copy, Link2, Plus } from "lucide-react";
+import { Link2, Plus } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
 import { useSessionData } from "@/features/session/hooks/use-session";
 import { useCreatePaymentLink, useDisablePaymentLink, usePaymentLinks } from "@/features/billing/hooks/use-billing";
 import type { PaymentLink } from "@/features/billing/interfaces/billing.interfaces";
 import { paymentLinkSchema, type PaymentLinkFormValues } from "@/features/billing/validation-schemas/billing.schema";
 import { formatDate, formatMoney } from "@/lib/format";
 import { PaymentLinkStatusBadge } from "../components/billing-badges";
+import { CopyButton } from "../components/copy-button";
 
 /**
  * /billing/links — shareable hosted checkouts (invoice links are created from the invoice).
@@ -31,7 +31,6 @@ export default function PaymentLinksPage() {
     const canManage = usePermission("finance.payment_links.manage");
     const disable = useDisablePaymentLink();
     const [open, setOpen] = useState(false);
-    const copy = (url: string) => { void navigator.clipboard?.writeText(url); toast({ title: "Link copied" }); };
     const columns: DataTableColumn<PaymentLink>[] = [
         { key: "title", header: "Link", cell: (l) => <div className="min-w-0"><div className="truncate font-medium text-foreground">{l.title}</div><div className="truncate text-xs text-muted-foreground">{l.invoice ? `Invoice ${l.invoice.number}` : l.billing_profile?.legal_name ?? "Anyone with the link"}</div></div> },
         { key: "amount", header: "Amount", cell: (l) => (l.amount ? formatMoney(l.amount, l.currency) : "Custom"), className: "tabular" },
@@ -42,7 +41,7 @@ export default function PaymentLinksPage() {
             key: "actions", header: <span className="sr-only">Actions</span>, className: "w-36 text-right",
             cell: (l) => l.status === "ACTIVE" && (
                 <div className="flex justify-end gap-1">
-                    <Button size="icon-sm" variant="ghost" aria-label="Copy link" onClick={() => copy(l.url)}><Copy /></Button>
+                    <CopyButton text={l.url} iconOnly size="icon-sm" variant="ghost" aria-label="Copy link" />
                     {canManage && <Button size="sm" variant="ghost" onClick={() => disable.mutate(l.id)}>Disable</Button>}
                 </div>
             ),
