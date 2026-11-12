@@ -15,7 +15,7 @@ done
 trap 'rmdir "$LOCK" 2>/dev/null' EXIT
 cd "$ROOT/$TARGET"
 if [ "$TARGET" = "api" ]; then
-  NODE_OPTIONS=--max-old-space-size=4096 npx tsc --noEmit -p tsconfig.json
+  NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit -p tsconfig.json
 else
   npx tsc -b
 fi

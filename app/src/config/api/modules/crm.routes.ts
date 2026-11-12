@@ -3,7 +3,6 @@ const resource = (base: string) => ({
     list: base,
     detail: (id: string) => `${base}/${id}`,
     export: `${base}/export`,
-    duplicates: `${base}/duplicates`,
     assign: (id: string) => `${base}/${id}/assign`,
     archive: (id: string) => `${base}/${id}/archive`,
     restore: (id: string) => `${base}/${id}/restore`,
@@ -55,4 +54,13 @@ export const CrmApiRoutes = {
     forecast: "/crm/forecast",
     tags: { list: "/tags", detail: (id: string) => `/tags/${id}`, merge: (id: string) => `/tags/${id}/merge`, taggings: "/taggings" },
     saved_views: { list: "/saved-views", detail: (id: string) => `/saved-views/${id}` },
+    custom_fields: {
+        list: "/custom-fields",
+        order: "/custom-fields/order",
+        detail: (id: string) => `/custom-fields/${id}`,
+        archive: (id: string) => `/custom-fields/${id}/archive`,
+        restore: (id: string) => `/custom-fields/${id}/restore`,
+        groups: "/custom-field-groups",
+        group: (id: string) => `/custom-field-groups/${id}`,
+    },
 };

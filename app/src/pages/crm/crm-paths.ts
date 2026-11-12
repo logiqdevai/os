@@ -14,4 +14,5 @@ export const CrmPaths = {
     forecast: "/crm/forecast",
     pipelines: "/crm/pipelines",
     settings: "/crm/settings",
+    custom_fields: "/crm/custom-fields",
 };
