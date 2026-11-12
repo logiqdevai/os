@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import type { LucideIcon } from "lucide-react";
 
 /** ModuleKey values from the Prisma schema (enum ModuleKey). */
@@ -63,4 +64,6 @@ export interface AppDefinition {
      *  `nav` is still used by the command palette and the mobile navigation sheet. */
     ownSidebar?: boolean;
     nav: AppNavSection[];
+    /** Dynamic entries rendered under `nav` in the context panel and the mobile sheet (e.g. the caller's saved views). */
+    navExtra?: ComponentType<{ onNavigate?: () => void }>;
 }

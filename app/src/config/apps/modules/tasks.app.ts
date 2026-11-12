@@ -1,5 +1,6 @@
 import { ChartColumn, Columns3, List, ListTodo, RefreshCw, Rocket, Settings, SquareCheckBig, Users } from "lucide-react";
 import type { AppDefinition } from "../app.types";
+import { TaskSavedViewsNav } from "@/pages/tasks/components/saved-views-nav";
 
 export const tasksApp: AppDefinition = {
     id: "tasks",
@@ -23,4 +24,6 @@ export const tasksApp: AppDefinition = {
             { label: "Setup", to: "/tasks/settings", icon: Settings, permissions: ["tasks.workflows.manage"] },
         ] },
     ],
+    /** Saved views (SavedView entity TASK) — personal, team and organization. */
+    navExtra: TaskSavedViewsNav,
 };

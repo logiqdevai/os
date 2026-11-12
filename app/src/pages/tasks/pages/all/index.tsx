@@ -10,11 +10,13 @@ import { TaskDueFilterOptions, TaskGroupByOptions, TaskPriorityFilterOptions, Ta
 import { TaskList, type TaskGroupBy } from "../../components/task-list";
 import { ProjectPicker } from "../../components/task-pickers";
 import { useQuickCreate } from "../../components/quick-create";
+import { SavedViewsMenu } from "@/pages/crm/components/saved-views-menu";
 
 /**
- * /tasks/all — every task in the caller's scope with filters and grouping.
- * @perm VIEW tasks.tasks.read · bulk tasks.bulk.execute
- * @api GET /tasks?status_category=&priority=&project_id=&team_id=&assignee=&due=&search=
+ * /tasks/all?sv=<savedViewId>&… — every task in the caller's scope with filters and grouping. Filters and grouping live in the
+ * URL (shareable); saved views (SavedView entity TASK) store that URL query and are listed in the Tasks context panel.
+ * @perm VIEW tasks.tasks.read · bulk tasks.bulk.execute · share views platform.saved_views.manage_shared
+ * @api GET /tasks?status_category=&priority=&project_id=&team_id=&assignee=&due=&search= · GET/POST/PATCH/DELETE /saved-views?entity_type=TASK
  * @states loading · empty-filtered (with clear filters) · error
  */
 export default function AllTasksPage() {
@@ -25,6 +27,7 @@ export default function AllTasksPage() {
     const query: Record<string, unknown> = { ...params, order_by: "priority" };
     delete query.group;
     delete query.project_name;
+    delete query.sv;
     if (!filters.status_category) query.open = true;
     else if (filters.status_category === "all") delete query.status_category;
     const tasks = useTasks(query);
@@ -39,6 +42,7 @@ export default function AllTasksPage() {
                 actions={<Can permission="tasks.tasks.create"><Button onClick={() => quick.open({ team_id: filters.team_id, project_id: filters.project_id })}><Plus /> New task</Button></Can>}
             />
             <TableToolbar search={search} onSearch={setSearch} placeholder="Search by title or WEB-142…">
+                <SavedViewsMenu entityType="TASK" onSearch={setSearch} />
                 <Select value={filters.status_category ?? "open"} onValueChange={(v) => setFilter("status_category", v === "open" ? null : v)}>
                     <SelectTrigger className="h-8 w-32" aria-label="Status"><SelectValue /></SelectTrigger>
                     <SelectContent>

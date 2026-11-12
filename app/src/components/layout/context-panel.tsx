@@ -9,6 +9,7 @@ import { useVisibleApps } from "./use-visible-apps";
 export function ContextPanelNav({ app, onNavigate }: { app: AppDefinition; onNavigate?: () => void }) {
     const { filterNav } = useVisibleApps();
     const sections = filterNav(app);
+    const Extra = app.navExtra;
     return (
         <div className="space-y-4">
             {sections.map((section, i) => (
@@ -33,6 +34,7 @@ export function ContextPanelNav({ app, onNavigate }: { app: AppDefinition; onNav
                     ))}
                 </div>
             ))}
+            {Extra && <Extra onNavigate={onNavigate} />}
         </div>
     );
 }
