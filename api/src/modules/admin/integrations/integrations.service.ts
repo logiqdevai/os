@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
-import { IntegrationMode, IntegrationStatus, ModuleKey, Prisma, ScopeType } from 'generated/prisma';
+import { IntegrationMode, IntegrationProvider, IntegrationStatus, ModuleKey, Prisma, ScopeType } from 'generated/prisma';
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { AuditService } from '@/shared/audit/audit.service';
 import { EventsService } from '@/shared/events/events.service';
@@ -249,9 +249,11 @@ export class IntegrationsService {
         return out;
     }
 
-    private present<T extends { webhook_token: string | null }>(row: T) {
+    /** The URL to paste into the provider's dashboard: each provider's receiver lives on the module that handles its events. */
+    private present<T extends { webhook_token: string | null; provider: IntegrationProvider }>(row: T) {
         const { webhook_token, ...rest } = row;
         const api = (this.config.get<string>('API_URL') ?? 'http://localhost:3000').replace(/\/$/, '');
-        return { ...rest, webhook_url: webhook_token ? `${api}/webhooks/integrations/${webhook_token}` : null };
+        const path = row.provider === 'RESEND' ? 'communications/webhooks/resend' : row.provider === 'TWILIO' ? 'communications/webhooks/twilio' : 'webhooks/integrations';
+        return { ...rest, webhook_url: webhook_token ? `${api}/${path}/${webhook_token}` : null };
     }
 }
