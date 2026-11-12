@@ -18,7 +18,7 @@ import {
 } from "@/features/messaging/hooks/use-messaging-admin";
 import type { MessagingIntegration } from "@/features/messaging/interfaces/messaging-admin.interfaces";
 import { AdminNav } from "./admin-nav";
-import { CopyButton } from "../../components/copy-button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { useChannelOptions } from "./channel-options";
 
 const hookUrl = (path: string) => `${environments.API_URL.replace(/\/+$/, "")}${path}`;
@@ -34,7 +34,7 @@ function SecretDialog({ secret, onClose }: { secret: { name: string; path: strin
                 </DialogHeader>
                 <div className="flex gap-2">
                     <Input readOnly value={url} className="font-mono text-xs" aria-label="Webhook URL" onFocus={(e) => e.target.select()} />
-                    <CopyButton text={url} />
+                    <CopyButton text={url} iconOnly variant="outline" size="icon" />
                 </div>
                 <pre className="overflow-x-auto rounded-md bg-secondary p-3 text-xs text-foreground">{`curl -X POST ${url} \\\n  -H 'content-type: application/json' \\\n  -d '{"text":"Deploy finished ✅"}'`}</pre>
                 <DialogFooter><Button onClick={onClose}>Done</Button></DialogFooter>

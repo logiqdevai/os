@@ -18,7 +18,7 @@ import type { PaymentLink } from "@/features/billing/interfaces/billing.interfac
 import { paymentLinkSchema, type PaymentLinkFormValues } from "@/features/billing/validation-schemas/billing.schema";
 import { formatDate, formatMoney } from "@/lib/format";
 import { PaymentLinkStatusBadge } from "../components/billing-badges";
-import { CopyButton } from "../components/copy-button";
+import { CopyButton } from "@/components/ui/copy-button";
 
 /**
  * /billing/links — shareable hosted checkouts (invoice links are created from the invoice).

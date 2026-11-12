@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ButtonProps } from "@/components/ui/button";
 import { NavLink } from "react-router-dom";
-import { Archive, Check, ChevronsUpDown, Copy, CheckCircle2, ChevronRight, CircleAlert, File, FileImage, FileSpreadsheet, FileText, FileVideo, Folder, FolderOpen, Music, Presentation, Upload, X } from "lucide-react";
+import { Archive, Check, ChevronsUpDown, CheckCircle2, ChevronRight, CircleAlert, File, FileImage, FileSpreadsheet, FileText, FileVideo, Folder, FolderOpen, Music, Presentation, Upload, X } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -57,26 +56,7 @@ export async function openDocument(id: string, disposition: "inline" | "attachme
     }
 }
 
-/** Copy `text` to the clipboard; the button shows "Copied" for a moment instead of a toast. */
-export function CopyButton({ text, label = "Copy", iconOnly, onCopied, ...props }: { text: string; label?: string; iconOnly?: boolean; onCopied?: () => void } & Omit<ButtonProps, "onClick" | "children">) {
-    const [copied, setCopied] = useState(false);
-    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
-    const copy = () => {
-        void navigator.clipboard?.writeText(text).then(() => {
-            setCopied(true);
-            onCopied?.();
-            if (timer.current) clearTimeout(timer.current);
-            timer.current = setTimeout(() => setCopied(false), 1600);
-        });
-    };
-    return (
-        <Button type="button" {...props} aria-label={copied ? "Copied" : (props["aria-label"] ?? label)} onClick={copy}>
-            {copied ? <Check /> : <Copy />}
-            {!iconOnly && (copied ? "Copied" : label)}
-        </Button>
-    );
-}
+export { CopyButton } from "@/components/ui/copy-button";
 
 export const apiUrl = (path: string) => `${environments.API_URL.replace(/\/$/, "")}${path}`;
 

@@ -30,10 +30,15 @@ function mapEntities(data: unknown, fn: (e: Entity) => Entity | null): unknown {
     }
     if (!data || typeof data !== "object") return data;
     if (isEntity(data)) {
-        const next = fn(data);
-        // A detail object is never removed from the cache (the page decides what to show); only patched.
-        return next ?? data;
+        // A detail object is never removed from the cache (the page decides what to show); only patched. Its own
+        // arrays of entities (grants, items, comments…) are patched too, so nested rows update optimistically.
+        return mapArrayFields(fn(data) ?? data, fn);
     }
+    return mapArrayFields(data, fn);
+}
+
+/** Apply `fn` to the entities inside the array fields of an object (one level deep). */
+function mapArrayFields(data: unknown, fn: (e: Entity) => Entity | null): unknown {
     let changed = false;
     const copy: Record<string, unknown> = { ...(data as Record<string, unknown>) };
     for (const [k, v] of Object.entries(copy)) {
@@ -75,6 +80,31 @@ export function removeEntity(qc: QueryClient, root: QueryKey, id: string) {
             if (p && typeof p.total === "number") return { ...(next as object), pagination: { ...p, total: Math.max(0, p.total - 1) } };
         }
         return next;
+    });
+}
+
+/** Temporary ids for optimistic rows (replaced by the server row when the mutation settles). */
+export const tempId = () => `temp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+export const isTempId = (id: string | null | undefined) => !!id && id.startsWith("temp_");
+
+/**
+ * Append a (temporary) entity at the END of a list (comments, checklist items, chat messages). `field` targets an
+ * array inside a detail object (e.g. `"comments"` of a task); without it, plain arrays and `{ data: [] }` lists.
+ */
+export function appendEntity<T extends Entity>(qc: QueryClient, root: QueryKey, entity: T, field?: string) {
+    qc.setQueriesData({ queryKey: root }, (data: unknown) => {
+        if (field) {
+            if (data && typeof data === "object" && Array.isArray((data as Record<string, unknown>)[field])) {
+                return { ...(data as object), [field]: [...((data as Record<string, unknown[]>)[field]), entity] };
+            }
+            return data;
+        }
+        if (Array.isArray(data)) return [...data, entity];
+        if (data && typeof data === "object" && Array.isArray((data as { data?: unknown }).data)) {
+            const d = data as { data: unknown[]; pagination?: { total?: number } };
+            return { ...d, data: [...d.data, entity], ...(d.pagination && typeof d.pagination.total === "number" ? { pagination: { ...d.pagination, total: d.pagination.total + 1 } } : {}) };
+        }
+        return data;
     });
 }
 

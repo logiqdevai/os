@@ -24,7 +24,7 @@ import * as service from "@/features/files/services/files.services";
 import { useCreateVaultEntry, useDeleteVaultEntry, useRevealVaultEntry, useVaultEntries } from "@/features/files/hooks/use-files";
 import type { VaultEntry, VaultEntryType } from "@/features/files/interfaces/files.interfaces";
 import { VaultGrantsDialog } from "./components/vault-grants-dialog";
-import { CopyButton } from "../../components/files-ui";
+import { CopyButton } from "@/components/ui/copy-button";
 
 /**
  * /files/vault — encrypted credentials (17 §12). Secrets are never in lists; reveal is confirmed, audited (VaultAccessLog) and auto-hidden.

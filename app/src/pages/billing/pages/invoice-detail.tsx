@@ -16,7 +16,7 @@ import { BillingEventLabelOptions, PaymentMethodTypeOptions } from "@/config/con
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatDateTime, formatMoney, personName } from "@/lib/format";
 import { CreditNoteStatusBadge, InvoiceStatusBadge, PaymentStatusBadge } from "../components/billing-badges";
-import { CopyButton } from "../components/copy-button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { CreditNoteDialog, ReasonDialog, RecordPaymentDialog, SendInvoiceDialog } from "../components/billing-dialogs";
 
 const OPEN = ["OPEN", "PENDING", "PARTIALLY_PAID", "OVERDUE"];

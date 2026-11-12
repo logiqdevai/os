@@ -17,7 +17,7 @@ import type { ProviderConnection } from "@/features/billing/interfaces/billing.i
 import { connectProviderSchema, type ConnectProviderFormValues } from "@/features/billing/validation-schemas/billing.schema";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { ProviderStatusBadge } from "../components/billing-badges";
-import { CopyButton } from "../components/copy-button";
+import { CopyButton } from "@/components/ui/copy-button";
 
 /**
  * /billing/providers — payment provider connections (BYOK: the organization's own Stripe keys, stored encrypted, never shown again).

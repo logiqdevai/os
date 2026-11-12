@@ -9,7 +9,7 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime } from "@/lib/format";
 import { useEmailChannelSetup, useSetEmailInboundSecret } from "@/features/support/hooks/use-support";
 import type { SupportChannel } from "@/features/support/interfaces/support.interfaces";
-import { CopyButton } from "../../../components/copy-button";
+import { CopyButton } from "@/components/ui/copy-button";
 
 /**
  * Email in/out of an EMAIL channel (13 §1, §10): outbound replies go through the organization's Resend connection (11, BYOK);

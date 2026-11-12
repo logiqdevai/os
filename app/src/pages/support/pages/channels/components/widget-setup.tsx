@@ -15,7 +15,7 @@ import { WidgetPositionOptions } from "@/config/constants/dropdowns/support/supp
 import { SaveStatus } from "@/components/ui/save-status";
 import { useFormAutosave } from "@/hooks/use-autosave";
 import { useAutosaveChannel, useRotateWidgetKey } from "@/features/support/hooks/use-support";
-import { CopyButton } from "../../../components/copy-button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { widgetAppearanceSchema, type WidgetAppearanceValues } from "@/features/support/validation-schemas/support.schema";
 import type { SupportChannel } from "@/features/support/interfaces/support.interfaces";
 
