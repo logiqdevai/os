@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, Link2, RefreshCw, ShieldAlert } from "lucide-react";
+import { Check, Copy, Link2, RefreshCw, ShieldAlert } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,14 @@ export function FeedDialog({ calendar, onClose }: { calendar: CalendarRow | null
     const rotate = useRotateCalendarFeed();
     const revoke = useRevokeCalendarFeed();
     const [url, setUrl] = useState<string | null>(null);
+    /** The copy button shows a check for a moment instead of a "Link copied" toast. */
+    const [copied, setCopied] = useState(false);
     useEffect(() => setUrl(null), [calendar?.id]);
+    useEffect(() => {
+        if (!copied) return;
+        const t = setTimeout(() => setCopied(false), 1500);
+        return () => clearTimeout(t);
+    }, [copied]);
     const enabled = url ? true : !!calendar?.feed_enabled;
     const busy = rotate.isPending || revoke.isPending;
 
@@ -25,7 +32,7 @@ export function FeedDialog({ calendar, onClose }: { calendar: CalendarRow | null
         if (!url) return;
         try {
             await navigator.clipboard.writeText(url);
-            toast({ title: "Link copied" });
+            setCopied(true);
         } catch {
             toast({ variant: "destructive", title: "Copy failed", description: "Select the link and copy it manually." });
         }
@@ -42,7 +49,7 @@ export function FeedDialog({ calendar, onClose }: { calendar: CalendarRow | null
                     <div className="space-y-2">
                         <div className="flex gap-2">
                             <Input readOnly value={url} aria-label="Subscription link" onFocus={(e) => e.currentTarget.select()} className="font-mono text-xs" />
-                            <Button type="button" variant="outline" size="icon" onClick={copy} aria-label="Copy link"><Copy /></Button>
+                            <Button type="button" variant="outline" size="icon" onClick={copy} aria-label={copied ? "Copied" : "Copy link"}>{copied ? <Check className="text-success" /> : <Copy />}</Button>
                         </div>
                         <p className="flex items-start gap-1.5 text-xs text-warning"><ShieldAlert className="mt-0.5 size-3.5 shrink-0" /> Copy it now: it is not shown again. Anyone with the link can see this calendar.</p>
                     </div>

@@ -39,9 +39,10 @@ export default function BookingDetailPage() {
                 meta={<Badge variant={BOOKING_STATUS_VARIANT[b.status]}>{getDropdownOptionLabel(BookingStatusFormOptions, b.status)}</Badge>}
                 actions={
                     <>
-                        {b.status === "PENDING" && <Button size="sm" loading={act.isPending} onClick={() => act.mutate({ id: b.id, action: "confirm" })}><Check /> Confirm</Button>}
-                        {b.status === "CONFIRMED" && !future && <Button size="sm" variant="outline" loading={act.isPending} onClick={() => act.mutate({ id: b.id, action: "complete" })}><CheckCheck /> Completed</Button>}
-                        {b.status === "CONFIRMED" && !future && <Button size="sm" variant="outline" loading={act.isPending} onClick={() => act.mutate({ id: b.id, action: "no-show" })}><UserX /> No-show</Button>}
+                        {/* Optimistic: the status badge (and these buttons) change at once; a refusal rolls back with one toast. */}
+                        {b.status === "PENDING" && <Button size="sm" onClick={() => act.mutate({ id: b.id, action: "confirm" })}><Check /> Confirm</Button>}
+                        {b.status === "CONFIRMED" && !future && <Button size="sm" variant="outline" onClick={() => act.mutate({ id: b.id, action: "complete" })}><CheckCheck /> Completed</Button>}
+                        {b.status === "CONFIRMED" && !future && <Button size="sm" variant="outline" onClick={() => act.mutate({ id: b.id, action: "no-show" })}><UserX /> No-show</Button>}
                         {(b.status === "PENDING" || b.status === "CONFIRMED") && <Button size="sm" variant="destructive" onClick={() => setCancelOpen(true)}><Ban /> Cancel</Button>}
                     </>
                 }
@@ -74,7 +75,7 @@ export default function BookingDetailPage() {
                 )}
                 {b.cancellation_reason && <p className="text-[13px] text-muted-foreground">Cancellation reason: {b.cancellation_reason}</p>}
             </div>
-            <Dialog open={cancelOpen} onOpenChange={(o) => !act.isPending && setCancelOpen(o)}>
+            <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Cancel this booking?</DialogTitle>
@@ -82,8 +83,8 @@ export default function BookingDetailPage() {
                     </DialogHeader>
                     <Textarea rows={3} placeholder="Reason (optional)" value={reason} onChange={(e) => setReason(e.target.value)} aria-label="Reason" />
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setCancelOpen(false)} disabled={act.isPending}>Keep booking</Button>
-                        <Button variant="destructive" loading={act.isPending} onClick={() => act.mutate({ id: b.id, action: "cancel", reason: reason || undefined }, { onSuccess: () => setCancelOpen(false) })}>Cancel booking</Button>
+                        <Button variant="ghost" onClick={() => setCancelOpen(false)}>Keep booking</Button>
+                        <Button variant="destructive" onClick={() => { act.mutate({ id: b.id, action: "cancel", reason: reason || undefined }); setCancelOpen(false); }}>Cancel booking</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

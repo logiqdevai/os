@@ -1,4 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useFormAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -27,7 +29,7 @@ interface Props {
 export function BookingLinkFormDialog({ open, onOpenChange, link }: Props) {
     const session = useSessionData();
     const create = useCreateBookingLink();
-    const update = useUpdateBookingLink();
+    const update = useUpdateBookingLink({ inline: true });
     const form = useForm<BookingLinkFormValues>({
         resolver: zodResolver(bookingLinkFormSchema),
         defaultValues: { name: "", slug: "", status: "ACTIVE", host_assignment: "SINGLE", host_ids: [], duration_minutes: "30", buffer_after_minutes: "0", min_notice_minutes: "60", max_days_ahead: "60", requires_confirmation: false },
@@ -52,29 +54,37 @@ export function BookingLinkFormDialog({ open, onOpenChange, link }: Props) {
         });
     }, [open, link, form, session]);
 
-    const pending = create.isPending || update.isPending;
-    const submit = form.handleSubmit((v) => {
-        const dto = {
+    const pending = create.isPending;
+    const toDto = (v: BookingLinkFormValues) => ({
             name: v.name, slug: v.slug, description: v.description || undefined, status: v.status, host_assignment: v.host_assignment,
             hosts: v.host_ids.map((membership_id, i) => ({ membership_id, priority: i })), duration_minutes: Number(v.duration_minutes), slot_interval_minutes: Math.min(Number(v.duration_minutes), 60),
             buffer_after_minutes: Number(v.buffer_after_minutes), min_notice_minutes: Number(v.min_notice_minutes), max_days_ahead: Number(v.max_days_ahead), requires_confirmation: v.requires_confirmation,
             location: v.location || undefined, confirmation_message: v.confirmation_message || undefined, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        };
-        const options = { onSuccess: () => onOpenChange(false) };
-        if (link) update.mutate({ id: link.id, ...dto }, options);
-        else create.mutate(dto, options);
+    });
+    // Editing autosaves every valid change (no "Save changes"; "Done" closes). Creating keeps "Create link".
+    const linkRef = useRef(link);
+    if (link) linkRef.current = link;
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: linkRef.current!.id, ...toDto(v) }), { enabled: open && !!link });
+    const close = () => {
+        if (link) void form.trigger().then((ok) => ok && autosave.flush());
+        onOpenChange(false);
+    };
+    const submit = form.handleSubmit((v) => {
+        if (link) return close();
+        create.mutate(toDto(v), { onSuccess: () => onOpenChange(false) });
     });
 
     const meName = session?.user ? [session.user.first_name, session.user.last_name].filter(Boolean).join(" ") || session.user.email : "You";
 
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !pending && close())}>
             <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
                             <DialogTitle>{link ? "Edit booking link" : "New booking link"}</DialogTitle>
                             <DialogDescription>Customers pick a free time from the hosts' availability. Nothing is reserved until they submit.</DialogDescription>
+                            {link && <SaveStatus state={autosave} />}
                         </DialogHeader>
                         <FormField control={form.control} name="name" render={({ field }) => (
                             <FormItem>
@@ -148,8 +158,14 @@ export function BookingLinkFormDialog({ open, onOpenChange, link }: Props) {
                             <FormItem><FormLabel>Message after booking</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
                         )} />
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{link ? "Save changes" : "Create link"}</Button>
+                            {link ? (
+                                <Button type="button" onClick={close}>Done</Button>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                                    <Button type="submit" loading={pending}>Create link</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>

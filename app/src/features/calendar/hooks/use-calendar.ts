@@ -1,7 +1,7 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { patchEntity, removeEntity, useOptimisticMutation } from "@/lib/query/optimistic";
 import * as service from "../services/calendar.services";
+import type { AttendeeResponse, CalendarPreferences } from "../interfaces/calendar.interfaces";
 
 export const CALENDAR_KEY = ["calendar"] as const;
 type Params = Record<string, unknown>;
@@ -33,50 +33,95 @@ export const useBookings = (params: Params, enabled = true) =>
     useQuery({ queryKey: [...CALENDAR_KEY, "bookings", params], queryFn: () => service.getBookings(params), placeholderData: keepPreviousData, enabled });
 export const useBooking = (id: string | undefined) => useQuery({ queryKey: [...CALENDAR_KEY, "booking", id], queryFn: () => service.getBooking(id as string), enabled: !!id, retry: false });
 
-function useCalendarMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>, success: string | null, failure: string) {
+/**
+ * Non-optimistic calendar mutation (creations and server-computed results such as recurrences, feeds and conflicts):
+ * refreshes the calendar when it settles. No success toasts (the UI shows the result); failures are toasted once by
+ * the global MutationCache — `errorToast: false` when the form shows the error itself.
+ */
+function useCalendarMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>, errorTitle: string, errorToast = true) {
     const qc = useQueryClient();
-    return useMutation({
-        mutationFn: fn,
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: CALENDAR_KEY });
-            if (success) toast({ title: success });
-        },
-        onError: (e) => toast({ variant: "destructive", title: failure, description: getApiErrorMessage(e) }),
-    });
+    return useMutation({ mutationFn: fn, meta: { errorTitle, errorToast }, onSettled: () => qc.invalidateQueries({ queryKey: CALENDAR_KEY }) });
 }
+/** Optimistic calendar mutation over the whole calendar cache (ids are unique, so patches find every copy). */
+function useCalendarOptimistic<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>, errorTitle: string, apply: (qc: QueryClient, args: TArgs) => void, errorToast = true) {
+    return useOptimisticMutation<TResult, TArgs>({ roots: [CALENDAR_KEY], meta: { errorTitle, errorToast }, mutationFn: fn, apply });
+}
+const now = () => new Date().toISOString();
 
-export const useCreateEvent = () => useCalendarMutation(service.createEvent, "Event created", "Could not create event");
-export const useUpdateEvent = () => useCalendarMutation(service.updateEvent, "Event updated", "Could not update event");
-export const useEditOccurrence = () => useCalendarMutation(service.editOccurrence, "Occurrence updated", "Could not update this occurrence");
-export const useCancelEvent = () => useCalendarMutation(service.cancelEvent, "Event cancelled", "Could not cancel event");
-export const useDeleteEvent = () => useCalendarMutation(service.deleteEvent, "Event deleted", "Could not delete event");
-export const useRespondEvent = () => useCalendarMutation(service.respondEvent, "Response sent", "Could not send your response");
-export const useCreateCalendar = () => useCalendarMutation(service.createCalendar, "Calendar created", "Could not create calendar");
-export const useUpdateCalendar = () => useCalendarMutation(service.updateCalendar, "Calendar saved", "Could not save calendar");
-export const useArchiveCalendar = () => useCalendarMutation(service.archiveCalendar, "Calendar archived", "Could not archive calendar");
-export const useRestoreCalendar = () => useCalendarMutation(service.restoreCalendar, "Calendar restored", "Could not restore calendar");
-export const useShareCalendar = () => useCalendarMutation(service.shareCalendar, "Calendar shared", "Could not share calendar");
-export const useUnshareCalendar = () => useCalendarMutation(service.unshareCalendar, "Share removed", "Could not remove share");
-export const useRotateCalendarFeed = () => useCalendarMutation(service.rotateCalendarFeed, "Subscription link created", "Could not create the link");
-export const useRevokeCalendarFeed = () => useCalendarMutation(service.revokeCalendarFeed, "Subscription link turned off", "Could not turn off the link");
-export const useUpdateCalendarPreferences = () => useCalendarMutation(service.updatePreferences, "Preferences saved", "Could not save preferences");
-export const useCreateSchedule = () => useCalendarMutation(service.createSchedule, "Availability saved", "Could not save availability");
-export const useUpdateSchedule = () => useCalendarMutation(service.updateSchedule, "Availability saved", "Could not save availability");
-export const useDeleteSchedule = () => useCalendarMutation(service.deleteSchedule, "Schedule removed", "Could not remove schedule");
-export const useCreateResource = () => useCalendarMutation(service.createResource, "Resource created", "Could not create resource");
-export const useUpdateResource = () => useCalendarMutation(service.updateResource, "Resource saved", "Could not save resource");
-export const useArchiveResource = () => useCalendarMutation(service.archiveResource, "Resource archived", "Could not archive resource");
-export const useDecideResourceRequest = () => useCalendarMutation(service.decideResourceRequest, "Request handled", "Could not handle request");
-export const useCreateBookingLink = () => useCalendarMutation(service.createBookingLink, "Booking link created", "Could not create booking link");
-export const useUpdateBookingLink = () => useCalendarMutation(service.updateBookingLink, "Booking link saved", "Could not save booking link");
-export const useBookingAction = () => useCalendarMutation(service.bookingAction, "Booking updated", "Could not update booking");
+/** Event forms show conflicts (e.g. a booked room) on the field and toast once; creation opens the new event. */
+export const useCreateEvent = () => useCalendarMutation(service.createEvent, "Could not create event");
+/** Optimistic: the event (in every view and its detail page) shows the new values at once. */
+export const useUpdateEvent = ({ inline = false }: { inline?: boolean } = {}) =>
+    useCalendarOptimistic(service.updateEvent, "Could not update event", (qc, { id, ...dto }) => patchEntity(qc, CALENDAR_KEY, id, dto), !inline);
+export const useEditOccurrence = () => useCalendarMutation(service.editOccurrence, "Could not update this occurrence");
+export const useCancelEvent = () =>
+    useCalendarOptimistic(service.cancelEvent, "Could not cancel event", (qc, { id, occurrence_start }) => {
+        // A whole series / single event shows as cancelled at once; a single occurrence is recomputed by the refresh.
+        if (!occurrence_start) patchEntity(qc, CALENDAR_KEY, id, { status: "CANCELLED" });
+    });
+export const useDeleteEvent = () => useCalendarOptimistic(service.deleteEvent, "Could not delete event", (qc, id) => removeEntity(qc, CALENDAR_KEY, id));
+/** RSVP: the chosen answer is highlighted at once in the detail page and every view. */
+export const useRespondEvent = () =>
+    useCalendarOptimistic(service.respondEvent, "Could not send your response", (qc, { id, response }: { id: string; response: AttendeeResponse }) =>
+        patchEntity<{ my_response?: AttendeeResponse | null; my_attendee?: { response: AttendeeResponse } | null }>(qc, CALENDAR_KEY, id, (e) => ({
+            ...e,
+            ...("my_response" in e && { my_response: response }),
+            ...(e.my_attendee && { my_attendee: { ...e.my_attendee, response } }),
+        })),
+    );
+export const useCreateCalendar = () => useCalendarMutation(service.createCalendar, "Could not create calendar");
+export const useUpdateCalendar = ({ inline = false }: { inline?: boolean } = {}) =>
+    useCalendarOptimistic(service.updateCalendar, "Could not save calendar", (qc, { id, ...dto }) => patchEntity(qc, CALENDAR_KEY, id, dto), !inline);
+/** Archive: the calendar leaves the list at once (its detail cache shows it archived). */
+export const useArchiveCalendar = () =>
+    useCalendarOptimistic(service.archiveCalendar, "Could not archive calendar", (qc, id) => {
+        removeEntity(qc, CALENDAR_KEY, id);
+        patchEntity(qc, CALENDAR_KEY, id, { archived_at: now() });
+    });
+export const useRestoreCalendar = () =>
+    useCalendarOptimistic(service.restoreCalendar, "Could not restore calendar", (qc, id) => patchEntity(qc, CALENDAR_KEY, id, { archived_at: null }));
+export const useShareCalendar = () => useCalendarMutation(service.shareCalendar, "Could not share calendar");
+export const useUnshareCalendar = () =>
+    useCalendarOptimistic(service.unshareCalendar, "Could not remove share", (qc, { shareId }) => removeEntity(qc, CALENDAR_KEY, shareId));
+/** Feed links are generated by the server: the dialog shows the new link when it arrives. */
+export const useRotateCalendarFeed = () => useCalendarMutation(service.rotateCalendarFeed, "Could not create the link");
+export const useRevokeCalendarFeed = () => useCalendarMutation(service.revokeCalendarFeed, "Could not turn off the link");
+/** Preferences (e.g. projected modules): applied at once. */
+export const useUpdateCalendarPreferences = () =>
+    useCalendarOptimistic(service.updatePreferences, "Could not save preferences", (qc, dto) =>
+        qc.setQueryData<CalendarPreferences>([...CALENDAR_KEY, "preferences"], (p) => (p ? { ...p, ...dto } : p)),
+    );
+/** Availability: the editor keeps its own draft; `inline` when it autosaves with <SaveStatus />. */
+export const useCreateSchedule = ({ inline = false }: { inline?: boolean } = {}) => useCalendarMutation(service.createSchedule, "Could not save availability", !inline);
+export const useUpdateSchedule = ({ inline = false }: { inline?: boolean } = {}) =>
+    useCalendarOptimistic(service.updateSchedule, "Could not save availability", (qc, { id, ...dto }) => patchEntity(qc, CALENDAR_KEY, id, dto), !inline);
+export const useDeleteSchedule = () => useCalendarOptimistic(service.deleteSchedule, "Could not remove schedule", (qc, id) => removeEntity(qc, CALENDAR_KEY, id));
+export const useCreateResource = () => useCalendarMutation(service.createResource, "Could not create resource");
+export const useUpdateResource = ({ inline = false }: { inline?: boolean } = {}) =>
+    useCalendarOptimistic(service.updateResource, "Could not save resource", (qc, { id, ...dto }) => patchEntity(qc, CALENDAR_KEY, id, dto), !inline);
+export const useArchiveResource = () => useCalendarOptimistic(service.archiveResource, "Could not archive resource", (qc, id) => removeEntity(qc, CALENDAR_KEY, id));
+/** Approve / decline a room request: it leaves the queue at once. Pass `requestId` (never sent). */
+export const useDecideResourceRequest = () =>
+    useCalendarOptimistic(
+        (v: Parameters<typeof service.decideResourceRequest>[0] & { requestId?: string }) => service.decideResourceRequest(v),
+        "Could not handle the request",
+        (qc, { requestId }) => { if (requestId) removeEntity(qc, CALENDAR_KEY, requestId); },
+    );
+export const useCreateBookingLink = () => useCalendarMutation(service.createBookingLink, "Could not create booking link");
+export const useUpdateBookingLink = ({ inline = false }: { inline?: boolean } = {}) =>
+    useCalendarOptimistic(service.updateBookingLink, "Could not save booking link", (qc, { id, ...dto }) => patchEntity(qc, CALENDAR_KEY, id, dto), !inline);
+const BOOKING_STATUS: Record<string, string> = { confirm: "CONFIRMED", cancel: "CANCELLED", "no-show": "NO_SHOW", complete: "COMPLETED" };
+/** Booking actions: the status badge changes at once. */
+export const useBookingAction = () =>
+    useCalendarOptimistic(service.bookingAction, "Could not update booking", (qc, { id, action }) => patchEntity(qc, CALENDAR_KEY, id, { status: BOOKING_STATUS[action] }));
 
 // Public booking page (no session)
 export const usePublicBookingPage = (orgSlug: string | undefined, slug: string | undefined) =>
     useQuery({ queryKey: ["public-booking", orgSlug, slug], queryFn: () => service.getPublicBookingPage(orgSlug as string, slug as string), enabled: !!orgSlug && !!slug, retry: false });
 export const usePublicSlots = (id: string | undefined, params: Params) =>
     useQuery({ queryKey: ["public-booking", "slots", id, params], queryFn: () => service.getPublicSlots(id as string, params), enabled: !!id, placeholderData: keepPreviousData, retry: false });
+/** The public page shows booking errors inline (slot taken, validation), so no toast. */
 export const useCreatePublicBooking = () => {
     const qc = useQueryClient();
-    return useMutation({ mutationFn: service.createPublicBooking, onSuccess: () => qc.invalidateQueries({ queryKey: ["public-booking", "slots"] }) });
+    return useMutation({ mutationFn: service.createPublicBooking, meta: { errorToast: false }, onSuccess: () => qc.invalidateQueries({ queryKey: ["public-booking", "slots"] }) });
 };

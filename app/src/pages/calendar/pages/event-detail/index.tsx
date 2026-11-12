@@ -12,7 +12,8 @@ import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { cn } from "@/lib/utils";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { AttendeeResponseOptions, EventVisibilityFormOptions, ReminderFormOptions, RepeatFormOptions } from "@/config/constants/dropdowns/calendar/calendar.options";
-import { useCalendarEvent, useCancelEvent, useDeleteEvent, useRespondEvent } from "@/features/calendar/hooks/use-calendar";
+import { useCalendarEvent, useCancelEvent, useDeleteEvent, useRespondEvent, useUpdateEvent } from "@/features/calendar/hooks/use-calendar";
+import { InlineTextarea } from "@/components/ui/inline-edit";
 import type { AttendeeResponse } from "@/features/calendar/interfaces/calendar.interfaces";
 import { EventFormDialog } from "../../components/event-form-dialog";
 import { dotClass } from "../../utils/calendar.utils";
@@ -24,6 +25,8 @@ const RESPONSE_VARIANT: Record<AttendeeResponse, "success" | "warning" | "danger
  * @perm calendar.events.read_own / read · RSVP own row · edit/cancel calendar.events.update_own (organizer) · delete calendar.events.delete_own
  * @api GET /calendar/events/:id · POST /:id/respond · POST /:id/cancel · DELETE /:id · PATCH /:id
  * @states loading · 404 (private / no access) · cancelled banner · masked (busy only)
+ * Mutations are Linear-style: RSVP, cancel and delete change the page at once (no success toasts); notes autosave.
+ * Editing time / place / people keeps the explicit "Save" in the event dialog because it notifies attendees.
  */
 export default function EventDetailPage() {
     const { id } = useParams();
@@ -34,6 +37,7 @@ export default function EventDetailPage() {
     const respond = useRespondEvent();
     const cancel = useCancelEvent();
     const remove = useDeleteEvent();
+    const saveNotes = useUpdateEvent({ inline: true });
     const [editing, setEditing] = useState<"series" | "occurrence" | null>(null);
     const [cancelOpen, setCancelOpen] = useState(false);
     const [reason, setReason] = useState("");
@@ -59,8 +63,12 @@ export default function EventDetailPage() {
         );
     }
 
-    const doCancel = (onlyThis: boolean) =>
-        cancel.mutate({ id: e.id, reason: reason || undefined, ...(onlyThis && occurrence ? { occurrence_start: occurrence } : {}) }, { onSuccess: () => { setCancelOpen(false); if (onlyThis) navigate("/calendar"); } });
+    // Optimistic: the page shows "Cancelled" at once (a single occurrence goes back to the calendar).
+    const doCancel = (onlyThis: boolean) => {
+        cancel.mutate({ id: e.id, reason: reason || undefined, ...(onlyThis && occurrence ? { occurrence_start: occurrence } : {}) });
+        setCancelOpen(false);
+        if (onlyThis) navigate("/calendar");
+    };
 
     return (
         <Page width="wide">
@@ -115,7 +123,7 @@ export default function EventDetailPage() {
                             <p className="text-[13px] text-foreground">Going? <span className="text-muted-foreground">Your answer: {getDropdownOptionLabel(AttendeeResponseOptions, e.my_attendee.response)}</span></p>
                             <div className="flex flex-wrap gap-2">
                                 {([["ACCEPTED", "Yes", Check], ["TENTATIVE", "Maybe", HelpCircle], ["DECLINED", "No", X]] as const).map(([r, label, Icon]) => (
-                                    <Button key={r} size="sm" variant={e.my_attendee?.response === r ? "default" : "outline"} loading={respond.isPending && respond.variables?.response === r} onClick={() => respond.mutate({ id: e.id, response: r })}>
+                                    <Button key={r} size="sm" variant={e.my_attendee?.response === r ? "default" : "outline"} aria-pressed={e.my_attendee?.response === r} onClick={() => respond.mutate({ id: e.id, response: r })}>
                                         <Icon /> {label}
                                     </Button>
                                 ))}
@@ -124,7 +132,10 @@ export default function EventDetailPage() {
                     )}
                     <Section title="Notes">
                         <div className="rounded-lg border border-border bg-card p-4 text-[13px] text-body">
-                            {e.description ? <p className="whitespace-pre-wrap">{e.description}</p> : <p className="text-muted-foreground">No notes.</p>}
+                            {e.can_edit && !cancelled ? (
+                                // Notes autosave while typing (no Save button); time / place changes go through the dialog.
+                                <InlineTextarea value={e.description ?? ""} aria-label="Notes" placeholder="Add notes…" rows={4} className="text-[13px]" onSave={(description) => saveNotes.mutateAsync({ id: e.id, description })} />
+                            ) : e.description ? <p className="whitespace-pre-wrap">{e.description}</p> : <p className="text-muted-foreground">No notes.</p>}
                         </div>
                     </Section>
                 </div>
@@ -155,7 +166,7 @@ export default function EventDetailPage() {
                 </aside>
             </div>
             <EventFormDialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)} eventId={e.id} occurrenceStart={editing === "occurrence" ? occurrence : null} />
-            <Dialog open={cancelOpen} onOpenChange={(o) => !cancel.isPending && setCancelOpen(o)}>
+            <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Cancel “{e.title}”?</DialogTitle>
@@ -163,9 +174,9 @@ export default function EventDetailPage() {
                     </DialogHeader>
                     <Textarea rows={3} placeholder="Reason (optional, shared with attendees)" value={reason} onChange={(ev) => setReason(ev.target.value)} aria-label="Reason" />
                     <DialogFooter className="gap-2">
-                        <Button variant="ghost" onClick={() => setCancelOpen(false)} disabled={cancel.isPending}>Keep event</Button>
-                        {e.recurring && occurrence && <Button variant="outline" loading={cancel.isPending} onClick={() => doCancel(true)}>Only this one</Button>}
-                        <Button variant="destructive" loading={cancel.isPending} onClick={() => doCancel(false)}>{e.recurring ? "Cancel all" : "Cancel event"}</Button>
+                        <Button variant="ghost" onClick={() => setCancelOpen(false)}>Keep event</Button>
+                        {e.recurring && occurrence && <Button variant="outline" onClick={() => doCancel(true)}>Only this one</Button>}
+                        <Button variant="destructive" onClick={() => doCancel(false)}>{e.recurring ? "Cancel all" : "Cancel event"}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -176,8 +187,7 @@ export default function EventDetailPage() {
                 description="It is removed for everyone, without a cancellation notice. Prefer “Cancel event” when people were invited."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => remove.mutate(e.id, { onSuccess: () => navigate("/calendar") })}
+                onConfirm={() => { remove.mutate(e.id); navigate("/calendar"); }}
             />
         </Page>
     );

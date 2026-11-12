@@ -54,7 +54,7 @@ export function ShareSheet({ calendarId, onClose }: { calendarId: string | null;
                                         <p className="truncate text-[13px] text-foreground">{s.membership ? personName(s.membership.user) : s.team?.name ?? "—"}</p>
                                         <p className="text-xs text-muted-foreground">{getDropdownOptionLabel(CalendarRoleOptions, s.role)}</p>
                                     </div>
-                                    <Button variant="ghost" size="icon-sm" aria-label="Remove share" loading={unshare.isPending && unshare.variables?.shareId === s.id} onClick={() => calendarId && unshare.mutate({ id: calendarId, shareId: s.id })}><Trash2 /></Button>
+                                    <Button variant="ghost" size="icon-sm" aria-label="Remove share" onClick={() => calendarId && unshare.mutate({ id: calendarId, shareId: s.id })}><Trash2 /></Button>
                                 </li>
                             )) : <li className="px-3 py-2 text-[13px] text-muted-foreground">Not shared with anyone yet.</li>}
                         </ul>

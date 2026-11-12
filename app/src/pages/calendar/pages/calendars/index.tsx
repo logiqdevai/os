@@ -106,8 +106,7 @@ export default function CalendarsPage() {
                 description="Its events are hidden from everyone's calendar. You can restore it later."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate(archiving.id, { onSuccess: () => setArchiving(null) })}
+                onConfirm={() => { if (archiving) archive.mutate(archiving.id); setArchiving(null); }}
             />
         </Page>
     );

@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFormAutosave } from "@/hooks/use-autosave";
+import { SaveStatus } from "@/components/ui/save-status";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Archive, Building2, Check, MoreHorizontal, Pencil, Plus, X } from "lucide-react";
@@ -24,28 +26,36 @@ import { ResourceKindFilterOptions, ResourceKindFormOptions } from "@/config/con
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDateTime } from "@/lib/format";
 
+/** New resource (explicit "Create resource") or edit one (autosaves valid changes; "Done" closes). */
 function ResourceFormDialog({ open, onOpenChange, resource }: { open: boolean; onOpenChange: (o: boolean) => void; resource: Resource | null }) {
     const create = useCreateResource();
-    const update = useUpdateResource();
+    const update = useUpdateResource({ inline: true });
     const form = useForm<ResourceFormValues>({ resolver: zodResolver(resourceFormSchema), defaultValues: { name: "", kind: "ROOM", requires_approval: false } });
     useEffect(() => {
         if (open) form.reset({ name: resource?.name ?? "", kind: resource?.kind ?? "ROOM", code: resource?.code ?? "", capacity: resource?.capacity ? String(resource.capacity) : "", location: resource?.location ?? "", description: resource?.description ?? "", requires_approval: resource?.requires_approval ?? false });
     }, [open, resource, form]);
-    const pending = create.isPending || update.isPending;
+    const pending = create.isPending;
+    const toDto = (v: ResourceFormValues) => ({ name: v.name, kind: v.kind, code: v.code || undefined, capacity: v.capacity ? Number(v.capacity) : undefined, location: v.location || undefined, description: v.description || undefined, requires_approval: v.requires_approval });
+    const resourceRef = useRef(resource);
+    if (resource) resourceRef.current = resource;
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: resourceRef.current!.id, ...toDto(v) }), { enabled: open && !!resource });
+    const close = () => {
+        if (resource) void form.trigger().then((ok) => ok && autosave.flush());
+        onOpenChange(false);
+    };
     const submit = form.handleSubmit((v) => {
-        const dto = { name: v.name, kind: v.kind, code: v.code || undefined, capacity: v.capacity ? Number(v.capacity) : undefined, location: v.location || undefined, description: v.description || undefined, requires_approval: v.requires_approval };
-        const options = { onSuccess: () => onOpenChange(false) };
-        if (resource) update.mutate({ id: resource.id, ...dto }, options);
-        else create.mutate(dto, options);
+        if (resource) return close();
+        create.mutate(toDto(v), { onSuccess: () => onOpenChange(false) });
     });
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !pending && close())}>
             <DialogContent className="sm:max-w-lg">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
                             <DialogTitle>{resource ? "Edit resource" : "New resource"}</DialogTitle>
                             <DialogDescription>Rooms and equipment people can add to events. Double bookings are blocked.</DialogDescription>
+                            {resource && <SaveStatus state={autosave} />}
                         </DialogHeader>
                         <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input autoFocus placeholder="Aegean room" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <div className="grid gap-4 sm:grid-cols-3">
@@ -69,8 +79,14 @@ function ResourceFormDialog({ open, onOpenChange, resource }: { open: boolean; o
                             </FormItem>
                         )} />
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{resource ? "Save changes" : "Create resource"}</Button>
+                            {resource ? (
+                                <Button type="button" onClick={close}>Done</Button>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+                                    <Button type="submit" loading={pending}>Create resource</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>
@@ -133,8 +149,8 @@ export default function ResourcesPage() {
                                     <p className="text-xs text-muted-foreground">{formatDateTime(q.event.starts_at)}</p>
                                 </div>
                                 <div className="flex gap-2">
-                                    <Button size="sm" variant="outline" loading={decide.isPending} onClick={() => decide.mutate({ resourceId: q.resource.id, eventId: q.event.id, decision: "decline" })}><X /> Decline</Button>
-                                    <Button size="sm" loading={decide.isPending} onClick={() => decide.mutate({ resourceId: q.resource.id, eventId: q.event.id, decision: "approve" })}><Check /> Approve</Button>
+                                    <Button size="sm" variant="outline" onClick={() => decide.mutate({ resourceId: q.resource.id, eventId: q.event.id, decision: "decline", requestId: q.id })}><X /> Decline</Button>
+                                    <Button size="sm" onClick={() => decide.mutate({ resourceId: q.resource.id, eventId: q.event.id, decision: "approve", requestId: q.id })}><Check /> Approve</Button>
                                 </div>
                             </li>
                         ))}
@@ -164,8 +180,7 @@ export default function ResourcesPage() {
                 description="It can no longer be added to events. Existing bookings stay."
                 confirmText="Archive"
                 variant="destructive"
-                isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate(archiving.id, { onSuccess: () => setArchiving(null) })}
+                onConfirm={() => { if (archiving) archive.mutate(archiving.id); setArchiving(null); }}
             />
         </Page>
     );

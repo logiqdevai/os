@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Copy, ExternalLink, Link2, MoreHorizontal, Pause, Pencil, Play, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Copy, ExternalLink, Link2, MoreHorizontal, Pause, Pencil, Play, Plus } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/data-table";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
@@ -29,11 +29,18 @@ export default function BookingLinksPage() {
     const [formOpen, setFormOpen] = useState(false);
     const [editing, setEditing] = useState<BookingLink | null>(null);
 
+    /** The menu item reads "Copied" for a moment (the menu stays open) instead of a toast. */
+    const [copiedId, setCopiedId] = useState<string | null>(null);
+    useEffect(() => {
+        if (!copiedId) return;
+        const t = setTimeout(() => setCopiedId(null), 1500);
+        return () => clearTimeout(t);
+    }, [copiedId]);
     const publicUrl = (l: BookingLink) => `${window.location.origin}${l.public_path}`;
     const copy = async (l: BookingLink) => {
         try {
             await navigator.clipboard.writeText(publicUrl(l));
-            toast({ title: "Link copied" });
+            setCopiedId(l.id);
         } catch {
             toast({ variant: "destructive", title: "Could not copy", description: publicUrl(l) });
         }
@@ -63,7 +70,7 @@ export default function BookingLinksPage() {
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${l.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => copy(l)}><Copy /> Copy link</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); void copy(l); }}>{copiedId === l.id ? <><Check className="text-success" /> Copied</> : <><Copy /> Copy link</>}</DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => window.open(l.public_path, "_blank", "noopener")}><ExternalLink /> Open booking page</DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => { setEditing(l); setFormOpen(true); }}><Pencil /> Edit</DropdownMenuItem>
                         {l.status === "ACTIVE" ? (
