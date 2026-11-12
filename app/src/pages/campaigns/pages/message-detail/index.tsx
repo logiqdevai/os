@@ -4,8 +4,6 @@ import { Page, PageHeader, KeyValueList, Section } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { useCommMessage, useMessageAction } from "@/features/communications/hooks/use-communications";
@@ -28,10 +26,8 @@ export default function MessageDetailPage() {
     if (message.error) return <Page><ErrorState error={message.error} onRetry={() => message.refetch()} /></Page>;
     const m = message.data;
     const run = (a: "resend" | "cancel") =>
-        action.mutate({ id: m.id, action: a }, {
-            onSuccess: (r) => toast(r.status === "FAILED" ? { variant: "destructive", title: "Still failing", description: r.failure_reason ?? undefined } : { title: a === "resend" ? "Message resent" : "Message cancelled" }),
-            onError: (e) => toast({ variant: "destructive", title: "Could not update the message", description: getApiErrorMessage(e) }),
-        });
+        // The status badge changes at once; the server's result (incl. a new failure reason) replaces it when it returns.
+        action.mutate({ id: m.id, action: a });
 
     return (
         <Page width="wide">

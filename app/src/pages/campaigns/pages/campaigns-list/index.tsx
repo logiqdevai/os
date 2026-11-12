@@ -10,8 +10,6 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatNumber, personName } from "@/lib/format";
 import { useCampaignAction, useCampaigns, useDeleteCampaign } from "@/features/communications/hooks/use-communications";
 import type { Campaign } from "@/features/communications/interfaces/communications.interfaces";
@@ -38,10 +36,7 @@ export default function CampaignsListPage() {
     const [deleting, setDeleting] = useState<Campaign | null>(null);
 
     const duplicate = (c: Campaign) =>
-        action.mutate({ id: c.id, action: "duplicate" }, {
-            onSuccess: (copy) => { toast({ title: "Campaign duplicated" }); navigate(CampaignPaths.edit(copy.id)); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not duplicate", description: getApiErrorMessage(e) }),
-        });
+        action.mutate({ id: c.id, action: "duplicate" }, { onSuccess: (copy) => navigate(CampaignPaths.edit(copy.id)) });
 
     const columns: DataTableColumn<Campaign>[] = [
         {
@@ -137,14 +132,7 @@ export default function CampaignsListPage() {
                 title={`Archive ${archiving?.name}?`}
                 description="Archived campaigns are hidden from the list. Their history and statistics are kept."
                 confirmText="Archive"
-                isLoading={action.isPending}
-                onConfirm={() =>
-                    archiving &&
-                    action.mutate({ id: archiving.id, action: "archive" }, {
-                        onSuccess: () => { toast({ title: "Campaign archived" }); setArchiving(null); },
-                        onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }),
-                    })
-                }
+                onConfirm={() => { if (!archiving) return; action.mutate({ id: archiving.id, action: "archive" }); setArchiving(null); }}
             />
             <ConfirmationDialog
                 isOpen={!!deleting}
@@ -153,14 +141,7 @@ export default function CampaignsListPage() {
                 description="This cannot be undone."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() =>
-                    deleting &&
-                    del.mutate(deleting.id, {
-                        onSuccess: () => { toast({ title: "Campaign deleted" }); setDeleting(null); },
-                        onError: (e) => toast({ variant: "destructive", title: "Could not delete", description: getApiErrorMessage(e) }),
-                    })
-                }
+                onConfirm={() => { if (!deleting) return; del.mutate(deleting.id); setDeleting(null); }}
             />
         </Page>
     );

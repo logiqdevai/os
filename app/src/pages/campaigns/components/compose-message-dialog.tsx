@@ -9,8 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { useSendMessage, useSenderIdentities, useTemplates } from "@/features/communications/hooks/use-communications";
 import { composeFormSchema, type ComposeFormValues } from "@/features/communications/validation-schemas/communications.schema";
 import { CommChannelFormOptions } from "@/config/constants/dropdowns/communications/comm-channel-form.options";
@@ -47,15 +45,8 @@ export function ComposeMessageDialog({ open, onOpenChange }: { open: boolean; on
                 kind: v.kind,
                 sender_identity_id: v.sender_identity_id || undefined,
             },
-            {
-                onSuccess: (m) => {
-                    if (m.status === "FAILED" || m.status === "CANCELLED") toast({ variant: "destructive", title: "Message not sent", description: m.failure_reason ?? m.last_error ?? undefined });
-                    else toast({ title: "Message sent" });
-                    onOpenChange(false);
-                    navigate(CampaignPaths.message(m.id));
-                },
-                onError: (e) => toast({ variant: "destructive", title: "Could not send", description: getApiErrorMessage(e) }),
-            },
+            // The message page shows its delivery status (or why it was not sent); no toast.
+            { onSuccess: (m) => { onOpenChange(false); navigate(CampaignPaths.message(m.id)); } },
         );
     });
 

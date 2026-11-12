@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Pencil, Trash2, Upload, Users } from "lucide-react";
+import { Pencil, Trash2, Upload, Users, X } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,6 @@ import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatNumber, formatRelative, personName } from "@/lib/format";
 import { useAddListMembers, useList, useListMembers, useRemoveListMember } from "@/features/communications/hooks/use-communications";
 import type { ListMemberInput, RecipientListMember } from "@/features/communications/interfaces/communications.interfaces";
@@ -58,6 +56,7 @@ export default function ListDetailPage() {
     const [editOpen, setEditOpen] = useState(false);
     const [text, setText] = useState("");
     const [removing, setRemoving] = useState<RecipientListMember | null>(null);
+    const [imported, setImported] = useState<string | null>(null);
     const rows = useMemo(() => parseRows(text), [text]);
 
     if (list.isPending) return <PageSkeleton />;
@@ -77,14 +76,14 @@ export default function ListDetailPage() {
         },
     ];
 
+    // The import result stays on the page (added / already in the list / invalid) instead of a toast.
     const doImport = () =>
         add.mutate({ id: l.id, members: rows }, {
             onSuccess: (r) => {
-                toast({ title: `${formatNumber(r.added)} added`, description: [r.skipped && `${r.skipped} already in the list`, r.invalid.length && `${r.invalid.length} invalid`].filter(Boolean).join(" · ") || undefined });
+                setImported([`${formatNumber(r.added)} added`, r.skipped && `${r.skipped} already in the list`, r.invalid.length && `${r.invalid.length} invalid`].filter(Boolean).join(" · "));
                 setImportOpen(false);
                 setText("");
             },
-            onError: (e) => toast({ variant: "destructive", title: "Could not add members", description: getApiErrorMessage(e) }),
         });
 
     return (
@@ -101,6 +100,12 @@ export default function ListDetailPage() {
                     </Can>
                 }
             />
+            {imported && (
+                <div role="status" className="mb-3 flex items-center gap-2 rounded-md border border-border bg-secondary/60 px-3 py-2 text-[13px] text-foreground">
+                    <span className="min-w-0 flex-1">Import finished: {imported}.</span>
+                    <Button variant="ghost" size="icon-sm" aria-label="Dismiss" onClick={() => setImported(null)}><X /></Button>
+                </div>
+            )}
             <TableToolbar search={search} onSearch={setSearch} placeholder="Search members…" />
             <DataTable
                 columns={columns}
@@ -135,8 +140,7 @@ export default function ListDetailPage() {
                 description={removing ? `${memberName(removing)} will no longer receive campaigns sent to this list.` : ""}
                 confirmText="Remove"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => removing && remove.mutate({ id: l.id, memberId: removing.id }, { onSuccess: () => { toast({ title: "Removed from list" }); setRemoving(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not remove", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (!removing) return; remove.mutate({ id: l.id, memberId: removing.id }); setRemoving(null); }}
             />
         </Page>
     );

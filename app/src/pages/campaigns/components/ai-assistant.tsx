@@ -8,8 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { useAiFeedback, useAiStatus, useGenerateAi } from "@/features/communications/hooks/use-ai-threads";
 import type { CommAiOutput, CommAiTask, CommAiTone } from "@/features/communications/interfaces/ai-threads.interfaces";
 import type { CommChannel } from "@/features/communications/interfaces/communications.interfaces";
@@ -54,15 +52,14 @@ export function AiAssistant({ channel, subject, body, campaignId, onApply }: { c
             { task, channel, prompt: prompt || undefined, subject: subject || undefined, body: body || undefined, tone, language: language || undefined, campaign_id: campaignId },
             {
                 onSuccess: (r) => (r.available ? setResult({ id: r.generation_id, output: r.output }) : setNotice(r.message)),
-                onError: (e) => toast({ variant: "destructive", title: "The assistant could not answer", description: getApiErrorMessage(e) }),
             },
         );
     };
 
     const apply = (patch: AiApplyPatch) => {
         onApply(patch);
+        // The editor shows the applied text; no toast.
         if (result) feedback.mutate({ id: result.id, accepted: true, campaign_id: campaignId });
-        toast({ title: "Applied to the editor" });
     };
 
     const out = result?.output;

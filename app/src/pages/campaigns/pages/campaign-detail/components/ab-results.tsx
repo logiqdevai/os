@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatNumber } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { useCampaignVariants, usePickCampaignWinner } from "@/features/communications/hooks/use-campaign-variants";
@@ -83,10 +81,7 @@ export function AbResults({ campaign }: { campaign: CampaignDetail }) {
                 isLoading={pick.isPending}
                 onConfirm={() =>
                     choosing &&
-                    pick.mutate({ id: campaign.id, variantId: choosing.id }, {
-                        onSuccess: () => { toast({ title: `Variant ${choosing.label} is the winner` }); setChoosing(null); },
-                        onError: (e) => toast({ variant: "destructive", title: "Could not pick the winner", description: getApiErrorMessage(e) }),
-                    })
+                    pick.mutate({ id: campaign.id, variantId: choosing.id }, { onSuccess: () => setChoosing(null) })
                 }
             />
         </Section>

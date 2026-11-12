@@ -8,8 +8,6 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatNumber, formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { useDeleteList, useListAction, useLists } from "@/features/communications/hooks/use-communications";
@@ -96,8 +94,7 @@ export default function ListsPage() {
                 title={`Archive ${archiving?.name}?`}
                 description="Archived lists can't be picked for new campaigns."
                 confirmText="Archive"
-                isLoading={action.isPending}
-                onConfirm={() => archiving && action.mutate({ id: archiving.id, action: "archive" }, { onSuccess: () => { toast({ title: "List archived" }); setArchiving(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (!archiving) return; action.mutate({ id: archiving.id, action: "archive" }); setArchiving(null); }}
             />
             <ConfirmationDialog
                 isOpen={!!deleting}
@@ -106,8 +103,7 @@ export default function ListsPage() {
                 description="The list and its members are removed. Contacts stay in the CRM."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => deleting && del.mutate(deleting.id, { onSuccess: () => { toast({ title: "List deleted" }); setDeleting(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not delete", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (!deleting) return; del.mutate(deleting.id); setDeleting(null); }}
             />
         </Page>
     );

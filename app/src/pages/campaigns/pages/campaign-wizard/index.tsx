@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,8 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ErrorState, NoAccessState, PageSkeleton } from "@/components/ui/states";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useAutosave } from "@/hooks/use-autosave";
 import { cn } from "@/lib/utils";
 import { useCampaign, useCampaignAction, useCreateCampaign, useUpdateCampaign } from "@/features/communications/hooks/use-communications";
 import type { CampaignDetail, CampaignInput, PreflightResult } from "@/features/communications/interfaces/communications.interfaces";
@@ -118,7 +118,8 @@ function toInput(v: CampaignFormValues, creating: boolean): CampaignInput {
 
 /**
  * /campaigns/new and /campaigns/:id/edit — audience → content → schedule → review.
- * Each "Next" saves the draft (POST / PATCH /communications/campaigns). The review step runs the pre-send checks and
+ * The first "Next" creates the draft (POST); after that every valid change autosaves (PATCH, <SaveStatus /> in the
+ * header — no Save draft button). The review step runs the pre-send checks and
  * offers submit for approval (communications.campaigns.update), approve (…approve) and schedule / send now (…send).
  */
 export default function CampaignWizardPage() {
@@ -142,36 +143,39 @@ export default function CampaignWizardPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loadedId]);
 
+    // Autosave the draft once it exists. Only fields of the steps reached so far must be valid (later steps may be empty).
+    const json = JSON.stringify(form.watch());
+    const draft = useMemo(() => toInput(JSON.parse(json) as CampaignFormValues, false), [json]);
+    const stepValid = useMemo(() => {
+        const r = campaignFormSchema.safeParse(JSON.parse(json));
+        if (r.success) return true;
+        const reached = new Set<string>(STEP_FIELDS.slice(0, step + 1).flat());
+        return !r.error.issues.some((i) => reached.has(String(i.path[0])));
+    }, [json, step]);
+    const editableStatus = !campaign.data || ["DRAFT", "PENDING_APPROVAL", "APPROVED"].includes(campaign.data.status);
+    const autosave = useAutosave({ value: draft, enabled: !!id && editableStatus && form.formState.isDirty && stepValid, save: (v) => update.mutateAsync({ id: id as string, ...v }) });
+
     if (routeId && campaign.isPending) return <PageSkeleton />;
     if (routeId && campaign.error) return <Page><ErrorState error={campaign.error} onRetry={() => campaign.refetch()} /></Page>;
     if (campaign.data && !["DRAFT", "PENDING_APPROVAL", "APPROVED"].includes(campaign.data.status)) {
         return <Page><NoAccessState description="This campaign was already scheduled or sent and can no longer be edited. Duplicate it to send again." /></Page>;
     }
 
-    const saving = create.isPending || update.isPending;
-    const save = async (): Promise<CampaignDetail | null> => {
-        const values = form.getValues();
-        try {
-            if (!id) {
-                const c = await create.mutateAsync(toInput(values, true));
-                setId(c.id);
-                window.history.replaceState(null, "", CampaignPaths.edit(c.id));
-                return c;
-            }
-            return await update.mutateAsync({ id, ...toInput(values, false) });
-        } catch (e) {
-            toast({ variant: "destructive", title: "Could not save the campaign", description: getApiErrorMessage(e) });
-            return null;
-        }
-    };
-
+    const saving = create.isPending;
+    /** The first Next creates the draft; later steps only flush the autosave (failures stay in the <SaveStatus />). */
     const next = async () => {
         if (!(await form.trigger(STEP_FIELDS[step]))) return;
         if (step === 0 && !form.getValues("audiences").some((a) => a.mode === "INCLUDE")) {
             form.setError("audiences", { message: "Include at least one list or segment" });
             return;
         }
-        if (await save()) setStep((s) => Math.min(s + 1, 3));
+        if (!id) {
+            const c = await create.mutateAsync(toInput(form.getValues(), true)).catch(() => null);
+            if (!c) return;
+            setId(c.id);
+            window.history.replaceState(null, "", CampaignPaths.edit(c.id));
+        } else autosave.flush();
+        setStep((s) => Math.min(s + 1, 3));
     };
 
     const c = campaign.data;
@@ -182,19 +186,15 @@ export default function CampaignWizardPage() {
         const body = verb === "schedule"
             ? { ...(values.send_mode === "later" && values.scheduled_at ? { scheduled_at: new Date(values.scheduled_at).toISOString() } : {}), schedule_timezone: values.schedule_timezone }
             : {};
-        action.mutate({ id: c.id, action: verb, body }, {
-            onSuccess: () => {
-                toast({ title: verb === "submit" ? "Submitted for approval" : verb === "approve" ? "Campaign approved" : values.send_mode === "now" ? "Sending started" : "Campaign scheduled" });
-                if (verb !== "approve") navigate(CampaignPaths.detail(c.id));
-            },
-            onError: (e) => toast({ variant: "destructive", title: "Could not continue", description: getApiErrorMessage(e) }),
-        });
+        // The campaign page shows the result (status badge, progress); approving keeps you here with the new status.
+        action.mutate({ id: c.id, action: verb, body }, { onSuccess: () => { if (verb !== "approve") navigate(CampaignPaths.detail(c.id)); } });
     };
 
     return (
         <Page width="wide">
             <PageHeader
                 title={c ? `Edit ${c.name}` : "New campaign"}
+                meta={id ? <SaveStatus state={autosave} /> : undefined}
                 back={{ to: c ? CampaignPaths.detail(c.id) : CampaignPaths.root, label: c ? "Campaign" : "Campaigns" }}
             />
             <ol className="mb-6 grid grid-cols-4 gap-2">
@@ -321,7 +321,6 @@ export default function CampaignWizardPage() {
                         <div className="flex flex-col gap-2 sm:flex-row">
                             {step < 3 && (
                                 <>
-                                    {id && <Button type="button" variant="outline" onClick={async () => { if (await form.trigger(STEP_FIELDS[step]) && await save()) toast({ title: "Draft saved" }); }} disabled={saving}>Save draft</Button>}
                                     <Button type="submit" loading={saving}>Next <ChevronRight /></Button>
                                 </>
                             )}

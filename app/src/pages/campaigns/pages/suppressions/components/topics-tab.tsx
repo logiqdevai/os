@@ -15,8 +15,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { useCreateTopic, useDeleteTopic, useTopicAction, useTopics, useUpdateTopic } from "@/features/communications/hooks/use-topics";
 import type { CommTopic } from "@/features/communications/interfaces/topics.interfaces";
@@ -26,24 +26,27 @@ import { CommTopicChannelFormOptions } from "@/config/constants/dropdowns/commun
 function TopicDialog({ topic, open, onOpenChange }: { topic: CommTopic | null; open: boolean; onOpenChange: (o: boolean) => void }) {
     const create = useCreateTopic();
     const update = useUpdateTopic();
-    const pending = create.isPending || update.isPending;
     const form = useForm<TopicFormValues>({ resolver: zodResolver(topicFormSchema), defaultValues: { name: "", description: "", channel: "ALL", default_opt_in: false } });
     useEffect(() => {
         if (open) form.reset({ name: topic?.name ?? "", description: topic?.description ?? "", channel: topic?.channel ?? "ALL", default_opt_in: topic?.default_opt_in ?? false });
-    }, [open, topic, form]);
+        // Only when the dialog opens or switches topic: a refresh after an autosave must not reset typing.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, topic?.id, form]);
+    const toDto = (v: TopicFormValues) => ({ name: v.name, description: v.description || null, channel: v.channel === "ALL" ? null : v.channel, default_opt_in: v.default_opt_in });
+    // Editing an existing topic saves as you type (no Save button); a new topic keeps its Create button.
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: (topic as CommTopic).id, ...toDto(v) }), { enabled: open && !!topic });
+    const close = () => { autosave.flush(); onOpenChange(false); };
     const submit = form.handleSubmit((v) => {
-        const dto = { name: v.name, description: v.description || null, channel: v.channel === "ALL" ? null : v.channel, default_opt_in: v.default_opt_in };
-        const done = { onSuccess: () => { toast({ title: topic ? "Topic saved" : "Topic created" }); onOpenChange(false); }, onError: (e: unknown) => toast({ variant: "destructive", title: "Could not save the topic", description: getApiErrorMessage(e) }) };
-        if (topic) update.mutate({ id: topic.id, ...dto }, done);
-        else create.mutate(dto, done);
+        if (topic) return close();
+        create.mutate(toDto(v), { onSuccess: () => onOpenChange(false) });
     });
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !create.isPending && close())}>
             <DialogContent className="sm:max-w-md">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
-                            <DialogTitle>{topic ? "Edit topic" : "New topic"}</DialogTitle>
+                            <DialogTitle className="flex flex-wrap items-center gap-2">{topic ? "Edit topic" : "New topic"}{topic && <SaveStatus state={autosave} className="font-normal" />}</DialogTitle>
                             <DialogDescription>Recipients choose topics on the preference page linked in every marketing email.</DialogDescription>
                         </DialogHeader>
                         <FormField control={form.control} name="name" render={({ field }) => (
@@ -68,8 +71,14 @@ function TopicDialog({ topic, open, onOpenChange }: { topic: CommTopic | null; o
                             </FormItem>
                         )} />
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{topic ? "Save" : "Create topic"}</Button>
+                            {topic ? (
+                                <Button type="submit">Done</Button>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>Cancel</Button>
+                                    <Button type="submit" loading={create.isPending}>Create topic</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>
@@ -96,7 +105,7 @@ export function TopicsTab() {
 
     const open = (t: CommTopic | null) => { setEditing(t); setDialogOpen(true); };
     const doAction = (t: CommTopic, a: "archive" | "restore") =>
-        action.mutate({ id: t.id, action: a }, { onSuccess: () => toast({ title: a === "archive" ? "Topic archived" : "Topic restored" }), onError: (e) => toast({ variant: "destructive", title: "Could not update the topic", description: getApiErrorMessage(e) }) });
+        action.mutate({ id: t.id, action: a });
 
     const columns: DataTableColumn<CommTopic>[] = [
         {
@@ -161,8 +170,7 @@ export function TopicsTab() {
                 description="Subscriptions to this topic are deleted too, and campaigns using it lose their topic. Archive it instead to keep the history."
                 confirmText="Delete topic"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => { toast({ title: "Topic deleted" }); setDeleting(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not delete", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (!deleting) return; remove.mutate(deleting.id); setDeleting(null); }}
             />
         </>
     );

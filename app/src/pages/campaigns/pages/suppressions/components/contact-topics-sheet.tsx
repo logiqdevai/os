@@ -4,8 +4,6 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime } from "@/lib/format";
 import { useContactTopics, useSetContactTopics } from "@/features/communications/hooks/use-topics";
 
@@ -22,10 +20,8 @@ export function ContactTopicsSheet({ contactId, onOpenChange }: { contactId: str
 
     const toggle = (topicId: string, on: boolean) =>
         contactId &&
-        set.mutate(
-            { contactId, subscriptions: [{ topic_id: topicId, status: on ? "OPTED_IN" : "OPTED_OUT" }] },
-            { onSuccess: () => toast({ title: on ? "Subscribed" : "Unsubscribed" }), onError: (e) => toast({ variant: "destructive", title: "Could not change the subscription", description: getApiErrorMessage(e) }) },
-        );
+        // The switch flips at once (rolled back if the API refuses).
+        set.mutate({ contactId, subscriptions: [{ topic_id: topicId, status: on ? "OPTED_IN" : "OPTED_OUT" }] });
 
     return (
         <Sheet open={!!contactId} onOpenChange={onOpenChange}>
@@ -52,7 +48,7 @@ export function ContactTopicsSheet({ contactId, onOpenChange }: { contactId: str
                                         </p>
                                         {t.source === "UNSUBSCRIBE_LINK" && <Badge variant="neutral">Chosen by the contact</Badge>}
                                     </div>
-                                    <Switch checked={t.effective} disabled={!canManage || set.isPending} onCheckedChange={(v) => toggle(t.topic.id, v)} aria-label={`Subscribed to ${t.topic.name}`} />
+                                    <Switch checked={t.effective} disabled={!canManage} onCheckedChange={(v) => toggle(t.topic.id, v)} aria-label={`Subscribed to ${t.topic.name}`} />
                                 </li>
                             ))}
                         </ul>

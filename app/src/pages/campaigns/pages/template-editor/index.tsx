@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { History, Rocket, Save } from "lucide-react";
+import { History, Plus, Rocket } from "lucide-react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -12,8 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { formatDateTime, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { useCreateTemplate, usePublishTemplate, useTemplate, useUpdateTemplate } from "@/features/communications/hooks/use-communications";
@@ -41,10 +41,23 @@ const values = (t?: TemplateDetail | null): TemplateFormValues => {
     };
 };
 
+const toDto = (v: TemplateFormValues) => ({
+    name: v.name,
+    description: v.description || undefined,
+    category: v.category,
+    language: v.language,
+    subject: v.channel === "EMAIL" ? v.subject ?? "" : undefined,
+    preheader: v.channel === "EMAIL" ? v.preheader ?? "" : undefined,
+    body_html: v.channel === "EMAIL" ? v.body_html ?? "" : undefined,
+    body_text: v.channel === "SMS" ? v.body_text ?? "" : undefined,
+    change_note: v.change_note || undefined,
+});
+
 const versionLabel = (v: TemplateVersion) => (v.status === "PUBLISHED" ? "Published" : v.status === "DRAFT" ? "Draft" : "Previous");
 
 /**
- * /campaigns/templates/new and /campaigns/templates/:id — editor with live preview and versions.
+ * /campaigns/templates/new and /campaigns/templates/:id — editor with live preview and versions. An existing template's
+ * draft saves as you edit (<SaveStatus /> in the header, no Save draft button); Publish stays an explicit button.
  * @perm VIEW communications.templates.read · create · update (save draft / publish)
  * @api GET /communications/templates/:id · POST /templates · PATCH /templates/:id · POST /templates/:id/versions/:versionId/publish · POST /templates/preview
  */
@@ -66,6 +79,9 @@ export default function TemplateEditorPage() {
     }, [loaded]);
 
     const [channel, subject, preheader, body_html, body_text] = form.watch(["channel", "subject", "preheader", "body_html", "body_text"]);
+    const canAutosave = !!template.data && canEdit && !template.data.archived_at;
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: template.data?.id as string, ...toDto(v) }), { enabled: canAutosave });
+    const unsaved = autosave.status === "pending" || autosave.status === "saving";
 
     if (id && template.isPending) return <PageSkeleton />;
     if (id && template.error) return <Page><ErrorState error={template.error} onRetry={() => template.refetch()} /></Page>;
@@ -73,33 +89,15 @@ export default function TemplateEditorPage() {
     const readOnly = !canEdit || !!t?.archived_at;
 
     const save = form.handleSubmit((v) => {
-        const dto = {
-            name: v.name,
-            description: v.description || undefined,
-            category: v.category,
-            language: v.language,
-            subject: v.channel === "EMAIL" ? v.subject ?? "" : undefined,
-            preheader: v.channel === "EMAIL" ? v.preheader ?? "" : undefined,
-            body_html: v.channel === "EMAIL" ? v.body_html ?? "" : undefined,
-            body_text: v.channel === "SMS" ? v.body_text ?? "" : undefined,
-            change_note: v.change_note || undefined,
-        };
-        const onError = (e: unknown) => toast({ variant: "destructive", title: "Could not save the template", description: getApiErrorMessage(e) });
-        if (t) update.mutate({ id: t.id, ...dto }, { onSuccess: (r) => { toast({ title: "Draft saved" }); form.reset(values(r)); }, onError });
-        else create.mutate({ ...dto, channel: v.channel }, { onSuccess: (r) => { toast({ title: "Template created", description: "Publish it to use it in campaigns." }); navigate(CampaignPaths.template(r.id), { replace: true }); }, onError });
+        if (t) return autosave.flush();
+        create.mutate({ ...toDto(v), channel: v.channel }, { onSuccess: (r) => navigate(CampaignPaths.template(r.id), { replace: true }) });
     });
 
+    // Publishing waits until the latest edits are saved (the button is disabled meanwhile); the versions list shows the result.
     const doPublish = () => {
         const draft = t?.draft_version;
-        if (!t || !draft) return;
-        if (form.formState.isDirty) {
-            toast({ variant: "destructive", title: "Save your changes first" });
-            return;
-        }
-        publish.mutate({ id: t.id, versionId: draft.id }, {
-            onSuccess: (v) => toast({ title: `Version ${v.version} published` }),
-            onError: (e) => toast({ variant: "destructive", title: "Could not publish", description: getApiErrorMessage(e) }),
-        });
+        if (!t || !draft || unsaved) return;
+        publish.mutate({ id: t.id, versionId: draft.id });
     };
 
     const insert = (token: string) => {
@@ -112,12 +110,12 @@ export default function TemplateEditorPage() {
             <PageHeader
                 back={{ to: CampaignPaths.templates, label: "Templates" }}
                 title={t?.name ?? "New template"}
-                meta={t && <Badge variant={t.status === "ACTIVE" ? "success" : "neutral"}>{getDropdownOptionLabel(CommTemplateStatusFormOptions, t.status)}</Badge>}
+                meta={t && <><Badge variant={t.status === "ACTIVE" ? "success" : "neutral"}>{getDropdownOptionLabel(CommTemplateStatusFormOptions, t.status)}</Badge>{canAutosave && <SaveStatus state={autosave} />}</>}
                 actions={
                     !readOnly && (
                         <>
-                            <Button variant="outline" onClick={save} loading={create.isPending || update.isPending}><Save /> {t ? "Save draft" : "Create"}</Button>
-                            {t?.draft_version && <Button onClick={doPublish} loading={publish.isPending}><Rocket /> Publish v{t.draft_version.version}</Button>}
+                            {!t && <Button variant="outline" onClick={save} loading={create.isPending}><Plus /> Create</Button>}
+                            {t?.draft_version && <Button onClick={doPublish} loading={publish.isPending} disabled={unsaved} title={unsaved ? "Saving your latest changes…" : undefined}><Rocket /> Publish v{t.draft_version.version}</Button>}
                         </>
                     )
                 }

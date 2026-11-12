@@ -11,8 +11,6 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatNumber, formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { useDeleteTemplate, useTemplateAction, useTemplates } from "@/features/communications/hooks/use-communications";
@@ -38,10 +36,7 @@ export default function TemplatesPage() {
     const archived = filters.archived === "true";
 
     const run = (t: Template, a: "duplicate" | "archive" | "restore") =>
-        action.mutate({ id: t.id, action: a }, {
-            onSuccess: (res) => { toast({ title: a === "duplicate" ? "Template duplicated" : a === "archive" ? "Template archived" : "Template restored" }); if (a === "duplicate") navigate(CampaignPaths.template(res.id)); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not update the template", description: getApiErrorMessage(e) }),
-        });
+        action.mutate({ id: t.id, action: a }, { onSuccess: (res) => { if (a === "duplicate") navigate(CampaignPaths.template(res.id)); } });
 
     const columns: DataTableColumn<Template>[] = [
         {
@@ -126,8 +121,7 @@ export default function TemplatesPage() {
                 description="All versions are deleted. Messages already sent keep their content."
                 confirmText="Delete"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => deleting && del.mutate(deleting.id, { onSuccess: () => { toast({ title: "Template deleted" }); setDeleting(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not delete", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (!deleting) return; del.mutate(deleting.id); setDeleting(null); }}
             />
         </Page>
     );

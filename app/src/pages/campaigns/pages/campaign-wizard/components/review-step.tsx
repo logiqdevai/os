@@ -6,7 +6,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { KeyValueList, Section } from "@/components/ui/page";
 import { ErrorState } from "@/components/ui/states";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/hooks/use-toast";
 import { usePermission } from "@/hooks/use-permission";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatNumber } from "@/lib/format";
@@ -25,6 +24,8 @@ export function ReviewStep({ campaign, values, onPreflight }: { campaign: Campai
     const test = useTestSend();
     const canUpdate = usePermission("communications.campaigns.update");
     const [testTo, setTestTo] = useState("");
+    /** Outcome of the last test send, shown under the field (no toast). */
+    const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
     const { mutate } = preflight;
     const run = () => mutate(campaign.id, { onSuccess: onPreflight, onError: () => onPreflight(null) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -34,13 +35,15 @@ export function ReviewStep({ campaign, values, onPreflight }: { campaign: Campai
     const sendTest = () => {
         const addresses = testTo.split(/[,\s]+/).filter(Boolean).slice(0, 5);
         if (!addresses.length) return;
+        setTestResult(null);
         test.mutate({ id: campaign.id, addresses }, {
             onSuccess: ({ results }) => {
                 const failed = results.filter((x) => !["SENT", "DELIVERED"].includes(x.status));
-                if (failed.length) toast({ variant: "destructive", title: "Test not sent", description: failed.map((f) => `${f.address}: ${f.reason ?? getDropdownOptionLabel(CommMessageStatusFormOptions, f.status)}`).join(" · ") });
-                else toast({ title: `Test sent to ${results.length} address${results.length === 1 ? "" : "es"}` });
+                setTestResult(failed.length
+                    ? { ok: false, text: `Not sent — ${failed.map((f) => `${f.address}: ${f.reason ?? getDropdownOptionLabel(CommMessageStatusFormOptions, f.status)}`).join(" · ")}` }
+                    : { ok: true, text: `Sent to ${results.map((x) => x.address).join(", ")}` });
             },
-            onError: (e) => toast({ variant: "destructive", title: "Could not send test", description: getApiErrorMessage(e) }),
+            onError: (e) => setTestResult({ ok: false, text: `Could not send the test: ${getApiErrorMessage(e)}` }),
         });
     };
 
@@ -112,6 +115,7 @@ export function ReviewStep({ campaign, values, onPreflight }: { campaign: Campai
                             <Input value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder={campaign.channel === "EMAIL" ? "you@agency.com" : "+306912345678"} aria-label="Test recipients" />
                             <Button variant="outline" onClick={sendTest} loading={test.isPending} disabled={!testTo.trim()}><Send /> Send</Button>
                         </div>
+                        {testResult && <p role="status" className={`mt-2 flex items-start gap-1.5 text-xs ${testResult.ok ? "text-success" : "text-danger"}`}>{testResult.ok ? <CircleCheck className="mt-px size-3.5 shrink-0" /> : <CircleAlert className="mt-px size-3.5 shrink-0" />}{testResult.text}</p>}
                     </Section>
                 )}
             </div>

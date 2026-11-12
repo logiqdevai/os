@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,8 +17,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useAutosave } from "@/hooks/use-autosave";
 import { formatRelative } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import {
@@ -44,7 +44,7 @@ function DomainCard({ domain }: { domain: SenderDomain }) {
                 <span className="font-medium text-foreground">{domain.domain}</span>
                 <Badge variant={statusVariant(domain.status)}>{getDropdownOptionLabel(CommSenderDomainStatusOptions, domain.status)}</Badge>
                 <span className="flex-1 text-xs text-muted-foreground">{domain.last_checked_at ? `Checked ${formatRelative(domain.last_checked_at)}` : ""}</span>
-                <Button variant="outline" size="sm" loading={verify.isPending} onClick={() => verify.mutate(domain.id, { onSuccess: (d) => toast({ title: d.status === "VERIFIED" ? "Domain verified" : "Not verified yet", description: d.failure_reason ?? undefined }), onError: (e) => toast({ variant: "destructive", title: "Could not check", description: getApiErrorMessage(e) }) })}>
+                <Button variant="outline" size="sm" loading={verify.isPending} onClick={() => verify.mutate(domain.id)}>
                     <RefreshCw /> Check DNS
                 </Button>
                 <Button variant="ghost" size="icon-sm" aria-label={`Remove ${domain.domain}`} onClick={() => setDeleting(true)}><Trash2 /></Button>
@@ -72,8 +72,7 @@ function DomainCard({ domain }: { domain: SenderDomain }) {
                 description="Senders on this domain stop being verified for new sends."
                 confirmText="Remove"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => del.mutate(domain.id, { onSuccess: () => { toast({ title: "Domain removed" }); setDeleting(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not remove", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { del.mutate(domain.id); setDeleting(false); }}
             />
         </div>
     );
@@ -84,10 +83,8 @@ function DomainsTab() {
     const create = useCreateSenderDomain();
     const [domain, setDomain] = useState("");
     const add = () =>
-        create.mutate({ domain: domain.trim() }, {
-            onSuccess: (d) => { toast({ title: "Domain added", description: d.failure_reason ?? "Publish the DNS records, then check DNS." }); setDomain(""); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not add the domain", description: getApiErrorMessage(e) }),
-        });
+        // The new domain card (with its DNS records) appears in the list.
+        create.mutate({ domain: domain.trim() }, { onSuccess: () => setDomain("") });
     return (
         <div className="space-y-4">
             <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(e) => { e.preventDefault(); if (domain.trim()) add(); }}>
@@ -110,8 +107,7 @@ function IdentityDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
     const channel = form.watch("channel");
     const submit = form.handleSubmit((v) =>
         create.mutate({ channel: v.channel, address: v.address, display_name: v.display_name || undefined, reply_to_address: v.reply_to_address || undefined, is_default: v.is_default }, {
-            onSuccess: (s) => { toast({ title: "Sender added", description: s.failure_reason ?? undefined }); onOpenChange(false); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not add the sender", description: getApiErrorMessage(e) }),
+            onSuccess: () => onOpenChange(false),
         }),
     );
     return (
@@ -169,7 +165,6 @@ function IdentitiesTab() {
     const del = useDeleteSenderIdentity();
     const [open, setOpen] = useState(false);
     const [deleting, setDeleting] = useState<SenderIdentity | null>(null);
-    const onError = (e: unknown) => toast({ variant: "destructive", title: "Could not update the sender", description: getApiErrorMessage(e) });
     return (
         <div className="space-y-3">
             <div className="flex justify-end"><Button size="sm" onClick={() => setOpen(true)}><Plus /> Add sender</Button></div>
@@ -191,8 +186,8 @@ function IdentitiesTab() {
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${s.address}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onSelect={() => verify.mutate(s.id, { onSuccess: (r) => toast({ title: r.status === "VERIFIED" ? "Sender verified" : "Not verified yet", description: r.failure_reason ?? undefined }), onError })}><CheckCircle2 /> Re-check</DropdownMenuItem>
-                                    {!s.is_default && <DropdownMenuItem onSelect={() => update.mutate({ id: s.id, is_default: true }, { onSuccess: () => toast({ title: "Default sender changed" }), onError })}><Star /> Make default</DropdownMenuItem>}
+                                    <DropdownMenuItem onSelect={() => verify.mutate(s.id)}><CheckCircle2 /> Re-check</DropdownMenuItem>
+                                    {!s.is_default && <DropdownMenuItem onSelect={() => update.mutate({ id: s.id, is_default: true })}><Star /> Make default</DropdownMenuItem>}
                                     <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setDeleting(s)}><Trash2 /> Remove</DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -208,8 +203,7 @@ function IdentitiesTab() {
                 description="Campaigns using this sender will need another one."
                 confirmText="Remove"
                 variant="destructive"
-                isLoading={del.isPending}
-                onConfirm={() => deleting && del.mutate(deleting.id, { onSuccess: () => { toast({ title: "Sender removed" }); setDeleting(null); }, onError })}
+                onConfirm={() => { if (!deleting) return; del.mutate(deleting.id); setDeleting(null); }}
             />
         </div>
     );
@@ -217,22 +211,23 @@ function IdentitiesTab() {
 
 function PolicyTab() {
     const settings = useCommSettings();
-    const update = useUpdateCommSettings();
-    const providers = useProviderStatus();
-    const [footer, setFooter] = useState("");
-    const [min, setMin] = useState("");
-    useEffect(() => {
-        if (settings.data) {
-            setFooter(settings.data.footer_address ?? "");
-            setMin(settings.data.approval_min_recipients ? String(settings.data.approval_min_recipients) : "");
-        }
-    }, [settings.data]);
     if (settings.isPending) return <Skeleton className="h-48 w-full" />;
     if (settings.error) return <ErrorState error={settings.error} onRetry={() => settings.refetch()} />;
-    const save = (dto: Partial<CommSettings>) => update.mutate(dto, { onSuccess: () => toast({ title: "Settings saved" }), onError: (e) => toast({ variant: "destructive", title: "Could not save", description: getApiErrorMessage(e) }) });
-    const s = settings.data;
+    return <PolicyForm s={settings.data} />;
+}
+
+/** Saves as you edit (no Save buttons); the status shows next to the first section. */
+function PolicyForm({ s }: { s: CommSettings }) {
+    const update = useUpdateCommSettings();
+    const providers = useProviderStatus();
+    const [approval, setApproval] = useState(s.approval_required);
+    const [min, setMin] = useState(s.approval_min_recipients ? String(s.approval_min_recipients) : "");
+    const [footer, setFooter] = useState(s.footer_address ?? "");
+    const value = useMemo<Partial<CommSettings>>(() => ({ approval_required: approval, approval_min_recipients: min ? Number(min) : null, footer_address: footer || null }), [approval, min, footer]);
+    const autosave = useAutosave({ value, save: (v) => update.mutateAsync(v) });
     return (
         <div className="max-w-2xl space-y-6">
+            <div className="flex min-h-4 justify-end"><SaveStatus state={autosave} /></div>
             <Section title="Providers" description="Provider keys are managed in Admin → Integrations; they are never stored here.">
                 <div className="grid gap-2 sm:grid-cols-2">
                     {(["email", "sms"] as const).map((k) => {
@@ -253,23 +248,19 @@ function PolicyTab() {
                             <div className="text-[13px] font-medium text-foreground">Campaigns need approval</div>
                             <p className="text-xs text-muted-foreground">Someone with approve permission reviews a campaign before it can be sent.</p>
                         </div>
-                        <Switch checked={s.approval_required} onCheckedChange={(v) => save({ approval_required: v })} aria-label="Campaigns need approval" />
+                        <Switch checked={approval} onCheckedChange={setApproval} aria-label="Campaigns need approval" />
                     </div>
-                    {s.approval_required && (
+                    {approval && (
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                             <span className="text-[13px] text-foreground">Only from</span>
                             <Input inputMode="numeric" value={min} onChange={(e) => setMin(e.target.value.replace(/\D/g, ""))} className="w-full sm:w-28" placeholder="any size" aria-label="Minimum recipients" />
                             <span className="text-[13px] text-foreground">recipients</span>
-                            <Button variant="outline" size="sm" onClick={() => save({ approval_min_recipients: min ? Number(min) : null })} loading={update.isPending}>Save</Button>
                         </div>
                     )}
                 </div>
             </Section>
             <Section title="Email footer" description="Postal address shown in the unsubscribe footer of marketing email (required by anti-spam law in most countries).">
-                <div className="flex flex-col gap-2 sm:flex-row">
-                    <Input value={footer} onChange={(e) => setFooter(e.target.value)} placeholder="Agency Ltd, 10 Ermou St, Athens 10563, Greece" aria-label="Footer address" />
-                    <Button variant="outline" onClick={() => save({ footer_address: footer || null })} loading={update.isPending}>Save</Button>
-                </div>
+                <Input value={footer} onChange={(e) => setFooter(e.target.value)} placeholder="Agency Ltd, 10 Ermou St, Athens 10563, Greece" aria-label="Footer address" />
             </Section>
         </div>
     );

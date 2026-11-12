@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useFormAutosave } from "@/hooks/use-autosave";
 import { useCreateList, useUpdateList } from "@/features/communications/hooks/use-communications";
 import type { CommChannel, RecipientList } from "@/features/communications/interfaces/communications.interfaces";
 import { listFormSchema, type ListFormValues } from "@/features/communications/validation-schemas/communications.schema";
@@ -24,28 +24,27 @@ export function ListFormDialog({ open, onOpenChange, list }: { open: boolean; on
     const form = useForm<ListFormValues>({ resolver: zodResolver(listFormSchema), defaultValues: { name: "", description: "", channel: "EMAIL" } });
     useEffect(() => {
         if (open) form.reset({ name: list?.name ?? "", description: list?.description ?? "", channel: list ? list.channel ?? "ANY" : "EMAIL" });
-    }, [open, list, form]);
-    const pending = create.isPending || update.isPending;
+        // Only when the dialog opens or switches list: a refresh after an autosave must not reset typing.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, list?.id, form]);
 
+    // Editing an existing list saves as you type (no Save button); a new list keeps its Create button.
+    const autosave = useFormAutosave(form, (v) => update.mutateAsync({ id: (list as RecipientList).id, name: v.name, description: v.description || undefined }), { enabled: open && !!list });
+    const close = () => { autosave.flush(); onOpenChange(false); };
     const submit = form.handleSubmit((v) => {
-        const onError = (e: unknown) => toast({ variant: "destructive", title: "Could not save the list", description: getApiErrorMessage(e) });
-        if (list) {
-            update.mutate({ id: list.id, name: v.name, description: v.description || undefined }, { onSuccess: () => { toast({ title: "List saved" }); onOpenChange(false); }, onError });
-        } else {
-            create.mutate({ name: v.name, description: v.description || undefined, channel: v.channel === "ANY" ? undefined : (v.channel as CommChannel) }, {
-                onSuccess: (l) => { toast({ title: "List created" }); onOpenChange(false); navigate(CampaignPaths.list(l.id)); },
-                onError,
-            });
-        }
+        if (list) return close();
+        create.mutate({ name: v.name, description: v.description || undefined, channel: v.channel === "ANY" ? undefined : (v.channel as CommChannel) }, {
+            onSuccess: (l) => { onOpenChange(false); navigate(CampaignPaths.list(l.id)); },
+        });
     });
 
     return (
-        <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : !create.isPending && close())}>
             <DialogContent className="sm:max-w-md">
                 <Form {...form}>
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader>
-                            <DialogTitle>{list ? "Edit list" : "New recipient list"}</DialogTitle>
+                            <DialogTitle className="flex flex-wrap items-center gap-2">{list ? "Edit list" : "New recipient list"}{list && <SaveStatus state={autosave} className="font-normal" />}</DialogTitle>
                             <DialogDescription>A fixed group of contacts, members or addresses you add yourself.</DialogDescription>
                         </DialogHeader>
                         <FormField control={form.control} name="name" render={({ field }) => (
@@ -69,8 +68,14 @@ export function ListFormDialog({ open, onOpenChange, list }: { open: boolean; on
                             <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value ?? ""} /></FormControl></FormItem>
                         )} />
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
-                            <Button type="submit" loading={pending}>{list ? "Save" : "Create list"}</Button>
+                            {list ? (
+                                <Button type="submit">Done</Button>
+                            ) : (
+                                <>
+                                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>Cancel</Button>
+                                    <Button type="submit" loading={create.isPending}>Create list</Button>
+                                </>
+                            )}
                         </DialogFooter>
                     </form>
                 </Form>

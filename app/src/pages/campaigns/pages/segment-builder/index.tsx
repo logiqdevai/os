@@ -16,7 +16,8 @@ import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
 import { usePermission } from "@/hooks/use-permission";
 import { useListParams } from "@/hooks/use-list-params";
-import { toast } from "@/hooks/use-toast";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useAutosave } from "@/hooks/use-autosave";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { formatNumber } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
@@ -70,6 +71,10 @@ export default function SegmentBuilderPage() {
     const [match, setMatch] = useState<"and" | "or">("and");
     const [rules, setRules] = useState<SegmentRule[]>([]);
     const [nested, setNested] = useState(false);
+    /** Rules / match changed by the user (form fields track their own dirty state). */
+    const [touched, setTouched] = useState(false);
+    const editRules: typeof setRules = (v) => { setTouched(true); setRules(v); };
+    const editMatch = (m: "and" | "or") => { setTouched(true); setMatch(m); };
 
     useEffect(() => {
         const s = segment.data;
@@ -80,7 +85,10 @@ export default function SegmentBuilderPage() {
         setMatch(m);
         setRules(nodes.filter(isRule));
         setNested(nodes.some((n) => !isRule(n)));
-    }, [segment.data, form]);
+        setTouched(false);
+        // Load once per segment: the refresh after each autosave must not reset what is being edited.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [segment.data?.id, form]);
 
     const entity = form.watch("entity_type");
     const channel = form.watch("channel");
@@ -92,6 +100,15 @@ export default function SegmentBuilderPage() {
         const t = setTimeout(() => setDebounced(definition), 400);
         return () => clearTimeout(t);
     }, [definition]);
+    // Existing segments save as you edit (no Save button); a new segment keeps its Create button.
+    const json = JSON.stringify({ v: form.watch(), match, rules });
+    const draft = useMemo(() => {
+        const { v } = JSON.parse(json) as { v: SegmentFormValues };
+        const def: SegmentDefinition = nested && segment.data ? { [match]: [...(segment.data.definition[match] ?? []).filter((n) => !isRule(n)), ...rules] } : { [match]: rules };
+        return { valid: segmentFormSchema.safeParse(v).success, dto: { name: v.name, description: v.description || undefined, entity_type: v.entity_type, channel: v.channel === "ANY" ? undefined : (v.channel as CommChannel), require_consent: v.require_consent, definition: def } };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [json, nested, segment.data?.id]);
+    const autosave = useAutosave({ value: draft.dto, enabled: !!id && canEdit && draft.valid && (form.formState.isDirty || touched), save: (dto) => update.mutateAsync({ id: id as string, ...dto }) });
     const preview = useSegmentPreview({ entity_type: entity, definition: debounced, channel: channel === "ANY" ? undefined : (channel as CommChannel), require_consent: requireConsent }, !!fields.data);
 
     if (id && segment.isPending) return <PageSkeleton />;
@@ -99,30 +116,18 @@ export default function SegmentBuilderPage() {
 
     const addRule = () => {
         const f = entityFields[0];
-        if (f) setRules((r) => [...r, { field: f.key, op: f.ops[0], value: f.options?.[0] ?? "" }]);
+        if (f) editRules((r) => [...r, { field: f.key, op: f.ops[0], value: f.options?.[0] ?? "" }]);
     };
 
-    const submit = form.handleSubmit((v) => {
-        const dto = {
-            name: v.name,
-            description: v.description || undefined,
-            entity_type: v.entity_type,
-            channel: v.channel === "ANY" ? undefined : (v.channel as CommChannel),
-            require_consent: v.require_consent,
-            definition: nested && segment.data ? { [match]: [...(segment.data.definition[match] ?? []).filter((n) => !isRule(n)), ...rules] } : definition,
-        };
-        const opts = {
-            onSuccess: (s: { id: string }) => { toast({ title: id ? "Segment saved" : "Segment created" }); if (!id) navigate(CampaignPaths.segment(s.id), { replace: true }); },
-            onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save the segment", description: getApiErrorMessage(e) }),
-        };
-        if (id) update.mutate({ id, ...dto }, opts);
-        else create.mutate(dto, opts);
+    const submit = form.handleSubmit(() => {
+        if (id) return autosave.flush();
+        create.mutate(draft.dto, { onSuccess: (s) => navigate(CampaignPaths.segment(s.id), { replace: true }) });
     });
 
     const p = preview.data;
     return (
         <Page width="wide">
-            <PageHeader back={{ to: CampaignPaths.segments, label: "Segments" }} title={id ? segment.data?.name ?? "Segment" : "New segment"} description="People are matched again every time a campaign that uses this segment sends." />
+            <PageHeader back={{ to: CampaignPaths.segments, label: "Segments" }} title={id ? segment.data?.name ?? "Segment" : "New segment"} meta={id ? <SaveStatus state={autosave} /> : undefined} description="People are matched again every time a campaign that uses this segment sends." />
             <Form {...form}>
                 <form onSubmit={submit} className="grid gap-6 lg:grid-cols-[1fr_320px]">
                     <div className="min-w-0 space-y-5">
@@ -133,7 +138,7 @@ export default function SegmentBuilderPage() {
                             <FormField control={form.control} name="entity_type" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Who</FormLabel>
-                                    <Select value={field.value} onValueChange={(v) => { field.onChange(v); setRules([]); }} disabled={!canEdit}>
+                                    <Select value={field.value} onValueChange={(v) => { field.onChange(v); editRules([]); }} disabled={!canEdit}>
                                         <FormControl><SelectTrigger aria-label="Who"><SelectValue /></SelectTrigger></FormControl>
                                         <SelectContent>{SegmentEntityTypeFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
                                     </Select>
@@ -147,7 +152,7 @@ export default function SegmentBuilderPage() {
                         <Section
                             title="Conditions"
                             actions={
-                                <Select value={match} onValueChange={(v) => setMatch(v as "and" | "or")} disabled={!canEdit}>
+                                <Select value={match} onValueChange={(v) => editMatch(v as "and" | "or")} disabled={!canEdit}>
                                     <SelectTrigger className="h-8 w-44" aria-label="Match"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="and">Match all conditions</SelectItem>
@@ -165,7 +170,7 @@ export default function SegmentBuilderPage() {
                                     {nested && <p className="text-xs text-muted-foreground">This segment also has nested groups created through the API; they are kept unchanged.</p>}
                                     {rules.length === 0 && <EmptyState compact icon={Filter} title="No conditions" description="Without conditions every record matches." />}
                                     {rules.map((r, i) => (
-                                        <RuleRow key={i} rule={r} fields={entityFields} disabled={!canEdit} onChange={(n) => setRules((all) => all.map((x, j) => (j === i ? n : x)))} onRemove={() => setRules((all) => all.filter((_, j) => j !== i))} />
+                                        <RuleRow key={i} rule={r} fields={entityFields} disabled={!canEdit} onChange={(n) => editRules((all) => all.map((x, j) => (j === i ? n : x)))} onRemove={() => editRules((all) => all.filter((_, j) => j !== i))} />
                                     ))}
                                     {canEdit && <Button type="button" variant="outline" size="sm" onClick={addRule}><Plus /> Add condition</Button>}
                                 </div>
@@ -220,7 +225,7 @@ export default function SegmentBuilderPage() {
                                     <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} disabled={!canEdit} aria-label="Opted-in only" /></FormControl>
                                 </FormItem>
                             )} />
-                            {canEdit && <Button type="submit" className="w-full" loading={create.isPending || update.isPending}>{id ? "Save segment" : "Create segment"}</Button>}
+                            {canEdit && !id && <Button type="submit" className="w-full" loading={create.isPending}>Create segment</Button>}
                         </div>
                         {segment.data && segment.data.audiences.length > 0 && (
                             <div className="rounded-lg border border-border bg-card p-4">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FlaskConical, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useAutosave } from "@/hooks/use-autosave";
 import { useUpdateCampaign } from "@/features/communications/hooks/use-communications";
 import { useSetCampaignVariants } from "@/features/communications/hooks/use-campaign-variants";
 import type { CampaignAbMetric, CampaignDetail, CampaignVariantInput } from "@/features/communications/interfaces/communications.interfaces";
@@ -44,26 +44,25 @@ export function AbTestSection({ campaign }: { campaign: CampaignDetail }) {
     }, [enabled, drafts.length]);
 
     const patch = (i: number, key: keyof Draft, value: string) => setDrafts((d) => d.map((x, idx) => (idx === i ? { ...x, [key]: value } : x)));
-    const saving = setVariants.isPending || update.isPending;
-
-    const save = async () => {
-        const variants: CampaignVariantInput[] = enabled
-            ? drafts.map((d) => ({
-                subject: email ? d.subject || null : null,
-                preheader: email ? d.preheader || null : null,
-                body_html: email ? d.body || null : null,
-                body_text: email ? null : d.body || null,
-                share_percent: d.share ? Number(d.share) : null,
-            }))
-            : [];
-        try {
-            if (enabled) await update.mutateAsync({ id: campaign.id, ab_metric: metric, ab_test_percent: Number(percent), ab_wait_hours: Number(wait) });
+    // Saves as you edit (no Save button): the settings, then the variants (an empty list turns the test off).
+    const value = useMemo(() => ({ enabled, metric, percent, wait, drafts }), [enabled, metric, percent, wait, drafts]);
+    const autosave = useAutosave({
+        value,
+        enabled: canEdit && !recurring,
+        save: async (v) => {
+            const variants: CampaignVariantInput[] = v.enabled
+                ? v.drafts.map((d) => ({
+                    subject: email ? d.subject || null : null,
+                    preheader: email ? d.preheader || null : null,
+                    body_html: email ? d.body || null : null,
+                    body_text: email ? null : d.body || null,
+                    share_percent: d.share ? Number(d.share) : null,
+                }))
+                : [];
+            if (v.enabled) await update.mutateAsync({ id: campaign.id, ab_metric: v.metric, ab_test_percent: Number(v.percent), ab_wait_hours: Number(v.wait) });
             await setVariants.mutateAsync({ id: campaign.id, variants });
-            toast({ title: enabled ? "A/B test saved" : "A/B test turned off" });
-        } catch (e) {
-            toast({ variant: "destructive", title: "Could not save the A/B test", description: getApiErrorMessage(e) });
-        }
-    };
+        },
+    });
 
     return (
         <section className="space-y-4 rounded-lg border border-border bg-card p-4" aria-labelledby="ab-title">
@@ -74,7 +73,10 @@ export function AbTestSection({ campaign }: { campaign: CampaignDetail }) {
                         {recurring ? "Not available for recurring campaigns." : "Send variants to part of the audience, then the best one to everyone else."}
                     </p>
                 </div>
-                <Switch checked={enabled} onCheckedChange={setEnabled} disabled={!canEdit || recurring} aria-label="A/B test" />
+                <div className="flex items-center gap-3">
+                    <SaveStatus state={autosave} />
+                    <Switch checked={enabled} onCheckedChange={setEnabled} disabled={!canEdit || recurring} aria-label="A/B test" />
+                </div>
             </div>
             {enabled && (
                 <>
@@ -123,12 +125,9 @@ export function AbTestSection({ campaign }: { campaign: CampaignDetail }) {
                     </div>
                 </>
             )}
-            {canEdit && (
-                <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-                    {enabled && drafts.length < 5 ? (
-                        <Button type="button" variant="outline" size="sm" onClick={() => setDrafts([...drafts, { subject: "", preheader: "", body: "", share: "" }])}><Plus /> Add variant</Button>
-                    ) : <span />}
-                    {(enabled || campaign.ab_test_enabled) && <Button type="button" size="sm" onClick={save} loading={saving}>Save A/B test</Button>}
+            {canEdit && enabled && drafts.length < 5 && (
+                <div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setDrafts([...drafts, { subject: "", preheader: "", body: "", share: "" }])}><Plus /> Add variant</Button>
                 </div>
             )}
         </section>

@@ -17,8 +17,6 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { useAddSuppression, useConsents, useRemoveSuppression, useSuppressions } from "@/features/communications/hooks/use-communications";
@@ -36,8 +34,7 @@ function AddSuppressionDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     useEffect(() => { if (open) form.reset(); }, [open, form]);
     const submit = form.handleSubmit((v) =>
         add.mutate({ ...v, notes: v.notes || undefined }, {
-            onSuccess: () => { toast({ title: "Address suppressed" }); onOpenChange(false); },
-            onError: (e) => toast({ variant: "destructive", title: "Could not suppress", description: getApiErrorMessage(e) }),
+            onSuccess: () => onOpenChange(false),
         }),
     );
     return (
@@ -156,8 +153,7 @@ function SuppressionsTab() {
                 description={removing && ["COMPLAINT", "UNSUBSCRIBE"].includes(removing.reason) ? "This person unsubscribed or complained. Only remove the entry if they asked to be contacted again." : "Campaigns can be sent to this address again."}
                 confirmText="Remove suppression"
                 variant="destructive"
-                isLoading={remove.isPending}
-                onConfirm={() => removing && remove.mutate({ id: removing.id }, { onSuccess: () => { toast({ title: "Suppression removed" }); setRemoving(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not remove", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (!removing) return; remove.mutate({ id: removing.id }); setRemoving(null); }}
             />
         </>
     );

@@ -16,8 +16,6 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { usePermissions } from "@/hooks/use-permission";
 import { useListParams } from "@/hooks/use-list-params";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime, formatNumber, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { useCampaign, useCampaignAction, useCampaignRecipients, useCampaignStats } from "@/features/communications/hooks/use-communications";
@@ -106,23 +104,19 @@ export default function CampaignDetailPage() {
     const c = campaign.data;
     const s = stats.data;
 
-    const run = (a: CampaignAction, body?: Record<string, unknown>, done?: string) =>
-        action.mutate({ id: c.id, action: a, body }, {
-            onSuccess: (res) => {
-                toast({ title: done ?? "Done" });
-                setConfirm(null);
-                setDecision(null);
-                setComment("");
-                if (a === "duplicate") navigate(CampaignPaths.edit(res.id));
-            },
-            onError: (e) => toast({ variant: "destructive", title: "Could not update the campaign", description: getApiErrorMessage(e) }),
-        });
+    // Status changes show at once (the badge and actions update); duplicate opens the copy when it exists.
+    const run = (a: CampaignAction, body?: Record<string, unknown>) => {
+        action.mutate({ id: c.id, action: a, body }, { onSuccess: (res) => { if (a === "duplicate") navigate(CampaignPaths.edit(res.id)); } });
+        setConfirm(null);
+        setDecision(null);
+        setComment("");
+    };
 
     const editable = ["DRAFT", "PENDING_APPROVAL", "APPROVED"].includes(c.status);
-    const confirmCopy: Partial<Record<CampaignAction, { title: string; description: string; text: string; done: string; destructive?: boolean }>> = {
-        cancel: { title: "Cancel this campaign?", description: "Messages not yet sent are dropped. Already-sent messages are not recalled.", text: "Cancel campaign", done: "Campaign cancelled", destructive: true },
-        pause: { title: "Pause sending?", description: "Queued messages wait until you resume.", text: "Pause", done: "Campaign paused" },
-        unschedule: { title: "Unschedule?", description: "The campaign goes back to draft so you can edit it.", text: "Unschedule", done: "Campaign unscheduled" },
+    const confirmCopy: Partial<Record<CampaignAction, { title: string; description: string; text: string; destructive?: boolean }>> = {
+        cancel: { title: "Cancel this campaign?", description: "Messages not yet sent are dropped. Already-sent messages are not recalled.", text: "Cancel campaign", destructive: true },
+        pause: { title: "Pause sending?", description: "Queued messages wait until you resume.", text: "Pause" },
+        unschedule: { title: "Unschedule?", description: "The campaign goes back to draft so you can edit it.", text: "Unschedule" },
     };
     const conf = confirm ? confirmCopy[confirm] : null;
     const progress = c.audience_count ? Math.min(100, Math.round(((c.sent_count + c.failed_count + c.excluded_count) / (c.audience_count + c.excluded_count)) * 100)) : 0;
@@ -147,11 +141,11 @@ export default function CampaignDetailPage() {
                             </>
                         )}
                         {c.status === "SENDING" && can("communications.campaigns.send") && <Button variant="outline" onClick={() => setConfirm("pause")}><Pause /> Pause</Button>}
-                        {c.status === "PAUSED" && can("communications.campaigns.send") && <Button onClick={() => run("resume", undefined, "Sending resumed")} loading={action.isPending}><Play /> Resume</Button>}
+                        {c.status === "PAUSED" && can("communications.campaigns.send") && <Button onClick={() => run("resume")}><Play /> Resume</Button>}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label="More actions"><MoreHorizontal /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                {can("communications.campaigns.create") && <DropdownMenuItem onSelect={() => run("duplicate", undefined, "Campaign duplicated")}><Copy /> Duplicate</DropdownMenuItem>}
+                                {can("communications.campaigns.create") && <DropdownMenuItem onSelect={() => run("duplicate")}><Copy /> Duplicate</DropdownMenuItem>}
                                 {c.status === "SCHEDULED" && can("communications.campaigns.send") && <DropdownMenuItem onSelect={() => setConfirm("unschedule")}><Undo2 /> Unschedule</DropdownMenuItem>}
                                 {["SCHEDULED", "SENDING", "PAUSED"].includes(c.status) && can("communications.campaigns.send") && (
                                     <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setConfirm("cancel")}><Ban /> Cancel campaign</DropdownMenuItem>
@@ -303,11 +297,10 @@ export default function CampaignDetailPage() {
                     description={conf.description}
                     confirmText={conf.text}
                     variant={conf.destructive ? "destructive" : "default"}
-                    isLoading={action.isPending}
-                    onConfirm={() => confirm && run(confirm, undefined, conf.done)}
+                    onConfirm={() => confirm && run(confirm)}
                 />
             )}
-            <Dialog open={!!decision} onOpenChange={(o) => !action.isPending && !o && setDecision(null)}>
+            <Dialog open={!!decision} onOpenChange={(o) => !o && setDecision(null)}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>{decision === "approve" ? "Approve campaign" : "Send back to draft"}</DialogTitle>
@@ -315,8 +308,8 @@ export default function CampaignDetailPage() {
                     </DialogHeader>
                     <Textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Comment (optional)" aria-label="Comment" />
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setDecision(null)} disabled={action.isPending}>Cancel</Button>
-                        <Button variant={decision === "reject" ? "destructive" : "default"} loading={action.isPending} onClick={() => decision && run(decision, { comment: comment || undefined }, decision === "approve" ? "Campaign approved" : "Campaign sent back to draft")}>
+                        <Button variant="ghost" onClick={() => setDecision(null)}>Cancel</Button>
+                        <Button variant={decision === "reject" ? "destructive" : "default"} onClick={() => decision && run(decision, { comment: comment || undefined })}>
                             {decision === "approve" ? "Approve" : "Reject"}
                         </Button>
                     </DialogFooter>
