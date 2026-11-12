@@ -3,7 +3,7 @@ import { OutboundWebhookStatus, Prisma, WebhookDeliveryStatus } from 'generated/
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { EventsService, PublishedEvent } from '@/shared/events/events.service';
 import { decryptSecret } from '@/shared/utils/crypto/secret-box.utils';
-import { assertSafeUrl, backoffSeconds, matchesEventKey, signPayload } from '../engine/engine.utils';
+import { assertResolvesPublic, assertSafeUrl, backoffSeconds, matchesEventKey, signPayload } from '../engine/engine.utils';
 
 const MAX_BODY_LOG = 4000;
 
@@ -109,7 +109,7 @@ export class WebhookDeliveryService implements OnModuleInit, OnModuleDestroy {
             ...((hook.headers as Record<string, string> | null) ?? {}),
         };
 
-        const unsafe = assertSafeUrl(hook.url);
+        const unsafe = assertSafeUrl(hook.url) ?? (await assertResolvesPublic(hook.url));
         if (unsafe) error = unsafe;
         else if (hook.status !== OutboundWebhookStatus.ACTIVE && !delivery.run_step_id && delivery.event_key !== 'webhook.test') error = `Endpoint is ${hook.status.toLowerCase()}`;
         else {

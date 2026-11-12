@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'async_hooks';
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
+import { lookup } from 'dns/promises';
 import { isIP } from 'net';
 import { ConditionGroup, ConditionNode, ConditionPredicate } from './rule-definition.types';
 
@@ -195,13 +196,32 @@ export function assertSafeUrl(raw: string): string | null {
     }
     const prod = process.env.NODE_ENV === 'production';
     if (url.protocol !== 'https:' && !(url.protocol === 'http:' && !prod)) return 'The URL must use https';
-    const host = url.hostname.toLowerCase();
+    const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, ''); // IPv6 literals come bracketed
     if (prod) {
         if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) return 'Private network URLs are not allowed';
         if (isIP(host) === 4 && PRIVATE_V4.some((r) => r.test(host))) return 'Private network URLs are not allowed';
         if (isIP(host) === 6 && (host === '::1' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80'))) return 'Private network URLs are not allowed';
     }
     return null;
+}
+
+const isPrivateAddress = (ip: string) =>
+    isIP(ip) === 4 ? PRIVATE_V4.some((r) => r.test(ip)) : /^(::1?|f[cd][0-9a-f]{2}:|fe80:|::ffff:(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.))/i.test(ip);
+
+/**
+ * Production only: a public-looking hostname must not RESOLVE to a private or loopback address (DNS pointing at
+ * 127.0.0.1 / the cloud metadata IP). Returns a problem message or null. Resolution failures are left to the fetch.
+ */
+export async function assertResolvesPublic(raw: string): Promise<string | null> {
+    if (process.env.NODE_ENV !== 'production') return null;
+    try {
+        const host = new URL(raw).hostname;
+        if (isIP(host)) return null; // literals are checked by assertSafeUrl
+        const addresses = await lookup(host, { all: true });
+        return addresses.some((a) => isPrivateAddress(a.address)) ? 'The hostname resolves to a private network address' : null;
+    } catch {
+        return null;
+    }
 }
 
 /** Exponential backoff with a cap (seconds). */
