@@ -65,6 +65,8 @@ export const useChannels = (enabled = true) => useQuery({ queryKey: k("channels"
 export const useCreateChannel = () => useSupportMutation(s.createChannel);
 export const useUpdateChannel = () => useSupportMutation(s.updateChannel);
 export const useRotateWidgetKey = () => useSupportMutation(s.rotateWidgetKey);
+export const useEmailChannelSetup = (id: string | undefined) => useQuery({ queryKey: k("email-setup", id), queryFn: () => s.getEmailChannelSetup(id as string), enabled: !!id });
+export const useSetEmailInboundSecret = () => useSupportMutation(s.setEmailInboundSecret);
 export const useAgents = (enabled = true) => useQuery({ queryKey: k("agents"), queryFn: () => s.getAgents(), enabled, staleTime: 60_000 });
 export const useUpdateAgentProfile = () => useSupportMutation(s.updateAgentProfile);
 export const useSlaPolicies = (enabled = true) => useQuery({ queryKey: k("sla"), queryFn: s.getSlaPolicies, enabled });

@@ -25,6 +25,7 @@ import { channelFormSchema, inboxFormSchema, type ChannelFormValues, type InboxF
 import type { Inbox } from "@/features/support/interfaces/support.interfaces";
 import { useSearchParams } from "react-router-dom";
 import { WidgetSetup } from "./components/widget-setup";
+import { EmailSetup } from "./components/email-setup";
 
 /**
  * Inboxes and channels — /support/channels?tab=inboxes|channels (mockup 13-support `channels`, `channel-create`, `widget`).
@@ -182,6 +183,7 @@ function ChannelsTab() {
                                 )}
                             </div>
                             {c.widget_key && <WidgetSetup channel={c} canManage={canManage} />}
+                            {c.type === "EMAIL" && <EmailSetup channel={c} canManage={canManage} />}
                         </div>
                     ))}
                 </div>

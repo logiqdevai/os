@@ -31,10 +31,13 @@ import { SupportWidgetService } from './widget/widget.service';
 import { SupportWidgetController } from './widget/widget.controller';
 import { SupportRealtimeService } from './realtime/support-realtime.service';
 import { SupportGateway } from './realtime/support.gateway';
+import { CommunicationsModule } from '@/modules/communications/communications.module';
+import { SupportEmailService } from './email/support-email.service';
+import { SupportEmailInboundController, SupportEmailSetupController } from './email/support-email.controller';
 
 /** 13 Customer Support & Communication Hub (docs/features/13-customer-support-communication-hub.md). */
 @Module({
-    imports: [NumberingModule],
+    imports: [NumberingModule, CommunicationsModule],
     controllers: [
         SupportSettingsController,
         InboxesController,
@@ -50,6 +53,8 @@ import { SupportGateway } from './realtime/support.gateway';
         SupportAnalyticsController,
         SupportAiController,
         SupportWidgetController,
+        SupportEmailSetupController,
+        SupportEmailInboundController,
     ],
     providers: [
         SupportSetupService,
@@ -71,6 +76,7 @@ import { SupportGateway } from './realtime/support.gateway';
         SupportWidgetService,
         SupportRealtimeService,
         SupportGateway,
+        SupportEmailService,
     ],
     exports: [TicketsService, ConversationsService, KnowledgeService, CsatService, SupportSetupService, TicketWorkflowService],
 })

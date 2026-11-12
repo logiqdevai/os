@@ -13,6 +13,7 @@ import type {
     ConversationListItem,
     CreateTicketDto,
     CsatSummary,
+    EmailChannelSetup,
     Inbox,
     KnowledgeCategory,
     Paginated,
@@ -84,6 +85,8 @@ export const getChannels = async (): Promise<SupportChannel[]> => (await axiosIn
 export const createChannel = async (dto: Params): Promise<SupportChannel> => (await axiosInstance.post(R().channels.list, dto)).data;
 export const updateChannel = async ({ id, ...dto }: Params & { id: string }): Promise<SupportChannel> => (await axiosInstance.patch(R().channels.detail(id), dto)).data;
 export const rotateWidgetKey = async (id: string): Promise<SupportChannel> => (await axiosInstance.post(R().channels.rotate(id))).data;
+export const getEmailChannelSetup = async (id: string): Promise<EmailChannelSetup> => (await axiosInstance.get(R().channels.emailSetup(id))).data;
+export const setEmailInboundSecret = async ({ id, secret }: { id: string; secret?: string }): Promise<{ inbound_url: string; secret: string | null }> => (await axiosInstance.post(R().channels.emailSecret(id), { secret })).data;
 export const getAgents = async (search?: string): Promise<Agent[]> => (await axiosInstance.get(R().agents.list, { params: { search: search || undefined } })).data;
 export const updateAgentProfile = async ({ membership_id, ...dto }: Params & { membership_id: string }) => (await axiosInstance.patch(R().agents.detail(membership_id), dto)).data;
 export const getSlaPolicies = async (): Promise<SlaPolicy[]> => (await axiosInstance.get(R().sla.list)).data;

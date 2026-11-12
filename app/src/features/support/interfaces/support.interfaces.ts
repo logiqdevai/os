@@ -95,6 +95,7 @@ export interface SupportMessage {
     author_email: string | null;
     mentions: string[];
     delivery_status: string | null;
+    delivery_error?: string | null;
     is_first_response: boolean;
 }
 
@@ -281,6 +282,18 @@ export interface SupportChannel {
     verified_at: string | null;
     inbox: { id: string; name: string };
     _count?: { conversations: number };
+}
+
+/** GET /support/channels/:id/email-setup — never contains the secret. */
+export interface EmailChannelSetup {
+    channel_id: string;
+    email_address: string | null;
+    inbound_url: string;
+    has_inbound_secret: boolean;
+    inbound_secret_set_at: string | null;
+    last_inbound_at: string | null;
+    verified_at: string | null;
+    outbound: { connected: true; connection_name: string } | { connected: false; reason: string };
 }
 
 export interface Agent extends MemberRef {

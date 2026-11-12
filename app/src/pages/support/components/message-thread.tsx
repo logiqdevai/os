@@ -35,7 +35,8 @@ export function MessageThread({ messages }: { messages: SupportMessage[] }) {
                                 <span className="font-medium text-foreground">{name}</span>
                                 {note && <span className="inline-flex items-center gap-1 text-warning"><Lock className="size-3" /> Internal note</span>}
                                 <span>{formatDateTime(m.created_at)}</span>
-                                {m.delivery_status === "FAILED" || m.delivery_status === "BOUNCED" ? <span className="text-danger">Not delivered</span> : null}
+                                {m.delivery_status === "FAILED" || m.delivery_status === "BOUNCED" ? <span className="text-danger" title={m.delivery_error ?? undefined}>Not delivered{m.delivery_error ? `: ${m.delivery_error}` : ""}</span> : null}
+                                {m.delivery_status === "PENDING" && m.channel_type === "EMAIL" ? <span>Sending email…</span> : null}
                             </div>
                             <div
                                 className={cn(

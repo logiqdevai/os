@@ -44,6 +44,6 @@ import { CommunicationsMcp } from './communications.mcp';
         CommProviderService, CommStatsService, CommDispatchService, AudienceService, ListsService, SegmentsService, ComplianceService,
         SendersService, TemplatesService, CampaignsService, CampaignRunnerService, CampaignVariantsService, MessagesService, AnalyticsService, TopicsService, CommAiService, CommThreadsService, CommunicationsMcp,
     ],
-    exports: [MessagesService, CommDispatchService, TemplatesService],
+    exports: [MessagesService, CommDispatchService, TemplatesService, CommProviderService],
 })
 export class CommunicationsModule { }

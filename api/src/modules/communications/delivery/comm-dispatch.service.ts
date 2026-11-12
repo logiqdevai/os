@@ -8,6 +8,20 @@ import { CommStatsService } from './comm-stats.service';
 
 const MAX_ATTEMPTS = 3;
 
+/** Email threading headers a module may set on a message before dispatch (e.g. 13 Support replies): provider_metadata.headers. */
+const THREADING_HEADERS = ['Message-ID', 'In-Reply-To', 'References'];
+function threadingMeta(meta: Prisma.JsonValue | null): { headers?: Record<string, string> } {
+    const headers = meta && typeof meta === 'object' && !Array.isArray(meta) ? (meta as Record<string, unknown>).headers : null;
+    if (!headers || typeof headers !== 'object') return {};
+    const out: Record<string, string> = {};
+    for (const h of THREADING_HEADERS) {
+        const v = (headers as Record<string, unknown>)[h];
+        if (typeof v === 'string' && v.length <= 2000 && !/[\r\n]/.test(v)) out[h] = v;
+    }
+    return Object.keys(out).length ? { headers: out } : {};
+}
+const threadingHeaders = (meta: Prisma.JsonValue | null) => threadingMeta(meta).headers ?? {};
+
 export type BlockReason = 'suppressed' | 'no_consent' | 'invalid_address' | 'topic_unsubscribed';
 
 /**
@@ -129,7 +143,7 @@ export class CommDispatchService {
                 const fromName = message.from_name ?? message.sender_identity?.display_name ?? null;
                 const from = fromAddress.includes('<') || !fromName ? fromAddress : `${fromName} <${fromAddress}>`;
                 const html = message.body_html ? await this.prepareHtml(message) : null;
-                const headers: Record<string, string> = { 'X-Entity-Ref-ID': message.id };
+                const headers: Record<string, string> = { 'X-Entity-Ref-ID': message.id, ...threadingHeaders(message.provider_metadata) };
                 if (message.unsubscribe_token) {
                     headers['List-Unsubscribe'] = `<${this.unsubscribeUrl(message.unsubscribe_token)}>`;
                     headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
@@ -169,7 +183,7 @@ export class CommDispatchService {
                     last_error: null,
                     next_attempt_at: null,
                     sms_segment_count: segments,
-                    provider_metadata: { connection_id: provider.connection_id } as Prisma.InputJsonValue,
+                    provider_metadata: { ...threadingMeta(message.provider_metadata), connection_id: provider.connection_id } as Prisma.InputJsonValue,
                 },
             });
             await this.prisma.commMessageRecipient.updateMany({ where: { message_id: message.id, status: { in: [CommRecipientStatus.PENDING, CommRecipientStatus.QUEUED] } }, data: { status: CommRecipientStatus.SENT } });

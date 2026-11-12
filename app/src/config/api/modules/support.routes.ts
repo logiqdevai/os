@@ -11,6 +11,8 @@ export const SupportApiRoutes = {
         detail: (id: string) => `/support/channels/${id}`,
         verify: (id: string) => `/support/channels/${id}/verify`,
         rotate: (id: string) => `/support/channels/${id}/rotate-widget-key`,
+        emailSetup: (id: string) => `/support/channels/${id}/email-setup`,
+        emailSecret: (id: string) => `/support/channels/${id}/email-secret`,
     },
     agents: { list: "/support/agents", detail: (membershipId: string) => `/support/agents/${membershipId}` },
     conversations: {
