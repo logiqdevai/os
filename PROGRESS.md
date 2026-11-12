@@ -23,6 +23,9 @@ Test accounts (staging, test data only):
 - `owner@logiqdev.test` / `Password123!` — owner of org "Logiqdev" (all permissions, demo data from `scripts/demo-data.mjs`).
 - `portal.customer@logiqdev.test` / `PortalTest-2026!` — customer portal user of Helios Energy (open `/portal`).
 - `sam.signup@logiqdev.test` / `SignupTest-2026!` — owner of a fresh, nearly empty org "Sweep Studio" (sign-up flow test).
+- `scoped.dev@logiqdev.test` / `ScopedDev-2026!` — Developer limited to the WEB team (TEAM scope audit).
+- `branch.manager@logiqdev.test` / `BranchMgr-2026!` — Sales Manager limited to branch "Headquarters" (BRANCH scope audit).
+- `branch.admin@logiqdev.test` / `BranchAdmin-2026!` — Admin limited to branch "Headquarters" (BRANCH scope audit).
 Get a token: `curl -s -X POST localhost:3000/auth/email/login -H 'content-type: application/json' -d '{"email":"owner@logiqdev.test","password":"Password123!"}'`.
 
 DB facts: staging DB was wiped and rebuilt from the repo migrations on 2026-11-11 (user approved).
@@ -93,7 +96,14 @@ Or call `NotificationsService.notify(ctx, { recipient_membership_ids, event_key,
   return `{}` for organization-wide scope are safe when spread into a where object, but NOT inside `OR: [...]`. When
   combining "scope OR own records", return a real condition (e.g. `{ organization_id: ctx.organization_id }`) or skip
   the `OR` for organization-wide scope. Owner-level list totals were audited against DB counts for 30 list endpoints
-  on 2026-11-11 (all match); branch/team-scoped roles still need the same audit.
+  on 2026-11-11 (all match). Team scope (WEB Developer) and branch scope (CRM companies/deals/leads, projects,
+  support tickets, invoices: own branch visible, other branch hidden from lists and 404 on direct GET) verified 2026-11-12.
+- **API `strictNullChecks` is off**: `if (!res.available)` does NOT narrow a `{ available: true } | { available: false }`
+  union; use `res.available === false`. zod v4: `z.record(z.string(), z.string())` (two arguments).
+- **Shared git index**: parallel agents must commit with explicit pathspecs (`git commit -m … -- <paths>`), never a bare
+  `git commit` or `--amend` (a race swapped two commit messages: 07082d5 / 7f16f8c — contents are correct).
+- **Typecheck memory**: the API tsc needs ~5 GB (`scripts/typecheck.sh` sets 6 GB; at 4 GB it aborted with exit 134
+  and printed nothing).
 
 ## Schema change requests
 
@@ -128,6 +138,16 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | T | Chrome testing pass (functionality, responsiveness, both themes) | ✅ | 🟡 | 2026-11-11: automated sweep of all 175 nav routes + ~31 detail pages at 1280px and 390px (crashes, load errors, overflow); manual flows verified (see Log). Left: drag-and-drop (not automatable here), remaining manual flows listed in Log. |
 
 ## Log
+
+- 2026-11-12 — **Coordinator: release verification pass.** All nine module agents finished (01, 02, 03/04, 05/06, 07/13,
+  10/18, 11/12, 14/19, 15/17/20 — see their rows). Fixed 37 API type errors from the parallel work (AI result narrowing,
+  zod records, org `display_name`, exported row types). Applied schema requests: `ProposalAccessToken` (per-delivery
+  proposal links; `Proposal.public_token_hash` dropped) and `Release.notes_published_at/by` (migration 20261112020000).
+  Portal invitees land on `/portal`. Verified: API smoke (335 parameter-free GET routes as owner: no 5xx; the only 4xx
+  are endpoints that require query parameters), drag and drop in Chrome (task board across columns and reordering
+  inside a column, CRM deal stages; both persist after reload — fixed an optimistic-update gap and a wrong neighbour
+  when moving a card down its own column), team + branch scope audits, app lint clean, both typechecks clean,
+  production build OK (largest chunk vendor-charts 390 kB).
 
 - 2026-11-12 — 13 Support + 07 Client portal follow-up (agent 07/13). Website chat widget: `GET /support/widget/:key.js` (Shadow-DOM launcher, key + API base only), public config/start/thread/send endpoints (per-IP rate limits, allowed-origins check, visitor token `<conversation_id>.<secret>` with sha256 in `visitor_key`), CORS for `/support/widget/*` opened in `main.ts`; Socket.IO `/support` (agents: credential + support.conversations.read, scope-checked `conversation.watch`; visitors: widget token) fed by the event bus with ids only. Email in/out: agent replies on EMAIL conversations → TRANSACTIONAL CommMessage via the org's Resend (CommDispatch now passes `provider_metadata.headers` Message-ID/In-Reply-To/References; `CommProviderService` exported); inbound webhook verified by Svix (Resend) or `X-Logiq-Signature` HMAC with the channel's encrypted secret; threads by HMAC reply token (plus address / `[#token]`), then In-Reply-To/References. Incidents UI, AI review queue (accept/edit/reject; `OrgAiService`), automation tab (module 20 rules `module=SUPPORT`), KB category drag/keyboard order. Portal: upload into `Client uploads/<Company>` (Files), signed downloads, proposal open (`ProposalFlowService.portalLink`) and contract signing (`SignaturesService.portalSigningLink`) redirecting to `/p/:token` / `/sign/:token`, notification preferences on the 14 tables.
 
