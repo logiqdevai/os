@@ -1,5 +1,6 @@
 import type { DropdownOption } from "@/lib/dropdown-option-label.utils";
 import type { InvitationPolicy, MfaPolicy } from "@/features/admin/security/interfaces/security.interfaces";
+import type { MfaRequiredReason } from "@/features/session/interfaces/session.interfaces";
 
 /** MfaPolicy (01 §74). */
 export const MfaPolicyFormOptions: DropdownOption<MfaPolicy>[] = [
@@ -48,4 +49,12 @@ export const PasswordMaxAgeOptions: DropdownOption<string>[] = [
     { id: "90", label: "90 days" },
     { id: "180", label: "180 days" },
     { id: "365", label: "1 year" },
+];
+
+/** Why MFA is required for the signed-in person (GET /auth/mfa `required_reason`, 01 §74). */
+export const MfaRequiredReasonOptions: DropdownOption<MfaRequiredReason>[] = [
+    { id: "ALL", label: "For everyone" },
+    { id: "ADMIN", label: "For administrators" },
+    { id: "SENSITIVE", label: "For people with sensitive permissions" },
+    { id: "PORTAL", label: "For customer portal users" },
 ];

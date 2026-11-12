@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { AuditService } from '@/shared/audit/audit.service';
 import { OrgContext, RequestPrincipal } from '@/shared/authorization/interfaces/org-context.interface';
+import { MfaRequirementService } from '@/shared/authorization/mfa-requirement.service';
 import { PORTAL_FEATURES, PORTAL_PERMISSIONS_METADATA, PortalContext, PortalFeature } from './portal-context';
 
 const toFeatures = (raw: unknown): Partial<Record<PortalFeature, boolean>> => {
@@ -28,6 +29,7 @@ export class PortalGuard implements CanActivate {
         private readonly reflector: Reflector,
         private readonly prisma: PrismaService,
         private readonly audit: AuditService,
+        private readonly mfa: MfaRequirementService,
     ) { }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -48,6 +50,10 @@ export class PortalGuard implements CanActivate {
         if (!memberships.length) throw new NotFoundException({ message: 'Portal access not found', code: 'portal_membership_not_found' });
         if (!requested && memberships.length > 1) throw new ForbiddenException({ message: 'Choose which company to open', code: 'portal_membership_required' });
         const m = memberships[0];
+        // 01 §74, §79: the organization's portal MFA policy; the portal app sends the person to enrolment first.
+        if (await this.mfa.portalMustEnroll(principal.id, m.organization_id)) {
+            throw new ForbiddenException({ message: 'Two-step verification is required. Set it up to continue.', code: 'mfa_enrollment_required' });
+        }
 
         const [module, orgSettings, clientSettings] = await Promise.all([
             this.prisma.organizationModule.findUnique({ where: { organization_id_module: { organization_id: m.organization_id, module: 'CUSTOMER_PORTAL' } }, select: { enabled: true } }),

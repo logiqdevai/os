@@ -61,6 +61,8 @@ export interface MemberDetail {
     managed_branches: { id: string; branch: { id: string; name: string } }[];
     is_owner: boolean;
     is_self: boolean;
+    /** Sign-in factors (types and dates only, never secrets). */
+    mfa_factors: { totp: { verified_at: string; last_used_at: string | null } | null; recovery_codes: { total: number; remaining: number } };
 }
 
 export interface PermissionScopeValue {

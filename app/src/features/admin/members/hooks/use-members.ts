@@ -32,6 +32,7 @@ export const useUpdateMember = mutation(service.updateMember);
 export const useSuspendMember = mutation(service.suspendMember);
 export const useReactivateMember = mutation(service.reactivateMember);
 export const useOffboardMember = mutation(service.offboardMember);
+export const useResetMemberMfa = mutation(service.resetMemberMfa);
 export const useAssignRole = mutation(service.assignRole);
 export const useRemoveRole = mutation(service.removeRole);
 export const useAddMemberBranch = mutation(service.addMemberBranch);

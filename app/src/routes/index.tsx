@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import AuthLayout from "@/pages/auth/layout";
 import SignInPage from "@/pages/auth/pages/sign-in";
@@ -11,6 +11,9 @@ import { PageSkeleton } from "@/components/ui/states";
 import ErrorBoundary from "@/components/ui/error-boundary";
 import { MODULE_ROUTES } from "./module-routes";
 import { PUBLIC_ROUTES } from "./public-routes";
+
+/** 01 §74 — forced MFA enrolment, outside the shell (signed in, but the rest of the app is blocked). */
+const MfaSetupPage = lazy(() => import("@/pages/settings/pages/mfa-setup"));
 
 export default function AppRoutes() {
     return (
@@ -37,6 +40,17 @@ export default function AppRoutes() {
                     }
                 />
             ))}
+
+            <Route
+                path="/mfa-setup"
+                element={
+                    <ErrorBoundary>
+                        <Suspense fallback={<PageSkeleton />}>
+                            <MfaSetupPage />
+                        </Suspense>
+                    </ErrorBoundary>
+                }
+            />
 
             <Route element={<AppShell />}>
                 {MODULE_ROUTES.map(({ path, Component }) => (

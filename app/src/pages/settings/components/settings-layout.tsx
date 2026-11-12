@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { KeyRound, MonitorSmartphone, Palette, UserRound } from "lucide-react";
+import { KeyRound, MonitorSmartphone, Palette, ShieldCheck, UserRound } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { PageSkeleton } from "@/components/ui/states";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
     { to: "/settings/profile", label: "Profile", icon: UserRound },
     { to: "/settings/password", label: "Password", icon: KeyRound },
+    { to: "/settings/security", label: "Two-step verification", icon: ShieldCheck },
     { to: "/settings/appearance", label: "Appearance", icon: Palette },
     { to: "/settings/sessions", label: "Sessions", icon: MonitorSmartphone },
 ];

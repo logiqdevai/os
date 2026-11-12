@@ -68,6 +68,11 @@ export default function AppShell() {
         return <ErrorState error={session.error} onRetry={() => session.refetch()} className="h-full" />;
     }
 
+    // 01 §74: the organization requires MFA and this person has not set it up — nothing else until they do.
+    if (session.data?.mfa?.enrollment_required) {
+        return <Navigate to={`/mfa-setup?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+    }
+
     if (session.data && !session.data.active_organization) {
         // Customer portal users (01 §79) have no agency membership: send them to their own shell.
         if (session.data.customer_memberships.some((m) => m.status === "ACTIVE")) return <Navigate to="/portal" replace />;

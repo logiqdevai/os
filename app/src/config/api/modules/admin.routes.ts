@@ -16,6 +16,7 @@ export const AdminApiRoutes = {
         suspend: (id: string) => `/members/${id}/suspend`,
         reactivate: (id: string) => `/members/${id}/reactivate`,
         offboard: (id: string) => `/members/${id}/offboard`,
+        mfa_reset: (id: string) => `/members/${id}/mfa/reset`,
         roles: (id: string) => `/members/${id}/role-assignments`,
         role: (id: string, assignmentId: string) => `/members/${id}/role-assignments/${assignmentId}`,
         branches: (id: string) => `/members/${id}/branches`,

@@ -1,4 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { ShieldOff } from "lucide-react";
+import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyValueList, Section } from "@/components/ui/page";
@@ -9,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
 import { useSessionData } from "@/features/session/hooks/use-session";
-import { useUpdateMember } from "@/features/admin/members/hooks/use-members";
+import { useResetMemberMfa, useUpdateMember } from "@/features/admin/members/hooks/use-members";
 import type { MemberDetail } from "@/features/admin/members/interfaces/members.interfaces";
 import { memberProfileSchema, type MemberProfileFormValues } from "@/features/admin/members/validation-schemas/members.schema";
 import { MembershipTypeFormOptions, ProvisioningSourceOptions } from "@/config/constants/dropdowns/admin/membership-form.options";
@@ -56,6 +58,7 @@ export function MemberProfileTab({ member }: { member: MemberDetail }) {
                         ]}
                     />
                 </div>
+                <SignInMethods member={member} canManage={canManage} />
             </Section>
             <Section title="Membership" description="Defaults only pre-fill new records; they never limit access.">
                 <Form {...form}>
@@ -98,6 +101,52 @@ export function MemberProfileTab({ member }: { member: MemberDetail }) {
                     </form>
                 </Form>
             </Section>
+        </div>
+    );
+}
+
+/**
+ * Sign-in methods (mockup 01-admin member detail): factor types and dates only. "Reset MFA" removes the member's
+ * authenticator and recovery codes so they enrol again; audited as user.mfa_disabled, the member is notified.
+ * @perm users.members.manage · @api POST /members/:id/mfa/reset · @mcp users_members_mfa_reset
+ */
+function SignInMethods({ member, canManage }: { member: MemberDetail; canManage: boolean }) {
+    const reset = useResetMemberMfa();
+    const [confirming, setConfirming] = useState(false);
+    const f = member.mfa_factors;
+    const name = member.user.display_name ?? member.user.email;
+    const hasFactors = member.user.mfa_enabled || !!f?.totp || (f?.recovery_codes.total ?? 0) > 0;
+    return (
+        <div className="mt-3 space-y-3 rounded-lg border border-border bg-card p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-[13px] font-medium text-foreground">Sign-in methods</h3>
+                {canManage && !member.is_self && hasFactors && (
+                    <Button size="sm" variant="outline" className="text-danger" onClick={() => setConfirming(true)}><ShieldOff /> Reset MFA</Button>
+                )}
+            </div>
+            <KeyValueList
+                columns={1}
+                items={[
+                    { label: "Password", value: <Badge variant="success">Set</Badge> },
+                    { label: "Authenticator app", value: f?.totp ? <span><Badge variant="success">On</Badge> <span className="text-xs text-muted-foreground">{f.totp.last_used_at ? `last used ${formatRelative(f.totp.last_used_at)}` : `added ${formatDate(f.totp.verified_at)}`}</span></span> : <Badge>Off</Badge> },
+                    { label: "Recovery codes", value: f && f.recovery_codes.total ? `${f.recovery_codes.remaining} of ${f.recovery_codes.total} left` : "Not set up" },
+                ]}
+            />
+            <ConfirmationDialog
+                isOpen={confirming}
+                onClose={() => setConfirming(false)}
+                title={`Reset two-step verification for ${name}?`}
+                description="Their authenticator app and recovery codes stop working. If your organization requires MFA they must set it up again before they can continue. They will be notified, and this is recorded in the audit log."
+                confirmText="Reset MFA"
+                variant="destructive"
+                isLoading={reset.isPending}
+                onConfirm={() =>
+                    reset.mutate(member.id, {
+                        onSuccess: () => { toast({ title: "Two-step verification reset" }); setConfirming(false); },
+                        onError: (e) => { toast({ variant: "destructive", title: "Could not reset", description: getApiErrorMessage(e) }); setConfirming(false); },
+                    })
+                }
+            />
         </div>
     );
 }

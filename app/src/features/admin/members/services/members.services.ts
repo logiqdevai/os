@@ -11,6 +11,7 @@ export const getEffectivePermissions = async (id: string): Promise<EffectivePerm
 export const updateMember = async ({ id, ...dto }: UpdateMemberDto & { id: string }) => (await axiosInstance.patch(R.detail(id), dto)).data;
 export const suspendMember = async (id: string) => (await axiosInstance.post(R.suspend(id))).data;
 export const reactivateMember = async (id: string) => (await axiosInstance.post(R.reactivate(id))).data;
+export const resetMemberMfa = async (id: string): Promise<{ success: true; mfa_enabled: false }> => (await axiosInstance.post(R.mfa_reset(id))).data;
 export const offboardMember = async ({ id, reason }: { id: string; reason?: string }) => (await axiosInstance.post(R.offboard(id), { reason })).data;
 export const assignRole = async ({ id, ...dto }: AssignRoleDto & { id: string }) => (await axiosInstance.post(R.roles(id), dto)).data;
 export const removeRole = async ({ id, assignment_id }: { id: string; assignment_id: string }) => (await axiosInstance.delete(R.role(id, assignment_id))).data;

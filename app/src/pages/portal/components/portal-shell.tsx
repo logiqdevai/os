@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { personName } from "@/lib/format";
 import { isLoggedIn, useAuthStore } from "@/stores/auth";
 import { usePortalStore } from "@/stores/portal";
-import { useLogout } from "@/features/session/hooks/use-session";
+import { useLogout, useSession } from "@/features/session/hooks/use-session";
 import { usePortalMemberships, usePortalSession } from "@/features/portal/hooks/use-portal";
 import type { PortalFeature, PortalMembershipOption, PortalSession } from "@/features/portal/interfaces/portal.interfaces";
 import { PortalSessionContext } from "./portal-context";
@@ -63,8 +63,11 @@ export default function PortalShell() {
     }, [memberships.data, chosen, membershipId, setMembership]);
 
     const session = usePortalSession(!!chosen && chosen.id === membershipId);
+    const me = useSession();
 
     if (!signedIn) return <Navigate to={`${PORTAL_PATHS.signIn}?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+    // 01 §74, §79: the agency's portal MFA policy requires two-step verification first.
+    if (me.data?.mfa?.enrollment_required) return <Navigate to={`/mfa-setup?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
     if (memberships.isLoading) return <PageSkeleton />;
     if (memberships.error) return <Centered><ErrorState error={memberships.error} onRetry={() => memberships.refetch()} /></Centered>;
     if (!list.length) return <NoPortalAccess />;

@@ -99,6 +99,20 @@ export class MfaRequirementService {
         return blocked;
     }
 
+    /** Same as mustEnroll for a customer portal membership: `portal_mfa_policy` other than OPTIONAL requires MFA. */
+    async portalMustEnroll(userId: string, organizationId: string): Promise<boolean> {
+        const key = `${userId}:portal:${organizationId}`;
+        const hit = this.blockCache.get(key);
+        if (hit && Date.now() - hit.at < CACHE_MS) return hit.blocked;
+        const [user, policy] = await Promise.all([
+            this.prisma.user.findUnique({ where: { id: userId }, select: { mfa_enabled: true } }),
+            this.prisma.organizationSecurityPolicy.findUnique({ where: { organization_id: organizationId }, select: { portal_mfa_policy: true } }),
+        ]);
+        const blocked = !user?.mfa_enabled && !!policy && policy.portal_mfa_policy !== MfaPolicy.OPTIONAL;
+        this.blockCache.set(key, { at: Date.now(), blocked });
+        return blocked;
+    }
+
     forget(userId: string) {
         for (const key of [...this.blockCache.keys()]) if (key.startsWith(`${userId}:`)) this.blockCache.delete(key);
     }
