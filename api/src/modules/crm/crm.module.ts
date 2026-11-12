@@ -42,10 +42,14 @@ import { CrmRulesMcp } from './rules/rules.mcp';
 import { CrmImportsService } from './imports/imports.service';
 import { CrmImportsController } from './imports/imports.controller';
 import { CrmImportsMcp } from './imports/imports.mcp';
+import { CrmMergeService } from './merge/merge.service';
+import { CrmDuplicatesService } from './merge/duplicates.service';
+import { CrmMergeController } from './merge/merge.controller';
+import { CrmMergeMcp } from './merge/merge.mcp';
 
 /** Extensions (02 §22–33): custom fields, rules & targets, import, merge & duplicates, bulk actions, reports. */
-const FEATURE_CONTROLLERS = [CrmCustomFieldsController, CrmRulesController, CrmImportsController];
-const FEATURE_PROVIDERS = [CrmCustomFieldValuesService, CrmCustomFieldsService, CrmCustomFieldsMcp, CrmLeadRulesService, CrmTargetsService, CrmRulesMcp, CrmImportsService, CrmImportsMcp];
+const FEATURE_CONTROLLERS = [CrmCustomFieldsController, CrmRulesController, CrmImportsController, CrmMergeController];
+const FEATURE_PROVIDERS = [CrmCustomFieldValuesService, CrmCustomFieldsService, CrmCustomFieldsMcp, CrmLeadRulesService, CrmTargetsService, CrmRulesMcp, CrmImportsService, CrmImportsMcp, CrmMergeService, CrmDuplicatesService, CrmMergeMcp];
 
 /**
  * 02 CRM & Sales (docs/features/02-crm-sales-management.md) plus the platform tags and saved views it owns.

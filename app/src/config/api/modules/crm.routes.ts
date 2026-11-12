@@ -3,6 +3,7 @@ const resource = (base: string) => ({
     list: base,
     detail: (id: string) => `${base}/${id}`,
     export: `${base}/export`,
+    duplicates: `${base}/duplicates`,
     assign: (id: string) => `${base}/${id}/assign`,
     archive: (id: string) => `${base}/${id}/archive`,
     restore: (id: string) => `${base}/${id}/restore`,
@@ -75,6 +76,8 @@ export const CrmApiRoutes = {
         errors: (id: string) => `/crm/imports/${id}/errors.csv`,
         rollback: (id: string) => `/crm/imports/${id}/rollback`,
     },
+    duplicates: { list: "/crm/duplicates", dismiss: "/crm/duplicates/dismiss", rules: "/crm/duplicate-rules" },
+    merge: { preview: "/crm/merge/preview", run: "/crm/merge" },
     rules: {
         fields: "/crm/rules/fields",
         assignment: "/crm/assignment-rules",

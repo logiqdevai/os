@@ -23,6 +23,8 @@ const TargetsPage = lazy(() => import("./pages/targets"));
 const LeadRulesPage = lazy(() => import("./pages/lead-rules"));
 const ImportsPage = lazy(() => import("./pages/imports"));
 const ImportDetailPage = lazy(() => import("./pages/import-detail"));
+const DuplicatesPage = lazy(() => import("./pages/duplicates"));
+const MergePage = lazy(() => import("./pages/merge"));
 
 function NotFound() {
     return <Page><EmptyState icon={SearchX} title="Page not found" description="This CRM page does not exist." /></Page>;
@@ -52,6 +54,8 @@ export default function CrmRoutes() {
             <Route path="lead-rules" element={<RequirePermission anyOf={["crm.settings.manage", "crm.scoring_rules.manage"]}><LeadRulesPage /></RequirePermission>} />
             <Route path="imports" element={<RequirePermission permission="crm.records.import"><ImportsPage /></RequirePermission>} />
             <Route path="imports/:importId" element={<RequirePermission permission="crm.records.import"><ImportDetailPage /></RequirePermission>} />
+            <Route path="duplicates" element={<RequirePermission anyOf={["crm.companies.read", "crm.contacts.read", "crm.leads.read"]}><DuplicatesPage /></RequirePermission>} />
+            <Route path="merge" element={<RequirePermission anyOf={["crm.companies.merge", "crm.contacts.merge", "crm.leads.merge", "crm.deals.merge"]}><MergePage /></RequirePermission>} />
             <Route path="*" element={<NotFound />} />
         </Routes>
     );
