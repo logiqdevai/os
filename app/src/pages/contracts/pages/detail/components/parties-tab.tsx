@@ -7,8 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { ContractPartyTypeFormOptions } from "@/config/constants/dropdowns/contracts/contract-terms.options";
 import { useLinkProject, useSetParties, useUnlinkProject } from "@/features/contracts/hooks/use-contracts";
@@ -63,14 +61,14 @@ export function PartiesTab({ contract }: { contract: ContractDetail }) {
                         <li key={p.project_id} className="flex items-center gap-2 px-3 py-2 text-[13px]">
                             <FolderKanban className="size-4 text-muted-foreground" />
                             <Link to={`/projects/${p.project.id}`} className="min-w-0 flex-1 truncate text-foreground hover:underline">{p.project.code ? `${p.project.code} · ` : ""}{p.project.name}</Link>
-                            {canUpdate && <Button variant="ghost" size="icon-sm" aria-label="Unlink project" onClick={() => unlink.mutate({ id: contract.id, project_id: p.project_id }, { onError: (e) => toast({ variant: "destructive", title: "Could not unlink", description: getApiErrorMessage(e) }) })}><X /></Button>}
+                            {canUpdate && <Button variant="ghost" size="icon-sm" aria-label="Unlink project" onClick={() => unlink.mutate({ id: contract.id, project_id: p.project_id })}><X /></Button>}
                         </li>
                     ))}
                 </ul>
                 {canUpdate && (
                     <div className="flex gap-2 border-t border-border p-3">
-                        <div className="min-w-0 flex-1"><ContractLookupPicker kind="projects" ariaLabel="Project" value={project} companyId={contract.primary_company_id} placeholder="Link a project" onChange={setProject} /></div>
-                        <Button size="sm" variant="outline" disabled={!project} loading={link.isPending} onClick={() => project && link.mutate({ id: contract.id, project_id: project }, { onSuccess: () => { setProject(null); toast({ title: "Project linked" }); }, onError: (e) => toast({ variant: "destructive", title: "Could not link", description: getApiErrorMessage(e) }) })}><Plus /></Button>
+                        {/* Picking a project links it right away; it then appears in the list above. */}
+                        <div className="min-w-0 flex-1"><ContractLookupPicker kind="projects" ariaLabel="Link a project" value={project} companyId={contract.primary_company_id} placeholder={link.isPending ? "Linking…" : "Link a project"} disabled={link.isPending} onChange={(id) => { if (!id) return; setProject(id); link.mutate({ id: contract.id, project_id: id }, { onSettled: () => setProject(null) }); }} /></div>
                     </div>
                 )}
             </div>
@@ -101,7 +99,8 @@ function PartiesDialog({ contract, open, onOpenChange }: { contract: ContractDet
             party_type: p.party_type, company_id: p.company_id, legal_name: p.legal_name.trim(), registration_number: p.registration_number || undefined, vat_number: p.vat_number || undefined,
             signatories: p.signatories.map((s) => ({ name: s.name.trim(), title: s.title || undefined, email: s.email.trim(), contact_id: s.contact_id, membership_id: s.membership_id, is_required: s.is_required })),
         }));
-        save.mutate({ id: contract.id, parties: dto }, { onSuccess: () => { toast({ title: "Parties saved" }); onOpenChange(false); }, onError: (e) => toast({ variant: "destructive", title: "Could not save parties", description: getApiErrorMessage(e) }) });
+        // Nested multi-party edit stays a dialog with Save; it closes on success, failures toast globally.
+        save.mutate({ id: contract.id, parties: dto }, { onSuccess: () => onOpenChange(false) });
     };
 
     return (

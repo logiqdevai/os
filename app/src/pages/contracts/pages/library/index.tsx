@@ -14,8 +14,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import {
@@ -29,7 +27,6 @@ import type { ApprovalRule, ContractClause, ContractTemplate, ContractType } fro
 import { ContractTemplateDialog } from "./components/template-dialog";
 import { ClauseDialog, ContractRuleDialog, TypeDialog } from "./components/library-dialogs";
 
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 /**
  * /contracts/templates?tab=templates|clauses|types|rules — the contract library.
@@ -105,8 +102,8 @@ function TemplatesTab() {
                 empty={{ icon: FileStack, title: "No templates yet", description: "A template is the structure new contracts start from.", action: <Button size="sm" onClick={() => setDialog({ templateId: null })}><Plus /> New template</Button> }} />
             <ContractTemplateDialog open={!!dialog} onOpenChange={(o) => !o && setDialog(null)} templateId={dialog?.templateId ?? null} />
             {publishing && <PublishDialog template={publishing} onClose={() => setPublishing(null)} />}
-            <ConfirmationDialog isOpen={!!deprecating} onClose={() => setDeprecating(null)} title={`Deprecate ${deprecating?.name}?`} description="It can no longer be used for new contracts. Existing contracts keep their text." confirmText="Deprecate" variant="destructive" isLoading={deprecate.isPending}
-                onConfirm={() => deprecating && deprecate.mutate(deprecating.id, { onSuccess: () => { toast({ title: "Template deprecated" }); setDeprecating(null); }, onError: fail("Could not deprecate") })} />
+            <ConfirmationDialog isOpen={!!deprecating} onClose={() => setDeprecating(null)} title={`Deprecate ${deprecating?.name}?`} description="It can no longer be used for new contracts. Existing contracts keep their text." confirmText="Deprecate" variant="destructive" 
+                onConfirm={() => { if (deprecating) deprecate.mutate(deprecating.id); setDeprecating(null); }} />
         </>
     );
 }
@@ -124,7 +121,7 @@ function PublishDialog({ template, onClose }: { template: ContractTemplate; onCl
             description={already ? "This version is already published." : "New contracts will use this version. Contracts already generated are not changed."}
             confirmText="Publish"
             isLoading={publish.isPending || detail.isPending}
-            onConfirm={() => latest && !already ? publish.mutate({ id: template.id, vid: latest.id }, { onSuccess: () => { toast({ title: "Version published" }); onClose(); }, onError: fail("Could not publish") }) : onClose()}
+            onConfirm={() => latest && !already ? publish.mutate({ id: template.id, vid: latest.id }, { onSuccess: onClose }) : onClose()}
         />
     );
 }
@@ -176,8 +173,8 @@ function TypesTab() {
             <DataTable columns={columns} data={list.data?.data} rowKey={(t) => t.id} loading={list.isFetching} error={list.error} onRetry={() => list.refetch()} onRowClick={(t) => { setEditing(t); setOpen(true); }}
                 empty={{ icon: Tags, title: "No contract types", description: "Types (MSA, SOW, retainer, NDA…) carry default templates, renewal and notice settings." }} />
             <TypeDialog open={open} onOpenChange={setOpen} type={editing} />
-            <ConfirmationDialog isOpen={!!archiving} onClose={() => setArchiving(null)} title={`Archive ${archiving?.name}?`} description="It is hidden from pickers; existing contracts keep it." confirmText="Archive" variant="destructive" isLoading={archive.isPending}
-                onConfirm={() => archiving && archive.mutate(archiving.id, { onSuccess: () => { toast({ title: "Type archived" }); setArchiving(null); }, onError: fail("Could not archive") })} />
+            <ConfirmationDialog isOpen={!!archiving} onClose={() => setArchiving(null)} title={`Archive ${archiving?.name}?`} description="It is hidden from pickers; existing contracts keep it." confirmText="Archive" variant="destructive" 
+                onConfirm={() => { if (archiving) archive.mutate(archiving.id); setArchiving(null); }} />
         </>
     );
 }
@@ -203,7 +200,7 @@ function RulesTab() {
                                 <div className="text-xs text-muted-foreground">If {r.conditions.map((c) => `${getDropdownOptionLabel(ApprovalRuleFieldOptions, c.field)} ${getDropdownOptionLabel(ApprovalRuleOperatorOptions, c.operator)} ${String(c.value)}`).join(" and ")}</div>
                                 <div className="text-xs text-muted-foreground">Then {r.steps.map((s) => `${s.step}. ${s.name ?? "approver"}`).join(" → ")}</div>
                             </div>
-                            <Switch aria-label={`Enable ${r.name}`} checked={r.enabled} onCheckedChange={(enabled) => update.mutate({ id: r.id, enabled }, { onError: fail("Could not update") })} />
+                            <Switch aria-label={`Enable ${r.name}`} checked={r.enabled} onCheckedChange={(enabled) => update.mutate({ id: r.id, enabled })} />
                             <Button variant="ghost" size="icon-sm" aria-label={`Edit ${r.name}`} onClick={() => { setEditing(r); setOpen(true); }}><Pencil /></Button>
                             <Button variant="ghost" size="icon-sm" aria-label={`Delete ${r.name}`} onClick={() => setDeleting(r)}><Trash2 /></Button>
                         </li>
@@ -211,8 +208,8 @@ function RulesTab() {
                 </ul>
             )}
             <ContractRuleDialog open={open} onOpenChange={setOpen} rule={editing} />
-            <ConfirmationDialog isOpen={!!deleting} onClose={() => setDeleting(null)} title={`Delete ${deleting?.name}?`} description="Approvals already requested stay as they are." confirmText="Delete" variant="destructive" isLoading={remove.isPending}
-                onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => { toast({ title: "Rule deleted" }); setDeleting(null); }, onError: fail("Could not delete") })} />
+            <ConfirmationDialog isOpen={!!deleting} onClose={() => setDeleting(null)} title={`Delete ${deleting?.name}?`} description="Approvals already requested stay as they are." confirmText="Delete" variant="destructive" 
+                onConfirm={() => { if (deleting) remove.mutate(deleting.id); setDeleting(null); }} />
         </>
     );
 }

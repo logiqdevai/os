@@ -13,8 +13,6 @@ import { contractFormSchema, type ContractFormValues } from "@/features/contract
 import { BillingFrequencyOptions, ContractRenewalTypeFormOptions } from "@/config/constants/dropdowns/contracts/contract-terms.options";
 import { CurrencyOptions } from "@/config/constants/dropdowns/proposals/proposal-content.options";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { ContractLookupPicker } from "../../components/contract-badges";
 
 const NONE = "__none";
@@ -63,10 +61,7 @@ export default function NewContractPage() {
                 ...(canSeeValue && { total_value: optNum(v.total_value), recurring_value: optNum(v.recurring_value), billing_frequency: optStr(v.billing_frequency), payment_terms: v.payment_terms || undefined }),
                 processes_personal_data: v.processes_personal_data,
             },
-            {
-                onSuccess: (c) => { toast({ title: `Contract ${c.number} created` }); navigate(`/contracts/${c.id}`); },
-                onError: (e) => toast({ variant: "destructive", title: "Could not create the contract", description: getApiErrorMessage(e) }),
-            }
+            { onSuccess: (c) => navigate(`/contracts/${c.id}`) } // the new contract opens; failures toast globally
         )
     );
 

@@ -5,8 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { personName } from "@/lib/format";
 import { ObligationFrequencyOptions, ObligationStatusFormOptions, ObligationTypeFormOptions } from "@/config/constants/dropdowns/contracts/contract-obligation.options";
 import { useCreateObligation, useUpdateObligation } from "@/features/contracts/hooks/use-contracts";
@@ -51,9 +49,10 @@ export function ObligationDialog({ open, onOpenChange, contractId, obligation }:
             reminder_days_before: reminder ? Number(reminder) : undefined,
             responsible_membership_id: owner ?? undefined,
         };
-        const opts = { onSuccess: () => { toast({ title: obligation ? "Obligation saved" : "Obligation added" }); onOpenChange(false); }, onError: (e: unknown) => toast({ variant: "destructive" as const, title: "Could not save", description: getApiErrorMessage(e) }) };
-        if (obligation) update.mutate({ id: obligation.id, ...dto, status }, opts);
-        else create.mutate({ contract_id: contractId, ...dto }, opts);
+        // Multi-field edit stays a dialog: edits are optimistic (close at once), adding closes when created.
+        // Failures toast globally (and an edit rolls back).
+        if (obligation) { update.mutate({ id: obligation.id, ...dto, status }); onOpenChange(false); }
+        else create.mutate({ contract_id: contractId, ...dto }, { onSuccess: () => onOpenChange(false) });
     };
 
     return (

@@ -10,7 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePageMetadata } from "@/hooks/use-page-metadata";
-import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
 import { formatDateTime } from "@/lib/format";
 import { renderMarkdown, markdownClass } from "@/lib/markdown";
@@ -114,11 +113,10 @@ function Flow({ token, s }: { token: string; s: PublicSigningState }) {
 function SignedDownloads({ token }: { token: string }) {
     const signed = useDownloadPublicSignedPdf();
     const cert = useDownloadPublicCertificatePdf();
-    const fail = (e: unknown) => toast({ variant: "destructive", title: "Could not download", description: getApiErrorMessage(e) });
     return (
         <>
-            <Button variant="outline" loading={signed.isPending} onClick={() => signed.mutate(token, { onError: fail })}><Download /> Signed PDF</Button>
-            <Button variant="outline" loading={cert.isPending} onClick={() => cert.mutate(token, { onError: fail })}><Download /> Certificate PDF</Button>
+            <Button variant="outline" loading={signed.isPending} onClick={() => signed.mutate(token)}><Download /> Signed PDF</Button>
+            <Button variant="outline" loading={cert.isPending} onClick={() => cert.mutate(token)}><Download /> Certificate PDF</Button>
         </>
     );
 }
@@ -152,15 +150,16 @@ function Verify({ token, s }: { token: string; s: PublicSigningState }) {
     const verify = useVerifySigningCode();
     const [sent, setSent] = useState<{ channel: "EMAIL" | "SMS"; recipient: string } | null>(null);
     const [code, setCode] = useState("");
+    // Shown inline under the code field instead of toasts.
+    const [notice, setNotice] = useState<string | null>(null);
+    const [devCode, setDevCode] = useState<string | null>(null);
     const request = (channel: "EMAIL" | "SMS", again = false) =>
         send.mutate({ token, channel }, {
             onSuccess: (r) => {
                 setSent({ channel: r.channel, recipient: r.recipient });
-                if (r.fallback && channel === "SMS") toast({ title: "Code sent by email instead", description: "The text message could not be sent." });
-                else if (again) toast({ title: "New code sent" });
-                if (r.dev_code) toast({ title: "Development code", description: r.dev_code });
+                setNotice(r.fallback && channel === "SMS" ? "The text message could not be sent, so the code was sent by email instead." : again ? "A new code is on its way." : null);
+                setDevCode(r.dev_code ?? null);
             },
-            onError: (e) => toast({ variant: "destructive", title: "Could not send the code", description: getApiErrorMessage(e) }),
         });
     const target = s.signer.sms_available && s.signer.phone_masked ? `a text message to ${s.signer.phone_masked}` : `a code sent to ${s.signer.email_masked}`;
     return (
@@ -183,8 +182,10 @@ function Verify({ token, s }: { token: string; s: PublicSigningState }) {
                     )}
                 </div>
             ) : (
-                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); verify.mutate({ token, code }, { onError: (e2) => toast({ variant: "destructive", title: "Code not accepted", description: getApiErrorMessage(e2) }) }); }}>
+                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); verify.mutate({ token, code }); }}>
                     <p className="text-[13px] text-muted-foreground">We sent a 6-digit code {sent.channel === "SMS" ? "by text message" : "by email"} to {sent.recipient}. It expires in 10 minutes.</p>
+                    {notice && <p role="status" className="text-[13px] text-foreground">{notice}</p>}
+                    {devCode && <p className="rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">Development code: <span className="font-mono text-foreground">{devCode}</span></p>}
                     <div className="space-y-1.5"><Label htmlFor="sign-code">6-digit code</Label><Input id="sign-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} /></div>
                     <Button type="submit" className="w-full" loading={verify.isPending} disabled={code.length < 6}>Verify</Button>
                     <Button type="button" variant="ghost" className="w-full" disabled={send.isPending} onClick={() => request(sent.channel, true)}>Send a new code</Button>
@@ -244,7 +245,6 @@ function Review({ token, s }: { token: string; s: PublicSigningState }) {
                     </label>
                     <Button className="w-full" disabled={!ready} loading={sign.isPending} onClick={() => sign.mutate(
                         { token, signature_type: method, typed_name: method === "TYPED" ? typed.trim() : undefined, signature_data_url: method === "DRAWN" ? drawn ?? undefined : undefined, consent_accepted: consent, consent_text_id: s.consent_text.id },
-                        { onSuccess: () => toast({ title: "Signed" }), onError: (e) => toast({ variant: "destructive", title: "Could not sign", description: getApiErrorMessage(e) }) }
                     )}>Sign document</Button>
                     <Button variant="ghost" className="w-full" onClick={() => setDeclineOpen(true)}>Decline to sign</Button>
                 </div>
@@ -256,7 +256,7 @@ function Review({ token, s }: { token: string; s: PublicSigningState }) {
                     <Textarea aria-label="Reason" rows={4} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why are you declining?" />
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setDeclineOpen(false)}>Back</Button>
-                        <Button variant="destructive" loading={decline.isPending} disabled={reason.trim().length < 3} onClick={() => decline.mutate({ token, reason: reason.trim() }, { onSuccess: () => setDeclineOpen(false), onError: (e) => toast({ variant: "destructive", title: "Could not decline", description: getApiErrorMessage(e) }) })}>Decline</Button>
+                        <Button variant="destructive" loading={decline.isPending} disabled={reason.trim().length < 3} onClick={() => decline.mutate({ token, reason: reason.trim() }, { onSuccess: () => setDeclineOpen(false) })}>Decline</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

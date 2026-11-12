@@ -12,12 +12,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePageMetadata } from "@/hooks/use-page-metadata";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { InlineText } from "@/components/ui/inline-edit";
 import { formatDate, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { ContractRelationKindOptions, ContractRenewalTypeFormOptions, ContractTerminationTypeOptions } from "@/config/constants/dropdowns/contracts/contract-terms.options";
-import { useArchiveContract, useContract, useContractVersion, useCreateVersion, useDeleteContract, useObligations, useRestoreContract } from "@/features/contracts/hooks/use-contracts";
+import { useArchiveContract, useContract, useContractVersion, useCreateVersion, useDeleteContract, useObligations, useRestoreContract, useUpdateContract } from "@/features/contracts/hooks/use-contracts";
 import { ContractStatusBadge, ContractVersionBadge, contractValue } from "../../components/contract-badges";
 import { ObligationsTable } from "../../components/obligations-table";
 import { ObligationDialog } from "../../components/obligation-dialog";
@@ -51,6 +50,7 @@ export default function ContractDetailPage() {
     const archive = useArchiveContract();
     const restore = useRestoreContract();
     const remove = useDeleteContract();
+    const update = useUpdateContract();
     const [dialog, setDialog] = useState<"edit" | "renew" | "amend" | "terminate" | "delete" | "archive" | "obligation" | null>(null);
     usePageMetadata({ title: q.data ? `${q.data.number} · ${q.data.title}` : "Contract" });
 
@@ -64,10 +64,8 @@ export default function ContractDetailPage() {
     const currentVersion = c.versions.find((v) => v.id === c.current_version_id);
     const canNewVersion = p.can("contracts.versions.create") && !terminal && !live && !!currentVersion && ["IN_REVIEW", "APPROVED"].includes(currentVersion.status);
 
-    const newVersion = () => createVersion.mutate({ id: c.id }, {
-        onSuccess: (v) => { toast({ title: `Draft ${v.label} created` }); setParam("version", null); setParam("tab", null); },
-        onError: (e) => toast({ variant: "destructive", title: "Could not create a version", description: getApiErrorMessage(e) }),
-    });
+    // The new draft opens on the Document tab; failures toast globally.
+    const newVersion = () => createVersion.mutate({ id: c.id }, { onSuccess: () => { setParam("version", null); setParam("tab", null); } });
 
     return (
         <Page>
@@ -77,7 +75,10 @@ export default function ContractDetailPage() {
                     <div className="min-w-0 space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="font-mono text-[13px] text-muted-foreground">{c.number}</span>
-                            <h1 className="min-w-0 truncate text-xl font-medium text-foreground">{c.title}</h1>
+                            <h1 className="min-w-0 truncate text-xl font-medium text-foreground">
+                                {/* Click to rename; saves on blur / Enter (optimistic). */}
+                                <InlineText value={c.title} aria-label="Contract title" disabled={terminal || !p.can("contracts.contracts.update")} onSave={(title) => update.mutate({ id: c.id, title })} />
+                            </h1>
                             <ContractStatusBadge status={c.status} />
                             {c.relation_kind !== "STANDALONE" && <Badge variant="outline">{getDropdownOptionLabel(ContractRelationKindOptions, c.relation_kind)}</Badge>}
                         </div>
@@ -101,7 +102,7 @@ export default function ContractDetailPage() {
                                 <DropdownMenuSeparator />
                                 {live && p.can("contracts.contracts.terminate") && <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setDialog("terminate")}><XOctagon /> Terminate</DropdownMenuItem>}
                                 {p.can("contracts.contracts.archive") && (c.archived_at
-                                    ? <DropdownMenuItem onSelect={() => restore.mutate(c.id, { onSuccess: () => toast({ title: "Contract restored" }), onError: (e) => toast({ variant: "destructive", title: "Could not restore", description: getApiErrorMessage(e) }) })}><Archive /> Restore</DropdownMenuItem>
+                                    ? <DropdownMenuItem onSelect={() => restore.mutate(c.id)}><Archive /> Restore</DropdownMenuItem>
                                     : <DropdownMenuItem onSelect={() => setDialog("archive")}><Archive /> Archive</DropdownMenuItem>)}
                                 {p.can("contracts.contracts.delete") && c.status === "DRAFT" && <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setDialog("delete")}><Trash2 /> Delete draft</DropdownMenuItem>}
                             </DropdownMenuContent>
@@ -172,10 +173,10 @@ export default function ContractDetailPage() {
                 description={dialog === "delete" ? "This permanently deletes the draft. Contracts sent for signature cannot be deleted." : "Archived contracts are hidden from lists."}
                 confirmText={dialog === "delete" ? "Delete" : "Archive"}
                 variant="destructive"
-                isLoading={remove.isPending || archive.isPending}
                 onConfirm={() => {
-                    if (dialog === "delete") remove.mutate(c.id, { onSuccess: () => { toast({ title: "Contract deleted" }); navigate("/contracts"); }, onError: (e) => toast({ variant: "destructive", title: "Could not delete", description: getApiErrorMessage(e) }) });
-                    else archive.mutate(c.id, { onSuccess: () => { toast({ title: "Contract archived" }); setDialog(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not archive", description: getApiErrorMessage(e) }) });
+                    // Optimistic: archive shows at once / delete leaves the list; a refusal rolls back and toasts.
+                    if (dialog === "delete") { remove.mutate(c.id); navigate("/contracts"); }
+                    else { archive.mutate(c.id); setDialog(null); }
                 }}
             />
         </Page>

@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { SaveStatus } from "@/components/ui/save-status";
+import { useAutosave } from "@/hooks/use-autosave";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,8 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePermission } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import {
     BillingFrequencyOptions, ContractAmendmentKindOptions, ContractRenewalTypeFormOptions, ContractTerminationTypeOptions, RenewalDecisionOptions, RenewalValueChangeOptions, TerminationObligationHandlingOptions,
 } from "@/config/constants/dropdowns/contracts/contract-terms.options";
@@ -19,34 +19,42 @@ import { ContractLookupPicker } from "../../../components/contract-badges";
 interface P { contract: ContractDetail; open: boolean; onOpenChange: (o: boolean) => void }
 const NONE = "__none";
 const d = (v: string | null | undefined) => (v ? v.slice(0, 10) : "");
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
-
-/** Edit record metadata: dates, renewal, value (confidential), owner. */
+/** Edit record metadata: dates, renewal, value (confidential), owner. Autosaves — no Save button. */
 export function EditContractDialog({ contract, open, onOpenChange }: P) {
-    const update = useUpdateContract();
-    const canValue = usePermission("contracts.confidential_terms.read");
-    const [f, setF] = useState({ title: "", owner: null as string | null, start: "", end: "", notice: "", renewal: "NONE" as ContractRenewalType, term: "", total: "", recurring: "", freq: NONE, terms: "" });
-    useEffect(() => {
-        if (!open) return;
-        setF({
-            title: contract.title, owner: contract.owner_membership_id, start: d(contract.start_date), end: d(contract.end_date), notice: contract.notice_days != null ? String(contract.notice_days) : "",
-            renewal: contract.renewal_type, term: contract.renewal_term_months != null ? String(contract.renewal_term_months) : "", total: contract.total_value ?? "", recurring: contract.recurring_value ?? "",
-            freq: contract.billing_frequency ?? NONE, terms: contract.payment_terms ?? "",
-        });
-    }, [open, contract]);
-    const n = (v: string) => (v.trim() === "" ? undefined : Number(v));
-    const save = () => update.mutate(
-        {
-            id: contract.id, title: f.title.trim(), owner_membership_id: f.owner ?? undefined, start_date: f.start || undefined, end_date: f.end || undefined, notice_days: n(f.notice), renewal_type: f.renewal,
-            renewal_term_months: f.renewal === "NONE" ? undefined : n(f.term),
-            ...(canValue && !contract.confidential_hidden && { total_value: n(f.total), recurring_value: n(f.recurring), billing_frequency: f.freq !== NONE ? f.freq : undefined, payment_terms: f.terms || undefined }),
-        },
-        { onSuccess: () => { toast({ title: "Contract updated" }); onOpenChange(false); }, onError: fail("Could not update") }
-    );
     return (
-        <Dialog open={open} onOpenChange={(o) => !update.isPending && onOpenChange(o)}>
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
-                <DialogHeader><DialogTitle>Edit {contract.number}</DialogTitle><DialogDescription>Record details. The document text is edited on the Document tab.</DialogDescription></DialogHeader>
+                {/* Mounted per opening, so the form starts from the current record and nothing is re-saved on open. */}
+                {open && <EditContractForm contract={contract} onDone={() => onOpenChange(false)} />}
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function EditContractForm({ contract, onDone }: { contract: ContractDetail; onDone: () => void }) {
+    // The dialog shows failures in <SaveStatus /> with Retry, so no toast.
+    const update = useUpdateContract({ errorToast: false });
+    const canValue = usePermission("contracts.confidential_terms.read");
+    const [f, setF] = useState(() => ({
+        title: contract.title, owner: contract.owner_membership_id, start: d(contract.start_date), end: d(contract.end_date), notice: contract.notice_days != null ? String(contract.notice_days) : "",
+        renewal: contract.renewal_type as ContractRenewalType, term: contract.renewal_term_months != null ? String(contract.renewal_term_months) : "", total: contract.total_value ?? "", recurring: contract.recurring_value ?? "",
+        freq: contract.billing_frequency ?? NONE, terms: contract.payment_terms ?? "",
+    }));
+    const n = (v: string) => (v.trim() === "" ? undefined : Number(v));
+    const invalid = !f.title.trim() || (!!f.start && !!f.end && f.end < f.start);
+    // Every valid change is saved after a short pause (optimistic: the page behind updates at once).
+    const autosave = useAutosave({
+        value: f,
+        enabled: !invalid,
+        save: (x) => update.mutateAsync({
+            id: contract.id, title: x.title.trim(), owner_membership_id: x.owner ?? undefined, start_date: x.start || undefined, end_date: x.end || undefined, notice_days: n(x.notice), renewal_type: x.renewal,
+            renewal_term_months: x.renewal === "NONE" ? undefined : n(x.term),
+            ...(canValue && !contract.confidential_hidden && { total_value: n(x.total), recurring_value: n(x.recurring), billing_frequency: x.freq !== NONE ? x.freq : undefined, payment_terms: x.terms || undefined }),
+        }),
+    });
+    return (
+        <>
+                <DialogHeader><DialogTitle>Edit {contract.number}</DialogTitle><DialogDescription>Record details save automatically. The document text is edited on the Document tab.</DialogDescription></DialogHeader>
                 <div className="space-y-3">
                     <div className="space-y-1.5"><Label htmlFor="c-title">Title</Label><Input id="c-title" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
                     <div className="space-y-1.5"><Label>Owner</Label><ContractLookupPicker kind="members" ariaLabel="Owner" value={f.owner} clearable={false} valueLabel={contract.owner?.user ? (contract.owner.user.display_name ?? contract.owner.user.email) : undefined} onChange={(id) => setF({ ...f, owner: id })} /></div>
@@ -66,12 +74,11 @@ export function EditContractDialog({ contract, open, onOpenChange }: P) {
                         </div>
                     )}
                 </div>
-                <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={update.isPending}>Cancel</Button>
-                    <Button loading={update.isPending} disabled={!f.title.trim() || (!!f.start && !!f.end && f.end < f.start)} onClick={save}>Save</Button>
+                <DialogFooter className="items-center gap-3">
+                    {invalid ? <span className="mr-auto text-xs text-warning">{!f.title.trim() ? "A title is required" : "The end date is before the start"} — not saved yet</span> : <SaveStatus state={autosave} className="mr-auto" />}
+                    <Button variant="outline" onClick={() => { autosave.flush(); onDone(); }}>Done</Button>
                 </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        </>
     );
 }
 
@@ -94,15 +101,14 @@ export function RenewDialog({ contract, open, onOpenChange }: P) {
     const pending = decide.isPending || renew.isPending;
     const submit = () => {
         if (decision === "DO_NOT_RENEW") {
-            decide.mutate({ id: contract.id, decision, reason: reason || undefined }, { onSuccess: () => { toast({ title: "Recorded: do not renew" }); onOpenChange(false); }, onError: fail("Could not record the decision") });
+            decide.mutate({ id: contract.id, decision, reason: reason || undefined }, { onSuccess: () => onOpenChange(false) });
             return;
         }
         decide.mutate({ id: contract.id, decision, reason: reason || undefined }, {
             onSuccess: () => renew.mutate(
                 { id: contract.id, term_months: Number(term) || undefined, effective_date: effective || undefined, value_change_type: change, value_change: change === "none" ? undefined : Number(value) || 0 },
-                { onSuccess: (c) => { toast({ title: `Renewal ${c.number} drafted` }); onOpenChange(false); navigate(`/contracts/${c.id}`); }, onError: fail("Could not create the renewal") }
+                { onSuccess: (c) => { onOpenChange(false); navigate(`/contracts/${c.id}`); } } // opens the drafted renewal
             ),
-            onError: fail("Could not record the decision"),
         });
     };
     return (
@@ -155,7 +161,7 @@ export function AmendDialog({ contract, open, onOpenChange }: P) {
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={amend.isPending}>Cancel</Button>
-                    <Button loading={amend.isPending} onClick={() => amend.mutate({ id: contract.id, kind, title: title || undefined, reason: reason || undefined, effective_date: effective || undefined, value_delta: delta ? Number(delta) : undefined }, { onSuccess: (c) => { toast({ title: `${c.number} drafted` }); onOpenChange(false); navigate(`/contracts/${c.id}`); }, onError: fail("Could not create it") })}>Create draft</Button>
+                    <Button loading={amend.isPending} onClick={() => amend.mutate({ id: contract.id, kind, title: title || undefined, reason: reason || undefined, effective_date: effective || undefined, value_delta: delta ? Number(delta) : undefined }, { onSuccess: (c) => { onOpenChange(false); navigate(`/contracts/${c.id}`); } })}>Create draft</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -185,7 +191,7 @@ export function TerminateDialog({ contract, open, onOpenChange }: P) {
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={terminate.isPending}>Cancel</Button>
-                    <Button variant="destructive" loading={terminate.isPending} disabled={!effective || !reason.trim()} onClick={() => terminate.mutate({ id: contract.id, type, effective_date: effective, notice_date: notice || undefined, reason, close_obligations: obligations }, { onSuccess: () => { toast({ title: "Termination recorded" }); onOpenChange(false); }, onError: fail("Could not terminate") })}>Terminate</Button>
+                    <Button variant="destructive" loading={terminate.isPending} disabled={!effective || !reason.trim()} onClick={() => terminate.mutate({ id: contract.id, type, effective_date: effective, notice_date: notice || undefined, reason, close_obligations: obligations }, { onSuccess: () => onOpenChange(false) })}>Terminate</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

@@ -8,8 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { useAddTemplateVersion, useContractClauses, useContractTemplate, useContractTypes, useCreateContractTemplate } from "@/features/contracts/hooks/use-contracts";
 import type { TemplateSectionDef } from "@/features/contracts/interfaces/contracts.interfaces";
 
@@ -61,9 +59,10 @@ export function ContractTemplateDialog({ open, onOpenChange, templateId }: { ope
     const payload = sections.map((s, i) => ({ ...s, title: s.title.trim(), sort_order: i, clause_key: s.clause_key || undefined }));
 
     const submit = () => {
-        const fail = (e: unknown) => toast({ variant: "destructive", title: "Could not save the template", description: getApiErrorMessage(e) });
-        if (templateId) addVersion.mutate({ id: templateId, sections: payload, change_summary: summary || undefined }, { onSuccess: () => { toast({ title: "New template version saved", description: "Publish it to use it for new contracts." }); onOpenChange(false); }, onError: fail });
-        else create.mutate({ name: name.trim(), description: description || undefined, type_id: typeId !== NONE ? typeId : undefined, sections: payload, publish }, { onSuccess: () => { toast({ title: "Template created" }); onOpenChange(false); }, onError: fail });
+        // Saving creates a new template version (or the template): an explicit action, not autosave.
+        // It closes on success (the list shows the new version); failures toast globally.
+        if (templateId) addVersion.mutate({ id: templateId, sections: payload, change_summary: summary || undefined }, { onSuccess: () => onOpenChange(false) });
+        else create.mutate({ name: name.trim(), description: description || undefined, type_id: typeId !== NONE ? typeId : undefined, sections: payload, publish }, { onSuccess: () => onOpenChange(false) });
     };
 
     return (

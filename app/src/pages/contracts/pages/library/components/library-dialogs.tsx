@@ -7,8 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { ApprovalRuleFieldOptions, ApprovalRuleOperatorOptions, ContractClauseCategoryOptions } from "@/config/constants/dropdowns/contracts/contract-library.options";
 import { ContractRenewalTypeFormOptions } from "@/config/constants/dropdowns/contracts/contract-terms.options";
 import {
@@ -18,7 +16,6 @@ import type { ApprovalRule, ContractClause, ContractRenewalType, ContractType } 
 import { ContractLookupPicker } from "../../../components/contract-badges";
 
 const NONE = "__none";
-const fail = (title: string) => (e: unknown) => toast({ variant: "destructive", title, description: getApiErrorMessage(e) });
 
 /** New clause, or edit metadata + add a new text version (old versions stay attached to the contracts that used them). */
 export function ClauseDialog({ open, onOpenChange, clause }: { open: boolean; onOpenChange: (o: boolean) => void; clause: ContractClause | null }) {
@@ -38,16 +35,15 @@ export function ClauseDialog({ open, onOpenChange, clause }: { open: boolean; on
     }, [open, clause]);
     const submit = async () => {
         if (!clause) {
-            create.mutate({ key: key.trim(), name: name.trim(), category, description: description || undefined, text }, { onSuccess: () => { toast({ title: "Clause created" }); onOpenChange(false); }, onError: fail("Could not create the clause") });
+            create.mutate({ key: key.trim(), name: name.trim(), category, description: description || undefined, text }, { onSuccess: () => onOpenChange(false) });
             return;
         }
         try {
             if (name !== clause.name || category !== clause.category || description !== (clause.description ?? "")) await update.mutateAsync({ id: clause.id, name: name.trim(), category, description: description || undefined });
             if (text !== (clause.current_version?.text ?? "")) await addVersion.mutateAsync({ id: clause.id, text, change_summary: summary || undefined });
-            toast({ title: "Clause saved" });
             onOpenChange(false);
-        } catch (e) {
-            fail("Could not save the clause")(e);
+        } catch {
+            // already toasted by the global MutationCache; the dialog stays open with the edits
         }
     };
     return (
@@ -89,7 +85,8 @@ export function TypeDialog({ open, onOpenChange, type }: { open: boolean; onOpen
     }, [open, type]);
     const submit = () => {
         const dto = { name: name.trim(), description: description || undefined, default_renewal_type: renewal, default_notice_days: notice ? Number(notice) : undefined, default_template_id: template !== NONE ? template : undefined };
-        const opts = { onSuccess: () => { toast({ title: type ? "Type saved" : "Type created" }); onOpenChange(false); }, onError: fail("Could not save the type") };
+        // Multi-field definition: stays a dialog with Save; closes on success, failures toast globally.
+        const opts = { onSuccess: () => onOpenChange(false) };
         if (type) update.mutate({ id: type.id, ...dto }, opts);
         else create.mutate(dto, opts);
     };
@@ -139,7 +136,8 @@ export function ContractRuleDialog({ open, onOpenChange, rule }: { open: boolean
             conditions: conds.map((c) => ({ field: c.field, operator: c.operator, value: c.value !== "" && !Number.isNaN(Number(c.value)) ? Number(c.value) : c.value === "true" ? true : c.value === "false" ? false : c.value })),
             steps: steps.map((s) => ({ step: s.step, name: s.name || undefined, approver: { membership_id: s.membership_id as string } })),
         };
-        const opts = { onSuccess: () => { toast({ title: rule ? "Rule saved" : "Rule created" }); onOpenChange(false); }, onError: fail("Could not save the rule") };
+        // Multi-step rule editor: stays a dialog with Save; closes on success, failures toast globally.
+        const opts = { onSuccess: () => onOpenChange(false) };
         if (rule) update.mutate({ id: rule.id, ...dto }, opts);
         else create.mutate(dto, opts);
     };

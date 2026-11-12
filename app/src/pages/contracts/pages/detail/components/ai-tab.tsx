@@ -10,8 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePermissions } from "@/hooks/use-permission";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDate, formatDateTime, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { ContractAiFindingKindOptions, ContractAiFindingStatusOptions, ContractRiskLevelOptions } from "@/config/constants/dropdowns/contracts/contract-analytics.options";
@@ -50,17 +48,15 @@ export function AiTab({ contract, version }: { contract: ContractDetail; version
         review.mutate({ id: contract.id, versionId: version.id }, {
             onSuccess: (r) => {
                 if (!r.available) { setProblem(r.message); return; }
-                setRisk(r.risk);
-                toast({ title: "AI review finished", description: `${r.findings.filter((f) => f.status === "OPEN").length} findings to look at` });
+                setRisk(r.risk); // the risk and the findings list show the result
             },
-            onError: (e) => toast({ variant: "destructive", title: "AI review failed", description: getApiErrorMessage(e) }),
         });
     };
     const runExtract = () => {
         setProblem(null);
         extract.mutate({ id: contract.id, versionId: version.id }, {
-            onSuccess: (r) => { if (!r.available) setProblem(r.message); else toast({ title: "Obligations extracted", description: `${r.suggestions.length} suggestions to review` }); },
-            onError: (e) => toast({ variant: "destructive", title: "Extraction failed", description: getApiErrorMessage(e) }),
+            // The suggestions appear in the list below; failures toast globally.
+            onSuccess: (r) => { if (!r.available) setProblem(r.message); },
         });
     };
 
@@ -134,7 +130,7 @@ function FindingRow({ contractId, f, canDecide, onDismiss }: { contractId: strin
             </div>
             {canDecide && f.status === "OPEN" && (
                 <div className="flex gap-2 pt-1">
-                    <Button size="sm" variant="outline" loading={decide.isPending} onClick={() => decide.mutate({ id: contractId, findingId: f.id, status: "ACCEPTED" }, { onSuccess: () => toast({ title: "Finding accepted", description: "Edit the section or add a comment to handle it." }), onError: (e) => toast({ variant: "destructive", title: "Could not update", description: getApiErrorMessage(e) }) })}><Check /> Accept</Button>
+                    <Button size="sm" variant="outline" onClick={() => decide.mutate({ id: contractId, findingId: f.id, status: "ACCEPTED" })}><Check /> Accept</Button>
                     <Button size="sm" variant="ghost" onClick={onDismiss}><X /> Dismiss</Button>
                 </div>
             )}
@@ -146,13 +142,14 @@ function DismissDialog({ contractId, finding, onClose }: { contractId: string; f
     const decide = useDecideContractAiFinding();
     const [note, setNote] = useState("");
     return (
-        <Dialog open={!!finding} onOpenChange={(o) => { if (!o && !decide.isPending) { setNote(""); onClose(); } }}>
+        <Dialog open={!!finding} onOpenChange={(o) => { if (!o) { setNote(""); onClose(); } }}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader><DialogTitle>Dismiss finding</DialogTitle><DialogDescription>Say why this finding does not apply. The note is kept for traceability.</DialogDescription></DialogHeader>
                 <div className="space-y-1.5"><Label htmlFor="dismiss-note">Note</Label><Textarea id="dismiss-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)} /></div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => { setNote(""); onClose(); }} disabled={decide.isPending}>Cancel</Button>
-                    <Button loading={decide.isPending} disabled={!note.trim() || !finding} onClick={() => finding && decide.mutate({ id: contractId, findingId: finding.id, status: "DISMISSED", resolution_note: note.trim() }, { onSuccess: () => { toast({ title: "Finding dismissed" }); setNote(""); onClose(); }, onError: (e) => toast({ variant: "destructive", title: "Could not dismiss", description: getApiErrorMessage(e) }) })}>Dismiss</Button>
+                    <Button variant="ghost" onClick={() => { setNote(""); onClose(); }}>Cancel</Button>
+                    {/* Optimistic: the finding shows Dismissed at once; a refusal rolls back and toasts. */}
+                    <Button disabled={!note.trim() || !finding} onClick={() => { if (!finding) return; decide.mutate({ id: contractId, findingId: finding.id, status: "DISMISSED", resolution_note: note.trim() }); setNote(""); onClose(); }}>Dismiss</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -166,7 +163,6 @@ function SuggestionRow({ contractId, o, canManage }: { contractId: string; o: Ob
     const decide = (decision: "CONFIRM" | "REJECT") =>
         reviewS.mutate(
             { id: contractId, obligationId: o.id, decision, ...(decision === "CONFIRM" && { title: title.trim() || o.title, due_date: due || null }) },
-            { onSuccess: () => toast({ title: decision === "CONFIRM" ? "Obligation confirmed" : "Suggestion rejected" }), onError: (e) => toast({ variant: "destructive", title: "Could not update", description: getApiErrorMessage(e) }) },
         );
     return (
         <li className="space-y-2 px-3 py-2.5">

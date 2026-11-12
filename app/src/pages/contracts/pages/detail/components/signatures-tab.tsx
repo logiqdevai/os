@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { BellRing, Copy, Download, FileCheck2, Link2, Send, XCircle } from "lucide-react";
+import { BellRing, Check, Copy, Download, FileCheck2, Link2, Send, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,6 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermissions } from "@/hooks/use-permission";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDateTime } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { SignatureEventTypeOptions, SigningOrderOptions } from "@/config/constants/dropdowns/contracts/signature.options";
@@ -23,8 +22,14 @@ import { SignatureStatusBadge, SignerStatusBadge } from "../../../components/con
 
 const ACTIVE = ["NOT_SENT", "SENT", "DELIVERED", "VIEWED", "PARTIALLY_SIGNED"];
 
-async function copy(text: string) {
-    try { await navigator.clipboard.writeText(text); toast({ title: "Link copied" }); } catch { toast({ variant: "destructive", title: "Copy failed", description: text }); }
+/** Copy button that says "Copied" for a moment instead of a toast (a failed copy is still toasted). */
+function CopyButton({ text, label }: { text: string; label: string }) {
+    const [copied, setCopied] = useState(false);
+    const copy = async () => {
+        try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+        catch { toast({ variant: "destructive", title: "Copy failed", description: text }); }
+    };
+    return <Button size="sm" variant="outline" aria-label={copied ? "Copied" : label} onClick={copy}>{copied ? <Check /> : <Copy />}</Button>;
 }
 
 export function LinksList({ links }: { links: SigningLink[] }) {
@@ -33,7 +38,7 @@ export function LinksList({ links }: { links: SigningLink[] }) {
             {links.map((l) => (
                 <li key={l.signer_id} className="space-y-1 rounded-md border border-border p-2">
                     <div className="text-[13px] text-foreground">{l.name} <span className="text-xs text-muted-foreground">{l.email}{l.active === false ? " · waits for earlier signers" : ""}</span></div>
-                    <div className="flex gap-2"><Input readOnly value={l.url} aria-label={`Signing link for ${l.name}`} onFocus={(e) => e.currentTarget.select()} className="h-8 text-xs" /><Button size="sm" variant="outline" onClick={() => copy(l.url)}><Copy /></Button></div>
+                    <div className="flex gap-2"><Input readOnly value={l.url} aria-label={`Signing link for ${l.name}`} onFocus={(e) => e.currentTarget.select()} className="h-8 text-xs" /><CopyButton text={l.url} label={`Copy the link for ${l.name}`} /></div>
                 </li>
             ))}
         </ul>
@@ -51,6 +56,7 @@ export function SignaturesTab({ contract, version }: { contract: ContractDetail;
     const [links, setLinks] = useState<{ title: string; links: SigningLink[]; note?: string } | null>(null);
     const [cancelling, setCancelling] = useState<SignatureRequest | null>(null);
     const [certificate, setCertificate] = useState<string | null>(null);
+    const [reminded, setReminded] = useState<Set<string>>(new Set()); // "Reminded" on the button instead of a toast
     const canSend = p.can("contracts.signatures.send") && !!version && version.id === contract.current_version_id && version.status === "APPROVED";
     const active = list.data?.data.some((r) => ACTIVE.includes(r.status));
     const [sp, setSp] = useSearchParams();
@@ -85,7 +91,7 @@ export function SignaturesTab({ contract, version }: { contract: ContractDetail;
                             <div className="ml-auto flex flex-wrap gap-1">
                                 {r.status === "FULLY_SIGNED" && <Button size="sm" variant="ghost" onClick={() => setCertificate(r.id)}><FileCheck2 /> Certificate</Button>}
                                 {ACTIVE.includes(r.status) && p.can("contracts.signatures.send") && (
-                                    <Button size="sm" variant="ghost" loading={remind.isPending} onClick={() => remind.mutate(r.id, { onSuccess: (res) => { if (res.email_sent) toast({ title: "Reminder sent" }); else setLinks({ title: "Share these links", links: res.links, note: "Email is not configured; share the links yourself." }); }, onError: (e) => toast({ variant: "destructive", title: "Could not remind", description: getApiErrorMessage(e) }) })}><BellRing /> Remind</Button>
+                                    <Button size="sm" variant="ghost" loading={remind.isPending && remind.variables === r.id} disabled={reminded.has(r.id)} onClick={() => remind.mutate(r.id, { onSuccess: (res) => { if (res.email_sent) setReminded((all) => new Set(all).add(r.id)); else setLinks({ title: "Share these links", links: res.links, note: "Email is not configured; share the links yourself." }); } })}>{reminded.has(r.id) ? <><Check /> Reminded</> : <><BellRing /> Remind</>}</Button>
                                 )}
                                 {ACTIVE.includes(r.status) && p.can("contracts.signatures.cancel") && <Button size="sm" variant="ghost" onClick={() => setCancelling(r)}><XCircle /> Cancel</Button>}
                             </div>
@@ -98,7 +104,7 @@ export function SignaturesTab({ contract, version }: { contract: ContractDetail;
                                     <SignerStatusBadge status={s.status} />
                                     <span className="text-xs text-muted-foreground">{s.signed_at ? `signed ${formatDateTime(s.signed_at)}` : s.declined_at ? `declined: ${s.decline_reason ?? ""}` : s.viewed_at ? `viewed ${formatDateTime(s.viewed_at)}` : ""}</span>
                                     {ACTIVE.includes(r.status) && !["SIGNED", "DECLINED"].includes(s.status) && p.can("contracts.signatures.send") && (
-                                        <Button size="sm" variant="ghost" onClick={() => reissue.mutate({ id: r.id, signerId: s.id }, { onSuccess: (l) => setLinks({ title: `New link for ${s.name}`, links: [l], note: l.emailed ? "The new link was also emailed." : "The previous link no longer works." }), onError: (e) => toast({ variant: "destructive", title: "Could not create a link", description: getApiErrorMessage(e) }) })}><Link2 /> New link</Button>
+                                        <Button size="sm" variant="ghost" onClick={() => reissue.mutate({ id: r.id, signerId: s.id }, { onSuccess: (l) => setLinks({ title: `New link for ${s.name}`, links: [l], note: l.emailed ? "The new link was also emailed." : "The previous link no longer works." }) })}><Link2 /> New link</Button>
                                     )}
                                 </li>
                             ))}
@@ -121,8 +127,7 @@ export function SignaturesTab({ contract, version }: { contract: ContractDetail;
                 description="Signing links stop working and the version is unlocked for changes."
                 confirmText="Cancel request"
                 variant="destructive"
-                isLoading={cancel.isPending}
-                onConfirm={() => cancelling && cancel.mutate({ id: cancelling.id }, { onSuccess: () => { toast({ title: "Request cancelled" }); setCancelling(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not cancel", description: getApiErrorMessage(e) }) })}
+                onConfirm={() => { if (cancelling) cancel.mutate({ id: cancelling.id }); setCancelling(null); }}
             />
             <CertificateSheet requestId={certificate} onClose={() => setCertificate(null)} />
         </div>
@@ -165,7 +170,7 @@ function SendDialog({ contract, version, open, onOpenChange, onSent }: { contrac
                         disabled={!ordered.length || !Number(days)}
                         onClick={() => send.mutate(
                             { id: contract.id, vid: version.id, signing_order: order, message: message || undefined, expires_in_days: Math.min(180, Number(days)), signers: ordered.map((s, i) => ({ signatory_id: s.id, name: s.name, email: s.email, title: s.title ?? undefined, order: order === "SEQUENTIAL" ? i + 1 : 1 })) },
-                            { onSuccess: (r) => { toast({ title: "Sent for signature" }); onOpenChange(false); onSent(r); }, onError: (e) => toast({ variant: "destructive", title: "Could not send", description: getApiErrorMessage(e) }) }
+                            { onSuccess: (r) => { onOpenChange(false); onSent(r); } } // the signing-links dialog is the result
                         )}
                     >
                         Lock and send
@@ -190,7 +195,7 @@ function CertificateSheet({ requestId, onClose }: { requestId: string | null; on
                         variant="outline"
                         className="mt-3 w-fit"
                         loading={pdf.isPending}
-                        onClick={() => pdf.mutate(requestId, { onSuccess: (name) => toast({ title: "PDF downloaded", description: name }), onError: (e) => toast({ variant: "destructive", title: "Could not create the PDF", description: getApiErrorMessage(e) }) })}
+                        onClick={() => pdf.mutate(requestId)}
                     >
                         <Download /> Download PDF
                     </Button>
