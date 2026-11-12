@@ -7,5 +7,6 @@ import { AdminAccessService } from '../shared/admin-access.service';
 @Module({
     controllers: [PermissionsController],
     providers: [PermissionsService, PermissionsMcp, AdminAccessService],
+    exports: [PermissionsService],
 })
 export class PermissionsModule { }

@@ -108,4 +108,15 @@ export const AdminApiRoutes = {
         detail: (id: string) => `/delegations/${id}`,
         revoke: (id: string) => `/delegations/${id}/revoke`,
     },
+    accessReviews: {
+        list: "/access-reviews",
+        detail: (id: string) => `/access-reviews/${id}`,
+        items: (id: string) => `/access-reviews/${id}/items`,
+        start: (id: string) => `/access-reviews/${id}/start`,
+        apply: (id: string) => `/access-reviews/${id}/apply`,
+        complete: (id: string) => `/access-reviews/${id}/complete`,
+        cancel: (id: string) => `/access-reviews/${id}/cancel`,
+        item: (itemId: string) => `/access-review-items/${itemId}`,
+        reassign: (itemId: string) => `/access-review-items/${itemId}/reassign`,
+    },
 };

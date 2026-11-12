@@ -123,6 +123,7 @@ export const AUDIT_EVENT_TYPES = {
     'access_review.started': t('access_review', 'Access review started'),
     'access_review.decision_recorded': t('access_review_item', 'Reviewer certified, revoked or modified a member\'s access', { sensitive: true }),
     'access_review.decision_applied': t('access_review_item', 'A REVOKED / MODIFIED decision was applied to roles, grants or module access', { sensitive: true }),
+    'access_review.reviewer_changed': t('access_review_item', 'An access review item was given to another reviewer'),
     'access_review.completed': t('access_review', 'Access review completed'),
     'access_review.cancelled': t('access_review', 'Access review cancelled'),
 

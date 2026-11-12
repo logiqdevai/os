@@ -28,6 +28,8 @@ const SecurityPolicyPage = lazy(() => import("./pages/security"));
 const DomainsPage = lazy(() => import("./pages/domains"));
 const SsoPage = lazy(() => import("./pages/sso"));
 const DelegationsPage = lazy(() => import("./pages/delegations"));
+const AccessReviewsPage = lazy(() => import("./pages/access-reviews"));
+const AccessReviewDetailPage = lazy(() => import("./pages/access-review-detail"));
 
 const gate = (anyOf: string[], element: ReactNode) => <RequirePermission anyOf={anyOf}>{element}</RequirePermission>;
 
@@ -64,6 +66,9 @@ export default function AdminRoutes() {
             <Route path="sso" element={gate(["organizations.sso.manage"], <SsoPage />)} />
             <Route path="delegations" element={gate(["users.delegations.manage"], <DelegationsPage />)} />
             <Route path="delegations/new" element={gate(["users.delegations.manage"], <DelegationsPage />)} />
+            <Route path="access-reviews" element={gate(["organizations.access_reviews.read", "organizations.access_reviews.manage", "organizations.access_reviews.decide"], <AccessReviewsPage />)} />
+            <Route path="access-reviews/new" element={gate(["organizations.access_reviews.manage"], <AccessReviewsPage />)} />
+            <Route path="access-reviews/:id" element={gate(["organizations.access_reviews.read", "organizations.access_reviews.manage", "organizations.access_reviews.decide"], <AccessReviewDetailPage />)} />
             <Route path="*" element={gate(["users.members.read", "organizations.audit.read", "organizations.settings.manage"], <OverviewPage />)} />
         </Routes>
     );
