@@ -63,6 +63,7 @@ export const useAutomationEvent = (id: string | null) => useQuery({ queryKey: [.
 export const useReprocessEvent = mutation(service.reprocessEvent);
 
 export const useOutboundWebhooks = (params: Params, enabled = true) => useQuery({ queryKey: [...KEY, "outbound", params], queryFn: () => service.getOutboundWebhooks(params), enabled });
+export const useOutboundWebhook = (id: string | undefined) => useQuery({ queryKey: [...KEY, "outbound", "detail", id], queryFn: () => service.getOutboundWebhook(id as string), enabled: !!id });
 export const useCreateOutboundWebhook = mutation(service.createOutboundWebhook);
 export const useUpdateOutboundWebhook = mutation(service.updateOutboundWebhook);
 export const useDeleteOutboundWebhook = mutation(service.deleteOutboundWebhook);

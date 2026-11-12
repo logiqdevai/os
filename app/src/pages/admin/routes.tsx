@@ -31,6 +31,8 @@ const DelegationsPage = lazy(() => import("./pages/delegations"));
 const AccessReviewsPage = lazy(() => import("./pages/access-reviews"));
 const AccessReviewDetailPage = lazy(() => import("./pages/access-review-detail"));
 const RetentionPage = lazy(() => import("./pages/retention"));
+const WebhooksPage = lazy(() => import("./pages/webhooks"));
+const WebhookDetailPage = lazy(() => import("./pages/webhook-detail"));
 /** Customer portal users reuse the Client portal screen and the portal admin API (07 / 01 §79): no second implementation. */
 const PortalUsersPage = lazy(() => import("../client-portal/pages/users"));
 
@@ -57,6 +59,8 @@ export default function AdminRoutes() {
             <Route path="api-keys" element={gate(["organizations.api_keys.manage"], <ApiKeysPage />)} />
             <Route path="service-accounts" element={gate(["organizations.service_accounts.manage"], <ServiceAccountsPage />)} />
             <Route path="service-accounts/:id" element={gate(["organizations.service_accounts.manage"], <ServiceAccountDetailPage />)} />
+            <Route path="webhooks" element={gate(["automation.webhooks.read"], <WebhooksPage />)} />
+            <Route path="webhooks/:id" element={gate(["automation.webhooks.read"], <WebhookDetailPage />)} />
             <Route path="mcp-calls" element={gate(["organizations.mcp_calls.read"], <McpCallsPage />)} />
             <Route path="audit" element={gate(["organizations.audit.read"], <AuditPage />)} />
             <Route path="integrations" element={gate(["organizations.integrations.read"], <IntegrationsPage />)} />

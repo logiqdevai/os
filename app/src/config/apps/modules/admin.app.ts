@@ -1,4 +1,4 @@
-import { Archive, Bot, BriefcaseBusiness, Building, Building2, ClipboardCheck, FileClock, FlaskConical, Forward, Globe, KeyRound, KeySquare, Layers, LayoutDashboard, List, LockKeyhole, Mail, MonitorSmartphone, Palette, Plug, Shield, Sparkles, Users, UsersRound } from "lucide-react";
+import { Archive, Bot, BriefcaseBusiness, Building, Building2, ClipboardCheck, FileClock, FlaskConical, Forward, Globe, KeyRound, KeySquare, Layers, LayoutDashboard, List, LockKeyhole, Mail, MonitorSmartphone, Palette, Plug, Shield, Sparkles, Users, UsersRound, Webhook } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
 /** Admin (module 01). Every key below exists in api/prisma/seed/permission-catalog.ts. */
@@ -10,7 +10,8 @@ export const adminApp: AppDefinition = {
     module: "ADMINISTRATION",
     viewPermissions: ["users.members.read", "users.roles.read", "organizations.settings.manage", "organizations.audit.read", "organizations.teams.read", "organizations.branches.read",
         "users.sessions.read", "organizations.security.manage", "organizations.domains.manage", "organizations.sso.manage", "users.delegations.manage",
-        "organizations.access_reviews.read", "organizations.access_reviews.decide", "organizations.retention.manage", "portal.users.read", "portal.users.manage"],
+        "organizations.access_reviews.read", "organizations.access_reviews.decide", "organizations.retention.manage", "portal.users.read", "portal.users.manage",
+        "automation.webhooks.read"],
     newAction: { label: "Invite member", to: "/admin/invitations/new", permission: "users.members.invite" },
     hidden: true,
     nav: [
@@ -42,6 +43,7 @@ export const adminApp: AppDefinition = {
             { label: "Integrations", to: "/admin/integrations", icon: Plug, permissions: ["organizations.integrations.read"] },
             { label: "API keys", to: "/admin/api-keys", icon: KeyRound, permissions: ["organizations.api_keys.manage"] },
             { label: "Service accounts", to: "/admin/service-accounts", icon: Bot, permissions: ["organizations.service_accounts.manage"] },
+            { label: "Webhooks", to: "/admin/webhooks", icon: Webhook, permissions: ["automation.webhooks.read"] },
             { label: "MCP calls", to: "/admin/mcp-calls", icon: Sparkles, permissions: ["organizations.mcp_calls.read"] },
         ] },
         { label: "Organization", items: [

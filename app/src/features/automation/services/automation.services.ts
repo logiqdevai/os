@@ -55,6 +55,7 @@ export const reprocessEvent = (id: string) => post<{ runs_started: number }>(R()
 
 // Webhooks
 export const getOutboundWebhooks = (params: Params) => get<Paginated<OutboundWebhook>>(R().webhooks.outbound, params);
+export const getOutboundWebhook = (id: string) => get<OutboundWebhook>(R().webhooks.outboundDetail(id));
 export const createOutboundWebhook = (dto: CreateOutboundWebhookDto) => post<OutboundWebhook>(R().webhooks.outbound, dto);
 export const updateOutboundWebhook = ({ id, ...dto }: Partial<CreateOutboundWebhookDto> & { id: string }) => patch<OutboundWebhook>(R().webhooks.outboundDetail(id), dto);
 export const deleteOutboundWebhook = (id: string) => del(R().webhooks.outboundDetail(id));
