@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { CheckCheck, ChevronRight, Copy, Download, ExternalLink, Link2, Lock, RotateCcw, Share2, Star, Trash2, Unlock, Upload } from "lucide-react";
 import { Page, PageHeader, KeyValueList, Section } from "@/components/ui/page";
+import { Markdown } from "@/components/ui/markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -122,22 +123,47 @@ export default function DocumentDetailPage() {
     );
 }
 
-/** Inline preview for images and PDFs through a short-lived signed URL. */
+const TEXT_PREVIEW_MAX = 512 * 1024;
+
+/** Inline preview through a short-lived signed URL: images, PDFs (browser viewer) and text / Markdown files (first 512 KB). */
 function Preview({ doc }: { doc: DocumentDetail }) {
     const [src, setSrc] = useState<string | null>(null);
+    const [text, setText] = useState<string | null>(null);
     const [error, setError] = useState(false);
-    const previewable = doc.type_group === "image" || doc.type_group === "pdf";
+    const isText = doc.type_group === "text" && doc.size <= TEXT_PREVIEW_MAX;
+    const previewable = doc.type_group === "image" || doc.type_group === "pdf" || isText;
     useEffect(() => {
         let cancelled = false;
         setSrc(null);
+        setText(null);
+        setError(false);
         if (previewable && doc.current_version) {
-            service.getDownloadUrl(doc.id, { disposition: "inline" }).then((u) => !cancelled && setSrc(apiUrl(u.path))).catch(() => !cancelled && setError(true));
+            service.getDownloadUrl(doc.id, { disposition: "inline" })
+                .then(async (u) => {
+                    const url = apiUrl(u.path);
+                    if (isText) {
+                        const res = await fetch(url);
+                        if (!res.ok) throw new Error(String(res.status));
+                        const body = await res.text();
+                        if (!cancelled) setText(body);
+                    }
+                    if (!cancelled) setSrc(url);
+                })
+                .catch(() => !cancelled && setError(true));
         }
         return () => { cancelled = true; };
-    }, [doc.id, doc.current_version?.id, previewable, doc.current_version]);
+    }, [doc.id, doc.current_version?.id, previewable, isText, doc.current_version]);
     if (!previewable) return <div className="flex items-center justify-center gap-3 rounded-lg border border-border bg-card p-10 text-[13px] text-muted-foreground"><FileIcon type={doc.type_group} className="size-8" /> No preview for this file type — open or download it.</div>;
     if (error) return <div className="rounded-lg border border-border bg-card"><EmptyState compact title="Preview not available" /></div>;
     if (!src) return <ListSkeleton rows={4} />;
+    if (isText) {
+        const md = /\.(md|markdown)$/i.test(doc.filename);
+        return (
+            <div className="max-h-[70vh] overflow-auto rounded-lg border border-border bg-card p-4">
+                {md ? <Markdown source={text ?? ""} /> : <pre className="whitespace-pre-wrap break-words font-mono text-xs text-foreground">{text}</pre>}
+            </div>
+        );
+    }
     return doc.type_group === "image"
         ? <div className="flex justify-center rounded-lg border border-border bg-secondary p-2"><img src={src} alt={doc.title} className="max-h-[60vh] max-w-full rounded object-contain" /></div>
         : <iframe src={src} title={doc.title} className="h-[70vh] w-full rounded-lg border border-border bg-card" />;

@@ -222,3 +222,148 @@ export interface CreateVaultEntryDto {
     notes?: string;
     expires_at?: string;
 }
+
+// --- Vault grants (17 §12) ---------------------------------------------------------------
+export type VaultGrantSubjectType = "MEMBERSHIP" | "TEAM" | "PORTAL_USER";
+
+export interface PortalUserRef {
+    id: string;
+    email: string;
+    display_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+}
+
+export interface VaultGrant {
+    id: string;
+    subject_type: VaultGrantSubjectType;
+    membership_id: string | null;
+    team_id: string | null;
+    portal_user_id: string | null;
+    can_reveal: boolean;
+    can_manage: boolean;
+    expires_at: string | null;
+    created_at: string;
+    membership: MemberRef | null;
+    team: { id: string; name: string } | null;
+    portal_user: PortalUserRef | null;
+}
+
+export interface VaultEntryDetail extends VaultEntry {
+    has_secret: boolean;
+    grants: VaultGrant[];
+}
+
+export interface CreateVaultGrantDto {
+    subject_type: VaultGrantSubjectType;
+    membership_id?: string;
+    team_id?: string;
+    portal_user_id?: string;
+    can_reveal?: boolean;
+    can_manage?: boolean;
+    expires_at?: string;
+}
+
+// --- Retention (17 §13) ----------------------------------------------------------------------
+export type RetentionAnchor = "CREATED" | "LAST_MODIFIED" | "ARCHIVED" | "RECORD_CLOSED";
+export type RetentionAction = "ARCHIVE" | "SOFT_DELETE" | "PERMANENT_DELETE";
+export type DocumentScopeKind = "ORGANIZATION" | "BRANCH" | "TEAM" | "PROJECT" | "CUSTOMER" | "EMPLOYEE" | "RECORD";
+
+export interface RetentionPolicy {
+    id: string;
+    name: string;
+    description: string | null;
+    category_id: string | null;
+    category: { id: string; name: string } | null;
+    scope: DocumentScopeKind | null;
+    retain_days: number | null;
+    anchor: RetentionAnchor;
+    action: RetentionAction;
+    enforced_by_module: string | null;
+    is_active: boolean;
+    is_default: boolean;
+    created_at: string;
+    _count: { documents: number; default_for_categories: number };
+}
+
+export interface RetentionPolicyDto {
+    name: string;
+    description?: string;
+    category_id?: string | null;
+    scope?: DocumentScopeKind | null;
+    retain_days?: number | null;
+    anchor?: RetentionAnchor;
+    action?: RetentionAction;
+    is_active?: boolean;
+}
+
+export interface DocumentCategoryRef {
+    id: string;
+    name: string;
+    color?: string | null;
+}
+
+// --- Templates (17 §4, §7) -------------------------------------------------------------------
+export type FolderTemplateTarget = "PROJECT_TYPE" | "CUSTOMER" | "EMPLOYEE" | "ORGANIZATION";
+
+export interface FolderTemplateNode {
+    name: string;
+    customer_visible?: boolean;
+    children?: FolderTemplateNode[];
+}
+
+export interface FolderTemplate {
+    id: string;
+    name: string;
+    description: string | null;
+    target: FolderTemplateTarget;
+    project_type_id: string | null;
+    project_type?: { id: string; name: string } | null;
+    structure: FolderTemplateNode[];
+    is_default: boolean;
+    archived_at: string | null;
+    created_at: string;
+    folder_count?: number;
+    applied_count?: number;
+}
+
+export interface FolderTemplateDto {
+    name: string;
+    description?: string | null;
+    target: FolderTemplateTarget;
+    structure: FolderTemplateNode[];
+    is_default?: boolean;
+}
+
+export interface TemplateVariable {
+    key: string;
+    label?: string;
+    required?: boolean;
+    default?: string;
+}
+
+export interface DocumentTemplate {
+    id: string;
+    name: string;
+    description: string | null;
+    category: { id: string; name: string } | null;
+    folder: { id: string; name: string } | null;
+    scope: DocumentScopeKind;
+    variables: TemplateVariable[] | null;
+    usage_count: number;
+    last_used_at: string | null;
+    archived_at: string | null;
+    created_at: string;
+    source_version: { id: string; document_id: string; filename: string; mimetype: string; version_number: number };
+    body_preview?: string;
+    detected_variables?: TemplateVariable[];
+}
+
+export interface DocumentTemplateDto {
+    document_id: string;
+    name: string;
+    description?: string | null;
+    category_id?: string | null;
+    folder_id?: string | null;
+    variables?: TemplateVariable[];
+}

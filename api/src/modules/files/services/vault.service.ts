@@ -136,7 +136,7 @@ export class VaultService {
             this.prisma.vaultEntryGrant.findMany({
                 where: { entry_id: id, revoked_at: null },
                 orderBy: { created_at: 'asc' },
-                include: { membership: { select: MEMBER_SELECT }, team: { select: { id: true, name: true } } },
+                include: { membership: { select: MEMBER_SELECT }, team: { select: { id: true, name: true } }, portal_user: { select: { id: true, email: true, display_name: true, first_name: true, last_name: true } } },
             }),
             this.canReveal(ctx, id),
         ]);
@@ -277,7 +277,14 @@ export class VaultService {
         } else if (dto.subject_type === VaultGrantSubjectType.TEAM) {
             if (!dto.team_id || !(await this.prisma.team.findFirst({ where: { id: dto.team_id, organization_id: org } }))) throw new NotFoundException({ message: 'Team not found', code: 'team_not_found' });
         } else {
-            throw new BadRequestException({ message: 'Portal vault sharing is not enabled', code: 'vault_portal_sharing_disabled' });
+            // 17 §12 — only Customer Portal users of the entry's own customer; portal users never manage an entry.
+            const entry = await this.prisma.vaultEntry.findUnique({ where: { id }, select: { company_id: true } });
+            if (!entry?.company_id) throw new BadRequestException({ message: 'Only credentials that belong to a customer can be shared with portal users', code: 'vault_portal_needs_customer' });
+            const member = dto.portal_user_id
+                ? await this.prisma.customerPortalMembership.findFirst({ where: { organization_id: org, customer_id: entry.company_id, user_id: dto.portal_user_id, status: 'ACTIVE' }, select: { id: true } })
+                : null;
+            if (!member) throw new NotFoundException({ message: 'This person is not an active portal user of the customer', code: 'portal_user_not_found' });
+            dto.can_manage = false;
         }
         const data = {
             can_reveal: dto.can_reveal ?? false,
@@ -289,10 +296,25 @@ export class VaultService {
         };
         const grant = dto.subject_type === VaultGrantSubjectType.MEMBERSHIP
             ? await this.prisma.vaultEntryGrant.upsert({ where: { entry_id_membership_id: { entry_id: id, membership_id: dto.membership_id! } }, update: data, create: { ...data, entry_id: id, subject_type: dto.subject_type, membership_id: dto.membership_id } })
-            : await this.prisma.vaultEntryGrant.upsert({ where: { entry_id_team_id: { entry_id: id, team_id: dto.team_id! } }, update: data, create: { ...data, entry_id: id, subject_type: dto.subject_type, team_id: dto.team_id } });
+            : dto.subject_type === VaultGrantSubjectType.TEAM
+                ? await this.prisma.vaultEntryGrant.upsert({ where: { entry_id_team_id: { entry_id: id, team_id: dto.team_id! } }, update: data, create: { ...data, entry_id: id, subject_type: dto.subject_type, team_id: dto.team_id } })
+                : await this.prisma.vaultEntryGrant.upsert({ where: { entry_id_portal_user_id: { entry_id: id, portal_user_id: dto.portal_user_id! } }, update: data, create: { ...data, entry_id: id, subject_type: dto.subject_type, portal_user_id: dto.portal_user_id } });
         await this.log(ctx, id, VaultAccessAction.GRANT, meta, { grant_id: grant.id, subject_type: dto.subject_type, can_reveal: grant.can_reveal });
-        await this.audit.record(ctx, 'vault.grant_added', { resource_type: 'vault_entry', resource_id: id, metadata: { grant_id: grant.id, subject_type: dto.subject_type, membership_id: dto.membership_id, team_id: dto.team_id, can_reveal: grant.can_reveal, can_manage: grant.can_manage } });
+        await this.audit.record(ctx, 'vault.grant_added', { resource_type: 'vault_entry', resource_id: id, metadata: { grant_id: grant.id, subject_type: dto.subject_type, membership_id: dto.membership_id, team_id: dto.team_id, portal_user_id: dto.portal_user_id, can_reveal: grant.can_reveal, can_manage: grant.can_manage } });
         return grant;
+    }
+
+    /** Customer Portal users who can receive a grant on this entry (active portal users of the entry's customer). */
+    async portalCandidates(ctx: OrgContext, id: string) {
+        const entry = await this.getVisible(ctx, id);
+        const companyId = (entry as { company_id?: string | null }).company_id ?? null;
+        if (!companyId) return [];
+        const rows = await this.prisma.customerPortalMembership.findMany({
+            where: { organization_id: ctx.organization_id, customer_id: companyId, status: 'ACTIVE' },
+            select: { user: { select: { id: true, email: true, display_name: true, first_name: true, last_name: true } } },
+            take: 200,
+        });
+        return rows.map((r) => r.user);
     }
 
     async revokeGrant(ctx: OrgContext, id: string, grantId: string, meta: VaultRequestMeta = {}) {

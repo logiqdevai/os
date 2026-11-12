@@ -77,9 +77,16 @@ export class VaultController {
 
     @Post(':id/grants')
     @RequirePermission('documents.vault.manage')
-    @ApiOperation({ summary: 'Grant a member or team access to this entry' })
+    @ApiOperation({ summary: 'Grant a member, team or (customer-scoped entries) a Customer Portal user access to this entry' })
     addGrant(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateVaultGrantDto) {
         return this.vault.addGrant(ctx, id, dto);
+    }
+
+    @Get(':id/portal-users')
+    @RequirePermission('documents.vault.manage')
+    @ApiOperation({ summary: 'Customer Portal users of the entry\'s customer who can be granted access' })
+    portalUsers(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string) {
+        return this.vault.portalCandidates(ctx, id);
     }
 
     @Delete(':id/grants/:grantId')

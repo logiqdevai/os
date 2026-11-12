@@ -91,6 +91,11 @@ export class CreateVaultGrantDto {
     @IsUUID()
     team_id?: string;
 
+    @ApiProperty({ required: false, description: 'User id of a Customer Portal user of the entry\'s customer (CUSTOMER-scoped entries only)' })
+    @IsOptional()
+    @IsUUID()
+    portal_user_id?: string;
+
     @ApiProperty({ required: false })
     @IsOptional()
     @IsBoolean()

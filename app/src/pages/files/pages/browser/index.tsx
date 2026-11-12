@@ -23,7 +23,7 @@ import { formatRelative } from "@/lib/format";
 import { DocumentTypeFilterOptions } from "@/config/constants/dropdowns/files/files.options";
 import { useCreateFolder, useDeleteDocument, useDeleteFolder, useDocuments, useFolder, useSetDocumentFavorite } from "@/features/files/hooks/use-files";
 import type { DocumentRow } from "@/features/files/interfaces/files.interfaces";
-import { FileIcon, FolderTree, UploadDialog, formatBytes, openDocument } from "../../components/files-ui";
+import { FileIcon, FolderTree, UploadDialog, formatBytes, openDocument, DocumentThumbnail } from "../../components/files-ui";
 
 const VIEW_KEY = "files.view";
 
@@ -163,8 +163,8 @@ export default function FileBrowserPage() {
                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
                             {docs.data.data.map((d) => (
                                 <div key={d.id} className="group relative flex flex-col rounded-lg border border-border bg-card transition-colors hover:bg-secondary">
-                                    <button type="button" onClick={() => navigate(`/files/documents/${d.id}`)} className="flex aspect-[4/3] items-center justify-center rounded-t-lg bg-secondary/60" aria-label={`Open ${d.title}`}>
-                                        <FileIcon type={d.type_group} className="size-10" />
+                                    <button type="button" onClick={() => navigate(`/files/documents/${d.id}`)} className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-t-lg bg-secondary/60" aria-label={`Open ${d.title}`}>
+                                        <DocumentThumbnail id={d.id} type={d.type_group} title={d.title} />
                                     </button>
                                     <div className="flex items-start gap-1 p-2">
                                         <Link to={`/files/documents/${d.id}`} className="min-w-0 flex-1">

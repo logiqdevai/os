@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { Archive, Check, ChevronsUpDown, CheckCircle2, ChevronRight, CircleAlert, File, FileImage, FileSpreadsheet, FileText, FileVideo, Folder, FolderOpen, Music, Presentation, Upload, X } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
@@ -57,6 +57,36 @@ export async function openDocument(id: string, disposition: "inline" | "attachme
 }
 
 export const apiUrl = (path: string) => `${environments.API_URL.replace(/\/$/, "")}${path}`;
+
+/**
+ * Grid tile preview (17 §8): images load a lazy thumbnail through a signed inline URL once the tile scrolls into view;
+ * every other type (and any error) shows the file-type icon. No server-side thumbnail generation is needed.
+ */
+export function DocumentThumbnail({ id, type, title }: { id: string; type: DocumentTypeGroup | string | null | undefined; title: string }) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [src, setSrc] = useState<string | null>(null);
+    const [failed, setFailed] = useState(false);
+    const isImage = type === "image";
+    useEffect(() => {
+        if (!isImage || !ref.current) return;
+        let cancelled = false;
+        const el = ref.current;
+        const io = new IntersectionObserver((entries) => {
+            if (!entries.some((e) => e.isIntersecting)) return;
+            io.disconnect();
+            service.getDownloadUrl(id, { disposition: "inline" }).then((u) => !cancelled && setSrc(apiUrl(u.path))).catch(() => !cancelled && setFailed(true));
+        }, { rootMargin: "200px" });
+        io.observe(el);
+        return () => { cancelled = true; io.disconnect(); };
+    }, [id, isImage]);
+    return (
+        <div ref={ref} className="flex size-full items-center justify-center overflow-hidden">
+            {src && !failed
+                ? <img src={src} alt={title} loading="lazy" className="size-full object-cover" onError={() => setFailed(true)} />
+                : <FileIcon type={type} className="size-10" />}
+        </div>
+    );
+}
 
 interface TreeItem extends FolderNode { children: TreeItem[] }
 

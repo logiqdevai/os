@@ -2,7 +2,8 @@ import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
 import type {
     MemberRef, CreateShareDto, CreateVaultEntryDto, DocumentApprovalRow, DocumentDetail, DocumentRow, DocumentShare, DocumentVersion, DownloadUrl, FolderDetail, FolderNode,
-    Paginated, PublicShareAccess, PublicShareInfo, RevealResult, StorageUsage, VaultEntry,
+    Paginated, PublicShareAccess, PublicShareInfo, RevealResult, StorageUsage, VaultEntry, CreateVaultGrantDto, DocumentCategoryRef, DocumentTemplate, DocumentTemplateDto,
+    FolderTemplate, FolderTemplateDto, PortalUserRef, RetentionPolicy, RetentionPolicyDto, VaultEntryDetail,
 } from "../interfaces/files.interfaces";
 
 const R = () => ApiRoutes.files;
@@ -78,3 +79,29 @@ export const logVaultCopy = (id: string) => post(R().vault.copy(id));
 // Public share (no credential)
 export const getPublicShare = (token: string) => get<PublicShareInfo>(R().public.share(token));
 export const accessPublicShare = ({ token, password }: { token: string; password?: string }) => post<PublicShareAccess>(R().public.access(token), { password });
+
+// Vault grants (17 §12)
+export const getVaultEntryDetail = (id: string) => get<VaultEntryDetail>(R().vault.detail(id));
+export const addVaultGrant = ({ id, ...dto }: CreateVaultGrantDto & { id: string }) => post(R().vault.grants(id), dto);
+export const revokeVaultGrant = ({ id, grantId }: { id: string; grantId: string }) => del(R().vault.grant(id, grantId));
+export const getVaultPortalUsers = (id: string) => get<PortalUserRef[]>(R().vault.portalUsers(id));
+
+// Retention (17 §13)
+export const getCategories = () => get<DocumentCategoryRef[]>(R().categories);
+export const getRetentionPolicies = () => get<RetentionPolicy[]>(R().retention.policies);
+export const createRetentionPolicy = (dto: RetentionPolicyDto) => post<RetentionPolicy>(R().retention.policies, dto);
+export const updateRetentionPolicy = ({ id, ...dto }: Partial<RetentionPolicyDto> & { id: string }) => patch<RetentionPolicy>(R().retention.policy(id), dto);
+export const archiveRetentionPolicy = (id: string) => post(R().retention.archive(id));
+
+// Templates (17 §4, §7)
+export const getFolderTemplates = (params: Params) => get<Paginated<FolderTemplate>>(R().folderTemplates.list, params);
+export const createFolderTemplate = (dto: FolderTemplateDto) => post<FolderTemplate>(R().folderTemplates.list, dto);
+export const updateFolderTemplate = ({ id, ...dto }: Partial<FolderTemplateDto> & { id: string }) => patch<FolderTemplate>(R().folderTemplates.detail(id), dto);
+export const archiveFolderTemplate = (id: string) => post(R().folderTemplates.action(id, "archive"));
+export const applyFolderTemplate = ({ id, ...dto }: { id: string; parent_folder_id?: string; root_name?: string }) => post<{ root_folder_id: string | null; created: { id: string; name: string }[] }>(R().folderTemplates.action(id, "apply"), dto);
+export const getDocumentTemplates = (params: Params) => get<Paginated<DocumentTemplate>>(R().documentTemplates.list, params);
+export const getDocumentTemplate = (id: string) => get<DocumentTemplate>(R().documentTemplates.detail(id));
+export const createDocumentTemplate = (dto: DocumentTemplateDto) => post<DocumentTemplate>(R().documentTemplates.list, dto);
+export const updateDocumentTemplate = ({ id, ...dto }: Partial<DocumentTemplateDto> & { id: string }) => patch<DocumentTemplate>(R().documentTemplates.detail(id), dto);
+export const archiveDocumentTemplate = (id: string) => post(R().documentTemplates.action(id, "archive"));
+export const generateFromTemplate = ({ id, ...dto }: { id: string; values: Record<string, string>; title?: string; folder_id?: string }) => post<{ document_id: string; title: string; filename: string }>(R().documentTemplates.action(id, "generate"), dto);

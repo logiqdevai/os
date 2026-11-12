@@ -1,4 +1,4 @@
-import { Archive, CheckCheck, Clock, FolderOpen, KeyRound, Link, Trash2 } from "lucide-react";
+import { Archive, CheckCheck, Clock, FolderOpen, KeyRound, LayoutTemplate, Link, ShieldCheck, Trash2 } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
 export const filesApp: AppDefinition = {
@@ -17,11 +17,13 @@ export const filesApp: AppDefinition = {
         ] },
         { label: "Workflow", items: [
             { label: "Approvals", to: "/files/approvals", icon: CheckCheck },
+            { label: "Templates", to: "/files/templates", icon: LayoutTemplate },
         ] },
         { label: "Vault", items: [
             { label: "Credentials", to: "/files/vault", icon: KeyRound, permissions: ["documents.vault.read"] },
         ] },
         { items: [
+            { label: "Retention", to: "/files/retention", icon: ShieldCheck, permissions: ["documents.retention.manage"] },
             { label: "Trash", to: "/files/trash", icon: Trash2 },
         ] },
     ],

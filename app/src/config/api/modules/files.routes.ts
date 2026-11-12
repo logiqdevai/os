@@ -41,6 +41,24 @@ export const FilesApiRoutes = {
         reveal: (id: string) => `/files/vault/entries/${id}/reveal`,
         copy: (id: string) => `/files/vault/entries/${id}/copy`,
         accessLog: (id: string) => `/files/vault/entries/${id}/access-log`,
+        grants: (id: string) => `/files/vault/entries/${id}/grants`,
+        grant: (id: string, grantId: string) => `/files/vault/entries/${id}/grants/${grantId}`,
+        portalUsers: (id: string) => `/files/vault/entries/${id}/portal-users`,
+    },
+    retention: {
+        policies: "/files/retention/policies",
+        policy: (id: string) => `/files/retention/policies/${id}`,
+        archive: (id: string) => `/files/retention/policies/${id}/archive`,
+    },
+    folderTemplates: {
+        list: "/files/folder-templates",
+        detail: (id: string) => `/files/folder-templates/${id}`,
+        action: (id: string, action: "archive" | "restore" | "apply") => `/files/folder-templates/${id}/${action}`,
+    },
+    documentTemplates: {
+        list: "/files/document-templates",
+        detail: (id: string) => `/files/document-templates/${id}`,
+        action: (id: string, action: "archive" | "restore" | "generate") => `/files/document-templates/${id}/${action}`,
     },
     deletionRequests: {
         list: "/files/retention/deletion-requests",

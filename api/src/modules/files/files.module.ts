@@ -8,6 +8,8 @@ import { RetentionController } from './controllers/retention.controller';
 import { VaultController } from './controllers/vault.controller';
 import { FileSettingsController } from './controllers/settings.controller';
 import { PublicFilesController } from './controllers/public-files.controller';
+import { FileTemplatesController } from './controllers/templates.controller';
+import { FileTemplatesService } from './services/file-templates.service';
 import { DocumentsService } from './services/documents.service';
 import { FoldersService } from './services/folders.service';
 import { SharesService } from './services/shares.service';
@@ -25,8 +27,8 @@ import { FilesMcp } from './files.mcp';
  */
 @Module({
     imports: [...(isGcsConfigured() ? [GcsIntegrationModule] : [])],
-    controllers: [PublicFilesController, DocumentsController, FoldersController, SharesController, ApprovalsController, RetentionController, VaultController, FileSettingsController],
-    providers: [StorageService, FileSettingsService, DocumentsService, FoldersService, SharesService, ApprovalsService, RetentionService, VaultService, FilesMcp],
+    controllers: [PublicFilesController, DocumentsController, FoldersController, SharesController, ApprovalsController, RetentionController, VaultController, FileSettingsController, FileTemplatesController],
+    providers: [StorageService, FileSettingsService, DocumentsService, FoldersService, SharesService, ApprovalsService, RetentionService, VaultService, FileTemplatesService, FilesMcp],
     exports: [DocumentsService, StorageService, FoldersService],
 })
 export class FilesModule { }

@@ -13,6 +13,8 @@ import { CreateShareSchema, ShareQuerySchema } from './dto/shares.dto';
 import { ApprovalDecisionSchema, ApprovalQuerySchema, CreateApprovalSchema } from './dto/approvals.dto';
 import { CreateVaultEntrySchema, VaultQuerySchema } from './dto/vault.dto';
 import { plain } from './utils/serialize.utils';
+import { FileTemplatesService } from './services/file-templates.service';
+import { ApplyFolderTemplateSchema, GenerateDocumentSchema, TemplateQuerySchema } from './dto/templates.dto';
 
 const M = ModuleKey.DOCUMENTS;
 const id = z.object({ id: z.string().uuid() });
@@ -27,6 +29,7 @@ export class FilesMcp implements OnModuleInit {
         private readonly shares: SharesService,
         private readonly approvals: ApprovalsService,
         private readonly vault: VaultService,
+        private readonly templates: FileTemplatesService,
     ) { }
 
     onModuleInit() {
@@ -55,6 +58,11 @@ export class FilesMcp implements OnModuleInit {
             { name: 'documents_approvals_request', description: 'Request approval of a document version from members.', permission: 'documents.documents.approve', module: M, resource_type: 'document_approval', input: CreateApprovalSchema, handler: (ctx, a) => out(this.approvals.create(ctx, a)) },
             { name: 'documents_approvals_decide', description: 'Approve, reject or request changes on an approval where the caller is an approver.', permission: 'documents.documents.approve', module: M, resource_type: 'document_approval', sensitive: true, input: ApprovalDecisionSchema, handler: (ctx, { id: approvalId, ...dto }) => out(this.approvals.decide(ctx, approvalId, dto)) },
             // Vault (metadata only; reveal is sensitive and never meant to be passed to a model by default)
+            { name: 'documents_folder_templates_list', description: 'List folder templates (reusable folder trees for projects, customers or the organization).', permission: 'documents.documents.read', module: M, resource_type: 'folder_template', input: TemplateQuerySchema, handler: (ctx, a) => out(this.templates.listFolderTemplates(ctx, a)) },
+            { name: 'documents_folder_templates_apply', description: 'Create the folder tree of a template under parent_folder_id (optionally inside a new root folder root_name, linked to project_id / company_id).', permission: 'documents.folders.manage', module: M, resource_type: 'folder_template', input: ApplyFolderTemplateSchema.extend({ id: z.string().uuid() }), handler: (ctx, { id: templateId, ...dto }) => out(this.templates.applyFolderTemplate(ctx, templateId, dto)) },
+            { name: 'documents_templates_list', description: 'List document templates (text bodies with {{placeholders}}).', permission: 'documents.templates.read', module: M, resource_type: 'document_template', input: TemplateQuerySchema, handler: (ctx, a) => out(this.templates.listDocumentTemplates(ctx, a)) },
+            { name: 'documents_templates_get', description: 'Get a document template with its variables and a preview of the body.', permission: 'documents.templates.read', module: M, resource_type: 'document_template', input: id, handler: (ctx, a) => out(this.templates.getDocumentTemplate(ctx, a.id)) },
+            { name: 'documents_templates_generate', description: 'Generate a new document from a template: values { key: text } fill the {{placeholders}}; optional title, folder_id, project_id, company_id.', permission: 'documents.documents.create', module: M, resource_type: 'document_template', input: GenerateDocumentSchema.extend({ id: z.string().uuid() }), handler: (ctx, { id: templateId, ...dto }) => out(this.templates.generate(ctx, templateId, dto)) },
             { name: 'documents_vault_list', description: 'List vault credentials (metadata only, never secrets).', permission: 'documents.vault.read', module: M, resource_type: 'vault_entry', input: VaultQuerySchema, handler: (ctx, a) => out(this.vault.findAll(ctx, a)) },
             { name: 'documents_vault_get', description: 'Get a vault credential (metadata and grants, no secret).', permission: 'documents.vault.read', module: M, resource_type: 'vault_entry', input: id, handler: (ctx, a) => out(this.vault.findOne(ctx, a.id)) },
             { name: 'documents_vault_create', description: 'Store a new credential; the secret is encrypted and never returned.', permission: 'documents.vault.manage', module: M, resource_type: 'vault_entry', sensitive: true, input: CreateVaultEntrySchema, handler: (ctx, a) => out(this.vault.create(ctx, a)) },

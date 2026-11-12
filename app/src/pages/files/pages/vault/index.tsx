@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Copy, Eye, EyeOff, KeyRound, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { Copy, Eye, EyeOff, KeyRound, MoreHorizontal, Plus, Trash2, Users } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -25,11 +25,12 @@ import { VaultEntryTypeFilterOptions, VaultEntryTypeOptions } from "@/config/con
 import * as service from "@/features/files/services/files.services";
 import { useCreateVaultEntry, useDeleteVaultEntry, useRevealVaultEntry, useVaultEntries } from "@/features/files/hooks/use-files";
 import type { VaultEntry, VaultEntryType } from "@/features/files/interfaces/files.interfaces";
+import { VaultGrantsDialog } from "./components/vault-grants-dialog";
 
 /**
  * /files/vault — encrypted credentials (17 §12). Secrets are never in lists; reveal is confirmed, audited (VaultAccessLog) and auto-hidden.
  * @perm VIEW documents.vault.read · reveal documents.vault.read (+ grant/scope) · create/delete documents.vault.manage
- * @api GET /files/vault/entries · POST /files/vault/entries · POST /files/vault/entries/:id/reveal|copy · DELETE /files/vault/entries/:id
+ * @api GET /files/vault/entries · POST /files/vault/entries · POST /files/vault/entries/:id/reveal|copy · DELETE /files/vault/entries/:id · grants: POST|DELETE /files/vault/entries/:id/grants (documents.vault.manage)
  */
 export default function VaultPage() {
     const { params, setPage, search, setSearch, filters, setFilter } = useListParams();
@@ -41,6 +42,7 @@ export default function VaultPage() {
     const [confirmReveal, setConfirmReveal] = useState<VaultEntry | null>(null);
     const [revealed, setRevealed] = useState<{ entry: VaultEntry; secret: string; hideAt: number } | null>(null);
     const [deleting, setDeleting] = useState<VaultEntry | null>(null);
+    const [granting, setGranting] = useState<VaultEntry | null>(null);
     const reveal = useRevealVaultEntry();
 
     const columns: DataTableColumn<VaultEntry>[] = [
@@ -71,7 +73,7 @@ export default function VaultPage() {
                     {canManage && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Actions for ${e.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
-                            <DropdownMenuContent align="end"><DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setDeleting(e)}><Trash2 /> Delete</DropdownMenuItem></DropdownMenuContent>
+                            <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => setGranting(e)}><Users /> Access{e._count?.grants ? ` (${e._count.grants})` : ""}</DropdownMenuItem><DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setDeleting(e)}><Trash2 /> Delete</DropdownMenuItem></DropdownMenuContent>
                         </DropdownMenu>
                     )}
                 </div>
@@ -104,6 +106,7 @@ export default function VaultPage() {
             />
             <RevealDialog revealed={revealed} onClose={() => setRevealed(null)} />
             <VaultFormDialog open={formOpen} onOpenChange={setFormOpen} />
+            <VaultGrantsDialog entry={granting} onClose={() => setGranting(null)} />
             <ConfirmationDialog isOpen={!!deleting} onClose={() => setDeleting(null)} title={`Delete “${deleting?.name}”?`} description="The encrypted secret is destroyed. The access log is kept." confirmText="Delete" variant="destructive" isLoading={remove.isPending} onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => { toast({ title: "Credential deleted" }); setDeleting(null); }, onError: (e) => toast({ variant: "destructive", title: "Could not delete", description: getApiErrorMessage(e) }) })} />
         </Page>
     );

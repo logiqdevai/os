@@ -1,4 +1,4 @@
-import type { ApprovalDecision, ApprovalStatus, DocumentStatus, DocumentTypeGroup, SharePermission, ShareStatus, ShareSubjectType, VaultEntryType, VaultScope } from "@/features/files/interfaces/files.interfaces";
+import type { ApprovalDecision, ApprovalStatus, DocumentScopeKind, DocumentStatus, DocumentTypeGroup, FolderTemplateTarget, RetentionAction, RetentionAnchor, SharePermission, ShareStatus, ShareSubjectType, VaultEntryType, VaultGrantSubjectType, VaultScope } from "@/features/files/interfaces/files.interfaces";
 import type { DropdownOption } from "@/lib/dropdown-option-label.utils";
 
 /** Canonical labels for Documents & Files enums (17). */
@@ -67,4 +67,40 @@ export const VaultScopeOptions: DropdownOption<VaultScope>[] = [
     { id: "ORGANIZATION", label: "Organization" },
     { id: "CUSTOMER", label: "Customer" },
     { id: "PROJECT", label: "Project" },
+];
+
+export const VaultGrantSubjectOptions: DropdownOption<VaultGrantSubjectType>[] = [
+    { id: "MEMBERSHIP", label: "Member" },
+    { id: "TEAM", label: "Team" },
+    { id: "PORTAL_USER", label: "Customer portal user" },
+];
+
+export const RetentionAnchorOptions: DropdownOption<RetentionAnchor>[] = [
+    { id: "CREATED", label: "After the document was created" },
+    { id: "LAST_MODIFIED", label: "After the last change" },
+    { id: "ARCHIVED", label: "After it was archived" },
+    { id: "RECORD_CLOSED", label: "After its record was closed" },
+];
+
+export const RetentionActionOptions: DropdownOption<RetentionAction>[] = [
+    { id: "ARCHIVE", label: "Archive" },
+    { id: "SOFT_DELETE", label: "Move to trash" },
+    { id: "PERMANENT_DELETE", label: "Delete permanently (two-person approval)" },
+];
+
+export const DocumentScopeOptions: DropdownOption<DocumentScopeKind>[] = [
+    { id: "ORGANIZATION", label: "Organization" },
+    { id: "BRANCH", label: "Branch" },
+    { id: "TEAM", label: "Team" },
+    { id: "PROJECT", label: "Project" },
+    { id: "CUSTOMER", label: "Customer" },
+    { id: "EMPLOYEE", label: "Employee (HR)" },
+    { id: "RECORD", label: "Attached to a record" },
+];
+
+export const FolderTemplateTargetOptions: DropdownOption<FolderTemplateTarget>[] = [
+    { id: "ORGANIZATION", label: "Organization folders" },
+    { id: "PROJECT_TYPE", label: "Projects" },
+    { id: "CUSTOMER", label: "Customers" },
+    { id: "EMPLOYEE", label: "Employees" },
 ];

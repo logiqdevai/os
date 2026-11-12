@@ -55,3 +55,26 @@ export const useRevealVaultEntry = () => useMutation({ mutationFn: service.revea
 
 export const usePublicShare = (token: string | undefined) => useQuery({ queryKey: ["public-share", token], queryFn: () => service.getPublicShare(token as string), enabled: !!token, retry: false });
 export const useAccessPublicShare = () => useMutation({ mutationFn: service.accessPublicShare });
+
+export const useVaultEntryDetail = (id: string | null) => useQuery({ queryKey: [...KEY, "vault-entry", id], queryFn: () => service.getVaultEntryDetail(id as string), enabled: !!id });
+export const useAddVaultGrant = mutation(service.addVaultGrant);
+export const useRevokeVaultGrant = mutation(service.revokeVaultGrant);
+export const useVaultPortalUsers = (id: string | null, enabled = true) => useQuery({ queryKey: [...KEY, "vault-entry", id, "portal-users"], queryFn: () => service.getVaultPortalUsers(id as string), enabled: !!id && enabled });
+
+export const useFileCategories = (enabled = true) => useQuery({ queryKey: [...KEY, "categories"], queryFn: service.getCategories, enabled, staleTime: 60_000 });
+export const useRetentionPolicies = (enabled = true) => useQuery({ queryKey: [...KEY, "retention"], queryFn: service.getRetentionPolicies, enabled });
+export const useCreateRetentionPolicy = mutation(service.createRetentionPolicy);
+export const useUpdateRetentionPolicy = mutation(service.updateRetentionPolicy);
+export const useArchiveRetentionPolicy = mutation(service.archiveRetentionPolicy);
+
+export const useFolderTemplates = (params: Params, enabled = true) => useQuery({ queryKey: [...KEY, "folder-templates", params], queryFn: () => service.getFolderTemplates(params), placeholderData: keepPreviousData, enabled });
+export const useCreateFolderTemplate = mutation(service.createFolderTemplate);
+export const useUpdateFolderTemplate = mutation(service.updateFolderTemplate);
+export const useArchiveFolderTemplate = mutation(service.archiveFolderTemplate);
+export const useApplyFolderTemplate = mutation(service.applyFolderTemplate);
+export const useDocumentTemplates = (params: Params, enabled = true) => useQuery({ queryKey: [...KEY, "document-templates", params], queryFn: () => service.getDocumentTemplates(params), placeholderData: keepPreviousData, enabled });
+export const useDocumentTemplate = (id: string | null) => useQuery({ queryKey: [...KEY, "document-template", id], queryFn: () => service.getDocumentTemplate(id as string), enabled: !!id });
+export const useCreateDocumentTemplate = mutation(service.createDocumentTemplate);
+export const useUpdateDocumentTemplate = mutation(service.updateDocumentTemplate);
+export const useArchiveDocumentTemplate = mutation(service.archiveDocumentTemplate);
+export const useGenerateFromTemplate = mutation(service.generateFromTemplate);
