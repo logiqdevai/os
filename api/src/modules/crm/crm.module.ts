@@ -49,10 +49,13 @@ import { CrmMergeMcp } from './merge/merge.mcp';
 import { CrmBulkService } from './bulk/bulk.service';
 import { CrmBulkController } from './bulk/bulk.controller';
 import { CrmBulkMcp } from './bulk/bulk.mcp';
+import { CrmReportsService } from './reports/reports.service';
+import { CrmReportsController } from './reports/reports.controller';
+import { CrmReportsMcp } from './reports/reports.mcp';
 
 /** Extensions (02 §22–33): custom fields, rules & targets, import, merge & duplicates, bulk actions, reports. */
-const FEATURE_CONTROLLERS = [CrmCustomFieldsController, CrmRulesController, CrmImportsController, CrmMergeController, CrmBulkController];
-const FEATURE_PROVIDERS = [CrmCustomFieldValuesService, CrmCustomFieldsService, CrmCustomFieldsMcp, CrmLeadRulesService, CrmTargetsService, CrmRulesMcp, CrmImportsService, CrmImportsMcp, CrmMergeService, CrmDuplicatesService, CrmMergeMcp, CrmBulkService, CrmBulkMcp];
+const FEATURE_CONTROLLERS = [CrmCustomFieldsController, CrmRulesController, CrmImportsController, CrmMergeController, CrmBulkController, CrmReportsController];
+const FEATURE_PROVIDERS = [CrmCustomFieldValuesService, CrmCustomFieldsService, CrmCustomFieldsMcp, CrmLeadRulesService, CrmTargetsService, CrmRulesMcp, CrmImportsService, CrmImportsMcp, CrmMergeService, CrmDuplicatesService, CrmMergeMcp, CrmBulkService, CrmBulkMcp, CrmReportsService, CrmReportsMcp];
 
 /**
  * 02 CRM & Sales (docs/features/02-crm-sales-management.md) plus the platform tags and saved views it owns.

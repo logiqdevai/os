@@ -1,4 +1,4 @@
-import { Building2, CopyCheck, FileUp, Handshake, Inbox, Layers, LayoutDashboard, Phone, Settings, Shuffle, SlidersHorizontal, Target, TrendingUp, Users } from "lucide-react";
+import { BarChart3, Building2, CopyCheck, FileUp, Handshake, Inbox, Layers, LayoutDashboard, Phone, Settings, Shuffle, SlidersHorizontal, Target, TrendingUp, Users } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
 export const crmApp: AppDefinition = {
@@ -20,6 +20,7 @@ export const crmApp: AppDefinition = {
             { label: "Activities", to: "/crm/activities", icon: Phone, permissions: ["crm.activities.read"] },
             { label: "Forecast", to: "/crm/forecast", icon: TrendingUp, permissions: ["crm.forecast.read"] },
             { label: "Targets", to: "/crm/targets", icon: Target, permissions: ["crm.targets.read"] },
+            { label: "Reports", to: "/crm/reports", icon: BarChart3, permissions: ["crm.dashboards.read"] },
             { label: "Duplicates", to: "/crm/duplicates", icon: CopyCheck, permissions: ["crm.companies.merge", "crm.contacts.merge", "crm.leads.merge"] },
         ] },
         { label: "Setup", items: [

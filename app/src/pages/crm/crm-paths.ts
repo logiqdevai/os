@@ -20,5 +20,6 @@ export const CrmPaths = {
     imports: "/crm/imports",
     duplicates: "/crm/duplicates",
     merge: (entity: string, ids: string[]) => `/crm/merge?entity=${entity}&ids=${ids.join(",")}`,
+    reports: "/crm/reports",
     import: (id: string) => `/crm/imports/${id}`,
 };

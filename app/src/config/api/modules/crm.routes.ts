@@ -88,4 +88,5 @@ export const CrmApiRoutes = {
         recalculate: "/crm/scoring-rules/recalculate",
     },
     targets: { list: "/crm/targets", attainment: "/crm/targets/attainment", detail: (id: string) => `/crm/targets/${id}` },
+    reports: { run: (key: string) => `/crm/reports/${key}`, export: (key: string) => `/crm/reports/${key}/export` },
 };
