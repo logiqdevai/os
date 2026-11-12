@@ -107,10 +107,15 @@ export class MessagesService {
         return rest;
     }
 
-    /** Compose and (optionally) send a one-off message. Sending needs communications.messages.send (checked here, not only on the route). */
-    async create(ctx: OrgContext, dto: SendMessageDto) {
+    /**
+     * Compose and (optionally) send a one-off message. Sending needs communications.messages.send (checked here, not only on the route).
+     * Other modules sending their own transactional messages (proposal reminders, signing reminders) pass
+     * `authorized_by_permission`: the caller's key for that business action (e.g. proposals.proposals.send) authorizes the send.
+     */
+    async create(ctx: OrgContext, dto: SendMessageDto, opts: { authorized_by_permission?: string } = {}) {
         const send = dto.send !== false;
-        if (send && !ctx.can(SEND)) throw new ForbiddenException({ message: 'You do not have permission to send messages (communications.messages.send)', code: 'permission_denied', permissions: [SEND] });
+        const moduleAuthorized = !!opts.authorized_by_permission && ctx.can(opts.authorized_by_permission) && dto.kind === CommMessageKind.TRANSACTIONAL;
+        if (send && !ctx.can(SEND) && !moduleAuthorized) throw new ForbiddenException({ message: 'You do not have permission to send messages (communications.messages.send)', code: 'permission_denied', permissions: [SEND] });
         let contact: Prisma.CrmContactGetPayload<{ include: { company: { select: { id: true; name: true } } } }> | null = null;
         if (dto.contact_id) {
             contact = await this.prisma.crmContact.findFirst({ where: { id: dto.contact_id, organization_id: ctx.organization_id }, include: { company: { select: { id: true, name: true } } } });
