@@ -1,5 +1,8 @@
 import type { ModuleKey } from "@/config/apps/app.types";
 
+export type LogoVariant = "light" | "dark";
+
+/** Logos are uploaded files (POST /organization/branding/logo/:variant); the URLs are read-only. */
 export interface OrganizationBranding {
     primary_color?: string;
     accent_color?: string;
@@ -49,8 +52,6 @@ export interface UpdateOrganizationDto {
 export interface UpdateBrandingDto {
     primary_color?: string;
     accent_color?: string;
-    logo_url?: string;
-    logo_dark_url?: string;
     email_footer?: string;
     apply_to_portal?: boolean;
 }

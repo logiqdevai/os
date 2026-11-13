@@ -27,6 +27,14 @@ export const useUpdateBranding = () => {
     const invalidate = useInvalidate();
     return useMutation({ mutationFn: service.updateBranding, meta: { errorToast: false }, onSettled: invalidate });
 };
+export const useUploadLogo = () => {
+    const invalidate = useInvalidate();
+    return useMutation({ mutationFn: service.uploadLogo, meta: { errorTitle: "Could not upload the logo" }, onSettled: invalidate });
+};
+export const useRemoveLogo = () => {
+    const invalidate = useInvalidate();
+    return useMutation({ mutationFn: service.removeLogo, meta: { errorTitle: "Could not remove the logo" }, onSettled: invalidate });
+};
 /** Optimistic: the module switch flips at once. */
 export const useSetModule = () =>
     useOptimisticMutation({

@@ -1,16 +1,19 @@
 import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ImageOff } from "lucide-react";
+import { ImageOff, Trash2, Upload } from "lucide-react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { useFormAutosave } from "@/hooks/use-autosave";
 import { SaveStatus } from "@/components/ui/save-status";
+import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useOrganization, useUpdateBranding } from "@/features/admin/organization/hooks/use-organization";
+import { useOrganization, useRemoveLogo, useUpdateBranding, useUploadLogo } from "@/features/admin/organization/hooks/use-organization";
+import type { LogoVariant } from "@/features/admin/organization/interfaces/organization.interfaces";
 import { brandingSchema, type BrandingFormValues } from "@/features/admin/organization/validation-schemas/organization.schema";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -25,15 +28,48 @@ function ColorField({ value, onChange, label }: { value: string; onChange: (v: s
     );
 }
 
+const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const LOGO_MAX_BYTES = 5 * 1024 * 1024;
+
+/** Upload / replace / remove one logo. Saved right away (separately from the autosaved form); stored in Google Cloud Storage. */
+function LogoUpload({ variant, label, hint, url, dark }: { variant: LogoVariant; label: string; hint: string; url?: string | null; dark?: boolean }) {
+    const input = useRef<HTMLInputElement>(null);
+    const upload = useUploadLogo();
+    const remove = useRemoveLogo();
+    const pick = (file?: File) => {
+        if (input.current) input.current.value = "";
+        if (!file) return;
+        if (!LOGO_TYPES.includes(file.type)) return toast({ variant: "destructive", title: "Unsupported file", description: "Use a PNG, JPG or WebP image." });
+        if (file.size > LOGO_MAX_BYTES) return toast({ variant: "destructive", title: "File too large", description: "The logo must be 5 MB or smaller." });
+        upload.mutate({ variant, file });
+    };
+    return (
+        <div className="space-y-2">
+            <div className="text-sm font-medium text-foreground">{label}</div>
+            <div className={`flex h-20 items-center justify-center rounded-md border border-border p-3 ${dark ? "dark" : ""} bg-background`}>
+                {url ? <img src={url} alt={`${label} preview`} className="max-h-full max-w-full object-contain" /> : <span className="flex items-center gap-2 text-[13px] text-muted-foreground"><ImageOff className="size-4" /> No logo</span>}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" size="sm" variant="outline" loading={upload.isPending} disabled={remove.isPending} onClick={() => input.current?.click()}>
+                    <Upload /> {url ? "Replace" : "Upload"}
+                </Button>
+                {url && <Button type="button" size="sm" variant="ghost" loading={remove.isPending} disabled={upload.isPending} onClick={() => remove.mutate(variant)}><Trash2 /> Remove</Button>}
+            </div>
+            <p className="text-xs text-muted-foreground">{hint} PNG, JPG or WebP, up to 5 MB.</p>
+            <input ref={input} type="file" accept={LOGO_TYPES.join(",")} className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
+        </div>
+    );
+}
+
 /**
  * Branding — /admin/branding
  * @perm organizations.branding.manage
- * @api GET /organization · PATCH /organization/branding (empty string clears a field)
+ * @api GET /organization · PATCH /organization/branding (empty string clears a field) · logos: POST / DELETE /organization/branding/logo/:variant (light | dark → Google Cloud Storage)
  */
 export default function BrandingPage() {
     const org = useOrganization();
     const update = useUpdateBranding();
-    const form = useForm<BrandingFormValues>({ resolver: zodResolver(brandingSchema), defaultValues: { primary_color: "", accent_color: "", logo_url: "", logo_dark_url: "", email_footer: "", apply_to_portal: true } });
+    const form = useForm<BrandingFormValues>({ resolver: zodResolver(brandingSchema), defaultValues: { primary_color: "", accent_color: "", email_footer: "", apply_to_portal: true } });
     const v = form.watch();
 
     // Loaded once; afterwards the form is the source of truth (a refresh after an autosave never overwrites typing).
@@ -42,7 +78,7 @@ export default function BrandingPage() {
         const b = org.data?.branding ?? {};
         if (!org.data || loaded.current) return;
         loaded.current = true;
-        form.reset({ primary_color: b.primary_color ?? "", accent_color: b.accent_color ?? "", logo_url: b.logo_url ?? org.data.logo_url ?? "", logo_dark_url: b.logo_dark_url ?? "", email_footer: b.email_footer ?? "", apply_to_portal: b.apply_to_portal ?? true });
+        form.reset({ primary_color: b.primary_color ?? "", accent_color: b.accent_color ?? "", email_footer: b.email_footer ?? "", apply_to_portal: b.apply_to_portal ?? true });
     }, [org.data, form]);
 
     /** Autosave (no Save button): valid changes are saved after a short pause; failures show in <SaveStatus />. */
@@ -62,12 +98,8 @@ export default function BrandingPage() {
                     <div className="space-y-6">
                         <Section title="Logo">
                             <div className="grid gap-4 rounded-lg border border-border bg-card p-4 sm:grid-cols-2">
-                                <FormField control={form.control} name="logo_url" render={({ field }) => (
-                                    <FormItem><FormLabel>Logo URL</FormLabel><FormControl><Input type="url" placeholder="https://…/logo.svg" {...field} /></FormControl><FormDescription>For light backgrounds.</FormDescription><FormMessage /></FormItem>
-                                )} />
-                                <FormField control={form.control} name="logo_dark_url" render={({ field }) => (
-                                    <FormItem><FormLabel>Logo URL (dark)</FormLabel><FormControl><Input type="url" placeholder="https://…/logo-white.svg" {...field} /></FormControl><FormDescription>Optional, for dark backgrounds.</FormDescription><FormMessage /></FormItem>
-                                )} />
+                                <LogoUpload variant="light" label="Logo" hint="For light backgrounds." url={org.data?.logo_url} />
+                                <LogoUpload variant="dark" label="Logo (dark)" hint="Optional, for dark backgrounds." url={org.data?.branding?.logo_dark_url} dark />
                             </div>
                         </Section>
                         <Section title="Colors">
@@ -97,7 +129,7 @@ export default function BrandingPage() {
                     <Section title="Preview">
                         <div className="overflow-hidden rounded-lg border border-border bg-card">
                             <div className="flex h-16 items-center border-b border-border px-4">
-                                {v.logo_url ? <img src={v.logo_url} alt="Logo preview" className="max-h-9 max-w-[180px] object-contain" /> : <span className="flex items-center gap-2 text-[13px] text-muted-foreground"><ImageOff className="size-4" /> No logo</span>}
+                                {org.data?.logo_url ? <img src={org.data.logo_url} alt="Logo preview" className="max-h-9 max-w-[180px] object-contain" /> : <span className="flex items-center gap-2 text-[13px] text-muted-foreground"><ImageOff className="size-4" /> No logo</span>}
                             </div>
                             <div className="space-y-3 p-4">
                                 <p className="text-[15px] font-medium text-foreground">Proposal for Acme Ltd</p>

@@ -42,18 +42,6 @@ export class UpdateBrandingDto {
     @Matches(/^#[0-9a-fA-F]{6}$/, { message: 'accent_color must be a hex color like #0ea5e9' })
     accent_color?: string;
 
-    @ApiProperty({ required: false })
-    @IsOptional()
-    @ValidateIf((_, v) => v !== '')
-    @IsUrl({ require_protocol: true }, { message: 'logo_url must be a full URL (https://…)' })
-    logo_url?: string;
-
-    @ApiProperty({ required: false, description: 'Logo for dark backgrounds' })
-    @IsOptional()
-    @ValidateIf((_, v) => v !== '')
-    @IsUrl({ require_protocol: true }, { message: 'logo_dark_url must be a full URL (https://…)' })
-    logo_dark_url?: string;
-
     @ApiProperty({ required: false, description: 'Footer text on customer-facing documents and emails' })
     @IsOptional()
     @IsString()

@@ -55,7 +55,7 @@ export class OrganizationService {
         }
         await this.prisma.organization.update({
             where: { id: ctx.organization_id },
-            data: { branding: next as Prisma.InputJsonValue, ...(dto.logo_url !== undefined && { logo_url: dto.logo_url || null }) },
+            data: { branding: next as Prisma.InputJsonValue },
         });
         await this.audit.record(ctx, 'organization.updated', { resource_type: 'organization', resource_id: ctx.organization_id, metadata: { section: 'branding', before: current, after: next } });
         this.events.publish(ctx, { event_key: 'organizations.branding.updated', module: MODULE, entity_kind: 'organization', entity_id: ctx.organization_id, payload: next });

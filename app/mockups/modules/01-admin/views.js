@@ -825,7 +825,7 @@
      PROFILE & BRANDING (spec §14–15, §128)
      @route  /admin/profile
      @perm   VIEW organizations.settings.manage* · branding block organizations.branding.manage · save: same keys
-     @api    GET /organization · PATCH /organization {fields} · POST /organization/logo (multipart; store in Documents module 17, keep logo_url)
+     @api    GET /organization · PATCH /organization {fields} · POST / DELETE /organization/branding/logo/:variant (light | dark, multipart; stored in Google Cloud Storage via StorageService)
      @mcp    organizations_settings_manage*
      @data   Organization (legal_name, display_name, short_name, slug, logo_url, website, country, contact_email, contact_phone, address, tax_identifiers, status, default_currency, default_timezone,
              default_language, default_locale, date_format, number_format, week_start, working_days, business_hours, branding JSON)
@@ -1359,7 +1359,7 @@ const lnk = (t, ic, cls, h) => '<a href="#admin/' + h + '" class="btn ' + (cls |
   function branding() {
     return '<div class="a-page">' + head("Branding", "Organization.branding (JSON). Used by proposals, invoices, the customer portal and emails unless a module overrides it.", btn("Discard", "") + btn("Save branding", "check", "primary")) +
       '<div class="g-main"><div class="stack">' +
-      cd("<b>Logo & marks</b>", '<div class="g2"><div>' + fl("Logo (light backgrounds)", '<div class="drop">' + I("file", 18) + "<b>logiqdev-logo.svg</b><small>SVG/PNG · max 2 MB · Organization.logo_url</small></div>") + "</div><div>" + fl("Logo (dark backgrounds)", '<div class="drop">' + I("plus", 18) + "<b>Upload</b><small>optional · branding.logo_dark_url</small></div>") + "</div></div>" + fl("Favicon", '<div class="drop">' + I("plus", 18) + "<b>Upload 512×512 PNG</b></div>")) +
+      cd("<b>Logo & marks</b>", '<div class="g2"><div>' + fl("Logo (light backgrounds)", '<div class="drop">' + I("file", 18) + "<b>logiqdev-logo.svg</b><small>PNG/JPG/WebP · max 5 MB · Google Cloud Storage · Organization.logo_url</small></div>") + "</div><div>" + fl("Logo (dark backgrounds)", '<div class="drop">' + I("plus", 18) + "<b>Upload</b><small>optional · PNG/JPG/WebP · branding.logo_dark_url</small></div>") + "</div></div>" + fl("Favicon", '<div class="drop">' + I("plus", 18) + "<b>Upload 512×512 PNG</b></div>")) +
       cd("<b>Colors & typography</b>", '<div class="g2">' + fl("Primary color", '<div class="inp ink"><span class="swatch"></span>#E0343A</div>', "must keep 4.5:1 contrast with text on buttons") + fl("Accent color", '<div class="inp ink"><span class="swatch b"></span>#2563EB</div>') + "</div>" + fl("Heading font", sel("Inter", "pen")) + fl("Dark mode", sw2("Use a separate dark palette", "branding.dark.*; otherwise colors are adapted automatically", 0))) +
       cd("<b>Documents & emails</b>", fl("Email footer", ta("Logiqdev Ltd · 12 Ermou St, Athens · VAT EL123456789"), "") + fl("Invoice / proposal footer", ta("Payment terms: 14 days. Thank you for your business."), "") + sw2("Show “Powered by Logiqdev”", "branding.show_powered_by", 1)) + "</div>" +
       '<div class="stack">' + cd("<b>Live preview</b>", '<div class="mailprev"><b style="color:var(--primary)">Logiqdev</b><p>Invoice INV-2058 is ready.</p><span class="btn primary sm">View invoice</span><small class="muted">Logiqdev Ltd · 12 Ermou St, Athens</small></div>') + callout("globe", "Modules may override: ProposalTemplate.branding, CustomerPortalSettings.branding.") + "</div></div>" +

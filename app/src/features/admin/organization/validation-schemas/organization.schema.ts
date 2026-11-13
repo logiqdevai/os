@@ -22,8 +22,6 @@ export type OrganizationProfileFormValues = z.infer<typeof organizationProfileSc
 export const brandingSchema = z.object({
     primary_color: hex,
     accent_color: hex,
-    logo_url: url,
-    logo_dark_url: url,
     email_footer: z.string().trim().max(300),
     apply_to_portal: z.boolean(),
 });

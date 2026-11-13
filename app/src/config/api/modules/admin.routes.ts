@@ -49,6 +49,7 @@ export const AdminApiRoutes = {
     organization: {
         profile: "/organization",
         branding: "/organization/branding",
+        logo: (variant: "light" | "dark") => `/organization/branding/logo/${variant}`,
         modules: "/organization/modules",
         module: (module: string) => `/organization/modules/${module}`,
     },
