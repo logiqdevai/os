@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { useFormAutosave } from "@/hooks/use-autosave";
 import { SaveStatus } from "@/components/ui/save-status";
 import { useForm } from "react-hook-form";
@@ -206,7 +207,7 @@ export function ProjectForm({ defaults, autosave, customerName, owner, pending, 
                                 <FormField control={form.control} name="currency" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Currency</FormLabel>
-                                        <FormControl><Input maxLength={3} placeholder="EUR" {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase())} /></FormControl>
+                                        <FormControl><CurrencySelect value={field.value} onChange={field.onChange} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />

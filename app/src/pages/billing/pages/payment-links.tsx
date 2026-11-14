@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link2, Plus } from "lucide-react";
@@ -74,7 +75,7 @@ function LinkDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
                         <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="Project deposit" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <div className="grid grid-cols-2 gap-3">
                             <FormField control={form.control} name="amount" render={({ field }) => (<FormItem><FormLabel>Amount</FormLabel><FormControl><Input inputMode="decimal" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><Input maxLength={3} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><CurrencySelect value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
                         </div>
                         <FormField control={form.control} name="max_uses" render={({ field }) => (<FormItem><FormLabel>Max uses</FormLabel><FormControl><Input inputMode="numeric" placeholder="Unlimited" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>)} />

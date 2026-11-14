@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
@@ -217,7 +218,7 @@ function DeliverableDialog({ open, onOpenChange, projectId, item, milestones }: 
                             )} />
                         </div>
                         <FormField control={form.control} name="description" render={({ field }) => (
-                            <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+                            <FormItem><FormLabel>Description</FormLabel><RichTextEditor value={field.value} onChange={field.onChange} rows={3} placeholder="What is delivered, in what format, and how it is reviewed…" aria-label="Description" /></FormItem>
                         )} />
                         <FormField control={form.control} name="customer_visible" render={({ field }) => (
                             <FormItem className="flex items-center justify-between gap-3 space-y-0 rounded-md border border-border p-3">

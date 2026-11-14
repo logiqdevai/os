@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -57,7 +58,7 @@ export function BillingProfileForm({ profile, onDone, onCancel }: { profile?: Bi
                     <FormField control={form.control} name="legal_name" render={({ field }) => (<FormItem className="sm:col-span-2"><FormLabel>Legal name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="billing_email" render={({ field }) => (<FormItem><FormLabel>Billing e-mail</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="vat_number" render={({ field }) => (<FormItem><FormLabel>VAT number</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                    <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><Input maxLength={3} {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase())} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><CurrencySelect value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="payment_terms_days" render={({ field }) => (<FormItem><FormLabel>Payment terms (days)</FormLabel><FormControl><Input inputMode="numeric" {...field} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="line1" render={({ field }) => (<FormItem className="sm:col-span-2"><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                     <FormField control={form.control} name="postal_code" render={({ field }) => (<FormItem><FormLabel>Postal code</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />

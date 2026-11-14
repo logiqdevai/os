@@ -38,7 +38,6 @@ export const CapacityStatusOptions: DropdownOption<CapacityStatus>[] = [
 export const CapacityStatusFilterOptions: DropdownOption<CapacityStatus | "all">[] = [{ id: "all", label: "Any status" }, ...CapacityStatusOptions];
 export const CapacityStatusTone: Record<CapacityStatus, BadgeVariant> = { UNDERUTILIZED: "info", BALANCED: "success", OVERLOADED: "danger" };
 
-export const LeaveTypeColorTone: Record<string, BadgeVariant> = { info: "info", success: "success", warning: "warning", danger: "danger", violet: "violet", neutral: "neutral" };
 
 export const LeaveCategoryFormOptions: DropdownOption<LeaveCategory>[] = [
     { id: "VACATION", label: "Vacation" },
@@ -62,15 +61,6 @@ export const LeaveAccrualFormOptions: DropdownOption<LeaveAccrualMethod>[] = [
 ];
 
 /** LeaveType.color stores a semantic tone name (never a hex colour). */
-export const LeaveTypeColorFormOptions: DropdownOption<string>[] = [
-    { id: "info", label: "Blue" },
-    { id: "success", label: "Green" },
-    { id: "warning", label: "Amber" },
-    { id: "danger", label: "Red" },
-    { id: "violet", label: "Violet" },
-    { id: "neutral", label: "Grey" },
-];
-
 export const LeaveApproverStrategyFormOptions: DropdownOption<LeaveApproverStrategy>[] = [
     { id: "DIRECT_MANAGER", label: "Direct manager" },
     { id: "HR", label: "HR" },

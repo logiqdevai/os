@@ -19,6 +19,7 @@ import type { EventDto } from "@/features/calendar/interfaces/calendar.interface
 import { EventVisibilityFormOptions, ReminderFormOptions, RepeatFormOptions, ResourceKindFormOptions } from "@/config/constants/dropdowns/calendar/calendar.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { PeoplePicker } from "./people-picker";
+import { EventContactPicker, EventLeadPicker, EventProjectPicker } from "./event-related-pickers";
 
 interface EventFormDialogProps {
     open: boolean;
@@ -77,6 +78,9 @@ export function EventFormDialog({ open, onOpenChange, eventId, initialStart, occ
                 meeting_url: e.meeting_url ?? "",
                 description: e.description ?? "",
                 attendee_ids: (e.attendees ?? []).filter((a) => a.membership_id && !a.is_organizer).map((a) => a.membership_id as string),
+                project_id: e.project?.id,
+                lead_id: e.lead?.id,
+                contact_id: e.contact?.id,
                 resource_ids: (e.resources ?? []).filter((r) => r.status !== "CANCELLED" && r.status !== "DECLINED").map((r) => r.id),
                 guest_emails: (e.attendees ?? []).filter((a) => !a.membership_id).map((a) => a.email).join(", "),
                 reminder: e.reminders?.find((r) => !r.personal) ? String(e.reminders.find((r) => !r.personal)?.minutes_before) : "none",
@@ -131,6 +135,9 @@ export function EventFormDialog({ open, onOpenChange, eventId, initialStart, occ
             attendees: [...v.attendee_ids.map((membership_id) => ({ membership_id })), ...guests.map((email) => ({ email }))],
             reminders: v.reminder === "none" ? [] : [{ minutes_before: Number(v.reminder) }],
             resource_ids: v.resource_ids,
+            project_id: v.project_id || (eventId ? null : undefined),
+            lead_id: v.lead_id || (eventId ? null : undefined),
+            contact_id: v.contact_id || (eventId ? null : undefined),
         };
         // A room that is already booked answers 409 resource_conflict: show it on the field as well as in the toast.
         const onError = (err: unknown) => {
@@ -310,6 +317,26 @@ export function EventFormDialog({ open, onOpenChange, eventId, initialStart, occ
                                     <FormMessage />
                                 </FormItem>
                             )} />
+                            <div className="grid gap-4 sm:grid-cols-3">
+                                <FormField control={form.control} name="project_id" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Project</FormLabel>
+                                        <EventProjectPicker value={field.value} onChange={field.onChange} known={detail.data?.project} />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="lead_id" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Lead</FormLabel>
+                                        <EventLeadPicker value={field.value} onChange={field.onChange} known={detail.data?.lead} />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="contact_id" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Contact</FormLabel>
+                                        <EventContactPicker value={field.value} onChange={field.onChange} known={detail.data?.contact} />
+                                    </FormItem>
+                                )} />
+                            </div>
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <FormField control={form.control} name="location" render={({ field }) => (
                                     <FormItem>

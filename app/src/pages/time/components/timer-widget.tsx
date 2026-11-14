@@ -5,9 +5,25 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isTempTimer, useCurrentTimer, useDiscardTimer, usePauseTimer, useResumeTimer, useStartTimer, useStopTimer } from "@/features/time/timers/hooks/use-timer";
+import type { RunningTimer } from "@/features/time/timers/interfaces/timers.interfaces";
 import { ProjectSelect, TaskSelect } from "./pickers";
 
-const clock = (s: number) => `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+export const clock = (s: number) => `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+
+/** Live seconds of a running timer (ticks every second unless paused). Shared by the Time widget and the task detail timer. */
+export function useElapsedSeconds(timer: RunningTimer | null) {
+    const [elapsed, setElapsed] = useState(0);
+    useEffect(() => {
+        if (!timer) return;
+        const base = timer.elapsed_seconds;
+        const at = Date.now();
+        setElapsed(base);
+        if (timer.is_paused) return;
+        const t = setInterval(() => setElapsed(base + Math.floor((Date.now() - at) / 1000)), 1000);
+        return () => clearInterval(t);
+    }, [timer]);
+    return elapsed;
+}
 
 /**
  * Running timer (one per member). Stop turns it into a TimeEntry (source TIMER). Every action is optimistic: the clock
@@ -25,17 +41,7 @@ export function TimerWidget({ canStart }: { canStart: boolean }) {
     const [taskId, setTaskId] = useState<string | null>(null);
     const [description, setDescription] = useState("");
     const timer = q.data?.timer ?? null;
-    const [elapsed, setElapsed] = useState(0);
-
-    useEffect(() => {
-        if (!timer) return;
-        const base = timer.elapsed_seconds;
-        const at = Date.now();
-        setElapsed(base);
-        if (timer.is_paused) return;
-        const t = setInterval(() => setElapsed(base + Math.floor((Date.now() - at) / 1000)), 1000);
-        return () => clearInterval(t);
-    }, [timer]);
+    const elapsed = useElapsedSeconds(timer);
 
     // Until the server confirms a just-started timer its id is temporary, so its actions wait a moment.
     const busy = !!timer && isTempTimer(timer);

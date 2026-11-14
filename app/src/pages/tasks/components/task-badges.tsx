@@ -1,4 +1,6 @@
 import { AlertOctagon, Circle, CircleCheck, CircleDashed, CircleDot, CircleSlash, Eye, Minus, SignalHigh, SignalLow, SignalMedium } from "lucide-react";
+import { ColorDot } from "@/components/ui/color-picker";
+import { cssColor } from "@/lib/color";
 import type { BadgeVariant } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
@@ -10,13 +12,12 @@ const categoryIcon = { BACKLOG: CircleDashed, TODO: Circle, IN_PROGRESS: CircleD
 const categoryTone: Record<TaskStatusCategory, string> = {
     BACKLOG: "text-ash", TODO: "text-muted-foreground", IN_PROGRESS: "text-warning", IN_REVIEW: "text-violet", BLOCKED: "text-danger", DONE: "text-success", CANCELLED: "text-ash",
 };
-const colorTone: Record<string, string> = { info: "text-info", success: "text-success", warning: "text-warning", danger: "text-danger", violet: "text-violet", neutral: "text-muted-foreground" };
 
 /** Linear-style status glyph: shape from the category, tone from the status color. */
 export function StatusIcon({ category, color, className }: { category: TaskStatusCategory | null | undefined; color?: string | null; className?: string }) {
     const Icon = categoryIcon[category ?? "TODO"];
-    const tone = color && color !== "neutral" ? colorTone[color] : categoryTone[category ?? "TODO"];
-    return <Icon aria-hidden className={cn("size-4 shrink-0", tone, className)} />;
+    const custom = color && color !== "neutral" ? cssColor(color) : undefined;
+    return <Icon aria-hidden className={cn("size-4 shrink-0", !custom && categoryTone[category ?? "TODO"], className)} style={custom ? { color: custom } : undefined} />;
 }
 
 const priorityIcon = { NONE: Minus, LOW: SignalLow, MEDIUM: SignalMedium, HIGH: SignalHigh, URGENT: AlertOctagon } as const;
@@ -42,8 +43,7 @@ export function PriorityGlyph({ priority }: { priority: TaskPriority }) {
 
 /** Small colored dot for labels. */
 export function LabelDot({ color }: { color: string | null | undefined }) {
-    const bg: Record<string, string> = { info: "bg-info", success: "bg-success", warning: "bg-warning", danger: "bg-danger", violet: "bg-violet", neutral: "bg-ash" };
-    return <span aria-hidden className={cn("inline-block size-2 shrink-0 rounded-full", bg[color ?? ""] ?? "bg-ash")} />;
+    return <ColorDot color={color} />;
 }
 
 export function LabelChip({ label }: { label: { name: string; color: string | null } }) {

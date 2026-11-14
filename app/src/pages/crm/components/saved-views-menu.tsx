@@ -35,7 +35,7 @@ export function useHiddenColumns() {
  * the list endpoint still applies the caller's permissions and scope.
  * @api GET/POST/PATCH/DELETE /saved-views?entity_type=
  */
-export function SavedViewsMenu({ entityType, columns, onSearch }: { entityType: string; columns?: { key: string; label: string }[]; onSearch: (q: string) => void }) {
+export function SavedViewsMenu({ entityType, columns, onSearch, allLabel = "All records", layout = "table" }: { entityType: string; columns?: { key: string; label: string }[]; onSearch: (q: string) => void; allLabel?: string; layout?: string }) {
     const [sp, setSp] = useSearchParams();
     const views = useSavedViews(entityType);
     const update = useUpdateSavedView();
@@ -100,12 +100,12 @@ export function SavedViewsMenu({ entityType, columns, onSearch }: { entityType: 
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="h-8 max-w-full sm:max-w-56" aria-label="Saved views">
-                        <Bookmark /> <span className="truncate">{current?.name ?? "All records"}</span> <ChevronDown className="opacity-50" />
+                        <Bookmark /> <span className="truncate">{current?.name ?? allLabel}</span> <ChevronDown className="opacity-50" />
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-64">
                     <DropdownMenuItem onSelect={() => apply(null)}>
-                        <Check className={currentId ? "opacity-0" : ""} /> All records
+                        <Check className={currentId ? "opacity-0" : ""} /> {allLabel}
                     </DropdownMenuItem>
                     {views.isPending && <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Loading views…</DropdownMenuLabel>}
                     {views.error && <DropdownMenuLabel className="text-xs font-normal text-danger">Could not load views</DropdownMenuLabel>}
@@ -148,6 +148,7 @@ export function SavedViewsMenu({ entityType, columns, onSearch }: { entityType: 
                 mode={dialog?.mode ?? "create"}
                 view={dialog?.view}
                 entityType={entityType}
+                layout={layout}
                 filters={currentFilters}
                 search={sp.get("q") ?? ""}
                 onOpenChange={(o) => !o && setDialog(null)}
@@ -166,8 +167,8 @@ export function SavedViewsMenu({ entityType, columns, onSearch }: { entityType: 
     );
 }
 
-function SaveViewDialog({ open, mode, view, entityType, filters, search, onOpenChange, onSaved }: {
-    open: boolean; mode: "create" | "edit"; view?: SavedView; entityType: string; filters: () => Record<string, string>; search: string;
+function SaveViewDialog({ open, mode, view, entityType, layout, filters, search, onOpenChange, onSaved }: {
+    open: boolean; mode: "create" | "edit"; view?: SavedView; entityType: string; layout: string; filters: () => Record<string, string>; search: string;
     onOpenChange: (o: boolean) => void; onSaved: (v: SavedView) => void;
 }) {
     const canShare = usePermission("platform.saved_views.manage_shared");
@@ -203,7 +204,7 @@ function SaveViewDialog({ open, mode, view, entityType, filters, search, onOpenC
             onError: (err: unknown) => setError(getApiErrorMessage(err)),
         };
         if (mode === "edit" && view) update.mutate({ id: view.id, ...dto }, opts);
-        else create.mutate({ ...dto, entity_type: entityType, layout: "table", filters: filters(), search }, opts);
+        else create.mutate({ ...dto, entity_type: entityType, layout, filters: filters(), search }, opts);
     };
 
     return (

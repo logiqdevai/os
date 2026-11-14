@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ImageOff, Trash2, Upload } from "lucide-react";
@@ -8,7 +9,6 @@ import { useFormAutosave } from "@/hooks/use-autosave";
 import { SaveStatus } from "@/components/ui/save-status";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -17,16 +17,6 @@ import type { LogoVariant } from "@/features/admin/organization/interfaces/organ
 import { brandingSchema, type BrandingFormValues } from "@/features/admin/organization/validation-schemas/organization.schema";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
-
-/** Color input + hex text field. The brand color is user data, so the swatch is the one place we render a raw color. */
-function ColorField({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
-    return (
-        <div className="flex items-center gap-2">
-            <input type="color" aria-label={`${label} picker`} value={HEX.test(value) ? value : "#000000"} onChange={(e) => onChange(e.target.value)} className="size-8 flex-none cursor-pointer rounded-md border border-border bg-transparent p-0.5" />
-            <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="#2563eb" maxLength={7} className="font-mono" />
-        </div>
-    );
-}
 
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const LOGO_MAX_BYTES = 5 * 1024 * 1024;
@@ -105,10 +95,10 @@ export default function BrandingPage() {
                         <Section title="Colors">
                             <div className="grid gap-4 rounded-lg border border-border bg-card p-4 sm:grid-cols-2">
                                 <FormField control={form.control} name="primary_color" render={({ field }) => (
-                                    <FormItem><FormLabel>Primary color</FormLabel><FormControl><ColorField label="Primary color" value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>
+                                    <FormItem><FormLabel>Primary color</FormLabel><FormControl><ColorPicker label="Primary color" value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>
                                 )} />
                                 <FormField control={form.control} name="accent_color" render={({ field }) => (
-                                    <FormItem><FormLabel>Accent color</FormLabel><FormControl><ColorField label="Accent color" value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>
+                                    <FormItem><FormLabel>Accent color</FormLabel><FormControl><ColorPicker label="Accent color" value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>
                                 )} />
                             </div>
                         </Section>

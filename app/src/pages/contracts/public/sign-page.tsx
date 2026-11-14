@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useParams } from "react-router-dom";
 import { CheckCircle2, Clock, Download, FileX2, MailCheck, PenLine, ShieldCheck, Smartphone, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -225,11 +226,11 @@ function Review({ token, s }: { token: string; s: PublicSigningState }) {
             <aside className="space-y-4 lg:sticky lg:top-4 lg:h-fit">
                 <div className="space-y-3 rounded-lg border border-border bg-card p-4">
                     <h2 className="flex items-center gap-2 text-sm font-medium"><PenLine className="size-4" /> Your signature</h2>
-                    <div className="grid grid-cols-2 gap-1 rounded-md bg-secondary p-1" role="tablist" aria-label="Signature method">
-                        {(["TYPED", "DRAWN"] as const).map((m) => (
-                            <button key={m} type="button" role="tab" aria-selected={method === m} onClick={() => setMethod(m)} className={cn("h-7 rounded text-[12.5px]", method === m ? "bg-card font-medium text-foreground shadow-sm" : "text-muted-foreground")}>{m === "TYPED" ? "Type" : "Draw"}</button>
-                        ))}
-                    </div>
+                    <Tabs value={method} onValueChange={(v) => setMethod(v as typeof method)}>
+                        <TabsList className="grid w-full grid-cols-2">
+                            {(["TYPED", "DRAWN"] as const).map((m) => <TabsTrigger key={m} value={m}>{m === "TYPED" ? "Type" : "Draw"}</TabsTrigger>)}
+                        </TabsList>
+                    </Tabs>
                     {method === "TYPED" ? (
                         <div className="space-y-1.5">
                             <Label htmlFor="typed-name">Full name</Label>

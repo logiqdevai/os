@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { MoreHorizontal, Pause, Play, Plus, Repeat, Square, Zap } from "lucide-react";
@@ -120,7 +121,7 @@ function RecurringDialog({ open, onOpenChange, item }: { open: boolean; onOpenCh
                             <FormField control={form.control} name="start_date" render={({ field }) => (<FormItem><FormLabel>Start</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="end_date" render={({ field }) => (<FormItem><FormLabel>End (optional)</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)} />
                             <FormField control={form.control} name="due_days" render={({ field }) => (<FormItem><FormLabel>Due after (days)</FormLabel><FormControl><Input inputMode="numeric" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><Input maxLength={3} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><CurrencySelect value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="payment_method_id" render={({ field }) => (<FormItem className="sm:col-span-2"><FormLabel>Paid from</FormLabel><Select value={field.value ?? NONE} onValueChange={field.onChange}><FormControl><SelectTrigger aria-label="Paid from"><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value={NONE}>Not set</SelectItem>{methods.data?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select></FormItem>)} />
                             <FormField control={form.control} name="auto_generate" render={({ field }) => (<FormItem className="flex items-center justify-between rounded-md border border-border p-3 sm:col-span-2"><FormLabel>Create records automatically</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
                         </div>

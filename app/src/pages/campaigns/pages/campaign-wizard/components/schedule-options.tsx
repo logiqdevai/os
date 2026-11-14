@@ -1,11 +1,11 @@
 import type { UseFormReturn } from "react-hook-form";
+import { TimezoneSelect } from "@/components/ui/timezone-select";
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { CampaignFormValues } from "@/features/communications/validation-schemas/communications.schema";
-import { TimezoneOptions } from "@/config/constants/dropdowns/timezone.options";
 import { CampaignRepeatOptions, WeekdayOptions } from "@/config/constants/dropdowns/communications/campaign-ab.options";
 
 /**
@@ -14,17 +14,12 @@ import { CampaignRepeatOptions, WeekdayOptions } from "@/config/constants/dropdo
  */
 export function ScheduleOptions({ form }: { form: UseFormReturn<CampaignFormValues> }) {
     const [sendMode, repeat] = form.watch(["send_mode", "repeat"]);
-    const zone = form.watch("schedule_timezone");
-    const zones = TimezoneOptions.some((z) => z.value === zone) ? TimezoneOptions : [{ value: zone, label: zone }, ...TimezoneOptions];
     return (
         <div className="space-y-5">
             <FormField control={form.control} name="schedule_timezone" render={({ field }) => (
                 <FormItem>
                     <FormLabel>Time zone of the send time</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl><SelectTrigger className="w-full sm:w-80" aria-label="Time zone"><SelectValue /></SelectTrigger></FormControl>
-                        <SelectContent>{zones.map((z) => <SelectItem key={z.value} value={z.value}>{z.label}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <FormControl><TimezoneSelect value={field.value} onChange={field.onChange} className="w-full sm:w-80" aria-label="Time zone" /></FormControl>
                     <FormMessage />
                 </FormItem>
             )} />

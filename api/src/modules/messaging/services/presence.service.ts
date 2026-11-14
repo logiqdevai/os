@@ -109,6 +109,11 @@ export class PresenceService {
         return view;
     }
 
+    /** Server start: no socket is open yet, so nobody is online. */
+    async resetConnections() {
+        await this.prisma.messagingPresence.updateMany({ where: { OR: [{ active_connections: { gt: 0 } }, { state: { not: 'OFFLINE' } }] }, data: { active_connections: 0, state: 'OFFLINE' } });
+    }
+
     /** Socket connected / disconnected (gateway). Returns the new effective presence. */
     async connection(organizationId: string, membershipId: string, delta: 1 | -1) {
         const now = new Date();

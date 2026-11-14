@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { TimezoneSelect } from "@/components/ui/timezone-select";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { z } from "zod";
@@ -267,7 +268,7 @@ export default function WorkflowBuilderPage() {
                                 </div>
                                 <div className="space-y-1.5">
                                     <Label htmlFor="wf-tz">Timezone</Label>
-                                    <Input id="wf-tz" value={draft.trigger_config?.timezone ?? "UTC"} onChange={(e) => set("trigger_config", { ...draft.trigger_config, timezone: e.target.value })} />
+                                    <TimezoneSelect id="wf-tz" value={draft.trigger_config?.timezone ?? "UTC"} onChange={(tz) => set("trigger_config", { ...draft.trigger_config, timezone: tz })} />
                                 </div>
                                 <div className="sm:col-span-2">
                                     <Button type="button" variant="outline" size="sm" loading={preview.isPending} onClick={() => preview.mutate({ kind: "CRON", cron_expression: cron, timezone: draft.trigger_config?.timezone ?? "UTC" })}>

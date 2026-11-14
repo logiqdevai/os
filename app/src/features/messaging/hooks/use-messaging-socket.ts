@@ -33,7 +33,8 @@ export const typingKey = (channelId: string, threadRootId?: string | null) => (t
  */
 export function useMessagingSocket(myMembershipId: string | undefined): MessagingSocketState {
     const qc = useQueryClient();
-    const token = useAuthStore((s) => s.access_token);
+    // Only whether we are signed in: the auth callback below reads the latest token on every (re)connect, so a token refresh must not tear the socket down.
+    const hasToken = useAuthStore((s) => !!s.access_token);
     const organizationId = useAuthStore((s) => s.organization_id);
     const socketRef = useRef<Socket | null>(null);
     const activeRef = useRef<string | null>(null);
@@ -44,7 +45,7 @@ export function useMessagingSocket(myMembershipId: string | undefined): Messagin
     const [presence, setPresence] = useState<Record<string, Presence>>({});
 
     useEffect(() => {
-        if (!token || !organizationId || !myMembershipId) return;
+        if (!hasToken || !organizationId || !myMembershipId) return;
         const url = environments.API_URL.replace(/\/+$/, "") + ApiRoutes.messaging.socket_namespace;
         const socket = io(url, {
             auth: (cb) => cb({ token: getAuthStoreState().access_token, organization_id: getAuthStoreState().organization_id }),
@@ -60,9 +61,14 @@ export function useMessagingSocket(myMembershipId: string | undefined): Messagin
             setSocketState(socket);
             if (!firstConnect) qc.invalidateQueries({ queryKey: MESSAGING_KEY });
             firstConnect = false;
+            // Presence events are not replayed: take a fresh snapshot of who is online on every (re)connect.
+            qc.invalidateQueries({ queryKey: messagingKeys.presence });
             if (activeRef.current) socket.emit("channel.watch", { channel_id: activeRef.current });
         });
-        socket.on("disconnect", () => setConnected(false));
+        socket.on("disconnect", () => {
+            setConnected(false);
+            setPresence({}); // events missed while offline would leave stale dots; the next connect refetches the snapshot
+        });
 
         socket.on("message.created", ({ channel_id, message }: { channel_id: string; message: Message }) => {
             const mine = message.author?.membership_id === myMembershipId;
@@ -141,7 +147,7 @@ export function useMessagingSocket(myMembershipId: string | undefined): Messagin
             setSocketState(null);
             setConnected(false);
         };
-    }, [token, organizationId, myMembershipId, qc]);
+    }, [hasToken, organizationId, myMembershipId, qc]);
 
     const setActiveChannel = useCallback((channelId: string | null) => {
         const prev = activeRef.current;

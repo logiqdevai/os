@@ -48,6 +48,7 @@ import { InlineText } from "@/components/ui/inline-edit";
 import { MarkdownField } from "@/components/ui/markdown-field";
 import { AssigneePicker, LabelsPicker, PriorityPicker, ProjectPicker, StatusPicker } from "./task-pickers";
 import { LabelChip, StatusIcon } from "./task-badges";
+import { TaskTimeSection } from "./task-time-section";
 
 /**
  * Task detail (full page and side sheet): description, sub-tasks, checklist, links, attachments, comments, activity, properties.
@@ -109,6 +110,7 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
                     <MarkdownField value={t.description} canEdit={canEdit} onSave={(next) => update.mutateAsync({ id: t.id, description: next })} />
                 </section>
 
+                <TaskTimeSection task={t} />
                 <SubtasksSection task={t} canEdit={canEdit} />
                 <ChecklistSection task={t} canEdit={canEdit} />
                 <LinksSection task={t} canEdit={canEdit} />

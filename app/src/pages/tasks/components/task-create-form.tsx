@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarDays, Tag } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -110,7 +110,7 @@ export function TaskCreateForm({ defaults, onCreated, onCancel, allowCreateMore,
                 <FormField control={form.control} name="description" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="sr-only">Description</FormLabel>
-                        <FormControl><Textarea rows={4} placeholder="Add a description (Markdown)…" className="resize-y" {...field} /></FormControl>
+                        <RichTextEditor value={field.value} onChange={field.onChange} rows={4} placeholder="Add a description…" aria-label="Description" />
                     </FormItem>
                 )} />
 

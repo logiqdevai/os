@@ -15,12 +15,3 @@ export const LossReasonScopeFormOptions: DropdownOption<LossReasonScope>[] = [
     { id: "LEAD", label: "Leads only" },
 ];
 
-/** Semantic tones for stages, statuses and tags (mapped to theme tokens, never raw colors). */
-export const ToneFormOptions: DropdownOption<"neutral" | "info" | "success" | "warning" | "danger" | "violet">[] = [
-    { id: "neutral", label: "Gray" },
-    { id: "info", label: "Blue" },
-    { id: "success", label: "Green" },
-    { id: "warning", label: "Yellow" },
-    { id: "danger", label: "Red" },
-    { id: "violet", label: "Violet" },
-];

@@ -5,7 +5,6 @@ import { QuickCreateProvider } from "./components/quick-create";
 
 const MinePage = lazy(() => import("./pages/mine"));
 const AllPage = lazy(() => import("./pages/all"));
-const BoardPage = lazy(() => import("./pages/board"));
 const NewPage = lazy(() => import("./pages/new"));
 const DetailPage = lazy(() => import("./pages/detail"));
 const CyclesPage = lazy(() => import("./pages/cycles"));
@@ -25,7 +24,6 @@ export default function TasksRoutes() {
             <Routes>
                 <Route index element={read(<MinePage />)} />
                 <Route path="all" element={read(<AllPage />)} />
-                <Route path="board" element={read(<BoardPage />)} />
                 <Route path="new" element={<RequirePermission permission="tasks.tasks.create"><NewPage /></RequirePermission>} />
                 <Route path="cycles" element={read(<CyclesPage />)} />
                 <Route path="cycles/:cycleId" element={read(<CyclePage />)} />

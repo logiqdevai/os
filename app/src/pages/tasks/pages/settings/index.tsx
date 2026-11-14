@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { useSearchParams } from "react-router-dom";
 import { Archive, ArrowDown, ArrowUp, Pencil, Plus, RotateCcw } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
@@ -31,7 +32,6 @@ import {
 } from "@/features/tasks/hooks/use-tasks";
 import type { TaskLabel, TaskStatus, TaskStatusCategory, TaskType } from "@/features/tasks/interfaces/tasks.interfaces";
 import { TaskStatusCategoryFormOptions } from "@/config/constants/dropdowns/tasks/task-form.options";
-import { ColorTokenFormOptions } from "@/config/constants/dropdowns/projects/project-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { LabelDot, StatusIcon } from "../../components/task-badges";
 
@@ -150,7 +150,7 @@ function StatusDialog({ open, onOpenChange, status, teamId, all }: { open: boole
     const touch = <T,>(set: (v: T) => void) => (v: T) => { setDirty(true); set(v); };
     const [name, setName] = useState("");
     const [category, setCategory] = useState<TaskStatusCategory>("TODO");
-    const [color, setColor] = useState("neutral");
+    const [color, setColor] = useState("#8a8a93");
     const [isDefault, setIsDefault] = useState(false);
     const [transitions, setTransitions] = useState<string[]>([]);
     const [key, setKey] = useState("");
@@ -192,10 +192,7 @@ function StatusDialog({ open, onOpenChange, status, teamId, all }: { open: boole
                         </div>
                         <div className="space-y-1.5">
                             <Label>Color</Label>
-                            <Select value={color} onValueChange={touch(setColor)}>
-                                <SelectTrigger aria-label="Color"><SelectValue /></SelectTrigger>
-                                <SelectContent>{ColorTokenFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
-                            </Select>
+                            <ColorPicker label="Color" value={color} onChange={touch(setColor)} />
                         </div>
                     </div>
                     <div className="space-y-1.5">
@@ -265,10 +262,7 @@ function LabelsSection() {
         {
             key: "color", header: "Color", hideBelow: "sm",
             cell: (l) => (
-                <Select value={l.color ?? "neutral"} onValueChange={(v) => update.mutate({ id: l.id, color: v })}>
-                    <SelectTrigger className="h-7 w-28" aria-label={`Color of ${l.name}`}><SelectValue /></SelectTrigger>
-                    <SelectContent>{ColorTokenFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
-                </Select>
+                <ColorPicker label={`Color of ${l.name}`} value={l.color} debounce={500} onChange={(v) => update.mutate({ id: l.id, color: v })} className="w-44" />
             ),
         },
         { key: "count", header: "Tasks", className: "tabular text-right", headerClassName: "text-right", cell: (l) => l._count?.assignments ?? 0 },
@@ -278,10 +272,7 @@ function LabelsSection() {
         <div className="space-y-3">
             <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); if (name.trim()) create.mutate({ name: name.trim(), color }, { onSuccess: () => setName("") }); }}>
                 <Input className="h-8 sm:max-w-xs" placeholder="New label, e.g. frontend" value={name} onChange={(e) => setName(e.target.value)} aria-label="New label name" />
-                <Select value={color} onValueChange={setColor}>
-                    <SelectTrigger className="h-8 w-28" aria-label="Label color"><SelectValue /></SelectTrigger>
-                    <SelectContent>{ColorTokenFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
-                </Select>
+                <ColorPicker label="Label color" value={color} onChange={setColor} className="w-44" />
                 <Button type="submit" size="sm" disabled={!name.trim()} loading={create.isPending}><Plus /> Add</Button>
             </form>
             <DataTable columns={columns} data={labels.data} rowKey={(l) => l.id} loading={labels.isFetching} error={labels.error} onRetry={() => labels.refetch()} empty={{ title: "No labels yet" }} />

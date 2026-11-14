@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Archive, Plus } from "lucide-react";
@@ -161,7 +162,7 @@ function PaymentMethodDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                         <div className="grid grid-cols-3 gap-3">
                             <FormField control={form.control} name="opening_balance" render={({ field }) => (<FormItem><FormLabel>Opening</FormLabel><FormControl><Input inputMode="decimal" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="opening_date" render={({ field }) => (<FormItem><FormLabel>As of</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)} />
-                            <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><Input maxLength={3} {...field} /></FormControl></FormItem>)} />
+                            <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><CurrencySelect value={field.value} onChange={field.onChange} /></FormControl></FormItem>)} />
                         </div>
                         <DialogFooter><Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>Cancel</Button><Button type="submit" loading={create.isPending}>Create</Button></DialogFooter>
                     </form>

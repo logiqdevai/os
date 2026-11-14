@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ExternalLink, Palette, RefreshCw } from "lucide-react";
@@ -88,7 +89,7 @@ function WidgetAppearanceDialog({ channel, open, onOpenChange }: { channel: Supp
                         <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="Your organization name" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="welcome_message" render={({ field }) => (<FormItem><FormLabel>Welcome message</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <div className="grid gap-4 sm:grid-cols-2">
-                            <FormField control={form.control} name="color" render={({ field }) => (<FormItem><FormLabel>Brand colour</FormLabel><FormControl><Input placeholder="#2563eb" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="color" render={({ field }) => (<FormItem><FormLabel>Brand colour</FormLabel><FormControl><ColorPicker label="Brand colour" value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="position" render={({ field }) => (
                                 <FormItem><FormLabel>Position</FormLabel>
                                     <Select value={field.value} onValueChange={field.onChange}><FormControl><SelectTrigger aria-label="Position"><SelectValue /></SelectTrigger></FormControl>

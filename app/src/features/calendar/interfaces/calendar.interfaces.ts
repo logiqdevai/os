@@ -18,7 +18,6 @@ export type HostAssignment = "SINGLE" | "ROUND_ROBIN" | "COLLECTIVE";
 export type BookingStatus = "PENDING" | "CONFIRMED" | "RESCHEDULED" | "CANCELLED" | "NO_SHOW" | "COMPLETED";
 export type CalendarView = "day" | "week" | "month" | "agenda";
 /** Token color names stored on calendars / event types / events. */
-export type ColorToken = "info" | "success" | "warning" | "danger" | "violet" | "neutral";
 
 export interface Recurrence {
     freq: RecurrenceFreq;
@@ -141,6 +140,8 @@ export interface CalendarEventDetail {
     resources?: { id: string; name: string; kind: ResourceKind; location: string | null; status: string }[];
     project?: { id: string; name: string } | null;
     company?: { id: string; name: string } | null;
+    lead?: { id: string; name: string } | null;
+    contact?: { id: string; name: string } | null;
     booking?: { id: string; status: BookingStatus; invitee_name: string; invitee_email: string } | null;
     source?: string;
     cancelled_at?: string | null;
@@ -167,6 +168,10 @@ export interface EventDto {
     attendees?: { membership_id?: string; email?: string; name?: string }[];
     reminders?: { minutes_before: number }[];
     resource_ids?: string[];
+    /** Optional related records; null clears on update. */
+    project_id?: string | null;
+    lead_id?: string | null;
+    contact_id?: string | null;
 }
 
 export interface CalendarRow {

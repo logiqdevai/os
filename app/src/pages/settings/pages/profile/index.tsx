@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { TimezoneSelect } from "@/components/ui/timezone-select";
 import { Camera, Trash2 } from "lucide-react";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { useForm } from "react-hook-form";
@@ -8,10 +9,8 @@ import { PageSkeleton } from "@/components/ui/states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRemoveProfilePhoto, useSessionData, useUpdateProfile, useUploadProfilePhoto } from "@/features/session/hooks/use-session";
 import { profileSettingsSchema, type ProfileSettingsFormValues } from "@/features/session/validation-schemas/settings.schema";
-import { TimezoneOptions } from "@/config/constants/dropdowns/timezone.options";
 import { toast } from "@/hooks/use-toast";
 import { useFormAutosave } from "@/hooks/use-autosave";
 import { SaveStatus } from "@/components/ui/save-status";
@@ -63,12 +62,7 @@ export default function ProfileSettingsPage() {
                         <FormField control={form.control} name="display_name" render={({ field }) => (<FormItem><FormLabel>Display name</FormLabel><FormControl><Input {...field} /></FormControl><FormDescription>Defaults to your full name.</FormDescription><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="timezone" render={({ field }) => (
                             <FormItem><FormLabel>Timezone</FormLabel>
-                                <Select value={field.value} onValueChange={field.onChange}><FormControl><SelectTrigger aria-label="Timezone"><SelectValue /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        <SelectItem value={AUTO}>Organization default</SelectItem>
-                                        {field.value && field.value !== AUTO && !TimezoneOptions.some((t) => t.value === field.value) && <SelectItem value={field.value}>{field.value}</SelectItem>}
-                                        {TimezoneOptions.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                                    </SelectContent></Select>
+                                <FormControl><TimezoneSelect value={field.value} onChange={field.onChange} emptyLabel="Organization default" emptyValue={AUTO} /></FormControl>
                             </FormItem>
                         )} />
                         <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Mobile phone</FormLabel><FormControl><Input type="tel" inputMode="tel" autoComplete="tel" placeholder="+306912345678" {...field} /></FormControl><FormDescription>For SMS notifications you turn on in Notifications → Preferences.</FormDescription><FormMessage /></FormItem>)} />

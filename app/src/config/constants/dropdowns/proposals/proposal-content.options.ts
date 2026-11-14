@@ -103,7 +103,6 @@ export const ApprovalConditionOperatorOptions: DropdownOption<ApprovalCondition[
     { id: "!=", label: "is not" },
 ];
 
-export const CurrencyOptions: DropdownOption[] = ["EUR", "USD", "GBP", "CHF", "SEK", "NOK", "DKK", "PLN", "CAD", "AUD"].map((c) => ({ id: c, label: c }));
 export const LanguageOptions: DropdownOption[] = [
     { id: "en", label: "English" },
     { id: "el", label: "Greek" },

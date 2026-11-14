@@ -305,6 +305,20 @@ html.dark[data-theme="mocha"] {
   ::placeholder {
     color: var(--ash);
   }
+  /* Tailwind v4 preflight resets buttons to the default cursor; every clickable control shows a pointer. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  summary,
+  label[for],
+  select:not(:disabled),
+  input:is([type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"], [type="file"]):not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
   /* Grid items default to min-width:auto, so long text, tables or charts inside a card push the grid
      wider than a phone screen. Let every grid item shrink; content inside truncates or scrolls itself. */
   .grid > * {
@@ -327,3 +341,33 @@ html.dark[data-theme="mocha"] {
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* Rich text editor (components/ui/rich-text-editor.tsx): theme tokens only, so light and dark both work. */
+.rich-text .ProseMirror {
+  min-height: calc(var(--rt-rows, 4) * 1.5em);
+  max-height: 24rem;
+  overflow-y: auto;
+  outline: none;
+  line-height: 1.5;
+}
+.rich-text .ProseMirror > * + * { margin-top: 0.5rem; }
+.rich-text .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--muted-foreground);
+}
+.rich-text .ProseMirror h1, .rich-text .ProseMirror h2, .rich-text .ProseMirror h3 { font-weight: 600; color: var(--foreground); }
+.rich-text .ProseMirror h1 { font-size: 1.25rem; }
+.rich-text .ProseMirror h2 { font-size: 1.1rem; }
+.rich-text .ProseMirror h3 { font-size: 1rem; }
+.rich-text .ProseMirror ul { list-style: disc; padding-left: 1.25rem; }
+.rich-text .ProseMirror ol { list-style: decimal; padding-left: 1.25rem; }
+.rich-text .ProseMirror li > p { margin: 0; }
+.rich-text .ProseMirror blockquote { border-left: 2px solid var(--border); padding-left: 0.75rem; color: var(--muted-foreground); }
+.rich-text .ProseMirror code { border-radius: 0.25rem; background: var(--secondary); padding: 0.1em 0.3em; font-family: ui-monospace, monospace; font-size: 0.85em; }
+.rich-text .ProseMirror pre { border: 1px solid var(--border); border-radius: 0.375rem; background: var(--secondary); padding: 0.5rem 0.75rem; overflow-x: auto; }
+.rich-text .ProseMirror pre code { background: none; padding: 0; }
+.rich-text .ProseMirror a { color: var(--info); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.rich-text .ProseMirror hr { border-color: var(--border); }

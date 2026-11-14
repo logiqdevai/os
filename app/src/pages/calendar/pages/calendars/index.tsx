@@ -14,7 +14,7 @@ import { useArchiveCalendar, useCalendars } from "@/features/calendar/hooks/use-
 import type { CalendarRow } from "@/features/calendar/interfaces/calendar.interfaces";
 import { CalendarKindFilterOptions, CalendarKindFormOptions, CalendarRoleOptions } from "@/config/constants/dropdowns/calendar/calendar.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { dotClass } from "../../utils/calendar.utils";
+import { dotClass, dotStyle } from "../../utils/calendar.utils";
 import { CalendarFormDialog } from "./components/calendar-form-dialog";
 import { ShareSheet } from "./components/share-sheet";
 import { FeedDialog } from "./components/feed-dialog";
@@ -40,7 +40,7 @@ export default function CalendarsPage() {
             header: "Calendar",
             cell: (c) => (
                 <div className="flex min-w-0 items-center gap-2">
-                    <span className={cn("size-2.5 shrink-0 rounded-full", dotClass(c.color))} />
+                    <span className={cn("size-2.5 shrink-0 rounded-full", dotClass(c.color))} style={dotStyle(c.color)} />
                     <div className="min-w-0">
                         <div className="truncate font-medium text-foreground">{c.name}{c.is_default ? " · default" : ""}</div>
                         {(c.owner || c.scope) && <div className="truncate text-xs text-muted-foreground">{c.owner?.name ?? c.scope?.name}</div>}

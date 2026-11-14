@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -130,7 +131,7 @@ export function CompensationDialog({ open, onOpenChange, employee }: DialogProps
                                     <SelectContent>{PayTypeFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="base_amount" render={({ field }) => (<FormItem><FormLabel>Base amount</FormLabel><FormControl><Input type="number" min={0} step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><Input maxLength={3} {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase())} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><CurrencySelect value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="contracted_weekly_hours" render={({ field }) => (<FormItem><FormLabel>Weekly hours</FormLabel><FormControl><Input type="number" min={0} max={80} {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="cost_rate_hourly" render={({ field }) => (<FormItem><FormLabel>Cost per hour</FormLabel><FormControl><Input type="number" min={0} step="0.01" placeholder="Derived" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         </div>

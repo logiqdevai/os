@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,14 +18,13 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { usePermission } from "@/hooks/use-permission";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { cn } from "@/lib/utils";
-import { LossReasonScopeFormOptions, SettingKindOptions, ToneFormOptions } from "@/config/constants/dropdowns/crm/crm-settings.options";
+import { LossReasonScopeFormOptions, SettingKindOptions } from "@/config/constants/dropdowns/crm/crm-settings.options";
 import { useArchiveSettingOption, useCreateSettingOption, useCrmSettings, useReorderSettingOptions, useUpdateSettingOption } from "@/features/crm/settings/hooks/use-crm-settings";
 import type { CrmSettings, SettingKind, SettingOption } from "@/features/crm/settings/interfaces/settings.interfaces";
 import { settingOptionSchema, tagFormSchema, type SettingOptionValues, type TagFormValues } from "@/features/crm/settings/validation-schemas/settings.schema";
 import { useCreateTag, useDeleteTag, useTags, useUpdateTag } from "@/features/crm/tags/hooks/use-tags";
 import type { Tag } from "@/features/crm/tags/interfaces/tags.interfaces";
-import { ToneBadge, toneDot } from "../../components/crm-ui";
+import { ToneBadge } from "../../components/crm-ui";
 
 const LIST_KEY: Record<SettingKind, keyof CrmSettings> = { "lead-sources": "lead_sources", "lead-statuses": "lead_statuses", "lifecycle-stages": "lifecycle_stages", "loss-reasons": "loss_reasons" };
 
@@ -173,10 +173,7 @@ function OptionDialog({ kind, open, option, onOpenChange }: { kind: SettingKind;
                             <FormField control={form.control} name="color" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Color</FormLabel>
-                                    <Select value={field.value ?? "neutral"} onValueChange={field.onChange}>
-                                        <FormControl><SelectTrigger aria-label="Color"><SelectValue /></SelectTrigger></FormControl>
-                                        <SelectContent>{ToneFormOptions.map((o) => <SelectItem key={o.id} value={o.id}><span className={cn("mr-1.5 inline-block size-2 rounded-full", toneDot(o.id))} />{o.label}</SelectItem>)}</SelectContent>
-                                    </Select>
+                                    <FormControl><ColorPicker label="Color" value={field.value} onChange={field.onChange} /></FormControl>
                                 </FormItem>
                             )} />
                         )}
@@ -253,10 +250,7 @@ function TagsManager() {
                             <FormField control={form.control} name="color" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Color</FormLabel>
-                                    <Select value={field.value ?? "neutral"} onValueChange={field.onChange}>
-                                        <FormControl><SelectTrigger aria-label="Color"><SelectValue /></SelectTrigger></FormControl>
-                                        <SelectContent>{ToneFormOptions.map((o) => <SelectItem key={o.id} value={o.id}><span className={cn("mr-1.5 inline-block size-2 rounded-full", toneDot(o.id))} />{o.label}</SelectItem>)}</SelectContent>
-                                    </Select>
+                                    <FormControl><ColorPicker label="Color" value={field.value} onChange={field.onChange} /></FormControl>
                                 </FormItem>
                             )} />
                             <DialogFooter>

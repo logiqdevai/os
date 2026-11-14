@@ -232,6 +232,7 @@ export class CalendarEventsService {
                     source: opts.source ?? (ctx.channel === 'ui' ? 'INTERNAL' : 'API'), created_by_user_id: ctx.user_id,
                 },
             });
+            await this.syncLinks(tx, ctx, created.id, dto);
             await tx.calendarEventAttendee.createMany({ data: attendees.map((a) => ({ ...a, event_id: created.id, invited_at: new Date() })), skipDuplicates: true });
             if (resources.length) await tx.calendarEventResource.createMany({ data: resources.map((r) => ({ event_id: created.id, resource_id: r.id, status: r.status })) });
             if (reminders.length) {
@@ -303,6 +304,7 @@ export class CalendarEventsService {
                     ...((timeChanged || placeChanged) && { sequence: { increment: 1 } }),
                 },
             });
+            await this.syncLinks(tx, ctx, id, dto);
             if (resetExceptions) await tx.calendarEvent.deleteMany({ where: { recurring_event_id: id } });
             if (nextAttendees) {
                 const keep = new Set(nextAttendees.map((a) => a.email.toLowerCase()));
@@ -419,11 +421,14 @@ export class CalendarEventsService {
                     organizer_membership_id: e.organizer_membership_id, visibility: dto.visibility ?? e.visibility, shows_as_busy: dto.shows_as_busy ?? e.shows_as_busy,
                     location: dto.location !== undefined ? dto.location || null : e.location, meeting_url: dto.meeting_url !== undefined ? dto.meeting_url || null : e.meeting_url,
                     color: dto.color ?? e.color, guests_can_see_guests: dto.guests_can_see_guests ?? e.guests_can_see_guests,
-                    project_id: dto.project_id ?? e.project_id, company_id: dto.company_id ?? e.company_id, branch_id: e.branch_id,
+                    project_id: dto.project_id === undefined ? e.project_id : dto.project_id, company_id: dto.company_id ?? e.company_id, branch_id: e.branch_id,
                     source: e.source, sequence: e.sequence + 1, created_by_user_id: ctx.user_id,
                 },
             });
             await tx.calendarEvent.update({ where: { id: e.id }, data: { recurrence_exdates: { push: at } } });
+            const seriesLinks = e.links.filter((l) => l.relation === 'related');
+            if (seriesLinks.length) await tx.calendarEventLink.createMany({ data: seriesLinks.map((l) => ({ event_id: row.id, entity_type: l.entity_type, entity_id: l.entity_id, relation: l.relation, created_by_user_id: ctx.user_id })) });
+            await this.syncLinks(tx, ctx, row.id, dto);
             if (attendees.length) await tx.calendarEventAttendee.createMany({ data: attendees.map((a) => ({ ...a, event_id: row.id, invited_at: new Date() })), skipDuplicates: true });
             if (resources.length) await tx.calendarEventResource.createMany({ data: resources.map((r) => ({ event_id: row.id, resource_id: r.id, status: r.status })) });
             if (reminders.length) {
@@ -494,12 +499,27 @@ export class CalendarEventsService {
         return a.calendar;
     }
 
-    private async assertRefs(ctx: OrgContext, dto: { project_id?: string; company_id?: string }) {
+    private async assertRefs(ctx: OrgContext, dto: { project_id?: string | null; company_id?: string; lead_id?: string | null; contact_id?: string | null }) {
+        if (dto.lead_id && !(await this.prisma.crmLead.findFirst({ where: { id: dto.lead_id, organization_id: ctx.organization_id }, select: { id: true } }))) {
+            throw new NotFoundException({ message: 'Lead not found', code: 'lead_not_found' });
+        }
+        if (dto.contact_id && !(await this.prisma.crmContact.findFirst({ where: { id: dto.contact_id, organization_id: ctx.organization_id }, select: { id: true } }))) {
+            throw new NotFoundException({ message: 'Contact not found', code: 'contact_not_found' });
+        }
         if (dto.project_id && !(await this.prisma.project.findFirst({ where: { id: dto.project_id, organization_id: ctx.organization_id }, select: { id: true } }))) {
             throw new NotFoundException({ message: 'Project not found', code: 'project_not_found' });
         }
         if (dto.company_id && !(await this.prisma.crmCompany.findFirst({ where: { id: dto.company_id, organization_id: ctx.organization_id }, select: { id: true } }))) {
             throw new NotFoundException({ message: 'Customer not found', code: 'company_not_found' });
+        }
+    }
+
+    /** lead_id / contact_id are stored as CalendarEventLink rows (one per kind); undefined = keep, null = clear. */
+    private async syncLinks(tx: Prisma.TransactionClient, ctx: OrgContext, eventId: string, dto: { lead_id?: string | null; contact_id?: string | null }) {
+        for (const [entity_type, id] of [['CRM_LEAD', dto.lead_id], ['CRM_CONTACT', dto.contact_id]] as const) {
+            if (id === undefined) continue;
+            await tx.calendarEventLink.deleteMany({ where: { event_id: eventId, entity_type, relation: 'related' } });
+            if (id) await tx.calendarEventLink.create({ data: { event_id: eventId, entity_type, entity_id: id, relation: 'related', created_by_user_id: ctx.user_id } });
         }
     }
 

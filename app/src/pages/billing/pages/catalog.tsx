@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Archive, MoreHorizontal, Package, Pencil, Plus, Ticket } from "lucide-react";
@@ -142,7 +143,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
                             <div className="mb-2 text-xs font-medium text-muted-foreground">{product ? "Add a price (optional)" : "Price (optional)"}</div>
                             <div className="grid gap-3 sm:grid-cols-3">
                                 <FormField control={form.control} name="price_amount" render={({ field }) => (<FormItem><FormLabel className="text-xs">Amount</FormLabel><FormControl><Input inputMode="decimal" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="price_currency" render={({ field }) => (<FormItem><FormLabel className="text-xs">Currency</FormLabel><FormControl><Input maxLength={3} {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase())} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="price_currency" render={({ field }) => (<FormItem><FormLabel className="text-xs">Currency</FormLabel><FormControl><CurrencySelect value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="price_interval" render={({ field }) => (<FormItem><FormLabel className="text-xs">Billing</FormLabel><Select value={field.value ?? ONE_TIME} onValueChange={field.onChange}><FormControl><SelectTrigger aria-label="Billing"><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value={ONE_TIME}>One-time</SelectItem>{BillingIntervalOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem>)} />
                             </div>
                         </div>
@@ -171,7 +172,7 @@ function CouponDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
                             <FormField control={form.control} name="code" render={({ field }) => (<FormItem><FormLabel>Code</FormLabel><FormControl><Input placeholder="LAUNCH10" {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase())} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="type" render={({ field }) => (<FormItem><FormLabel>Type</FormLabel><Select value={field.value} onValueChange={field.onChange}><FormControl><SelectTrigger aria-label="Type"><SelectValue /></SelectTrigger></FormControl><SelectContent>{DiscountTypeOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem>)} />
                             <FormField control={form.control} name="value" render={({ field }) => (<FormItem><FormLabel>Value</FormLabel><FormControl><Input inputMode="decimal" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency (fixed)</FormLabel><FormControl><Input maxLength={3} {...field} /></FormControl></FormItem>)} />
+                            <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency (fixed)</FormLabel><FormControl><CurrencySelect value={field.value} onChange={field.onChange} /></FormControl></FormItem>)} />
                             <FormField control={form.control} name="max_redemptions" render={({ field }) => (<FormItem><FormLabel>Max uses</FormLabel><FormControl><Input inputMode="numeric" placeholder="Unlimited" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         </div>
                         <DialogFooter><Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>Cancel</Button><Button type="submit" loading={create.isPending}>Create coupon</Button></DialogFooter>

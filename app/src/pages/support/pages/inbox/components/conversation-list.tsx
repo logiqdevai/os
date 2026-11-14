@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Inbox, Lock } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -51,20 +52,11 @@ export function ConversationList({ selectedId, view, status, search, page, onVie
                         ))}
                     </SelectContent>
                 </Select>
-                <div className="flex gap-1" role="tablist" aria-label="Status">
-                    {ConversationStatusFilterOptions.map((o) => (
-                        <button
-                            key={o.id}
-                            type="button"
-                            role="tab"
-                            aria-selected={status === o.id}
-                            onClick={() => onStatus(o.id)}
-                            className={cn("flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors", status === o.id ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground")}
-                        >
-                            {o.label}
-                        </button>
-                    ))}
-                </div>
+                <Tabs value={status} onValueChange={onStatus}>
+                    <TabsList className="h-8 w-full">
+                        {ConversationStatusFilterOptions.map((o) => <TabsTrigger key={o.id} value={o.id} className="flex-1 px-2 py-0.5 text-xs">{o.label}</TabsTrigger>)}
+                    </TabsList>
+                </Tabs>
                 <Input value={search} onChange={(e) => onSearch(e.target.value)} placeholder="Search conversations…" className="h-8" aria-label="Search conversations" />
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">

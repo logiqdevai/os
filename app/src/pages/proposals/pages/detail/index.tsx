@@ -4,7 +4,7 @@ import { Archive, Check, Copy, Download, Eye, FileSignature, GitBranch, Link2, L
 import { Page } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ErrorState, PageSkeleton } from "@/components/ui/states";
+import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -196,7 +196,7 @@ export default function ProposalDetailPage() {
             {proposal.status === "CHANGES_REQUESTED" && <Banner tone="warning">The customer asked for changes. See the comments on the Review tab, then create a revision.</Banner>}
 
             {!v ? (
-                <ErrorState error={null} />
+                <EmptyState title="No version yet" description="This proposal has no content version. Create a revision to start editing." />
             ) : (
                 <Tabs value={tab} onValueChange={(t) => setParam("tab", t === "content" ? null : t)}>
                     <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">

@@ -11,7 +11,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePermissions } from "@/hooks/use-permission";
@@ -183,7 +183,7 @@ function StatusUpdateDialog({ composer, onClose, project }: { composer: Composer
     });
     const area = (name: "completed_work" | "current_work" | "upcoming_work" | "required_actions" | "risks_summary" | "blockers_summary" | "decisions_summary", label: string, rows = 3) => (
         <FormField control={form.control} name={name} render={({ field }) => (
-            <FormItem><FormLabel>{label}</FormLabel><FormControl><Textarea rows={rows} {...field} value={field.value ?? ""} /></FormControl></FormItem>
+            <FormItem><FormLabel>{label}</FormLabel><RichTextEditor value={field.value ?? ""} onChange={field.onChange} rows={rows} placeholder={`${label}…`} aria-label={label} /></FormItem>
         )} />
     );
     return (
@@ -199,7 +199,7 @@ function StatusUpdateDialog({ composer, onClose, project }: { composer: Composer
                             <div className="flex items-start gap-2 rounded-md border border-violet/40 bg-violet-soft p-2.5 text-[13px] text-violet"><Sparkles className="mt-0.5 size-4 flex-none" /><span>{composer.note}</span></div>
                         )}
                         <FormField control={form.control} name="summary" render={({ field }) => (
-                            <FormItem><FormLabel>Summary</FormLabel><FormControl><Textarea autoFocus rows={3} placeholder="Design approved; development started on schedule." {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Summary</FormLabel><RichTextEditor autoFocus value={field.value} onChange={field.onChange} rows={3} placeholder="Design approved; development started on schedule." aria-label="Summary" /><FormMessage /></FormItem>
                         )} />
                         <div className="grid gap-4 sm:grid-cols-2">
                             <FormField control={form.control} name="health" render={({ field }) => (
@@ -286,7 +286,7 @@ function ChangeRequestDialog({ open, onOpenChange, projectId }: { open: boolean;
                             )} />
                         </div>
                         <FormField control={form.control} name="description" render={({ field }) => (
-                            <FormItem><FormLabel>Details</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl></FormItem>
+                            <FormItem><FormLabel>Details</FormLabel><RichTextEditor value={field.value} onChange={field.onChange} rows={3} placeholder="What changes, why, and the impact on scope, timeline or cost…" aria-label="Details" /></FormItem>
                         )} />
                         <FormField control={form.control} name="customer_visible" render={({ field }) => (
                             <FormItem className="flex items-center justify-between gap-3 space-y-0 rounded-md border border-border p-3">

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { AttendeeResponseOptions } from "@/config/constants/dropdowns/calendar/calendar.options";
 import type { CalendarEventItem } from "@/features/calendar/interfaces/calendar.interfaces";
-import { dotClass, timeRange } from "../utils/calendar.utils";
+import { dotClass, dotStyle, timeRange } from "../utils/calendar.utils";
 
 const dayTitle = (d: Date) => (isToday(d) ? `Today · ${format(d, "EEE d MMM")}` : isTomorrow(d) ? `Tomorrow · ${format(d, "EEE d MMM")}` : format(d, "EEEE, d MMMM"));
 
@@ -36,7 +36,7 @@ export function AgendaList({ events, onOpenEvent, emptyText = "Nothing scheduled
                         return (
                             <div key={e.key} role="button" tabIndex={0} onClick={(ev) => !(ev.target as HTMLElement).closest("a") && onOpenEvent(e)} onKeyDown={(ev) => ev.key === "Enter" && onOpenEvent(e)} className="flex cursor-pointer gap-3 border-b border-border-soft px-4 py-3 last:border-b-0 hover:bg-accent/50">
                                 <div className="w-20 shrink-0 text-xs text-muted-foreground tabular sm:w-28">{timeRange(e.starts_at, e.ends_at, e.all_day)}</div>
-                                <span className={cn("mt-1 size-2 shrink-0 rounded-full", dotClass(e.color))} />
+                                <span className={cn("mt-1 size-2 shrink-0 rounded-full", dotClass(e.color))} style={dotStyle(e.color)} />
                                 <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-1.5">
                                         <span className={cn("truncate text-[13px] font-medium text-foreground", (e.status === "CANCELLED" || e.my_response === "DECLINED") && "line-through opacity-60")}>{e.title}</span>

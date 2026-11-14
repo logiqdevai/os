@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { Archive, DollarSign, MoreHorizontal, Pencil, Plus } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/data-table";
@@ -140,7 +141,7 @@ function RateDialog({ open, rate, defaultKind, onOpenChange }: { open: boolean; 
                     )}
                     {!rate && <div className="space-y-1.5 sm:col-span-2"><Label>Activity (optional)</Label><ActivitySelect value={activityId} onChange={setActivityId} /></div>}
                     <div className="space-y-1.5"><Label htmlFor="rate-amount">Hourly rate</Label><Input id="rate-amount" type="number" min={0} step="0.01" value={amount} onChange={(e) => touch(setAmount)(e.target.value)} /></div>
-                    <div className="space-y-1.5"><Label htmlFor="rate-cur">Currency</Label><Input id="rate-cur" maxLength={3} value={currency} onChange={(e) => touch(setCurrency)(e.target.value.toUpperCase())} /></div>
+                    <div className="space-y-1.5"><Label htmlFor="rate-cur">Currency</Label><CurrencySelect id="rate-cur" value={currency} onChange={touch(setCurrency)} /></div>
                     <div className="space-y-1.5"><Label htmlFor="rate-from">Valid from</Label><Input id="rate-from" type="date" value={from} onChange={(e) => touch(setFrom)(e.target.value)} /></div>
                     <div className="space-y-1.5"><Label htmlFor="rate-to">Valid to</Label><Input id="rate-to" type="date" value={to} onChange={(e) => touch(setTo)(e.target.value)} /></div>
                     <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="rate-name">Name (optional)</Label><Input id="rate-name" value={name} onChange={(e) => touch(setName)(e.target.value)} placeholder="Senior developer rate" /></div>

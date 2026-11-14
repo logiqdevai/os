@@ -21,7 +21,7 @@ export function AppearanceSync() {
     useEffect(() => {
         if (!orgId) return registerAppearanceSaver(null);
         // The theme is already applied locally; a failed save is toasted once by the global MutationCache.
-        registerAppearanceSaver((patch) => mutate(patch));
+        registerAppearanceSaver((patch) => mutate({ ...patch, organization_id: orgId }));
         return () => registerAppearanceSaver(null);
     }, [orgId, mutate]);
 

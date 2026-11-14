@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { CurrencySelect } from "@/components/ui/currency-select";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Archive, ArrowDown, ArrowUp, Layers, MoreHorizontal, Pencil, Plus, Star, Trash2 } from "lucide-react";
@@ -9,17 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { InlineText } from "@/components/ui/inline-edit";
-import { cn } from "@/lib/utils";
-import { ToneFormOptions } from "@/config/constants/dropdowns/crm/crm-settings.options";
 import { useArchivePipeline, useCreatePipeline, usePipelines, useReplaceStages, useUpdatePipeline } from "@/features/crm/pipelines/hooks/use-pipelines";
 import type { Pipeline } from "@/features/crm/pipelines/interfaces/pipelines.interfaces";
 import { pipelineFormSchema, stagesFormSchema, type PipelineFormValues, type StagesFormValues } from "@/features/crm/pipelines/validation-schemas/pipelines.schema";
-import { Panel, toneDot } from "../../components/crm-ui";
+import { Panel, ToneDot } from "../../components/crm-ui";
 
 /**
  * Pipelines & stages (mockup `pipelines`).
@@ -69,7 +68,7 @@ export default function PipelinesPage() {
                                         <ol className="flex flex-wrap gap-2">
                                             {p.stages.map((s) => (
                                                 <li key={s.id} className="flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-1 text-xs">
-                                                    <span className={cn("size-2 rounded-full", toneDot(s.color))} />
+                                                    <ToneDot tone={s.color} />
                                                     <span className="text-foreground">{s.name}</span>
                                                     <span className="text-muted-foreground tabular">{s.probability}%</span>
                                                 </li>
@@ -119,7 +118,7 @@ function PipelineDialog({ open, pipeline, onOpenChange }: { open: boolean; pipel
                             <DialogDescription>{pipeline ? "Change the pipeline's currency, description or default." : "Starts with the standard stages; edit them afterwards."}</DialogDescription>
                         </DialogHeader>
                         <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input autoFocus placeholder="Retainers" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><Input maxLength={3} placeholder="EUR" {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase())} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><CurrencySelect value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="is_default" render={({ field }) => (
                             <FormItem className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
@@ -185,10 +184,7 @@ function StagesDialog({ pipeline, onClose }: { pipeline: Pipeline | null; onClos
                                         <FormField control={form.control} name={`stages.${i}.color`} render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel className="text-xs">Color</FormLabel>
-                                                <Select value={field.value ?? "neutral"} onValueChange={field.onChange}>
-                                                    <FormControl><SelectTrigger aria-label="Stage color"><SelectValue /></SelectTrigger></FormControl>
-                                                    <SelectContent>{ToneFormOptions.map((o) => <SelectItem key={o.id} value={o.id}><span className={cn("mr-1.5 inline-block size-2 rounded-full", toneDot(o.id))} />{o.label}</SelectItem>)}</SelectContent>
-                                                </Select>
+                                                <FormControl><ColorPicker label="Stage color" value={field.value} onChange={field.onChange} /></FormControl>
                                             </FormItem>
                                         )} />
                                         <div className="col-span-2 flex justify-end gap-1 sm:col-span-1">

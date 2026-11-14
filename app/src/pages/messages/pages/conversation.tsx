@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Archive, ArchiveRestore, ChevronLeft, Hash, Info, Lock, LogOut, MoreHorizontal, Pin, Star, Users, Volume2, VolumeX } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronLeft, FolderKanban, Hash, Info, Lock, LogOut, MoreHorizontal, Pin, Star, Users, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
@@ -124,6 +124,12 @@ export default function ConversationPage() {
                         {isDm ? other && <PersonAvatar size="sm" name={other.name} src={other.profile_photo_url} presence={presenceOf(other.membership_id)} /> : <Icon className="size-4 shrink-0 text-muted-foreground" />}
                         <span className="truncate">{title}</span>
                         {archived && <span className="rounded-xs bg-secondary px-1.5 text-[11px] font-medium text-muted-foreground">Archived</span>}
+                        {c.project && (
+                            <Link to={`/projects/${c.project.id}`} className="inline-flex shrink-0 items-center gap-1 rounded-xs bg-info-soft px-1.5 text-[11px] font-medium text-info hover:underline" title={`Channel for project ${c.project.name}`}>
+                                <FolderKanban className="size-3" /> {c.project.code ?? c.project.name}
+                            </Link>
+                        )}
+                        {c.team && <span className="inline-flex shrink-0 items-center gap-1 rounded-xs bg-secondary px-1.5 text-[11px] font-medium text-muted-foreground" title={`Channel for team ${c.team.name}`}><Users className="size-3" /> {c.team.name}</span>}
                         {c.is_confidential && <span className="rounded-xs bg-danger-soft px-1.5 text-[11px] font-medium text-danger">Confidential</span>}
                     </div>
                     {c.topic && <div className="truncate text-xs text-muted-foreground">{c.topic}</div>}

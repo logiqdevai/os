@@ -16,7 +16,7 @@ import { useCalendarEvent, useCancelEvent, useDeleteEvent, useRespondEvent, useU
 import { InlineTextarea } from "@/components/ui/inline-edit";
 import type { AttendeeResponse } from "@/features/calendar/interfaces/calendar.interfaces";
 import { EventFormDialog } from "../../components/event-form-dialog";
-import { dotClass } from "../../utils/calendar.utils";
+import { dotClass, dotStyle } from "../../utils/calendar.utils";
 
 const RESPONSE_VARIANT: Record<AttendeeResponse, "success" | "warning" | "danger" | "neutral"> = { ACCEPTED: "success", TENTATIVE: "warning", DECLINED: "danger", NEEDS_ACTION: "neutral" };
 
@@ -115,7 +115,7 @@ export default function EventDetailPage() {
                             </div>
                         )}
                         {e.resources?.length ? <p className="flex items-center gap-2 text-[13px] text-body"><Building2 className="size-4 text-muted-foreground" />{e.resources.map((r) => `${r.name}${r.status === "REQUESTED" ? " (requested)" : ""}`).join(", ")}</p> : null}
-                        <p className="flex items-center gap-2 text-[13px] text-body"><span className={cn("ml-1 size-2 rounded-full", dotClass(e.calendar.color))} /><span className="ml-1">{e.calendar.name} · {getDropdownOptionLabel(EventVisibilityFormOptions, e.visibility)}</span></p>
+                        <p className="flex items-center gap-2 text-[13px] text-body"><span className={cn("ml-1 size-2 rounded-full", dotClass(e.calendar.color))} style={dotStyle(e.calendar.color)} /><span className="ml-1">{e.calendar.name} · {getDropdownOptionLabel(EventVisibilityFormOptions, e.visibility)}</span></p>
                         {e.reminders?.length ? <p className="flex items-center gap-2 text-[13px] text-body"><Bell className="size-4 text-muted-foreground" />{e.reminders.map((r) => getDropdownOptionLabel(ReminderFormOptions, String(r.minutes_before))).join(", ")}</p> : null}
                     </div>
                     {e.my_attendee && !e.is_organizer && !cancelled && (
@@ -154,11 +154,13 @@ export default function EventDetailPage() {
                             {!e.attendees?.length && <li className="px-3 py-2 text-[13px] text-muted-foreground">Only you.</li>}
                         </ul>
                     </Section>
-                    {(e.project || e.company || e.booking) && (
+                    {(e.project || e.company || e.lead || e.contact || e.booking) && (
                         <Section title="Related">
                             <ul className="space-y-1 rounded-lg border border-border bg-card p-3 text-[13px]">
                                 {e.project && <li><Link className="hover:underline" to={`/projects/${e.project.id}`}>Project · {e.project.name}</Link></li>}
                                 {e.company && <li><Link className="hover:underline" to={`/crm/companies/${e.company.id}`}>Customer · {e.company.name}</Link></li>}
+                                {e.lead && <li><Link className="hover:underline" to={`/crm/leads/${e.lead.id}`}>Lead · {e.lead.name}</Link></li>}
+                                {e.contact && <li><Link className="hover:underline" to={`/crm/contacts/${e.contact.id}`}>Contact · {e.contact.name}</Link></li>}
                                 {e.booking && <li><Link className="hover:underline" to={`/calendar/bookings/${e.booking.id}`}>Booking · {e.booking.invitee_name}</Link></li>}
                             </ul>
                         </Section>

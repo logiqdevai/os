@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useNavigate } from "react-router-dom";
 import { Archive, ClipboardCheck, Copy, FileText, MoreHorizontal, Plus, Trash2, XCircle } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
@@ -13,7 +14,6 @@ import { Can } from "@/components/access/can";
 import { useListParams } from "@/hooks/use-list-params";
 import { usePermissions } from "@/hooks/use-permission";
 import { formatDate, formatMoney, formatRelative } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import {
     useArchiveProposal, useCancelProposal, useDeleteProposal, useDuplicateProposal, useMyApprovals, useProposalSummary, useProposals,
 } from "@/features/proposals/hooks/use-proposals";
@@ -179,23 +179,11 @@ export default function ProposalsListPage() {
             )}
 
             <div className="-mx-4 mb-3 overflow-x-auto px-4 md:mx-0 md:px-0">
-                <div className="flex w-max gap-1" role="tablist" aria-label="Views">
-                    {ProposalViewFilterOptions.map((v) => (
-                        <button
-                            key={v.id}
-                            type="button"
-                            role="tab"
-                            aria-selected={view.id === v.id}
-                            onClick={() => setFilter("view", v.id)}
-                            className={cn(
-                                "h-7 whitespace-nowrap rounded-md px-2.5 text-[12.5px] transition-colors",
-                                view.id === v.id ? "bg-secondary font-medium text-foreground ring-1 ring-border" : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                            )}
-                        >
-                            {v.label}
-                        </button>
-                    ))}
-                </div>
+                <Tabs value={view.id} onValueChange={(v) => setFilter("view", v)}>
+                    <TabsList className="w-max">
+                        {ProposalViewFilterOptions.map((v) => <TabsTrigger key={v.id} value={v.id}>{v.label}</TabsTrigger>)}
+                    </TabsList>
+                </Tabs>
             </div>
 
             <TableToolbar search={search} onSearch={setSearch} placeholder="Search number, title, customer…">

@@ -11,12 +11,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermission } from "@/hooks/use-permission";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { useAddChannelMembers, useAutosaveChannel, useChannelMembers, useCreateChannel, useOpenDm, useRemoveChannelMember } from "@/features/messaging/hooks/use-messaging";
+import { useAddChannelMembers, useAutosaveChannel, useChannelSources, useChannelMembers, useCreateChannel, useOpenDm, useRemoveChannelMember } from "@/features/messaging/hooks/use-messaging";
 import { SaveStatus } from "@/components/ui/save-status";
 import { useFormAutosave } from "@/hooks/use-autosave";
 import type { ChannelDetail, ChannelMemberRow } from "@/features/messaging/interfaces/messaging.interfaces";
@@ -32,18 +33,32 @@ const channelSchema = z.object({
     description: z.string().trim().max(500).optional(),
 });
 type ChannelFormValues = z.infer<typeof channelSchema>;
+const NONE = "none";
 
 /** Create a public or private channel and invite people. @perm messaging.channels.create */
 export function CreateChannelDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
     const navigate = useNavigate();
     const create = useCreateChannel();
     const [members, setMembers] = useState<string[]>([]);
+    const [teamId, setTeamId] = useState(NONE);
+    const [projectId, setProjectId] = useState(NONE);
+    const sources = useChannelSources(open);
     const form = useForm<ChannelFormValues>({ resolver: zodResolver(channelSchema), defaultValues: { name: "", kind: "PUBLIC", description: "" } });
     useEffect(() => {
-        if (open) { form.reset(); setMembers([]); }
+        if (open) { form.reset(); setMembers([]); setTeamId(NONE); setProjectId(NONE); }
     }, [open, form]);
+    /** Picking a team / project selects all its people; changing it takes back only the people it added. */
+    const pickSource = (kind: "team" | "project", id: string) => {
+        const list = kind === "team" ? sources.data?.teams : sources.data?.projects;
+        const previous = kind === "team" ? teamId : projectId;
+        const idsOf = (x: string) => list?.find((s) => s.id === x)?.member_ids ?? [];
+        const otherIds = kind === "team" ? sources.data?.projects.find((s) => s.id === projectId)?.member_ids ?? [] : sources.data?.teams.find((s) => s.id === teamId)?.member_ids ?? [];
+        const removed = idsOf(previous).filter((m) => !otherIds.includes(m) && !idsOf(id).includes(m));
+        setMembers((cur) => [...new Set([...cur.filter((m) => !removed.includes(m)), ...(id === NONE ? [] : idsOf(id))])]);
+        (kind === "team" ? setTeamId : setProjectId)(id);
+    };
     const submit = form.handleSubmit((v) =>
-        create.mutate({ name: v.name, kind: v.kind, description: v.description || undefined, membership_ids: members }, {
+        create.mutate({ name: v.name, kind: v.kind, description: v.description || undefined, membership_ids: members, team_id: teamId === NONE ? undefined : teamId, project_id: projectId === NONE ? undefined : projectId }, {
             onSuccess: (c) => { onOpenChange(false); navigate(MessagesPaths.channel(c.id)); },
         }),
     );
@@ -86,6 +101,30 @@ export function CreateChannelDialog({ open, onOpenChange }: { open: boolean; onO
                         <FormField control={form.control} name="description" render={({ field }) => (
                             <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={2} placeholder="What is this channel about?" {...field} value={field.value ?? ""} /></FormControl><FormDescription>Optional.</FormDescription></FormItem>
                         )} />
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="space-y-1.5">
+                                <div className="text-[13px] font-medium text-foreground">Team</div>
+                                <Select value={teamId} onValueChange={(v) => pickSource("team", v)}>
+                                    <SelectTrigger aria-label="Team"><SelectValue placeholder="No team" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={NONE}>No team</SelectItem>
+                                        {(sources.data?.teams ?? []).map((t) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.member_ids.length})</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {(sources.data?.projects.length ?? 0) > 0 && (
+                                <div className="space-y-1.5">
+                                    <div className="text-[13px] font-medium text-foreground">Project</div>
+                                    <Select value={projectId} onValueChange={(v) => pickSource("project", v)}>
+                                        <SelectTrigger aria-label="Project"><SelectValue placeholder="No project" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value={NONE}>No project</SelectItem>
+                                            {(sources.data?.projects ?? []).map((p) => <SelectItem key={p.id} value={p.id}>{p.code ? `${p.code} · ` : ""}{p.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                        </div>
                         <div className="space-y-1.5">
                             <div className="text-[13px] font-medium text-foreground">Add people</div>
                             <PeoplePicker selected={members} onChange={setMembers} />

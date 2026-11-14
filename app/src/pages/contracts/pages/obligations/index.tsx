@@ -1,8 +1,8 @@
 import { Page, PageHeader } from "@/components/ui/page";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TableToolbar } from "@/components/ui/data-table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useListParams } from "@/hooks/use-list-params";
-import { cn } from "@/lib/utils";
 import { ObligationStatusFilterOptions, ObligationTypeFilterOptions, ObligationViewOptions } from "@/config/constants/dropdowns/contracts/contract-obligation.options";
 import { useObligations } from "@/features/contracts/hooks/use-contracts";
 import { ObligationsTable } from "../../components/obligations-table";
@@ -21,13 +21,11 @@ export default function ObligationsPage() {
     return (
         <Page>
             <PageHeader title="Obligations" description="What each party must deliver, pay, report or notify under your contracts." />
-            <div className="mb-3 flex flex-wrap gap-1" role="tablist" aria-label="Views">
-                {ObligationViewOptions.map((v) => (
-                    <button key={v.id} type="button" role="tab" aria-selected={view === v.id} onClick={() => setFilter("view", v.id)} className={cn("h-7 rounded-md px-2.5 text-[12.5px]", view === v.id ? "bg-secondary font-medium text-foreground ring-1 ring-border" : "text-muted-foreground hover:bg-accent")}>
-                        {v.label}
-                    </button>
-                ))}
-            </div>
+            <Tabs value={view} onValueChange={(v) => setFilter("view", v)} className="mb-3">
+                <TabsList className="h-9">
+                    {ObligationViewOptions.map((v) => <TabsTrigger key={v.id} value={v.id}>{v.label}</TabsTrigger>)}
+                </TabsList>
+            </Tabs>
             <TableToolbar search={search} onSearch={setSearch} placeholder="Search obligations…">
                 <Select value={filters.type ?? "all"} onValueChange={(v) => setFilter("type", v)}>
                     <SelectTrigger className="h-8 w-40" aria-label="Filter by type"><SelectValue /></SelectTrigger>

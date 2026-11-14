@@ -22,7 +22,9 @@ export const uploadProfilePhoto = async (file: File): Promise<{ profile_photo_ur
     return (await axiosInstance.post(ApiRoutes.auth.photo, form, { headers: { "Content-Type": "multipart/form-data" } })).data;
 };
 export const removeProfilePhoto = async (): Promise<{ profile_photo_url: null }> => (await axiosInstance.delete(ApiRoutes.auth.photo)).data;
-export const updateAppearance = async (dto: Partial<Appearance>): Promise<Session["appearance"]> => (await axiosInstance.patch(ApiRoutes.auth.appearance, dto)).data;
+/** `organization_id` is the session's active organization; sent explicitly because the stored switcher choice can be empty (the API then falls back to the default organization). */
+export const updateAppearance = async ({ organization_id, ...dto }: Partial<Appearance> & { organization_id?: string | null }): Promise<Session["appearance"]> =>
+    (await axiosInstance.patch(ApiRoutes.auth.appearance, dto, organization_id ? { headers: { "X-Organization-Id": organization_id } } : undefined)).data;
 export const getMySessions = async (): Promise<UserSessionRow[]> => (await axiosInstance.get(ApiRoutes.auth.sessions)).data;
 export const revokeMySession = async (id: string) => (await axiosInstance.delete(ApiRoutes.auth.session(id))).data;
 

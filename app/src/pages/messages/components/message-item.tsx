@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Bookmark, BookmarkCheck, Flag, MessageSquareReply, MoreHorizontal, Pencil, Pin, PinOff, SmilePlus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,9 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
     const [editing, setEditing] = useState<{ text: string; mentions: Record<string, string> } | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [pickerOpen, setPickerOpen] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    // Edit swaps the toolbar out; doing that while the menu is still closing detaches its anchor and the menu jumps to the top-left.
+    const startEditAfterClose = useRef(false);
     const [reporting, setReporting] = useState(false);
 
     const mine = !!m.author?.membership_id && m.author.membership_id === myMembershipId;
@@ -175,7 +178,7 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
             </div>
 
             {!pending && !editing && (
-                <div className={cn("absolute -top-3 right-4 hidden items-center rounded-md border border-border bg-popover shadow-sm group-hover:flex group-focus-within:flex", pickerOpen && "flex")}>
+                <div className={cn("absolute -top-3 right-4 hidden items-center rounded-md border border-border bg-popover shadow-sm group-hover:flex group-focus-within:flex", (pickerOpen || menuOpen) && "flex")}>
                     {canPost && (
                         <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
                             <PopoverTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="Add reaction"><SmilePlus /></Button></PopoverTrigger>
@@ -193,10 +196,10 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
                         {m.is_saved ? <BookmarkCheck className="text-primary" /> : <Bookmark />}
                     </Button>
                     {(mine || canPin || canDelete || canReport) && (
-                        <DropdownMenu>
+                        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="More actions"><MoreHorizontal /></Button></DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                {mine && canPost && <DropdownMenuItem onSelect={() => setEditing(tokensToText(m.body))}><Pencil /> Edit</DropdownMenuItem>}
+                            <DropdownMenuContent align="end" onCloseAutoFocus={(e) => { if (startEditAfterClose.current) { e.preventDefault(); startEditAfterClose.current = false; setEditing(tokensToText(m.body)); } }}>
+                                {mine && canPost && <DropdownMenuItem onSelect={() => { startEditAfterClose.current = true; }}><Pencil /> Edit</DropdownMenuItem>}
                                 {canPin && !m.parent_message_id && (
                                     <DropdownMenuItem onSelect={() => pin.mutate({ id: m.id, pinned: !m.pinned_at, channel_id: m.channel_id })}>
                                         {m.pinned_at ? <PinOff /> : <Pin />} {m.pinned_at ? "Unpin" : "Pin to channel"}

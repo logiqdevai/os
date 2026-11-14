@@ -27,6 +27,8 @@ interface TaskListProps {
     empty: { title: string; description?: string; action?: ReactNode };
     /** Hide the project column (inside a project). */
     hideProject?: boolean;
+    /** Hidden row properties (keys of TaskProperties). */
+    hidden?: Set<string>;
 }
 
 const CATEGORY_ORDER = ["IN_PROGRESS", "IN_REVIEW", "BLOCKED", "TODO", "BACKLOG", "DONE", "CANCELLED"];
@@ -37,7 +39,8 @@ const PRIORITY_ORDER: TaskPriority[] = ["URGENT", "HIGH", "MEDIUM", "LOW", "NONE
  * Rows collapse to two-line cards below `sm`.
  * @perm bulk tasks.bulk.execute
  */
-export function TaskList({ query, groupBy = "status", onPageChange, empty, hideProject }: TaskListProps) {
+export function TaskList({ query, groupBy = "status", onPageChange, empty, hideProject, hidden }: TaskListProps) {
+    const show = (key: string) => !hidden?.has(key);
     const p = usePermissions();
     const canBulk = p.can("tasks.bulk.execute");
     const [selected, setSelected] = useState<string[]>([]);
@@ -117,15 +120,15 @@ export function TaskList({ query, groupBy = "status", onPageChange, empty, hideP
                                         tabIndex={0}
                                     >
                                         {canBulk && <Checkbox aria-label={`Select ${t.identifier}`} checked={selected.includes(t.id)} onCheckedChange={() => toggle(t.id)} className={cn(!selected.length && "sm:opacity-0 sm:group-hover:opacity-100")} />}
-                                        <PriorityIcon priority={t.priority} />
-                                        <span className="w-[4.5rem] shrink-0 font-mono text-xs text-muted-foreground">{t.identifier}</span>
-                                        <StatusIcon category={t.status?.category} color={t.status?.color} />
+                                        {show("priority") && <PriorityIcon priority={t.priority} />}
+                                        {show("id") && <span className="w-[4.5rem] shrink-0 font-mono text-xs text-muted-foreground">{t.identifier}</span>}
+                                        {show("status") && <StatusIcon category={t.status?.category} color={t.status?.color} />}
                                         <span className={cn("min-w-0 flex-1 basis-40 truncate text-[13px] text-foreground", t.status?.category === "DONE" && "text-muted-foreground")}>{t.title}</span>
-                                        <span className="ml-auto hidden items-center gap-1 md:flex">{t.labels.slice(0, 2).map((l) => <LabelChip key={l.id} label={l} />)}</span>
-                                        {!hideProject && t.project && <span className="hidden max-w-36 truncate text-xs text-muted-foreground lg:inline">{t.project.name}</span>}
-                                        {t.due_date && <span className={cn("shrink-0 text-xs tabular", overdue ? "text-danger" : "text-muted-foreground")}>{formatDate(t.due_date, "d MMM")}</span>}
-                                        {t._count.subtasks > 0 && <span className="hidden text-xs text-muted-foreground sm:inline">{t._count.subtasks} sub</span>}
-                                        <MemberAvatar person={t.assignee?.user} size="xs" />
+                                        <span className="ml-auto hidden items-center gap-1 md:flex">{show("labels") && t.labels.slice(0, 2).map((l) => <LabelChip key={l.id} label={l} />)}</span>
+                                        {!hideProject && show("project") && t.project && <span className="hidden max-w-36 truncate text-xs text-muted-foreground lg:inline">{t.project.name}</span>}
+                                        {show("due") && t.due_date && <span className={cn("shrink-0 text-xs tabular", overdue ? "text-danger" : "text-muted-foreground")}>{formatDate(t.due_date, "d MMM")}</span>}
+                                        {show("subtasks") && t._count.subtasks > 0 && <span className="hidden text-xs text-muted-foreground sm:inline">{t._count.subtasks} sub</span>}
+                                        {show("assignee") && <MemberAvatar person={t.assignee?.user} size="xs" />}
                                     </li>
                                 );
                             })}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { useSearchParams } from "react-router-dom";
 import { Archive, FileStack, Pencil, Plus, RotateCcw, Tags } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
@@ -28,7 +29,7 @@ import {
     useUpdateProjectType,
 } from "@/features/projects/hooks/use-projects";
 import type { ProjectStatus, ProjectStatusCategory, ProjectTemplate, ProjectType, TemplateStructure } from "@/features/projects/interfaces/projects.interfaces";
-import { ColorTokenFormOptions, ProjectStatusCategoryFormOptions } from "@/config/constants/dropdowns/projects/project-form.options";
+import { ProjectStatusCategoryFormOptions } from "@/config/constants/dropdowns/projects/project-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { ProjectStatusBadge } from "../../components/project-badges";
 
@@ -137,10 +138,7 @@ function StatusDialog({ open, onOpenChange, status, all }: { open: boolean; onOp
                         </div>
                         <div className="space-y-1.5">
                             <Label>Color</Label>
-                            <Select value={color} onValueChange={touch(setColor)}>
-                                <SelectTrigger aria-label="Color"><SelectValue /></SelectTrigger>
-                                <SelectContent>{ColorTokenFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
-                            </Select>
+                            <ColorPicker label="Color" value={color} onChange={touch(setColor)} />
                         </div>
                     </div>
                     <div className="space-y-1.5">

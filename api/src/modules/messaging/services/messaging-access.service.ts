@@ -22,6 +22,8 @@ const DEFAULT_SETTINGS = {
     edit_time_limit_minutes: null,
     preserve_edit_history: true,
     broadcast_mention_policy: 'admins',
+    calls_enabled: true,
+    call_provider: 'internal',
 } satisfies Partial<MessagingSettings>;
 
 export type EffectiveMessagingSettings = typeof DEFAULT_SETTINGS & Partial<MessagingSettings>;

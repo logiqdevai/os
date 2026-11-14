@@ -64,8 +64,16 @@ export interface BrowseChannel extends ChannelSummary {
     is_member: boolean;
 }
 
+export interface ChannelSources {
+    teams: { id: string; name: string; member_ids: string[] }[];
+    projects: { id: string; name: string; code: string | null; member_ids: string[] }[];
+}
+
 export interface ChannelDetail extends ChannelSummary {
     label: string;
+    /** Team / project this channel is for (null when not linked, or the project is outside your access). */
+    team: { id: string; name: string } | null;
+    project: { id: string; name: string; code: string | null } | null;
     participants: Participant[];
     pin_count: number;
     is_member: boolean;
@@ -220,6 +228,8 @@ export interface CreateChannelDto {
     description?: string;
     topic?: string;
     purpose?: string;
+    team_id?: string;
+    project_id?: string;
     membership_ids?: string[];
 }
 export type UpdateChannelDto = Partial<Pick<CreateChannelDto, "name" | "description" | "topic" | "purpose">>;

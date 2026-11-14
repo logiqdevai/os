@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { CurrencySelect } from "@/components/ui/currency-select";
+import { TimezoneSelect } from "@/components/ui/timezone-select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
@@ -10,7 +12,6 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BranchKindFormOptions, BranchStatusFormOptions } from "@/config/constants/dropdowns/admin/access-form.options";
 import { CountryOptions } from "@/config/constants/dropdowns/country.options";
-import { TimezoneOptions } from "@/config/constants/dropdowns/timezone.options";
 import { useCreateBranch, useUpdateBranch } from "@/features/admin/branches/hooks/use-branches";
 import type { Branch } from "@/features/admin/branches/interfaces/branches.interfaces";
 import { branchFormSchema, type BranchFormValues } from "@/features/admin/branches/validation-schemas/branches.schema";
@@ -131,11 +132,7 @@ export function BranchFormDialog({ open, onOpenChange, branch, branches, default
                             )} />
                             <FormField control={form.control} name="timezone" render={({ field }) => (
                                 <FormItem><FormLabel>Timezone</FormLabel>
-                                    <Select value={field.value} onValueChange={field.onChange}><FormControl><SelectTrigger aria-label="Timezone"><SelectValue /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            <SelectItem value={NONE}>Organization default</SelectItem>
-                                            {TimezoneOptions.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                                        </SelectContent></Select>
+                                    <FormControl><TimezoneSelect value={field.value} onChange={field.onChange} emptyLabel="Organization default" emptyValue={NONE} /></FormControl>
                                 </FormItem>
                             )} />
                             <FormField control={form.control} name="email" render={({ field }) => (
@@ -145,7 +142,7 @@ export function BranchFormDialog({ open, onOpenChange, branch, branches, default
                                 <FormItem><FormLabel>Phone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="currency" render={({ field }) => (
-                                <FormItem><FormLabel>Currency</FormLabel><FormControl><Input placeholder="Organization default" maxLength={3} {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase())} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><FormLabel>Currency</FormLabel><FormControl><CurrencySelect value={field.value} onChange={field.onChange} emptyLabel="Organization default" /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
                         <FormField control={form.control} name="is_headquarters" render={({ field }) => (

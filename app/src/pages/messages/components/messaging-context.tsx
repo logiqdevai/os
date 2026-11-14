@@ -26,7 +26,8 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
 
     const value = useMemo<MessagingContextValue>(() => {
         const base = new Map<string, PresenceState>();
-        for (const m of directory.data?.data ?? []) base.set(m.membership_id, m.presence.state);
+        // The online list (everyone with a live connection) is authoritative once loaded; the directory snapshot is only the first paint.
+        if (!online.data) for (const m of directory.data?.data ?? []) base.set(m.membership_id, m.presence.state);
         for (const p of online.data?.data ?? []) base.set(p.membership_id, p.state);
         for (const [id, p] of Object.entries(socket.presence)) base.set(id, p.state);
         return {

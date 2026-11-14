@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { ColorBadge, ColorPicker } from "@/components/ui/color-picker";
 import { Archive, ArchiveRestore, MoreHorizontal, Pencil, Plus, Tags } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useCreateLeaveType, useLeaveTypes, useSetLeaveTypeArchived, useUpdateLeaveType } from "@/features/people/leave/hooks/use-leave";
 import type { LeaveCategory, LeaveType, LeaveTypeDto } from "@/features/people/leave/interfaces/leave.interfaces";
-import { LeaveCategoryFormOptions, LeaveTypeColorFormOptions, LeaveTypeColorTone } from "@/config/constants/dropdowns/people/leave-form.options";
+import { LeaveCategoryFormOptions } from "@/config/constants/dropdowns/people/leave-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { Field, Toggle } from "./general-tab";
 
@@ -24,7 +24,7 @@ export function LeaveTypesTab() {
     const rows = (q.data ?? []).filter((t) => (archived ? !!t.archived_at : !t.archived_at));
     const yes = (v: boolean) => (v ? "Yes" : "No");
     const columns: DataTableColumn<LeaveType>[] = [
-        { key: "name", header: "Leave type", cell: (t) => <div className="flex items-center gap-2"><Badge variant={LeaveTypeColorTone[t.color ?? "neutral"] ?? "neutral"}>{t.code}</Badge><span className="font-medium text-foreground">{t.name}</span></div> },
+        { key: "name", header: "Leave type", cell: (t) => <div className="flex items-center gap-2"><ColorBadge color={t.color}>{t.code}</ColorBadge><span className="font-medium text-foreground">{t.name}</span></div> },
         { key: "category", header: "Category", cell: (t) => getDropdownOptionLabel(LeaveCategoryFormOptions, t.category), hideBelow: "md" },
         { key: "paid", header: "Paid", cell: (t) => yes(t.is_paid), hideBelow: "lg" },
         { key: "approval", header: "Approval", cell: (t) => yes(t.requires_approval), hideBelow: "lg" },
@@ -96,10 +96,7 @@ function LeaveTypeDialog({ value, onClose }: { value: LeaveType | "new" | null; 
                         <Select value={f.category} onValueChange={(v) => set("category", v as LeaveCategory)}><SelectTrigger aria-label="Category"><SelectValue /></SelectTrigger><SelectContent>{LeaveCategoryFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent></Select>
                     </Field>
                     <Field label="Colour">
-                        <Select value={f.color ?? "neutral"} onValueChange={(v) => set("color", v)}>
-                            <SelectTrigger aria-label="Colour"><SelectValue /></SelectTrigger>
-                            <SelectContent>{LeaveTypeColorFormOptions.map((o) => <SelectItem key={o.id} value={o.id}><Badge variant={LeaveTypeColorTone[o.id]}>{o.label}</Badge></SelectItem>)}</SelectContent>
-                        </Select>
+                        <ColorPicker label="Colour" value={f.color} onChange={(v) => set("color", v)} />
                     </Field>
                     <Field label="Minimum notice (days)" htmlFor="lt-notice"><Input id="lt-notice" type="number" min={0} max={365} value={notice} onChange={(e) => setNotice(e.target.value)} /></Field>
                     <Field label="Max consecutive days" htmlFor="lt-max"><Input id="lt-max" type="number" min={1} max={730} value={maxDays} onChange={(e) => setMaxDays(e.target.value)} /></Field>

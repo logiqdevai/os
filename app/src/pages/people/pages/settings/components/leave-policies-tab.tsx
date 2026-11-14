@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ColorBadge } from "@/components/ui/color-picker";
 import { Archive, FileStack, MoreHorizontal, Pencil, Plus, UserPlus } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,7 @@ import {
 } from "@/features/people/leave/hooks/use-leave";
 import { useEmployees } from "@/features/people/employees/hooks/use-employees";
 import type { LeaveAccrualMethod, LeavePolicy, LeavePolicyDto } from "@/features/people/leave/interfaces/leave.interfaces";
-import { LeaveAccrualFormOptions, LeaveTypeColorTone } from "@/config/constants/dropdowns/people/leave-form.options";
+import { LeaveAccrualFormOptions } from "@/config/constants/dropdowns/people/leave-form.options";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate, formatNumber } from "@/lib/format";
 import { Field, Toggle } from "./general-tab";
@@ -29,7 +30,7 @@ export function LeavePoliciesTab({ branches }: { branches: { id: string; name: s
     const [assigning, setAssigning] = useState<LeavePolicy | null>(null);
     const [archiving, setArchiving] = useState<LeavePolicy | null>(null);
     const columns: DataTableColumn<LeavePolicy>[] = [
-        { key: "name", header: "Policy", cell: (p) => <div className="min-w-0"><div className="truncate font-medium text-foreground">{p.name}</div><div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Badge variant={LeaveTypeColorTone[p.leave_type.color ?? "neutral"] ?? "neutral"}>{p.leave_type.code}</Badge>{p.leave_type.name}</div></div> },
+        { key: "name", header: "Policy", cell: (p) => <div className="min-w-0"><div className="truncate font-medium text-foreground">{p.name}</div><div className="flex items-center gap-1.5 text-xs text-muted-foreground"><ColorBadge color={p.leave_type.color}>{p.leave_type.code}</ColorBadge>{p.leave_type.name}</div></div> },
         { key: "branch", header: "Branch", cell: (p) => p.branch?.name ?? "All", hideBelow: "md" },
         { key: "accrual", header: "Accrual", cell: (p) => getDropdownOptionLabel(LeaveAccrualFormOptions, p.accrual_method), hideBelow: "lg" },
         { key: "days", header: <span className="block text-right">Days / year</span>, cell: (p) => <span className="block text-right tabular">{formatNumber(p.annual_entitlement_days, 1)}</span> },

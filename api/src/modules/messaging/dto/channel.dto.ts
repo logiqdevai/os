@@ -41,6 +41,16 @@ export class CreateChannelDto {
     @IsBoolean()
     auto_join?: boolean;
 
+    @ApiProperty({ required: false, description: 'Team this channel is for: all its current members are added, and the channel keeps the link.' })
+    @IsOptional()
+    @IsUUID()
+    team_id?: string;
+
+    @ApiProperty({ required: false, description: 'Project this channel is for: its members and owner are added, and the channel keeps the link (shown in the channel header).' })
+    @IsOptional()
+    @IsUUID()
+    project_id?: string;
+
     @ApiProperty({ required: false, type: [String], description: 'Members to add on creation (Membership ids). The creator is always the owner.' })
     @IsOptional()
     @IsArray()

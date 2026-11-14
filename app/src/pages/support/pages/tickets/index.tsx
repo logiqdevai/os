@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Ticket } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/data-table";
@@ -96,21 +97,16 @@ export default function TicketsPage() {
                     </Can>
                 }
             />
-            <div className="mb-3 flex gap-1 overflow-x-auto" role="tablist" aria-label="Ticket views">
-                {VIEWS.map((v) => (
-                    <button
-                        key={v.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={activeView === v.id}
-                        onClick={() => applyView(v.id)}
-                        className={cn("shrink-0 rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors", activeView === v.id ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground")}
-                    >
-                        {v.label}
-                        {counts.data && <span className="ml-1.5 text-xs text-muted-foreground tabular">{counts.data[v.count]}</span>}
-                    </button>
-                ))}
-            </div>
+            <Tabs value={activeView} onValueChange={applyView} className="mb-3">
+                <div className="overflow-x-auto"><TabsList className="w-max">
+                    {VIEWS.map((v) => (
+                        <TabsTrigger key={v.id} value={v.id}>
+                            {v.label}
+                            {counts.data && <span className="ml-1.5 text-xs text-muted-foreground tabular">{counts.data[v.count]}</span>}
+                        </TabsTrigger>
+                    ))}
+                </TabsList></div>
+            </Tabs>
             <TableToolbar search={search} onSearch={setSearch} placeholder="Search reference, subject, customer…">
                 <FilterSelect label="State" value={state} options={TicketStateFilterOptions} onChange={(v) => setFilter("state", v === "open" ? null : v)} />
                 <FilterSelect label="Assignee" value={filters.assignee ?? "all"} options={TicketAssigneeFilterOptions} onChange={(v) => setFilter("assignee", v)} />

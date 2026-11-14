@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { TimezoneSelect } from "@/components/ui/timezone-select";
 import { CalendarOff, Clock, Plus, Trash2 } from "lucide-react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
 import { usePermission } from "@/hooks/use-permission";
 import { useAutosave } from "@/hooks/use-autosave";
@@ -12,7 +12,6 @@ import { SaveStatus } from "@/components/ui/save-status";
 import { useCreateSchedule, useSchedules, useUpdateSchedule } from "@/features/calendar/hooks/use-calendar";
 import type { AvailabilityOverride, AvailabilityRule } from "@/features/calendar/interfaces/calendar.interfaces";
 import { WeekdayLongOptions } from "@/config/constants/dropdowns/calendar/calendar.options";
-import { TimezoneOptions } from "@/config/constants/dropdowns/timezone.options";
 import { formatDate } from "@/lib/format";
 
 const DEFAULT_RULES: AvailabilityRule[] = [1, 2, 3, 4, 5].map((weekday) => ({ weekday, start_time: "09:00", end_time: "17:00" }));
@@ -47,8 +46,6 @@ export default function AvailabilityPage() {
             setOverrides(current.overrides.map(({ date, kind, start_time, end_time, reason }) => ({ date: date.slice(0, 10), kind, start_time, end_time, reason })));
         }
     }, [current, dirty]);
-
-    const zones = useMemo(() => (TimezoneOptions.some((z) => z.value === timezone) ? TimezoneOptions : [{ value: timezone, label: timezone }, ...TimezoneOptions]), [timezone]);
     const invalid = rules.some((r) => r.end_time <= r.start_time);
     const autosave = useAutosave({
         value: { timezone, rules, overrides },
@@ -80,10 +77,7 @@ export default function AvailabilityPage() {
             {!current && <p className="mb-4 rounded-lg border border-border bg-info-soft px-4 py-3 text-[13px] text-info">You have no schedule yet, so Monday to Friday 09:00–17:00 is used. Change anything to make it yours.</p>}
             <fieldset disabled={!canEdit} className="space-y-8">
                 <Section title="Time zone">
-                    <Select value={timezone} onValueChange={edit(setTimezone)}>
-                        <SelectTrigger className="w-full sm:w-80" aria-label="Time zone"><SelectValue /></SelectTrigger>
-                        <SelectContent>{zones.map((z) => <SelectItem key={z.value} value={z.value}>{z.label}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <TimezoneSelect value={timezone} onChange={edit(setTimezone)} className="w-full sm:w-80" aria-label="Time zone" />
                 </Section>
                 <Section title="Weekly hours">
                     <div className="divide-y divide-border-soft rounded-lg border border-border bg-card">

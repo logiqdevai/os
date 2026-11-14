@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -92,7 +93,7 @@ function SettingsForm({ s }: { s: PortalSettings }) {
                             <div className="space-y-1.5"><Label htmlFor="pname">Portal name</Label><Input id="pname" disabled={!canEdit} value={f.portal_name} onChange={(e) => setF({ ...f, portal_name: e.target.value })} placeholder={`${s.organization?.display_name ?? "Agency"} client portal`} /></div>
                             <div className="space-y-1.5"><Label htmlFor="pemail">Support email</Label><Input id="pemail" type="email" disabled={!canEdit} value={f.support_email} onChange={(e) => setF({ ...f, support_email: e.target.value })} /></div>
                             <div className="space-y-1.5"><Label htmlFor="plogo">Logo URL</Label><Input id="plogo" disabled={!canEdit} value={f.logo_url} onChange={(e) => setF({ ...f, logo_url: e.target.value })} placeholder={s.organization?.logo_url ?? "https://…"} /></div>
-                            <div className="space-y-1.5"><Label htmlFor="pcolor">Accent colour</Label><Input id="pcolor" disabled={!canEdit} value={f.primary_color} onChange={(e) => setF({ ...f, primary_color: e.target.value })} placeholder="#2563eb" /></div>
+                            <div className="space-y-1.5"><Label htmlFor="pcolor">Accent colour</Label><ColorPicker id="pcolor" label="Accent colour" disabled={!canEdit} value={f.primary_color} onChange={(v) => setF({ ...f, primary_color: v })} /></div>
                         </div>
                         <div className="space-y-1.5"><Label htmlFor="pwelcome">Welcome message</Label><Textarea id="pwelcome" rows={3} disabled={!canEdit} value={f.welcome_message} onChange={(e) => setF({ ...f, welcome_message: e.target.value })} placeholder="Welcome! Here you can follow your projects and reach our team." /></div>
                     </div>

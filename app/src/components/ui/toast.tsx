@@ -16,16 +16,16 @@ const ToastViewport = React.forwardRef<React.ElementRef<typeof ToastPrimitives.V
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName;
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-xl border p-4 pr-9 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-right-full data-[state=open]:sm:slide-in-from-top-0",
+  "group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-xl border p-4 pr-14 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-right-full data-[state=open]:sm:slide-in-from-top-0",
   {
     variants: {
       variant: {
-        default: "border-border bg-card text-card-foreground",
-        success: "border-emerald-500/20 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-400",
-        destructive: "border-red-500/20 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-400",
-        error: "border-red-500/20 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-400",
-        warning: "border-amber-500/20 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-400",
-        info: "border-blue-500/20 bg-blue-50 text-blue-700 dark:border-blue-500/25 dark:bg-blue-500/10 dark:text-blue-400",
+        default: "border-border bg-popover text-popover-foreground",
+        success: "border-success/25 bg-popover text-success [background-image:linear-gradient(var(--success-soft),var(--success-soft))]",
+        destructive: "border-danger/25 bg-popover text-danger [background-image:linear-gradient(var(--danger-soft),var(--danger-soft))]",
+        error: "border-danger/25 bg-popover text-danger [background-image:linear-gradient(var(--danger-soft),var(--danger-soft))]",
+        warning: "border-warning/25 bg-popover text-warning [background-image:linear-gradient(var(--warning-soft),var(--warning-soft))]",
+        info: "border-info/25 bg-popover text-info [background-image:linear-gradient(var(--info-soft),var(--info-soft))]",
         light: "border-border bg-secondary text-foreground",
         dark: "border-transparent bg-foreground text-background",
       },

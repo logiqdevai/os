@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSessionData } from "@/features/session/hooks/use-session";
 import { useCreateProposal, useProposalTemplates } from "@/features/proposals/hooks/use-proposals";
 import { proposalFormSchema, type ProposalFormValues } from "@/features/proposals/validation-schemas/proposals.schema";
-import { CurrencyOptions, LanguageOptions } from "@/config/constants/dropdowns/proposals/proposal-content.options";
+import { LanguageOptions } from "@/config/constants/dropdowns/proposals/proposal-content.options";
 import { usePermission } from "@/hooks/use-permission";
 import { LookupPicker } from "../../components/lookup-picker";
 
@@ -159,10 +160,7 @@ export default function NewProposalPage() {
                         <FormField control={form.control} name="currency" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Currency</FormLabel>
-                                <Select value={field.value} onValueChange={field.onChange}>
-                                    <FormControl><SelectTrigger aria-label="Currency"><SelectValue /></SelectTrigger></FormControl>
-                                    <SelectContent>{CurrencyOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}</SelectContent>
-                                </Select>
+                                <FormControl><CurrencySelect value={field.value} onChange={field.onChange} /></FormControl>
                             </FormItem>
                         )} />
                         <FormField control={form.control} name="language" render={({ field }) => (

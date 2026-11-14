@@ -21,6 +21,9 @@ export const eventFormSchema = z
         attendee_ids: z.array(z.string()),
         resource_ids: z.array(z.string()),
         guest_emails: z.string().optional(),
+        project_id: z.string().optional(),
+        lead_id: z.string().optional(),
+        contact_id: z.string().optional(),
         reminder: z.string(),
     })
     .superRefine((v, ctx) => {
@@ -62,7 +65,7 @@ export const calendarFormSchema = z
         kind: z.enum(["PERSONAL", "TEAM", "ORGANIZATION"]),
         name: z.string().trim().min(1, "Enter a name").max(120),
         description: z.string().max(1000).optional(),
-        color: z.enum(["info", "success", "warning", "danger", "violet", "neutral"]),
+        color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a hex color like #2563eb"),
         team_id: z.string().optional(),
         default_visibility: z.enum(["PRIVATE", "TEAM", "ORGANIZATION", "CUSTOMER_VISIBLE"]),
         free_busy_only: z.boolean(),

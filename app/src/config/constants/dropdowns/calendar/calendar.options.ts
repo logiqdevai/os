@@ -1,5 +1,5 @@
 import type {
-    AttendeeResponse, BookingLinkAudience, BookingLinkStatus, BookingStatus, CalendarKind, CalendarRole, CalendarView, ColorToken, EventVisibility, HostAssignment, ResourceKind,
+    AttendeeResponse, BookingLinkAudience, BookingLinkStatus, BookingStatus, CalendarKind, CalendarRole, CalendarView, EventVisibility, HostAssignment, ResourceKind,
 } from "@/features/calendar/interfaces/calendar.interfaces";
 
 export const CalendarViewOptions: { id: CalendarView; label: string }[] = [
@@ -58,15 +58,6 @@ export const CalendarRoleOptions: { id: CalendarRole; label: string }[] = [
     { id: "READ", label: "See all details" },
     { id: "WRITE", label: "Make changes" },
     { id: "MANAGE", label: "Manage and share" },
-];
-
-export const ColorTokenOptions: { id: ColorToken; label: string }[] = [
-    { id: "info", label: "Blue" },
-    { id: "success", label: "Green" },
-    { id: "warning", label: "Amber" },
-    { id: "danger", label: "Red" },
-    { id: "violet", label: "Violet" },
-    { id: "neutral", label: "Gray" },
 ];
 
 export const ResourceKindFormOptions: { id: ResourceKind; label: string }[] = [

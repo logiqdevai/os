@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/data-table";
 import { MemberAvatar } from "@/components/ui/member-avatar";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Can } from "@/components/access/can";
 import { NoAccessState } from "@/components/ui/states";
@@ -17,12 +18,14 @@ import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toneVariant } from "../../../components/project-badges";
+import { TaskCreateForm } from "../../../../tasks/components/task-create-form";
 
 /** Tasks of the project (06 owns tasks; this tab reads them with tasks.tasks.read). */
 export function ProjectTasksTab({ project }: { project: ProjectDetail }) {
     const canRead = usePermission("tasks.tasks.read");
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState("");
+    const [creating, setCreating] = useState(false);
     const [category, setCategory] = useState("open");
     const params: Record<string, unknown> = { project_id: project.id, page, limit: 25, order_by: "priority", search: search || undefined };
     if (category === "open") params.open = true;
@@ -51,9 +54,9 @@ export function ProjectTasksTab({ project }: { project: ProjectDetail }) {
                         {TaskStatusCategoryFilterOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}
                     </SelectContent>
                 </Select>
-                <Button variant="ghost" size="sm" asChild><Link to={`/tasks/board?project_id=${project.id}${project.team_id ? `&team=${project.team_id}` : ""}`}>Board</Link></Button>
+                <Button variant="ghost" size="sm" asChild><Link to={`/tasks/all?layout=board&project_id=${project.id}&project_name=${encodeURIComponent(project.name)}${project.team_id ? `&team_id=${project.team_id}` : ""}`}>Board</Link></Button>
                 <Can permission="tasks.tasks.create">
-                    <Button size="sm" asChild><Link to={`/tasks/new?project=${project.id}`}><Plus /> New task</Link></Button>
+                    <Button size="sm" onClick={() => setCreating(true)}><Plus /> New task</Button>
                 </Can>
             </TableToolbar>
             <DataTable
@@ -68,6 +71,22 @@ export function ProjectTasksTab({ project }: { project: ProjectDetail }) {
                 rowHref={(t) => `/tasks/${t.identifier}`}
                 empty={{ icon: ListTodo, title: search || category !== "open" ? "No tasks match" : "No open tasks", description: "Tasks created for this project appear here." }}
             />
+            <Dialog open={creating} onOpenChange={setCreating}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>New task</DialogTitle>
+                        <DialogDescription className="sr-only">Create a task in {project.name}. Press Ctrl+Enter to save.</DialogDescription>
+                    </DialogHeader>
+                    {creating && (
+                        <TaskCreateForm
+                            defaults={{ project_id: project.id, project_name: project.name, team_id: project.team_id }}
+                            allowCreateMore
+                            onCancel={() => setCreating(false)}
+                            onCreated={() => setCreating(false)}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

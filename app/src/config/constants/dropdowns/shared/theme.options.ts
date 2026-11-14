@@ -27,4 +27,3 @@ export const ThemeOptions: { id: AppTheme; label: string; light: string; dark: s
 ];
 
 /** Quick picks for a custom primary color (any #rrggbb is allowed). */
-export const PrimaryColorPresets = ["#0891b2", "#06b6d4", "#2563eb", "#7c3aed", "#c026d3", "#e11d48", "#ea580c", "#ca8a04", "#16a34a", "#0d9488", "#334155", "#000000"];

@@ -28,6 +28,8 @@ export const messagingKeys = {
 export const useMyChannels = () => useQuery({ queryKey: messagingKeys.mine, queryFn: service.getMyChannels, staleTime: 30_000 });
 export const useBrowseChannels = (params: Record<string, unknown>) =>
     useQuery({ queryKey: messagingKeys.browse(params), queryFn: () => service.browseChannels(params), placeholderData: keepPreviousData });
+/** Teams and projects a new channel can be created for (with their members). */
+export const useChannelSources = (enabled = true) => useQuery({ queryKey: [...MESSAGING_KEY, "channel-sources"], queryFn: () => service.getChannelSources(), enabled, staleTime: 30_000 });
 export const useChannel = (id: string | undefined) => useQuery({ queryKey: messagingKeys.channel(id ?? ""), queryFn: () => service.getChannel(id as string), enabled: !!id });
 export const useChannelMembers = (id: string | undefined, enabled = true) =>
     useQuery({ queryKey: messagingKeys.members(id ?? ""), queryFn: () => service.getChannelMembers(id as string), enabled: !!id && enabled });
@@ -42,7 +44,7 @@ export const useSavedMessages = () => useQuery({ queryKey: messagingKeys.saved, 
 export const useMessageSearch = (params: { q: string; channel_id?: string }) =>
     useQuery({ queryKey: messagingKeys.search(params), queryFn: () => service.searchMessages(params), enabled: params.q.trim().length >= 2, placeholderData: keepPreviousData });
 export const useDirectory = () => useQuery({ queryKey: messagingKeys.directory, queryFn: () => service.getDirectory(), staleTime: 5 * 60_000 });
-export const useOnlinePresence = () => useQuery({ queryKey: messagingKeys.presence, queryFn: service.getOnlinePresence, staleTime: 60_000 });
+export const useOnlinePresence = () => useQuery({ queryKey: messagingKeys.presence, queryFn: service.getOnlinePresence, staleTime: 15_000, refetchInterval: 30_000 });
 
 /** Channel messages, newest page first; `before` cursor loads older pages. */
 export const useChannelMessages = (channelId: string | undefined) =>

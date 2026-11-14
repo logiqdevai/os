@@ -19,7 +19,9 @@ const RetentionPage = lazy(() => import("./pages/admin/retention"));
 const SettingsPage = lazy(() => import("./pages/admin/settings"));
 const IntegrationsPage = lazy(() => import("./pages/admin/integrations"));
 
-const gate = (anyOf: string[], element: ReactNode) => <RequirePermission anyOf={anyOf}>{element}</RequirePermission>;
+/** Full-height region that scrolls on its own: the Messages shell is fixed-height, so plain pages need their own scroll container. */
+const Scroll = ({ children }: { children: ReactNode }) => <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>;
+const gate = (anyOf: string[], element: ReactNode) => <RequirePermission anyOf={anyOf}><Scroll>{element}</Scroll></RequirePermission>;
 
 /**
  * /messages/* — module 12 Messaging. Slack-like layout that fills the main area: channel sidebar + conversation (+ thread panel).
@@ -47,7 +49,7 @@ function MessagesLayout() {
                         <Route path="saved" element={<SavedPage />} />
                         <Route path="search" element={<SearchPage />} />
                         <Route path="channels/*" element={<BrowseChannelsPage onCreate={() => navigate(MessagesPaths.create)} />} />
-                        <Route path="calls" element={<CallsPage />} />
+                        <Route path="calls" element={<Scroll><CallsPage /></Scroll>} />
                         <Route path="admin" element={gate(["messaging.analytics.read", "messaging.settings.manage"], <AdminOverviewPage />)} />
                         <Route path="admin/moderation" element={gate(["messaging.moderation.manage"], <ModerationPage />)} />
                         <Route path="admin/guests" element={gate(["messaging.external_users.manage"], <GuestsPage />)} />

@@ -73,6 +73,8 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
     afterInit(server: Namespace) {
         this.realtime.attach(server);
+        // Sockets do not survive a restart: counters left by a previous process would show people online forever.
+        void this.presence.resetConnections().catch((error) => this.logger.warn(`presence reset failed: ${(error as Error).message}`));
     }
 
     async handleConnection(client: Socket) {

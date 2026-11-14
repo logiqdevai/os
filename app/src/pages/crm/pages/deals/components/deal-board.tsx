@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { useChangeDealStage } from "@/features/crm/deals/hooks/use-deals";
 import type { BoardStage, Deal, DealBoard as DealBoardData } from "@/features/crm/deals/interfaces/deals.interfaces";
 import { CrmPaths } from "../../../crm-paths";
-import { MemberAvatar, Money, toneDot } from "../../../components/crm-ui";
+import { MemberAvatar, Money, ToneDot } from "../../../components/crm-ui";
 import { CloseDealDialog, type CloseDealTarget } from "../../../components/close-deal-dialog";
 
 const DRAG_TYPE = "application/x-crm-deal";
@@ -92,7 +92,7 @@ export function DealBoard({ board, loading, error, onRetry, onCreate }: Props) {
                             <header className="border-b border-border px-3 py-2">
                                 <div className="flex items-center justify-between gap-2">
                                     <div className="flex min-w-0 items-center gap-2">
-                                        <span className={cn("size-2 shrink-0 rounded-full", toneDot(stage.color))} />
+                                        <ToneDot tone={stage.color} />
                                         <h3 className="truncate text-[13px] font-medium text-foreground">{stage.name}</h3>
                                         <span className="text-xs text-muted-foreground tabular">{stage.count}</span>
                                     </div>
@@ -172,7 +172,7 @@ function DealCard({ deal, currency, stages, canMove, dragging, onDragStart, onDr
                             <DropdownMenuLabel>Move to</DropdownMenuLabel>
                             {stages.filter((s) => s.id !== deal.stage_id).map((s) => (
                                 <DropdownMenuItem key={s.id} onSelect={() => onMove(s)}>
-                                    <span className={cn("size-2 rounded-full", toneDot(s.color))} /> {s.name}
+                                    <ToneDot tone={s.color} /> {s.name}
                                 </DropdownMenuItem>
                             ))}
                         </DropdownMenuContent>

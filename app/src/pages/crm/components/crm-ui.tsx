@@ -4,6 +4,7 @@ import { Lock } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ColorBadge, ColorDot } from "@/components/ui/color-picker";
 import { formatMoney, initials, personName } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
@@ -16,13 +17,10 @@ const TONES: Record<string, BadgeVariant> = { neutral: "neutral", info: "info", 
 /** Stored semantic tone (stage / status / tag color) → badge variant. Unknown values fall back to neutral. */
 export const toneVariant = (tone: string | null | undefined): BadgeVariant => TONES[tone ?? ""] ?? "neutral";
 
-/** Dot class for a tone (board column headers, stage stepper). */
-export const toneDot = (tone: string | null | undefined) =>
-    ({ info: "bg-info", success: "bg-success", warning: "bg-warning", danger: "bg-danger", violet: "bg-violet" } as Record<string, string>)[tone ?? ""] ?? "bg-ash";
+/** Dot for a stored tone / color (board column headers, stage stepper). */
+export const ToneDot = ({ tone }: { tone: string | null | undefined }) => <ColorDot color={tone} />;
 
-export function ToneBadge({ tone, children, className }: { tone: string | null | undefined; children: ReactNode; className?: string }) {
-    return <Badge variant={toneVariant(tone)} className={className}>{children}</Badge>;
-}
+export const ToneBadge = ({ tone, children, className }: { tone: string | null | undefined; children: ReactNode; className?: string }) => <ColorBadge color={tone} className={className}>{children}</ColorBadge>;
 
 const STATUS_VARIANT: Record<DealStatus, BadgeVariant> = { OPEN: "info", WON: "success", LOST: "danger", ABANDONED: "neutral" };
 export function DealStatusBadge({ status }: { status: DealStatus }) {

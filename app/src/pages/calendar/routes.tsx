@@ -19,7 +19,6 @@ export default function CalendarRoutes() {
     return (
         <Routes>
             <Route index element={<RequirePermission anyOf={READ}><CalendarViewPage /></RequirePermission>} />
-            <Route path="agenda" element={<RequirePermission anyOf={READ}><CalendarViewPage forcedView="agenda" /></RequirePermission>} />
             <Route path="new" element={<RequirePermission permission="calendar.events.create"><CalendarViewPage startCreate /></RequirePermission>} />
             <Route path="events/:id" element={<RequirePermission anyOf={READ}><EventDetailPage /></RequirePermission>} />
             <Route path="team" element={<RequirePermission permission="calendar.availability.read"><TeamAvailabilityPage /></RequirePermission>} />

@@ -34,7 +34,8 @@ export function ObligationDialog({ open, onOpenChange, contractId, obligation }:
         setStatus(obligation?.status ?? "OPEN");
         setDescription(obligation?.description ?? "");
         setDue(obligation?.due_date?.slice(0, 10) ?? "");
-        setFrequency(obligation?.frequency ?? NONE);
+        // Only the closed list is selectable; anything else (legacy / junk value) shows as "Does not repeat".
+        setFrequency(ObligationFrequencyOptions.some((o) => o.id === obligation?.frequency && o.id !== "none") ? (obligation?.frequency as string) : NONE);
         setReminder(obligation?.reminder_days_before != null ? String(obligation.reminder_days_before) : "");
         setOwner(obligation?.responsible_membership_id ?? null);
     }, [open, obligation]);
@@ -45,7 +46,7 @@ export function ObligationDialog({ open, onOpenChange, contractId, obligation }:
             type,
             description: description || undefined,
             due_date: due || undefined,
-            frequency: frequency !== NONE ? frequency : undefined,
+            frequency: frequency !== NONE ? frequency : obligation ? "none" : undefined,
             reminder_days_before: reminder ? Number(reminder) : undefined,
             responsible_membership_id: owner ?? undefined,
         };

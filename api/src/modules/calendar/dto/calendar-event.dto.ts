@@ -43,8 +43,10 @@ export class CreateCalendarEventDto {
     @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) location?: string;
     @ApiPropertyOptional() @IsOptional() @ValidateIf((_, v) => v !== '' && v !== null) @IsUrl({ require_protocol: true }) meeting_url?: string;
     @ApiPropertyOptional({ description: 'Token name: info, success, warning, danger, violet, neutral' }) @IsOptional() @IsString() @MaxLength(20) color?: string;
-    @ApiPropertyOptional() @IsOptional() @IsUUID() project_id?: string;
+    @ApiPropertyOptional({ nullable: true }) @IsOptional() @IsUUID() project_id?: string | null;
     @ApiPropertyOptional() @IsOptional() @IsUUID() company_id?: string;
+    @ApiPropertyOptional({ nullable: true, description: 'CRM lead this event relates to (stored as a CalendarEventLink); null clears it' }) @IsOptional() @IsUUID() lead_id?: string | null;
+    @ApiPropertyOptional({ nullable: true, description: 'CRM contact this event relates to (stored as a CalendarEventLink); null clears it' }) @IsOptional() @IsUUID() contact_id?: string | null;
     @ApiPropertyOptional() @IsOptional() @IsBoolean() guests_can_see_guests?: boolean;
     @ApiPropertyOptional({ type: [EventAttendeeInputDto] }) @IsOptional() @IsArray() @ArrayMaxSize(200) @ValidateNested({ each: true }) @Type(() => EventAttendeeInputDto) attendees?: EventAttendeeInputDto[];
     @ApiPropertyOptional({ type: [EventReminderInputDto] }) @IsOptional() @IsArray() @ArrayMaxSize(10) @ValidateNested({ each: true }) @Type(() => EventReminderInputDto) reminders?: EventReminderInputDto[];
@@ -101,6 +103,8 @@ export const CreateCalendarEventSchema = z.object({
     meeting_url: z.string().url().optional(),
     project_id: z.string().uuid().optional(),
     company_id: z.string().uuid().optional(),
+    lead_id: z.string().uuid().optional(),
+    contact_id: z.string().uuid().optional(),
     recurrence: z.object({ freq: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']), interval: z.number().int().min(1).max(99).optional(), count: z.number().int().min(1).max(730).nullable().optional(), until: z.string().nullable().optional(), byday: z.array(z.number().int().min(0).max(6)).optional() }).nullable().optional(),
     attendees: z.array(z.object({ membership_id: z.string().uuid().optional(), email: z.string().email().optional(), name: z.string().max(120).optional() })).max(200).optional(),
     reminders: z.array(z.object({ minutes_before: z.number().int().min(0).max(40320) })).max(10).optional(),

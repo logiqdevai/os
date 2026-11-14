@@ -1,4 +1,4 @@
-import { ChartColumn, Columns3, List, ListTodo, RefreshCw, Rocket, Settings, SquareCheckBig, Users } from "lucide-react";
+import { ChartColumn, List, ListTodo, RefreshCw, Rocket, Settings, SquareCheckBig, Users } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 import { TaskSavedViewsNav } from "@/pages/tasks/components/saved-views-nav";
 
@@ -14,7 +14,6 @@ export const tasksApp: AppDefinition = {
         { items: [
             { label: "My tasks", to: "/tasks", icon: ListTodo, end: true },
             { label: "All tasks", to: "/tasks/all", icon: List },
-            { label: "Board", to: "/tasks/board", icon: Columns3 },
             { label: "Cycles", to: "/tasks/cycles", icon: RefreshCw },
             { label: "Releases", to: "/tasks/releases", icon: Rocket },
             { label: "Workload", to: "/tasks/workload", icon: Users, permissions: ["tasks.workload.read"] },

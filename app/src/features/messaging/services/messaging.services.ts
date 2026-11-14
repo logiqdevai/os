@@ -2,13 +2,14 @@ import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
 import type {
     BrowseChannel, ChannelDetail, ChannelMemberRow, CreateChannelDto, DirectoryMember, Draft, MentionItem, Message, MessagePage, MessageWithChannel, MyChannel,
-    Paginated, PostMessageDto, Presence, ReactionGroup, SavedItem, ThreadInboxItem, ThreadResponse, UpdateChannelDto,
+    Paginated, PostMessageDto, Presence, ReactionGroup, SavedItem, ThreadInboxItem, ThreadResponse, UpdateChannelDto, ChannelSources,
 } from "../interfaces/messaging.interfaces";
 
 const R = () => ApiRoutes.messaging;
 
 export const getMyChannels = async (): Promise<{ data: MyChannel[] }> => (await axiosInstance.get(R().channels.mine)).data;
 export const browseChannels = async (params: Record<string, unknown>): Promise<Paginated<BrowseChannel>> => (await axiosInstance.get(R().channels.browse, { params })).data;
+export const getChannelSources = async (search?: string): Promise<ChannelSources> => (await axiosInstance.get(R().channels.sources, { params: { search: search || undefined } })).data;
 export const getChannel = async (id: string): Promise<ChannelDetail> => (await axiosInstance.get(R().channels.detail(id))).data;
 export const createChannel = async (dto: CreateChannelDto): Promise<ChannelDetail> => (await axiosInstance.post(R().channels.mine, dto)).data;
 export const updateChannel = async ({ id, ...dto }: UpdateChannelDto & { id: string }): Promise<ChannelDetail> => (await axiosInstance.patch(R().channels.detail(id), dto)).data;

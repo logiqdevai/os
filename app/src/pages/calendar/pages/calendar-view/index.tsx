@@ -19,7 +19,7 @@ import { TimeGrid } from "../../components/time-grid";
 import { MonthGrid } from "../../components/month-grid";
 import { AgendaList } from "../../components/agenda-list";
 import { EventFormDialog } from "../../components/event-form-dialog";
-import { dotClass, parseDateParam, shiftDate, toDateParam, viewRange, viewTitle } from "../../utils/calendar.utils";
+import { dotClass, dotStyle, parseDateParam, shiftDate, toDateParam, viewRange, viewTitle } from "../../utils/calendar.utils";
 import { projectedToEvents } from "../../utils/projected.utils";
 
 const PROJECTED_LABEL: Record<ProjectedModule, string> = { projects: "Project milestones", tasks: "My task due dates", leave: "Approved leave" };
@@ -32,14 +32,14 @@ const VIEWS: CalendarView[] = ["day", "week", "month", "agenda"];
  * @api GET /calendar/events?from&to&calendar_ids (series expanded server-side) · GET /calendar/preferences/me
  *      GET /calendar/projected?from&to&modules (read-only milestones / task due dates / leave, scope-filtered) · PUT /calendar/preferences/me {projected_modules}
  */
-export default function CalendarViewPage({ forcedView, startCreate }: { forcedView?: CalendarView; startCreate?: boolean }) {
+export default function CalendarViewPage({ startCreate }: { startCreate?: boolean }) {
     const navigate = useNavigate();
     const isMobile = useIsMobile();
     const [sp, setSp] = useSearchParams();
     const prefs = useCalendarPreferences();
     const canCreate = usePermission("calendar.events.create");
     const paramView = sp.get("view") as CalendarView | null;
-    const view: CalendarView = forcedView ?? (paramView && VIEWS.includes(paramView) ? paramView : isMobile ? "agenda" : (prefs.data?.default_view ?? "week"));
+    const view: CalendarView = (paramView && VIEWS.includes(paramView) ? paramView : isMobile ? "agenda" : (prefs.data?.default_view ?? "week"));
     const date = parseDateParam(sp.get("date"));
     const { from, to } = viewRange(view, date);
     const selected = sp.get("calendars")?.split(",").filter(Boolean) ?? [];
@@ -95,7 +95,7 @@ export default function CalendarViewPage({ forcedView, startCreate }: { forcedVi
                             <Button variant="outline" size="sm" onClick={() => set({ date: null })}>Today</Button>
                             <Button variant="outline" size="icon-sm" aria-label="Next" onClick={() => set({ date: toDateParam(shiftDate(view, date, 1)) })}><ChevronRight /></Button>
                         </div>
-                        {!forcedView && (
+                        {(
                             <Tabs value={view} onValueChange={(v) => set({ view: v })}>
                                 <TabsList className="h-8">
                                     {CalendarViewOptions.map((o) => <TabsTrigger key={o.id} value={o.id} className={cn("px-2 py-0.5 text-[12.5px]", (o.id === "week" || o.id === "month") && "hidden sm:inline-flex")}>{o.label}</TabsTrigger>)}
@@ -114,7 +114,7 @@ export default function CalendarViewPage({ forcedView, startCreate }: { forcedVi
                                         return (
                                             <label key={c.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] hover:bg-accent">
                                                 <Checkbox checked={checked} onCheckedChange={() => toggleCalendar(c.id)} aria-label={c.name} />
-                                                <span className={cn("size-2 rounded-full", dotClass(c.color))} />
+                                                <span className={cn("size-2 rounded-full", dotClass(c.color))} style={dotStyle(c.color)} />
                                                 <span className="truncate">{c.name}</span>
                                             </label>
                                         );

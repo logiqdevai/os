@@ -150,7 +150,7 @@ export default function ContractDetailPage() {
                         </div>
                     )}
                 </div>
-                <TabsContent value="document" className="mt-4"><DocumentTab contract={c} version={version.data} loading={version.isPending} error={version.error} onRetry={() => version.refetch()} /></TabsContent>
+                <TabsContent value="document" className="mt-4"><DocumentTab contract={c} version={version.data} loading={!!versionId && version.isPending} error={version.error} onRetry={() => version.refetch()} /></TabsContent>
                 <TabsContent value="parties" className="mt-4"><PartiesTab contract={c} /></TabsContent>
                 <TabsContent value="signatures" className="mt-4"><SignaturesTab contract={c} version={version.data && version.data.id === c.current_version_id ? version.data : undefined} /></TabsContent>
                 <TabsContent value="obligations" className="mt-4 space-y-3">

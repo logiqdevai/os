@@ -1,4 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Page, PageHeader } from "@/components/ui/page";
@@ -11,7 +12,6 @@ import { useSessionData } from "@/features/session/hooks/use-session";
 import { useCreateContract, useContractTemplates, useContractTypes } from "@/features/contracts/hooks/use-contracts";
 import { contractFormSchema, type ContractFormValues } from "@/features/contracts/validation-schemas/contracts.schema";
 import { BillingFrequencyOptions, ContractRenewalTypeFormOptions } from "@/config/constants/dropdowns/contracts/contract-terms.options";
-import { CurrencyOptions } from "@/config/constants/dropdowns/proposals/proposal-content.options";
 import { usePermission } from "@/hooks/use-permission";
 import { ContractLookupPicker } from "../../components/contract-badges";
 
@@ -115,7 +115,7 @@ export default function NewContractPage() {
                         {sel("renewal_type", "Renewal", ContractRenewalTypeFormOptions)}
                         {renewal !== "NONE" ? text("renewal_term_months", "Renewal term (months)", { inputMode: "numeric", placeholder: "12" }) : <div className="hidden sm:block" />}
                         {text("notice_days", "Notice period (days)", { inputMode: "numeric", placeholder: "30" })}
-                        {sel("currency", "Currency", CurrencyOptions)}
+                        <FormField control={form.control} name="currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><CurrencySelect value={field.value} onChange={field.onChange} /></FormControl></FormItem>)} />
                     </div>
                     {canSeeValue ? (
                         <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-2">

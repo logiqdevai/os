@@ -4,6 +4,7 @@ export const MessagingApiRoutes = {
     channels: {
         mine: "/messaging/channels",
         browse: "/messaging/channels/browse",
+        sources: "/messaging/channels/sources",
         detail: (id: string) => `/messaging/channels/${id}`,
         archive: (id: string) => `/messaging/channels/${id}/archive`,
         unarchive: (id: string) => `/messaging/channels/${id}/unarchive`,

@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import { pickerHex } from "@/lib/color";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { useFormAutosave } from "@/hooks/use-autosave";
 import { SaveStatus } from "@/components/ui/save-status";
 import { useForm, useWatch } from "react-hook-form";
@@ -14,9 +16,7 @@ import { usePermission } from "@/hooks/use-permission";
 import { useCalendarTeams, useCreateCalendar, useUpdateCalendar } from "@/features/calendar/hooks/use-calendar";
 import { calendarFormSchema, type CalendarFormValues } from "@/features/calendar/validation-schemas/calendar.schema";
 import type { CalendarRow } from "@/features/calendar/interfaces/calendar.interfaces";
-import { CalendarKindFormOptions, ColorTokenOptions, EventVisibilityFormOptions } from "@/config/constants/dropdowns/calendar/calendar.options";
-import { cn } from "@/lib/utils";
-import { dotClass } from "../../../utils/calendar.utils";
+import { CalendarKindFormOptions, EventVisibilityFormOptions } from "@/config/constants/dropdowns/calendar/calendar.options";
 
 interface Props {
     open: boolean;
@@ -35,7 +35,7 @@ export function CalendarFormDialog({ open, onOpenChange, calendar }: Props) {
     const update = useUpdateCalendar({ inline: true });
     const form = useForm<CalendarFormValues>({
         resolver: zodResolver(calendarFormSchema),
-        defaultValues: { kind: "PERSONAL", name: "", color: "info", default_visibility: "TEAM", free_busy_only: false },
+        defaultValues: { kind: "PERSONAL", name: "", color: "#0b72b5", default_visibility: "TEAM", free_busy_only: false },
     });
     const kind = useWatch({ control: form.control, name: "kind" });
 
@@ -45,7 +45,7 @@ export function CalendarFormDialog({ open, onOpenChange, calendar }: Props) {
                 kind: (calendar?.kind as CalendarFormValues["kind"]) ?? "PERSONAL",
                 name: calendar?.name ?? "",
                 description: calendar?.description ?? "",
-                color: (calendar?.color as CalendarFormValues["color"]) ?? "info",
+                color: pickerHex(calendar?.color, "#0b72b5"),
                 team_id: undefined,
                 default_visibility: calendar?.default_visibility ?? "TEAM",
                 free_busy_only: calendar?.free_busy_only ?? false,
@@ -115,14 +115,7 @@ export function CalendarFormDialog({ open, onOpenChange, calendar }: Props) {
                             <FormField control={form.control} name="color" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Color</FormLabel>
-                                    <Select value={field.value} onValueChange={field.onChange}>
-                                        <FormControl><SelectTrigger aria-label="Color"><SelectValue /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            {ColorTokenOptions.map((o) => (
-                                                <SelectItem key={o.id} value={o.id}><span className="flex items-center gap-2"><span className={cn("size-2.5 rounded-full", dotClass(o.id))} />{o.label}</span></SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <FormControl><ColorPicker label="Color" value={field.value} onChange={field.onChange} /></FormControl>
                                 </FormItem>
                             )} />
                             <FormField control={form.control} name="default_visibility" render={({ field }) => (

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { Check, Monitor, Moon, Sun } from "lucide-react";
 import { Section } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { applyAppearance, readableOn, useTheme, type Appearance, type ColorMode } from "@/hooks/use-theme";
+import { applyAppearance, useTheme, type Appearance, type ColorMode } from "@/hooks/use-theme";
 import { useSessionData } from "@/features/session/hooks/use-session";
-import { ColorModeOptions, PrimaryColorPresets, ThemeOptions } from "@/config/constants/dropdowns/shared/theme.options";
+import { ColorModeOptions, ThemeOptions } from "@/config/constants/dropdowns/shared/theme.options";
 import { cn } from "@/lib/utils";
 
 const ICONS: Record<ColorMode, typeof Sun> = { LIGHT: Sun, DARK: Moon, SYSTEM: Monitor };
@@ -128,38 +128,8 @@ function PrimaryColorSection({ appearance, setAppearance }: { appearance: Appear
     return (
         <Section title="Primary color" description="Override the theme's accent for buttons, links and highlights. Leave it on the theme color to follow the theme.">
             <div className="space-y-4 rounded-lg border border-border bg-card p-4">
-                <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Primary color">
-                    <button
-                        type="button"
-                        role="radio"
-                        aria-checked={!custom}
-                        onClick={() => choose(null)}
-                        className={cn("h-8 rounded-full border px-3 text-xs font-medium transition-colors", !custom ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:text-foreground")}
-                    >
-                        Theme color
-                    </button>
-                    {PrimaryColorPresets.map((c) => (
-                        <button
-                            key={c}
-                            type="button"
-                            role="radio"
-                            aria-checked={custom === c}
-                            aria-label={`Primary color ${c}`}
-                            onClick={() => choose(c)}
-                            className={cn("grid size-8 place-items-center rounded-full ring-offset-2 ring-offset-card transition-shadow", custom === c ? "ring-2 ring-foreground" : "hover:ring-2 hover:ring-border-strong")}
-                            style={{ background: c }}
-                        >
-                            {custom === c && <Check className="size-4" style={{ color: readableOn(c) }} />}
-                        </button>
-                    ))}
-                </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    <label className="relative grid size-9 cursor-pointer place-items-center overflow-hidden rounded-md border border-border" style={{ background: HEX.test(hex) ? hex : "var(--primary)" }}>
-                        <span className="sr-only">Pick a custom color</span>
-                        <input type="color" value={HEX.test(hex) ? hex : "#0891b2"} onChange={(e) => preview(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
-                    </label>
-                    <Input value={hex} onChange={(e) => preview(e.target.value.trim())} placeholder="#0891b2" aria-label="Custom hex color" className="w-32 font-mono" maxLength={7} />
-                    {hex && !HEX.test(hex) && <span className="text-xs text-danger">Use a hex color like #0891b2</span>}
+                    <ColorPicker label="Primary color" value={custom ?? (HEX.test(hex) ? hex : undefined)} onChange={preview} className="w-52" />
                     <div className="ml-auto flex items-center gap-2">
                         <Button size="sm">Preview button</Button>
                         {custom && (

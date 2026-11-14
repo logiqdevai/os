@@ -151,16 +151,6 @@ export const ProjectTabOptions: DropdownOption<"overview" | "tasks" | "timeline"
     { id: "settings", label: "Settings" },
 ];
 
-/** Semantic color tokens selectable for statuses, labels and projects. */
-export const ColorTokenFormOptions: DropdownOption<"neutral" | "info" | "success" | "warning" | "danger" | "violet">[] = [
-    { id: "neutral", label: "Gray" },
-    { id: "info", label: "Blue" },
-    { id: "success", label: "Green" },
-    { id: "warning", label: "Amber" },
-    { id: "danger", label: "Red" },
-    { id: "violet", label: "Violet" },
-];
-
 /** Timeline (Gantt) zoom levels. */
 export const TimelineZoomOptions: DropdownOption<"week" | "month" | "quarter">[] = [
     { id: "week", label: "Weeks" },

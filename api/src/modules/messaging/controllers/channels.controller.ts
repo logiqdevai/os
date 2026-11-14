@@ -44,6 +44,13 @@ export class ChannelsController {
         return this.channels.browse(ctx, query);
     }
 
+    @Get('sources')
+    @RequirePermission('messaging.channels.create')
+    @ApiOperation({ summary: 'Teams and projects a new channel can be created for, with their member ids' })
+    sources(@CurrentOrg() ctx: OrgContext, @Query(new ZodValidationPipe(z.object({ search: z.string().max(100).optional() }))) query: { search?: string }) {
+        return this.channels.sources(ctx, query.search);
+    }
+
     @Post()
     @RequirePermission('messaging.channels.create')
     @ApiOperation({ summary: 'Create a public or private channel' })

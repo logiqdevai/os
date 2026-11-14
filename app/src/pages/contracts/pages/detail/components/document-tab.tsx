@@ -33,7 +33,7 @@ export function DocumentTab({ contract, version, loading, error, onRetry }: { co
     const p = usePermissions();
     if (loading && !version) return <div className="space-y-3"><Skeleton className="h-10" /><Skeleton className="h-80" /></div>;
     if (error) return <ErrorState error={error} onRetry={onRetry} />;
-    if (!version) return <EmptyState title="No version yet" />;
+    if (!version) return <EmptyState title="Select a version" description="Choose a version from the dropdown above to see its document." />;
     const editable = version.editable && version.id === contract.current_version_id && p.can("contracts.contracts.update");
     return (
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">

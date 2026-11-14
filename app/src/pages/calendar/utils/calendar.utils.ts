@@ -1,4 +1,6 @@
 import { addDays, addMonths, addWeeks, endOfMonth, endOfWeek, format, isValid, parseISO, startOfDay, startOfMonth, startOfWeek } from "date-fns";
+import type { CSSProperties } from "react";
+import { HEX_COLOR } from "@/lib/color";
 import type { CalendarView } from "@/features/calendar/interfaces/calendar.interfaces";
 
 /** Visual map (semantic token classes) for the token color names stored on calendars / event types. */
@@ -18,8 +20,12 @@ const DOT: Record<string, string> = {
     violet: "bg-violet",
     neutral: "bg-stone",
 };
-export const chipClass = (color: string | null | undefined) => CHIP[color ?? "info"] ?? CHIP.info;
-export const dotClass = (color: string | null | undefined) => DOT[color ?? "info"] ?? DOT.info;
+const isHex = (color: string | null | undefined): color is string => !!color && HEX_COLOR.test(color);
+/** Token colors map to theme classes; a picked hex is rendered through `chipStyle` / `dotStyle` instead. */
+export const chipClass = (color: string | null | undefined) => (isHex(color) ? "text-foreground" : CHIP[color ?? "info"] ?? CHIP.info);
+export const dotClass = (color: string | null | undefined) => (isHex(color) ? "" : DOT[color ?? "info"] ?? DOT.info);
+export const chipStyle = (color: string | null | undefined): CSSProperties | undefined => (isHex(color) ? { borderLeftColor: color, backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)` } : undefined);
+export const dotStyle = (color: string | null | undefined): CSSProperties | undefined => (isHex(color) ? { backgroundColor: color } : undefined);
 
 export const WEEK_STARTS_ON = 1 as const;
 

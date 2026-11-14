@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -158,7 +159,7 @@ export function DealFormDialog({ open, onOpenChange, deal, defaults }: { open: b
                                         <FormItem><FormLabel>Value</FormLabel><FormControl><Input inputMode="decimal" placeholder="0" disabled={hasLineItems} {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                     <FormField control={form.control} name="currency" render={({ field }) => (
-                                        <FormItem><FormLabel>Currency</FormLabel><FormControl><Input placeholder={pipeline?.currency ?? "EUR"} maxLength={3} {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase())} /></FormControl><FormMessage /></FormItem>
+                                        <FormItem><FormLabel>Currency</FormLabel><FormControl><CurrencySelect value={field.value} onChange={field.onChange} emptyLabel="Pipeline default" /></FormControl><FormMessage /></FormItem>
                                     )} />
                                 </div>
                             )}

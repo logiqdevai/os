@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { TimezoneSelect } from "@/components/ui/timezone-select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -207,7 +208,7 @@ function JobFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
                         {kind === "CRON" && <FormField control={form.control} name="cron_expression" render={({ field }) => (<FormItem><FormLabel>Cron expression</FormLabel><FormControl><Input className="font-mono" placeholder="0 9 * * 1" {...field} /></FormControl><FormMessage /></FormItem>)} />}
                         {kind === "INTERVAL" && <FormField control={form.control} name="interval_seconds" render={({ field }) => (<FormItem><FormLabel>Every (seconds)</FormLabel><FormControl><Input type="number" min={30} {...field} value={(field.value as number | string | undefined) ?? ""} /></FormControl><FormMessage /></FormItem>)} />}
                         {kind === "ONCE" && <FormField control={form.control} name="run_at" render={({ field }) => (<FormItem><FormLabel>Run at</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />}
-                        <FormField control={form.control} name="timezone" render={({ field }) => (<FormItem><FormLabel>Timezone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="timezone" render={({ field }) => (<FormItem><FormLabel>Timezone</FormLabel><FormControl><TimezoneSelect value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
                         {kind !== "ONCE" && (
                             <div>
                                 <Button type="button" variant="outline" size="sm" loading={preview.isPending} onClick={() => preview.mutate({ kind, cron_expression: form.getValues("cron_expression"), interval_seconds: Number(form.getValues("interval_seconds")) || undefined, timezone: form.getValues("timezone") })}>Preview next runs</Button>

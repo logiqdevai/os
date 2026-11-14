@@ -144,8 +144,14 @@ export class ChannelsService {
         ]);
         const people = participants.filter((p) => p.membership).map((p) => ({ membership_id: p.membership_id, name: personName(p.membership!.user), profile_photo_url: p.membership!.user.profile_photo_url, job_title: p.membership!.job_title }));
         const { me, settings: _settings, membership_rules: _rules, dm_key: _dm, ...rest } = channel;
+        const [team, project] = await Promise.all([
+            channel.team_id ? this.prisma.team.findUnique({ where: { id: channel.team_id }, select: { id: true, name: true } }) : null,
+            channel.project_id ? this.prisma.project.findFirst({ where: { AND: [{ id: channel.project_id }, this.projectScope(ctx)] }, select: { id: true, name: true, code: true } }) : null,
+        ]);
         return {
             ...rest,
+            team,
+            project,
             label: DM_KINDS.includes(channel.kind) ? people.map((p) => p.name).join(', ') || 'Just you' : channel.name,
             participants: people,
             pin_count: pins,
@@ -161,11 +167,51 @@ export class ChannelsService {
         };
     }
 
+    /** Projects the caller may link a channel to (their project read scope), as a Prisma filter. */
+    private projectScope(ctx: OrgContext): Prisma.ProjectWhereInput {
+        const scope = ctx.scopeOf('projects.projects.read');
+        if (!scope) return { id: { in: [] } };
+        if (scope.organization) return {};
+        const or: Prisma.ProjectWhereInput[] = [{ id: { in: scope.project_ids } }, { team_id: { in: scope.team_ids } }, { branch_id: { in: scope.branch_ids } }, { company_id: { in: scope.customer_ids } }];
+        if (ctx.membership_id) or.push({ owner_membership_id: ctx.membership_id }, { members: { some: { membership_id: ctx.membership_id, is_active: true } } });
+        return { OR: or };
+    }
+
+    /** Teams and projects a new channel can be created for, with the people who belong to each (12 §7, §26). */
+    async sources(ctx: OrgContext, search?: string) {
+        const q = search?.trim();
+        const [teams, projects] = await Promise.all([
+            this.prisma.team.findMany({
+                where: { organization_id: ctx.organization_id, archived_at: null, ...(q && { name: { contains: q, mode: 'insensitive' } }) },
+                orderBy: { name: 'asc' }, take: 100,
+                select: { id: true, name: true, members: { where: { ended_at: null, membership: { status: 'ACTIVE' } }, select: { membership_id: true } } },
+            }),
+            ctx.can('projects.projects.read')
+                ? this.prisma.project.findMany({
+                    where: { AND: [{ organization_id: ctx.organization_id, archived_at: null }, this.projectScope(ctx), ...(q ? [{ OR: [{ name: { contains: q, mode: 'insensitive' as const } }, { code: { contains: q, mode: 'insensitive' as const } }] }] : [])] },
+                    orderBy: { updated_at: 'desc' }, take: 100,
+                    select: { id: true, name: true, code: true, owner_membership_id: true, members: { where: { is_active: true, left_at: null, membership: { status: 'ACTIVE' } }, select: { membership_id: true } } },
+                })
+                : [],
+        ]);
+        return {
+            teams: teams.map((t) => ({ id: t.id, name: t.name, member_ids: t.members.map((m) => m.membership_id) })),
+            projects: projects.map((p) => ({ id: p.id, name: p.name, code: p.code, member_ids: [...new Set([...(p.owner_membership_id ? [p.owner_membership_id] : []), ...p.members.map((m) => m.membership_id)])] })),
+        };
+    }
+
     async create(ctx: OrgContext, dto: CreateChannelDto) {
         const owner = this.access.requireMembership(ctx);
         const slug = slugifyChannel(dto.name);
         if (!slug) throw new BadRequestException({ message: 'Use letters or numbers in the channel name', code: 'channel_name_invalid' });
-        const others = (await this.access.assertOrgMembers(ctx, dto.membership_ids ?? [])).filter((id) => id !== owner);
+        // A linked team / project adds everyone in it; both must belong to this organization (and the project be visible to the caller).
+        const source = await this.sources(ctx);
+        const team = dto.team_id ? source.teams.find((t) => t.id === dto.team_id) : undefined;
+        const project = dto.project_id ? source.projects.find((p) => p.id === dto.project_id) : undefined;
+        if (dto.team_id && !team) throw new NotFoundException({ message: 'Team not found', code: 'team_not_found' });
+        if (dto.project_id && !project) throw new NotFoundException({ message: 'Project not found', code: 'project_not_found' });
+        const wanted = [...new Set([...(dto.membership_ids ?? []), ...(team?.member_ids ?? []), ...(project?.member_ids ?? [])])];
+        const others = (await this.access.assertOrgMembers(ctx, wanted)).filter((id) => id !== owner);
         const kind = dto.kind ?? 'PUBLIC';
         this.assertAutoJoin(ctx, dto.auto_join, kind);
         try {
@@ -182,6 +228,8 @@ export class ChannelsService {
                         topic: dto.topic ?? null,
                         purpose: dto.purpose ?? null,
                         auto_join: dto.auto_join ?? false,
+                        team_id: team?.id ?? null,
+                        project_id: project?.id ?? null,
                         owner_membership_id: owner,
                         created_by_membership_id: owner,
                         member_count: others.length + 1,

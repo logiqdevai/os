@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MoreHorizontal, Pencil, Plus, ShieldAlert, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -78,13 +79,15 @@ export function RaidTab({ projectId }: { projectId: string }) {
     return (
         <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex rounded-md border border-border p-0.5" role="tablist" aria-label="RAID section">
-                    {RaidKindOptions.map((o) => (
-                        <button key={o.id} role="tab" aria-selected={kind === o.id} onClick={() => setKind(o.id)} className={cn("rounded px-3 py-1 text-[13px] transition-colors", kind === o.id ? "bg-secondary font-medium text-foreground" : "text-muted-foreground hover:text-foreground")}>
-                            {o.label}{counts[o.id] !== undefined && <span className="ml-1.5 text-xs text-ash tabular">{counts[o.id]}</span>}
-                        </button>
-                    ))}
-                </div>
+                <Tabs value={kind} onValueChange={(v) => setKind(v as typeof kind)}>
+                    <TabsList>
+                        {RaidKindOptions.map((o) => (
+                            <TabsTrigger key={o.id} value={o.id}>
+                                {o.label}{counts[o.id] !== undefined && <span className="ml-1.5 text-xs text-muted-foreground tabular">{counts[o.id]}</span>}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+                </Tabs>
                 {canManage && <Button size="sm" onClick={() => edit(null)}><Plus /> {addLabel}</Button>}
             </div>
             {kind === "risks" && <DataTable columns={riskColumns} data={risks.data} rowKey={(r) => r.id} {...common} />}

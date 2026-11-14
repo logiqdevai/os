@@ -3,7 +3,7 @@ import { addDays, differenceInMinutes, format, isSameDay, isToday, max as maxDat
 import { Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CalendarEventItem } from "@/features/calendar/interfaces/calendar.interfaces";
-import { chipClass } from "../utils/calendar.utils";
+import { chipClass, chipStyle } from "../utils/calendar.utils";
 
 const HOUR_PX = 48;
 const MIN_PX = HOUR_PX / 60;
@@ -92,7 +92,7 @@ export function TimeGrid({ days, events, onSelectSlot, onOpenEvent }: TimeGridPr
                     {days.map((d) => (
                         <div key={d.toISOString()} className="min-w-0 space-y-0.5 border-l border-border-soft p-0.5">
                             {allDay.filter((e) => parseISO(e.starts_at) < addDays(startOfDay(d), 1) && parseISO(e.ends_at) > startOfDay(d)).map((e) => (
-                                <button key={e.key} type="button" onClick={() => onOpenEvent(e)} className={cn("block w-full truncate rounded-xs border-l-2 px-1 text-left text-[11px]", chipClass(e.color), e.status === "CANCELLED" && "line-through opacity-60")}>
+                                <button key={e.key} type="button" style={chipStyle(e.color)} onClick={() => onOpenEvent(e)} className={cn("block w-full truncate rounded-xs border-l-2 px-1 text-left text-[11px]", chipClass(e.color), e.status === "CANCELLED" && "line-through opacity-60")}>
                                     {e.title}
                                 </button>
                             ))}
@@ -135,7 +135,7 @@ export function TimeGrid({ days, events, onSelectSlot, onOpenEvent }: TimeGridPr
                                         e.my_response === "DECLINED" && "line-through opacity-50",
                                         e.status === "CANCELLED" && "line-through opacity-50",
                                     )}
-                                    style={{ top, height, left: `calc(${(col / n) * 100}% + 2px)`, width: `calc(${100 / n}% - 4px)` }}
+                                    style={{ ...chipStyle(e.color), top, height, left: `calc(${(col / n) * 100}% + 2px)`, width: `calc(${100 / n}% - 4px)` }}
                                 >
                                     <div className="flex items-center gap-1 font-medium">
                                         <span className="truncate">{e.title}</span>

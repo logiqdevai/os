@@ -1,6 +1,6 @@
-import { NavLink } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePermissions } from "@/hooks/use-permission";
-import { cn } from "@/lib/utils";
 import { MessagesPaths } from "../../messages-paths";
 
 /** Admin areas of Messages and the keys that open them (same keys as the API). */
@@ -13,24 +13,21 @@ export const MESSAGING_ADMIN_LINKS = [
     { to: MessagesPaths.adminIntegrations, label: "Integrations", anyOf: ["messaging.integrations.manage"] },
 ] as const;
 
-/** Horizontal tab-like navigation between the admin screens (scrolls on phones). */
+/** Tabs between the admin screens (the route is the tab; scrolls sideways on phones). Same shared Tabs as the other pages. */
 export function AdminNav() {
     const { can } = usePermissions();
+    const { pathname } = useLocation();
+    const navigate = useNavigate();
     const links = MESSAGING_ADMIN_LINKS.filter((l) => l.anyOf.some((k) => can(k)));
+    const path = pathname.replace(/\/+$/, "");
+    const active = [...links].sort((a, b) => b.to.length - a.to.length).find((l) => path === l.to || path.startsWith(l.to + "/"));
     return (
-        <nav aria-label="Messaging administration" className="-mx-4 mb-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-            <div className="flex w-max gap-1 border-b border-border">
-                {links.map((l) => (
-                    <NavLink
-                        key={l.to}
-                        to={l.to}
-                        end={"end" in l ? l.end : false}
-                        className={({ isActive }) => cn("-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-[13px]", isActive ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
-                    >
-                        {l.label}
-                    </NavLink>
-                ))}
-            </div>
-        </nav>
+        <Tabs value={active?.to ?? ""} onValueChange={(to) => navigate(to)} className="mb-4">
+            <nav aria-label="Messaging administration" className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+                <TabsList>
+                    {links.map((l) => <TabsTrigger key={l.to} value={l.to}>{l.label}</TabsTrigger>)}
+                </TabsList>
+            </nav>
+        </Tabs>
     );
 }

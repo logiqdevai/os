@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShieldAlert } from "lucide-react";
 import { Page, PageHeader } from "@/components/ui/page";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/data-table";
@@ -61,13 +62,11 @@ export default function RaidPage() {
     return (
         <Page>
             <PageHeader title="RAID log" description="Risks, issues and decisions across every project you can see." />
-            <div className="mb-3 flex rounded-md border border-border p-0.5 sm:w-max" role="tablist" aria-label="RAID section">
-                {RaidKindOptions.map((o) => (
-                    <button key={o.id} role="tab" aria-selected={kind === o.id} onClick={() => setFilter("kind", o.id === "risks" ? null : o.id)} className={cn("flex-1 rounded px-3 py-1 text-[13px] transition-colors sm:flex-none", kind === o.id ? "bg-secondary font-medium text-foreground" : "text-muted-foreground hover:text-foreground")}>
-                        {o.label}
-                    </button>
-                ))}
-            </div>
+            <Tabs value={kind} onValueChange={(v) => setFilter("kind", v === "risks" ? null : v)} className="mb-3">
+                <TabsList className="w-full sm:w-max">
+                    {RaidKindOptions.map((o) => <TabsTrigger key={o.id} value={o.id} className="flex-1 sm:flex-none">{o.label}</TabsTrigger>)}
+                </TabsList>
+            </Tabs>
             <TableToolbar search={search} onSearch={setSearch} placeholder="Search…">
                 {kind !== "decisions" && (
                     <>

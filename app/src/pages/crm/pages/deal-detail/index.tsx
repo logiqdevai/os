@@ -20,7 +20,7 @@ import { useAddDealContact, useArchiveDeal, useAssignDeal, useChangeDealStage, u
 import type { DealDetail, DealStageRef } from "@/features/crm/deals/interfaces/deals.interfaces";
 import { contactName } from "@/features/crm/common/interfaces/crm-common.interfaces";
 import { CrmPaths } from "../../crm-paths";
-import { DealStatusBadge, MemberChip, Money, Panel, RecordLink, toneDot } from "../../components/crm-ui";
+import { DealStatusBadge, MemberChip, Money, Panel, RecordLink, ToneDot } from "../../components/crm-ui";
 import { CloseDealDialog, type CloseDealTarget } from "../../components/close-deal-dialog";
 import { DealFormDialog } from "../../components/deal-form-dialog";
 import { RecordActivities } from "../../components/activity-items";
@@ -206,7 +206,7 @@ function StageStepper({ deal, onPick, disabled }: { deal: DealDetail; onPick: (s
                                             : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
                                 )}
                             >
-                                <span className={cn("size-2 rounded-full", current || passed ? toneDot(s.color) : "bg-border-strong")} />
+                                {current || passed ? <ToneDot tone={s.color} /> : <span className="size-2 rounded-full bg-border-strong" />}
                                 {s.name}
                                 {!s.is_won && !s.is_lost && <span className="text-muted-foreground tabular">{s.probability}%</span>}
                             </button>

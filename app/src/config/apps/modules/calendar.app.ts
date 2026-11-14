@@ -1,4 +1,4 @@
-import { Building2, Calendar, CalendarDays, Clock, Inbox, Layers, Link, List, Users } from "lucide-react";
+import { Building2, Calendar, CalendarDays, Clock, Inbox, Layers, Link, Users } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 
 /** 19 Calendar. Every key below exists in the permission catalog (api/prisma/seed/permission-catalog.ts). */
@@ -13,7 +13,6 @@ export const calendarApp: AppDefinition = {
     nav: [
         { items: [
             { label: "Calendar", to: "/calendar", icon: CalendarDays, end: true },
-            { label: "Agenda", to: "/calendar/agenda", icon: List },
             { label: "Team availability", to: "/calendar/team", icon: Users, permissions: ["calendar.availability.read"] },
         ] },
         { label: "Scheduling", items: [

@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import { CurrencySelect } from "@/components/ui/currency-select";
+import { TimezoneSelect } from "@/components/ui/timezone-select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Page, PageHeader, Section } from "@/components/ui/page";
@@ -11,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useOrganization, useUpdateOrganization } from "@/features/admin/organization/hooks/use-organization";
 import { organizationProfileSchema, type OrganizationProfileFormValues } from "@/features/admin/organization/validation-schemas/organization.schema";
 import { CountryOptions } from "@/config/constants/dropdowns/country.options";
-import { TimezoneOptions } from "@/config/constants/dropdowns/timezone.options";
 import { WeekStartOptions } from "@/config/constants/dropdowns/admin/access-form.options";
 
 const NONE = "__none";
@@ -76,14 +77,10 @@ export default function OrganizationProfilePage() {
                     </Section>
                     <Section title="Defaults">
                         <div className="grid gap-4 rounded-lg border border-border bg-card p-4 sm:grid-cols-2">
-                            {text("default_currency", "Currency", { maxLength: 3, placeholder: "EUR" })}
+                            <FormField control={form.control} name="default_currency" render={({ field }) => (<FormItem><FormLabel>Currency</FormLabel><FormControl><CurrencySelect value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="default_timezone" render={({ field }) => (
                                 <FormItem><FormLabel>Timezone</FormLabel>
-                                    <Select value={field.value} onValueChange={field.onChange}><FormControl><SelectTrigger aria-label="Timezone"><SelectValue /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            {!TimezoneOptions.some((t) => t.value === field.value) && field.value && <SelectItem value={field.value}>{field.value}</SelectItem>}
-                                            {TimezoneOptions.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                                        </SelectContent></Select>
+                                    <FormControl><TimezoneSelect value={field.value} onChange={field.onChange} /></FormControl>
                                 </FormItem>
                             )} />
                             {text("default_language", "Language", { placeholder: "en" })}

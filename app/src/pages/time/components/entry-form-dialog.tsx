@@ -17,6 +17,8 @@ interface Props {
     onOpenChange: (o: boolean) => void;
     entry?: TimeEntry | null;
     defaultDate?: string;
+    /** Prefill for a new entry (e.g. from a task). */
+    defaults?: { project_id?: string | null; task_id?: string | null };
 }
 
 /**
@@ -24,7 +26,7 @@ interface Props {
  * "Log time" button; editing autosaves every valid change (no Save button, "Done" closes; the row updates at once).
  * @perm time.entries.create_own / update_own · @api POST /time/entries · PATCH /time/entries/:id
  */
-export function EntryFormDialog({ open, onOpenChange, entry, defaultDate }: Props) {
+export function EntryFormDialog({ open, onOpenChange, entry, defaultDate, defaults }: Props) {
     const settings = useTimeSettings(open);
     const create = useCreateTimeEntry();
     const update = useUpdateTimeEntry({ inline: true });
@@ -48,14 +50,14 @@ export function EntryFormDialog({ open, onOpenChange, entry, defaultDate }: Prop
         setDuration(entry ? toClock(entry.duration_minutes) : "");
         setStart(entry?.start_at ? entry.start_at.slice(11, 16) : "");
         setEnd(entry?.end_at ? entry.end_at.slice(11, 16) : "");
-        setProjectId(entry?.project_id ?? null);
-        setTaskId(entry?.task_id ?? null);
+        setProjectId(entry?.project_id ?? defaults?.project_id ?? null);
+        setTaskId(entry?.task_id ?? defaults?.task_id ?? null);
         setActivityId(entry?.activity_type_id ?? null);
         setDescription(entry?.description ?? "");
         setBillable(entry?.is_billable ?? settings.data?.default_billable ?? true);
         setReason("");
         setDirty(false);
-    }, [open, entry, defaultDate, settings.data?.default_billable]);
+    }, [open, entry, defaultDate, defaults?.project_id, defaults?.task_id, settings.data?.default_billable]);
 
     const computed = start && end ? (() => {
         const [sh, sm] = start.split(":").map(Number);
