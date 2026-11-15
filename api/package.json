@@ -1,11 +1,12 @@
 {
-  "name": "lifehub-api",
+  "name": "os-api",
   "version": "0.0.1",
   "description": "",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "postinstall": "prisma generate",
     "build": "nest build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
