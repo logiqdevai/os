@@ -2,7 +2,12 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
+import { ExpressAdapter } from '@bull-board/express';
 import { AppModule } from './app.module';
+import { BULL_BOARD_ADAPTER } from './core/queues/queues.constants';
+import { BULL_BOARD_PATH } from './core/queues/bull-board.module';
+import { bullBoardAuthMiddleware } from './core/queues/bull-board.middleware';
 import { parseCorsUrls, resolveCorsOrigins } from './shared/config/cors';
 
 async function bootstrap() {
@@ -14,6 +19,10 @@ async function bootstrap() {
     next();
   });
   app.set('trust proxy', 1);
+
+  // Bull Board (queue dashboard) behind basic auth.
+  const bullBoard = app.get<ExpressAdapter>(BULL_BOARD_ADAPTER);
+  app.use(BULL_BOARD_PATH, bullBoardAuthMiddleware(app.get(ConfigService)), bullBoard.getRouter());
   app.useBodyParser('json', { limit: '10mb' });
 
   app.useGlobalPipes(

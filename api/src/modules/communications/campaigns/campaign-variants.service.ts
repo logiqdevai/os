@@ -6,6 +6,7 @@ import { EventsService } from '@/shared/events/events.service';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { branchScopeWhere, htmlToText, notFound } from '../common/comm.utils';
 import { SetVariantsInput } from './dto/campaign.dto';
+import { CommQueueService } from '../delivery/comm-queue.service';
 
 const LABELS = ['A', 'B', 'C', 'D', 'E'];
 const EDITABLE: CampaignStatus[] = [CampaignStatus.DRAFT, CampaignStatus.PENDING_APPROVAL, CampaignStatus.APPROVED];
@@ -37,6 +38,7 @@ export class CampaignVariantsService {
         private readonly prisma: PrismaService,
         private readonly audit: AuditService,
         private readonly events: EventsService,
+        private readonly queue: CommQueueService,
     ) { }
 
     private async campaign(ctx: OrgContext, id: string) {
@@ -121,7 +123,7 @@ export class CampaignVariantsService {
         return this.list(ctx, campaignId);
     }
 
-    /** Manual winner pick (before the test window ends). The runner then sends the winner to the holdout group. */
+    /** Manual winner pick (before the test window ends). A release-winner job then sends the winner to the holdout group. */
     async chooseWinner(ctx: OrgContext, campaignId: string, variantId: string) {
         const c = await this.campaign(ctx, campaignId);
         if (!c.ab_test_enabled) throw new BadRequestException({ message: 'This campaign has no A/B test', code: 'ab_not_enabled' });
@@ -130,6 +132,8 @@ export class CampaignVariantsService {
         const variant = await this.prisma.campaignVariant.findFirst({ where: { id: variantId, campaign_id: campaignId } });
         if (!variant) throw notFound('Variant', 'variant_not_found');
         await this.markWinner(campaignId, variantId);
+        // Send the winner to the holdout group now (a paused campaign gets it on resume).
+        await this.queue.enqueueWinnerRelease(campaignId, new Date());
         await this.audit.record(ctx, 'communications.campaign.ab_winner_selected', { resource_type: 'campaign', resource_id: campaignId, branch_id: c.branch_id, metadata: { variant_id: variantId, label: variant.label, manual: true, sensitive: true } });
         this.events.publish(ctx, {
             event_key: 'communications.campaign.ab_winner_selected', module: ModuleKey.COMMUNICATION, entity_type: RecordEntityType.CAMPAIGN, entity_id: campaignId,

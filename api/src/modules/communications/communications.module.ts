@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { CommProviderService } from './delivery/comm-provider.service';
 import { CommStatsService } from './delivery/comm-stats.service';
 import { CommDispatchService } from './delivery/comm-dispatch.service';
+import { CommQueueService } from './delivery/comm-queue.service';
+import { CommMessageProcessor } from './delivery/comm-message.processor';
+import { CampaignProcessor } from './campaigns/campaign.processor';
 import { AudienceService } from './audience/audience.service';
 import { ListsService } from './audience/lists.service';
 import { SegmentsService } from './audience/segments.service';
@@ -33,6 +36,8 @@ import { CommunicationsMcp } from './communications.mcp';
  * 11 Communication Center — outbound email & SMS (docs/features/11-communication-center.md).
  * Provider keys come from the organization's own IntegrationConnection (Resend / Twilio), never from .env.
  * Other modules send through CommDispatchService / MessagesService (exported) so consent, suppression and history stay in one place.
+ * Background sending runs on BullMQ: comm-messages (one job per send / retry) and comm-campaigns (start, A/B release,
+ * finalize, and the reconciliation sweep). See CommQueueService.
  */
 @Module({
     imports: [AiIntegrationModule],
@@ -41,7 +46,7 @@ import { CommunicationsMcp } from './communications.mcp';
         MessagesController, SendersController, TrackingController, TopicsController, CommAiController, CommThreadsController,
     ],
     providers: [
-        CommProviderService, CommStatsService, CommDispatchService, AudienceService, ListsService, SegmentsService, ComplianceService,
+        CommProviderService, CommStatsService, CommDispatchService, CommQueueService, CommMessageProcessor, CampaignProcessor, AudienceService, ListsService, SegmentsService, ComplianceService,
         SendersService, TemplatesService, CampaignsService, CampaignRunnerService, CampaignVariantsService, MessagesService, AnalyticsService, TopicsService, CommAiService, CommThreadsService, CommunicationsMcp,
     ],
     exports: [MessagesService, CommDispatchService, TemplatesService, CommProviderService],

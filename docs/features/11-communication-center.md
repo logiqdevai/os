@@ -374,6 +374,8 @@ Allow users to:
 * Draft scheduling
 * Queue management
 
+> **Background sending (BullMQ on Redis).** Sending runs on two queues. `comm-messages` holds one job per send: scheduled messages, campaign messages and every retry (backoff 2, 4 … min, 3 attempts). `comm-campaigns` holds the campaign steps: `start` at `next_run_at`, `release-winner` at the end of the A/B window or right after a manual pick, `finalize` (complete, or schedule the next recurring run), and a `sweep` every minute. The database stays the source of truth. Each job re-reads its row and claims it with a status change, so duplicate or stale jobs do nothing. The sweep re-queues anything overdue that Redis lost and recovers sends stuck in `SENDING`. Campaign throttling (`send_rate_per_hour`) is written as each message's `next_attempt_at`, and resume re-paces it from that moment. One-off sends from REST, MCP and other modules still make their first attempt immediately. Queues are visible in Bull Board at `/admin/queues` (basic auth `BULL_BOARD_USER` / `BULL_BOARD_PASSWORD`). `REDIS_URL` is required.
+
 
 > **Organization communication settings.** `CommSettings` (one row per organization) holds the approval policy (`approval_required`, `approval_min_recipients`), quiet hours, `max_marketing_per_week` frequency cap, `footer_address`, `double_opt_in_default`, retention periods for message bodies and event PII, and default language / time zone; edited with `communications.settings.manage`. Default senders are `CommSenderIdentity.is_default` per channel.
 ---

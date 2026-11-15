@@ -7,7 +7,7 @@ import { OrgContext } from '@/shared/authorization/interfaces/org-context.interf
 import { orderBy, paginate, skipTake } from '@/shared/utils/pagination/pagination.utils';
 import { branchScopeWhere, htmlToText, normalizeAddress, notFound, renderTemplate } from '../common/comm.utils';
 import { CommDispatchService } from '../delivery/comm-dispatch.service';
-import { CampaignRunnerService } from '../campaigns/campaign-runner.service';
+import { CommQueueService } from '../delivery/comm-queue.service';
 import { SendersService } from '../senders/senders.service';
 import { TemplatesService } from '../templates/templates.service';
 import { MessageQuery, SendMessageDto } from './dto/message.dto';
@@ -24,7 +24,7 @@ export class MessagesService {
         private readonly audit: AuditService,
         private readonly events: EventsService,
         private readonly dispatch: CommDispatchService,
-        private readonly runner: CampaignRunnerService,
+        private readonly queue: CommQueueService,
         private readonly senders: SendersService,
         private readonly templates: TemplatesService,
         private readonly threads: CommThreadsService,
@@ -214,6 +214,7 @@ export class MessagesService {
             metadata: { channel: dto.channel, kind, to, scheduled_at: scheduledAt?.toISOString() ?? null, template_id: dto.template_id ?? null, sensitive: status !== CommMessageStatus.DRAFT },
         });
         if (status === CommMessageStatus.QUEUED) await this.dispatch.dispatch(message.id);
+        if (status === CommMessageStatus.SCHEDULED) await this.queue.enqueueMessage(message);
         const result = await this.findOne(ctx, message.id);
         this.events.publish(ctx, {
             event_key: status === CommMessageStatus.DRAFT ? 'communications.message.drafted' : scheduledAt ? 'communications.message.scheduled' : 'communications.message.sent',
@@ -231,9 +232,14 @@ export class MessagesService {
         const message = await this.findOne(ctx, id);
         if (message.status !== CommMessageStatus.DRAFT) throw new ConflictException({ message: 'Only drafts can be sent', code: 'message_not_draft' });
         const scheduled = message.scheduled_at && message.scheduled_at.getTime() > Date.now();
-        await this.prisma.commMessage.update({ where: { id }, data: { status: scheduled ? CommMessageStatus.SCHEDULED : CommMessageStatus.QUEUED, queued_at: new Date(), sent_by_membership_id: ctx.membership_id } });
+        const queued = await this.prisma.commMessage.update({
+            where: { id },
+            data: { status: scheduled ? CommMessageStatus.SCHEDULED : CommMessageStatus.QUEUED, queued_at: new Date(), sent_by_membership_id: ctx.membership_id },
+            select: { id: true, attempt_count: true, scheduled_at: true, next_attempt_at: true },
+        });
         await this.audit.record(ctx, 'communications.message.sent', { resource_type: 'comm_message', resource_id: id, metadata: { channel: message.channel, to: message.to_address, sensitive: true } });
-        if (!scheduled) await this.dispatch.dispatch(id);
+        if (scheduled) await this.queue.enqueueMessage(queued);
+        else await this.dispatch.dispatch(id);
         const result = await this.findOne(ctx, id);
         this.events.publish(ctx, { event_key: 'communications.message.sent', module: ModuleKey.COMMUNICATION, entity_type: RecordEntityType.COMM_MESSAGE, entity_id: id, payload: { channel: message.channel, status: result.status } });
         return result;
@@ -306,10 +312,5 @@ export class MessagesService {
             project_id: thread.project_id ?? undefined,
             in_reply_to_message_id: last.id,
         });
-    }
-
-    /** Ask the runner to pick up scheduled messages (used after creating scheduled sends via automation). */
-    kick() {
-        this.runner.kick();
     }
 }

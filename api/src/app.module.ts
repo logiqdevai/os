@@ -12,6 +12,8 @@ import { HealthModule } from './modules/health/health.module';
 import { ConfigModule } from './shared/config/env/env.module';
 import { PlatformModule } from './shared/platform.module';
 import { McpModule } from './core/mcp/mcp.module';
+import { QueuesModule } from './core/queues/queues.module';
+import { BullBoardModule } from './core/queues/bull-board.module';
 import { FEATURE_MODULES } from './modules/feature-modules';
 
 @Module({
@@ -19,6 +21,8 @@ import { FEATURE_MODULES } from './modules/feature-modules';
     ConfigModule,
     ScheduleModule.forRoot(),
     RedisModule,
+    QueuesModule,
+    BullBoardModule,
     PlatformModule,
     MailModule,
     SmsModule,

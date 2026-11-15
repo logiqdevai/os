@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Interval } from '@nestjs/schedule';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import {
@@ -14,12 +13,19 @@ import { expandOccurrences } from '@/modules/calendar/utils/recurrence.utils';
 import { randomToken, renderTemplate } from '../common/comm.utils';
 import { AudienceCandidate, AudienceService } from '../audience/audience.service';
 import { CommDispatchService } from '../delivery/comm-dispatch.service';
+import { CommQueueService, MessageDue } from '../delivery/comm-queue.service';
 import { CampaignVariantsService, normalizeShares } from './campaign-variants.service';
 
-const TICK_MS = 15_000;
-const BATCH = 100;
-const CONCURRENCY = 5;
 const CHUNK = 500;
+/** Holdout recipients turned into messages per release-winner job (the job queues itself again for the rest). */
+const RELEASE_BATCH = 5000;
+/** A message stuck in SENDING this long (worker died mid-send) is queued again. */
+const STUCK_MS = 10 * 60_000;
+/** The sweep only re-queues work overdue by this much: anything newer is still on its way through the queue. */
+const SWEEP_GRACE_MS = 2 * 60_000;
+const SWEEP_TAKE = 500;
+/** A run still PENDING (messages being written) after this long belongs to a start job that died. */
+const START_TIMEOUT_MS = 60 * 60_000;
 
 /** Largest positive UTC offset: recipient-time-zone sends are claimed this early so eastern zones get their local time too. */
 const MAX_ZONE_LEAD_MS = 14 * 3600_000;
@@ -45,6 +51,13 @@ interface VariantContent {
     body_html: string | null;
     body_text: string | null;
 }
+/** Campaign throttling (send_rate_per_hour): message i of a batch is due at from + i * gap. */
+interface Pace {
+    from: number;
+    gap: number;
+    index: number;
+}
+const paceFor = (rate: number | null | undefined): Pace => ({ from: Date.now(), gap: rate ? 3_600_000 / rate : 0, index: 0 });
 
 /** Append UTM parameters to http(s) links in an HTML body. */
 function withUtm(html: string | null, utm: Record<string, string> | null): string | null {
@@ -61,21 +74,21 @@ function withUtm(html: string | null, utm: Record<string, string> | null): strin
 }
 
 /**
- * Background sender for module 11 (runs every 15 s via @nestjs/schedule; a Redis queue is not wired in this app).
- *  1. Starts due SCHEDULED campaigns: re-checks that the member who scheduled still holds communications.campaigns.send,
- *     resolves the audience (suppression + consent + topic), creates the CampaignRun, CampaignRecipients and one CommMessage
- *     each. With an A/B test only the test group gets messages (split over the variants); the rest waits as PENDING recipients.
- *     With send_in_recipient_timezone each message gets its own scheduled_at (the campaign's wall-clock time in the recipient zone).
- *  2. Releases A/B winners after the test window and sends the winner to the holdout group.
- *  3. Dispatches due QUEUED / SCHEDULED messages in batches (campaign throttling, paused campaigns skipped, retries with backoff).
- *  4. Completes campaigns with nothing left to send; recurring campaigns (RRULE) are rescheduled for their next run instead.
- * The QUEUED → SENDING transition is the per-message lock, so several API instances can run this safely.
+ * Campaign steps of module 11, run as BullMQ jobs (CampaignProcessor on the comm-campaigns queue; messages are sent by
+ * CommMessageProcessor on comm-messages). Each step re-reads the campaign and claims it with a status transition, so
+ * duplicate or late jobs do nothing and several API instances can run the workers.
+ *  - start: re-checks that the member who scheduled still holds communications.campaigns.send, resolves the audience
+ *    (suppression + consent + topic), creates the CampaignRun, CampaignRecipients and one CommMessage each, and queues the
+ *    messages (paced by send_rate_per_hour). With an A/B test only the test group gets messages (split over the variants);
+ *    the rest waits as PENDING recipients. With send_in_recipient_timezone each message gets its own scheduled_at.
+ *  - releaseWinner: after the test window (or a manual pick) chooses the winner and sends it to the holdout group.
+ *  - finalize: completes a campaign with nothing left to send; a recurring campaign (RRULE) is scheduled for its next run.
+ *  - resume: re-paces and re-queues the open messages of a resumed campaign.
+ *  - sweep (every minute): recovers stuck sends and re-queues any overdue work Redis may have lost.
  */
 @Injectable()
 export class CampaignRunnerService {
     private readonly logger = new Logger(CampaignRunnerService.name);
-    private running = false;
-    private again = false;
 
     constructor(
         private readonly prisma: PrismaService,
@@ -85,41 +98,13 @@ export class CampaignRunnerService {
         private readonly audience: AudienceService,
         private readonly dispatch: CommDispatchService,
         private readonly variants: CampaignVariantsService,
+        private readonly queue: CommQueueService,
     ) { }
 
-    /** Run a tick soon (after "send now", resume, or a one-off send). */
-    kick() {
-        setImmediate(() => void this.tick());
-    }
-
-    @Interval(TICK_MS)
-    async tick() {
-        if (this.running) {
-            this.again = true;
-            return;
-        }
-        this.running = true;
-        try {
-            do {
-                this.again = false;
-                await this.recoverStuck();
-                await this.startDueCampaigns();
-                await this.releaseWinners();
-                await this.dispatchDue();
-                await this.completeFinished();
-            } while (this.again);
-        } catch (error) {
-            this.logger.error(`campaign runner tick failed: ${(error as Error).message}`);
-        } finally {
-            this.running = false;
-        }
-    }
-
-    private async recoverStuck() {
-        await this.prisma.commMessage.updateMany({
-            where: { status: CommMessageStatus.SENDING, updated_at: { lt: new Date(Date.now() - 10 * 60_000) } },
-            data: { status: CommMessageStatus.QUEUED, next_attempt_at: new Date() },
-        });
+    /** When the A/B winner is picked: now after a manual pick, otherwise at the end of the test window. */
+    private winnerDecidesAt(c: { ab_winner_selected_at: Date | null; started_at: Date | null; ab_wait_hours: number | null }): Date | null {
+        if (c.ab_winner_selected_at) return c.ab_winner_selected_at;
+        return c.started_at ? new Date(c.started_at.getTime() + (c.ab_wait_hours ?? 4) * 3600_000) : null;
     }
 
     /** Context of the member / service account who scheduled the campaign (from the audit trail). */
@@ -145,33 +130,34 @@ export class CampaignRunnerService {
 
     private async failCampaign(ctx: OrgContext | null, campaign: { id: string; name: string; branch_id: string | null }, reason: string) {
         await this.prisma.campaign.update({ where: { id: campaign.id }, data: { status: CampaignStatus.FAILED, failure_reason: reason } });
+        await this.prisma.campaignRun.updateMany({ where: { campaign_id: campaign.id, status: { in: [CampaignRunStatus.PENDING, CampaignRunStatus.RUNNING] } }, data: { status: CampaignRunStatus.FAILED, completed_at: new Date() } });
         await this.audit.record(ctx, 'communications.campaign.failed', { resource_type: 'campaign', resource_id: campaign.id, branch_id: campaign.branch_id, metadata: { reason } });
         if (ctx) this.events.publish(ctx, { event_key: 'communications.campaign.failed', module: ModuleKey.COMMUNICATION, entity_type: RecordEntityType.CAMPAIGN, entity_id: campaign.id, payload: { name: campaign.name, reason } });
     }
 
-    private async startDueCampaigns() {
-        const now = new Date();
-        // next_run_at is the claim time: scheduled_at, or up to 14 h earlier when sending in each recipient's time zone.
-        const due = await this.prisma.campaign.findMany({
-            where: { status: CampaignStatus.SCHEDULED, archived_at: null, OR: [{ next_run_at: { lte: now } }, { next_run_at: null, scheduled_at: { lte: now } }] },
-            include: { audiences: true },
-            take: 5,
-            orderBy: { scheduled_at: 'asc' },
+    /** Job "start": claim a due SCHEDULED campaign (next_run_at is the claim time) and start a run. */
+    async start(campaignId: string): Promise<string> {
+        const campaign = await this.prisma.campaign.findUnique({ where: { id: campaignId }, include: { audiences: true } });
+        if (!campaign || campaign.status !== CampaignStatus.SCHEDULED || campaign.archived_at) return 'skipped:not_scheduled';
+        // next_run_at is scheduled_at, or up to 14 h earlier when sending in each recipient's time zone. Rescheduled → a newer job exists.
+        const claimAt = campaign.next_run_at ?? campaign.scheduled_at;
+        if (claimAt && claimAt.getTime() > Date.now() + 1000) return 'skipped:not_due';
+        const startedAt = new Date();
+        const claimed = await this.prisma.campaign.updateMany({
+            where: { id: campaign.id, status: CampaignStatus.SCHEDULED },
+            data: { status: CampaignStatus.SENDING, started_at: startedAt, next_run_at: null, ab_winner_selected_at: null },
         });
-        for (const campaign of due) {
-            const claimed = await this.prisma.campaign.updateMany({
-                where: { id: campaign.id, status: CampaignStatus.SCHEDULED },
-                data: { status: CampaignStatus.SENDING, started_at: new Date(), next_run_at: null, ab_winner_selected_at: null },
-            });
-            if (!claimed.count) continue;
-            if (campaign.ab_test_enabled) await this.prisma.campaignVariant.updateMany({ where: { campaign_id: campaign.id }, data: { is_winner: false } });
-            try {
-                await this.startCampaign({ ...campaign, ab_winner_selected_at: null, started_at: new Date() });
-            } catch (error) {
-                this.logger.error(`campaign ${campaign.id} could not start: ${(error as Error).message}`);
-                await this.failCampaign(null, campaign, `Could not start: ${(error as Error).message}`);
-            }
+        if (!claimed.count) return 'skipped:claimed';
+        if (campaign.ab_test_enabled) await this.prisma.campaignVariant.updateMany({ where: { campaign_id: campaign.id }, data: { is_winner: false } });
+        try {
+            await this.startCampaign({ ...campaign, ab_winner_selected_at: null, started_at: startedAt });
+        } catch (error) {
+            this.logger.error(`campaign ${campaign.id} could not start: ${(error as Error).message}`);
+            await this.failCampaign(null, campaign, `Could not start: ${(error as Error).message}`);
+            return 'failed';
         }
+        await this.queue.enqueueFinalize(campaign.id);
+        return 'started';
     }
 
     /** Local delivery time for a recipient: the campaign's wall-clock time in the recipient's zone (already past → now). */
@@ -184,12 +170,16 @@ export class CampaignRunnerService {
         return at.getTime() > Date.now() ? at : null;
     }
 
-    /** Create the CommMessages (and campaign recipient rows) for recipients with their content (campaign or A/B variant). */
-    private async createMessages(campaign: RunnerCampaign, run: { id: string }, ctx: OrgContext, rows: { r: SendRow; variant: VariantContent | null; recipientId?: string }[]) {
+    /**
+     * Create the CommMessages (and campaign recipient rows) for recipients with their content (campaign or A/B variant),
+     * and queue them chunk by chunk, so a large audience starts sending while the rest is still being written.
+     */
+    private async createMessages(campaign: RunnerCampaign, run: { id: string }, ctx: OrgContext, rows: { r: SendRow; variant: VariantContent | null; recipientId?: string }[], pace: Pace) {
         const utm = (campaign.utm ?? null) as Record<string, string> | null;
         const now = new Date();
         for (let i = 0; i < rows.length; i += CHUNK) {
             const chunk = rows.slice(i, i + CHUNK);
+            const due: MessageDue[] = [];
             const messages: Prisma.CommMessageCreateManyInput[] = [];
             const recipients: Prisma.CampaignRecipientCreateManyInput[] = [];
             const messageRecipients: Prisma.CommMessageRecipientCreateManyInput[] = [];
@@ -203,6 +193,8 @@ export class CampaignRunnerService {
                 const html = withUtm(variant?.body_html || campaign.body_html, utm);
                 const text = variant?.body_text || campaign.body_text;
                 const sendAt = this.recipientSendAt(campaign, r.timezone);
+                const pacedAt = pace.gap ? new Date(pace.from + pace.index++ * pace.gap) : null;
+                due.push({ id, attempt_count: 0, scheduled_at: sendAt, next_attempt_at: pacedAt });
                 messages.push({
                     id,
                     organization_id: campaign.organization_id,
@@ -236,6 +228,7 @@ export class CampaignRunnerService {
                     tracking_enabled: campaign.tracking_enabled,
                     unsubscribe_token,
                     queued_at: now,
+                    next_attempt_at: pacedAt,
                 });
                 if (recipientId) {
                     links.push(this.prisma.campaignRecipient.update({ where: { id: recipientId }, data: { message_id: id, status: CommRecipientStatus.QUEUED, scheduled_at: sendAt, variant_id: variant?.id ?? null, render_context: r.context as Prisma.InputJsonValue } }));
@@ -253,6 +246,7 @@ export class CampaignRunnerService {
                 ...(recipients.length ? [this.prisma.campaignRecipient.createMany({ data: recipients, skipDuplicates: true })] : []),
                 ...links,
             ]);
+            await this.queue.enqueueMessages(due);
         }
     }
 
@@ -264,11 +258,13 @@ export class CampaignRunnerService {
         }
         const resolved = await this.audience.resolveCampaign(campaign.organization_id, campaign);
         const runNumber = (await this.prisma.campaignRun.count({ where: { campaign_id: campaign.id } })) + 1;
+        // PENDING while the messages are written (they start sending chunk by chunk); finalize waits until it is RUNNING.
         const run = await this.prisma.campaignRun.create({
-            data: { campaign_id: campaign.id, run_number: runNumber, status: CampaignRunStatus.RUNNING, scheduled_for: campaign.scheduled_at ?? new Date(), started_at: new Date(), audience_count: resolved.counts.included },
+            data: { campaign_id: campaign.id, run_number: runNumber, status: CampaignRunStatus.PENDING, scheduled_for: campaign.scheduled_at ?? new Date(), started_at: new Date(), audience_count: resolved.counts.included },
         });
 
         // A/B test: shuffle, send the variants to the test group, keep the rest as PENDING recipients for the winner.
+        const pace = paceFor(campaign.send_rate_per_hour);
         const variants = campaign.ab_test_enabled ? await this.prisma.campaignVariant.findMany({ where: { campaign_id: campaign.id }, orderBy: { sort_order: 'asc' } }) : [];
         let holdoutCount = 0;
         if (variants.length >= 2) {
@@ -289,7 +285,8 @@ export class CampaignRunnerService {
                 for (const r of test.slice(offset, offset + size)) rows.push({ r, variant: v });
                 offset += size;
             });
-            await this.createMessages(campaign, run, ctx, rows);
+            // Holdout rows first: test messages start sending as soon as they are queued, and finalize must already see
+            // the PENDING holdout, or it could complete the campaign before the winner is sent.
             holdoutCount = holdout.length;
             for (let i = 0; i < holdout.length; i += CHUNK) {
                 await this.prisma.campaignRecipient.createMany({
@@ -301,9 +298,12 @@ export class CampaignRunnerService {
                     skipDuplicates: true,
                 });
             }
+            await this.createMessages(campaign, run, ctx, rows, pace);
         } else {
-            await this.createMessages(campaign, run, ctx, resolved.included.map((r) => ({ r, variant: null })));
+            await this.createMessages(campaign, run, ctx, resolved.included.map((r) => ({ r, variant: null })), pace);
         }
+        const decideAt = this.winnerDecidesAt(campaign);
+        if (holdoutCount && decideAt) await this.queue.enqueueWinnerRelease(campaign.id, decideAt);
 
         if (resolved.excluded.length) {
             const seen = new Set<string>();
@@ -318,6 +318,7 @@ export class CampaignRunnerService {
             for (let i = 0; i < rows.length; i += CHUNK) await this.prisma.campaignRecipient.createMany({ data: rows.slice(i, i + CHUNK), skipDuplicates: true });
         }
         await this.prisma.campaign.update({ where: { id: campaign.id }, data: { audience_count: resolved.counts.included, excluded_count: resolved.counts.excluded } });
+        await this.prisma.campaignRun.updateMany({ where: { id: run.id, status: CampaignRunStatus.PENDING }, data: { status: CampaignRunStatus.RUNNING } });
         await this.audit.record(ctx, 'communications.campaign.started', {
             resource_type: 'campaign', resource_id: campaign.id, branch_id: campaign.branch_id,
             metadata: { run_id: run.id, run_number: runNumber, audience_count: resolved.counts.included, excluded: resolved.counts.by_reason, ab_variants: variants.length, ab_holdout: holdoutCount },
@@ -329,128 +330,214 @@ export class CampaignRunnerService {
         });
     }
 
-    /** A/B: after the test window (or a manual pick), choose the winner and send it to the holdout group. */
-    private async releaseWinners() {
-        const now = Date.now();
-        const tests = await this.prisma.campaign.findMany({
-            where: { status: CampaignStatus.SENDING, ab_test_enabled: true, recipients: { some: { status: CommRecipientStatus.PENDING, message_id: null } } },
-            include: { audiences: true },
-            take: 10,
-        });
-        for (const c of tests) {
-            const due = !!c.ab_winner_selected_at || (!!c.started_at && now >= c.started_at.getTime() + (c.ab_wait_hours ?? 4) * 3600_000);
-            if (!due) continue;
-            const ctx = await this.schedulerContext(c);
-            if (!ctx || !ctx.can('communications.campaigns.send')) {
-                await this.failCampaign(ctx, c, 'The member who scheduled this campaign no longer has permission to send campaigns.');
-                continue;
-            }
-            let winner = await this.prisma.campaignVariant.findFirst({ where: { campaign_id: c.id, is_winner: true } });
-            if (!winner) {
-                const best = await this.variants.bestVariant(c);
-                if (!best) continue;
-                await this.variants.markWinner(c.id, best.id);
-                winner = await this.prisma.campaignVariant.findUnique({ where: { id: best.id } });
-                await this.audit.record(ctx, 'communications.campaign.ab_winner_selected', { resource_type: 'campaign', resource_id: c.id, branch_id: c.branch_id, metadata: { variant_id: best.id, label: best.label, rate: best.rate, metric: c.ab_metric, manual: false } });
-                this.events.publish(ctx, {
-                    event_key: 'communications.campaign.ab_winner_selected', module: ModuleKey.COMMUNICATION, entity_type: RecordEntityType.CAMPAIGN, entity_id: c.id,
-                    payload: { name: c.name, variant_id: best.id, label: best.label, owner_membership_id: c.owner_membership_id },
-                    activity: { summary: `Variant ${best.label} won the A/B test of "${c.name}"`, entity_label: c.name },
-                });
-            }
-            if (!winner) continue;
-            const pending = await this.prisma.campaignRecipient.findMany({ where: { campaign_id: c.id, status: CommRecipientStatus.PENDING, message_id: null }, take: 5000 });
-            const runId = pending[0]?.run_id ?? (await this.prisma.campaignRun.findFirst({ where: { campaign_id: c.id }, orderBy: { run_number: 'desc' }, select: { id: true } }))?.id;
-            if (!runId) continue;
-            // Suppression, consent and topic are checked again per message by the dispatcher (they may change during the test).
-            const rows = pending.map((p) => {
-                const { __timezone, __language, ...context } = (p.render_context ?? {}) as Record<string, unknown>;
-                return {
-                    recipientId: p.id,
-                    variant: winner,
-                    r: { kind: p.kind, address: p.address, name: p.name, contact_id: p.contact_id, membership_id: p.membership_id, language: (__language as string | null) ?? null, timezone: (__timezone as string | null) ?? null, context },
-                };
+    /** Job "release-winner": after the test window (or a manual pick), choose the A/B winner and send it to the holdout group. */
+    async releaseWinner(campaignId: string): Promise<string> {
+        const c = await this.prisma.campaign.findUnique({ where: { id: campaignId }, include: { audiences: true } });
+        // Paused: resume queues this step again.
+        if (!c || c.status !== CampaignStatus.SENDING || !c.ab_test_enabled) return 'skipped:not_sending';
+        const decideAt = this.winnerDecidesAt(c);
+        if (!decideAt || decideAt.getTime() > Date.now() + 1000) return 'skipped:not_due';
+        const ctx = await this.schedulerContext(c);
+        if (!ctx || !ctx.can('communications.campaigns.send')) {
+            await this.failCampaign(ctx, c, 'The member who scheduled this campaign no longer has permission to send campaigns.');
+            return 'failed:permission';
+        }
+        let winner = await this.prisma.campaignVariant.findFirst({ where: { campaign_id: c.id, is_winner: true } });
+        if (!winner) {
+            const best = await this.variants.bestVariant(c);
+            if (!best) return 'skipped:no_variants';
+            await this.variants.markWinner(c.id, best.id);
+            winner = await this.prisma.campaignVariant.findUnique({ where: { id: best.id } });
+            await this.audit.record(ctx, 'communications.campaign.ab_winner_selected', { resource_type: 'campaign', resource_id: c.id, branch_id: c.branch_id, metadata: { variant_id: best.id, label: best.label, rate: best.rate, metric: c.ab_metric, manual: false } });
+            this.events.publish(ctx, {
+                event_key: 'communications.campaign.ab_winner_selected', module: ModuleKey.COMMUNICATION, entity_type: RecordEntityType.CAMPAIGN, entity_id: c.id,
+                payload: { name: c.name, variant_id: best.id, label: best.label, owner_membership_id: c.owner_membership_id },
+                activity: { summary: `Variant ${best.label} won the A/B test of "${c.name}"`, entity_label: c.name },
             });
-            await this.createMessages(c, { id: runId }, ctx, rows);
-            this.again = true;
         }
-    }
-
-    private async dispatchDue() {
-        const now = new Date();
-        const candidates = await this.prisma.commMessage.findMany({
-            where: {
-                status: { in: [CommMessageStatus.QUEUED, CommMessageStatus.SCHEDULED] },
-                deleted_at: null,
-                AND: [
-                    { OR: [{ scheduled_at: null }, { scheduled_at: { lte: now } }] },
-                    { OR: [{ next_attempt_at: null }, { next_attempt_at: { lte: now } }] },
-                    { OR: [{ campaign_id: null }, { campaign: { status: CampaignStatus.SENDING } }] },
-                ],
-            },
-            select: { id: true, campaign_id: true, campaign: { select: { send_rate_per_hour: true } } },
-            orderBy: [{ priority: 'desc' }, { created_at: 'asc' }],
-            take: BATCH * 3,
+        if (!winner) return 'skipped:no_winner';
+        const pending = await this.prisma.campaignRecipient.findMany({ where: { campaign_id: c.id, status: CommRecipientStatus.PENDING, message_id: null }, take: RELEASE_BATCH, orderBy: { id: 'asc' } });
+        if (!pending.length) {
+            await this.queue.enqueueFinalize(c.id);
+            return 'released';
+        }
+        const runId = pending[0]?.run_id ?? (await this.prisma.campaignRun.findFirst({ where: { campaign_id: c.id }, orderBy: { run_number: 'desc' }, select: { id: true } }))?.id;
+        if (!runId) return 'skipped:no_run';
+        // Suppression, consent and topic are checked again per message by the dispatcher (they may change during the test).
+        const rows = pending.map((p) => {
+            const { __timezone, __language, ...context } = (p.render_context ?? {}) as Record<string, unknown>;
+            return {
+                recipientId: p.id,
+                variant: winner,
+                r: { kind: p.kind, address: p.address, name: p.name, contact_id: p.contact_id, membership_id: p.membership_id, language: (__language as string | null) ?? null, timezone: (__timezone as string | null) ?? null, context },
+            };
         });
-        const perCampaign = new Map<string, number>();
-        const batch: string[] = [];
-        for (const m of candidates) {
-            if (batch.length >= BATCH) break;
-            if (m.campaign_id && m.campaign?.send_rate_per_hour) {
-                const cap = Math.max(1, Math.ceil((m.campaign.send_rate_per_hour * TICK_MS) / 3_600_000));
-                const used = perCampaign.get(m.campaign_id) ?? 0;
-                if (used >= cap) continue;
-                perCampaign.set(m.campaign_id, used + 1);
-            }
-            batch.push(m.id);
+        // Throttled campaigns continue pacing after the messages already waiting in the queue.
+        const pace = paceFor(c.send_rate_per_hour);
+        if (pace.gap) {
+            const last = await this.prisma.commMessage.findFirst({ where: { campaign_id: c.id, status: { in: [CommMessageStatus.QUEUED, CommMessageStatus.SCHEDULED] }, next_attempt_at: { not: null } }, orderBy: { next_attempt_at: 'desc' }, select: { next_attempt_at: true } });
+            if (last?.next_attempt_at) pace.from = Math.max(pace.from, last.next_attempt_at.getTime() + pace.gap);
         }
-        for (let i = 0; i < batch.length; i += CONCURRENCY) {
-            await Promise.all(batch.slice(i, i + CONCURRENCY).map((id) => this.dispatch.dispatch(id).catch((e) => this.logger.warn(`dispatch ${id}: ${(e as Error).message}`))));
-        }
-        if (batch.length === BATCH) this.again = true;
+        await this.createMessages(c, { id: runId }, ctx, rows, pace);
+        // More holdout recipients than one batch: continue right away in a new job.
+        if (pending.length === RELEASE_BATCH) await this.queue.enqueueWinnerRelease(c.id, new Date());
+        else await this.queue.enqueueFinalize(c.id);
+        return 'released';
     }
 
-    private async completeFinished() {
-        const sending = await this.prisma.campaign.findMany({
-            where: { status: CampaignStatus.SENDING },
+    /** Job "finalize": complete a SENDING campaign with nothing left to send, or schedule the next run of a recurring one. */
+    async finalize(campaignId: string): Promise<string> {
+        const c = await this.prisma.campaign.findUnique({
+            where: { id: campaignId },
             select: {
-                id: true, name: true, organization_id: true, owner_membership_id: true, branch_id: true, sent_count: true, failed_count: true,
+                id: true, name: true, status: true, organization_id: true, owner_membership_id: true, branch_id: true, sent_count: true, failed_count: true,
                 scheduled_at: true, schedule_timezone: true, recurrence_rule: true, recurrence_ends_at: true, send_in_recipient_timezone: true,
             },
         });
-        for (const c of sending) {
-            const open = await this.prisma.commMessage.count({ where: { campaign_id: c.id, status: { in: [CommMessageStatus.QUEUED, CommMessageStatus.SENDING, CommMessageStatus.SCHEDULED] } } });
-            if (open) continue;
-            // An A/B holdout group is still waiting for the winner.
-            if (await this.prisma.campaignRecipient.count({ where: { campaign_id: c.id, status: CommRecipientStatus.PENDING, message_id: null } })) continue;
-            const now = new Date();
-            const next = await this.nextOccurrence(c);
-            if (next) {
-                // Recurring campaign: schedule the next run (a new CampaignRun with a freshly resolved audience).
-                const rescheduled = await this.prisma.campaign.updateMany({
-                    where: { id: c.id, status: CampaignStatus.SENDING },
-                    data: { status: CampaignStatus.SCHEDULED, scheduled_at: next, next_run_at: claimTime(next, c.send_in_recipient_timezone) },
-                });
-                if (!rescheduled.count) continue;
-                await this.prisma.campaignRun.updateMany({ where: { campaign_id: c.id, status: CampaignRunStatus.RUNNING }, data: { status: CampaignRunStatus.COMPLETED, completed_at: now } });
-                const ctx = await this.schedulerContext(c);
-                await this.audit.record(ctx, 'communications.campaign.run_completed', { resource_type: 'campaign', resource_id: c.id, branch_id: c.branch_id, metadata: { next_run_at: next.toISOString() } });
-                if (ctx) this.events.publish(ctx, { event_key: 'communications.campaign.run_completed', module: ModuleKey.COMMUNICATION, entity_type: RecordEntityType.CAMPAIGN, entity_id: c.id, payload: { name: c.name, next_run_at: next.toISOString() } });
-                continue;
-            }
-            const done = await this.prisma.campaign.updateMany({ where: { id: c.id, status: CampaignStatus.SENDING }, data: { status: CampaignStatus.COMPLETED, completed_at: now, next_run_at: null } });
-            if (!done.count) continue;
+        if (!c || c.status !== CampaignStatus.SENDING) return 'skipped:not_sending';
+        // The start job is still writing messages; it queues a finalize when done.
+        if (await this.prisma.campaignRun.count({ where: { campaign_id: c.id, status: CampaignRunStatus.PENDING } })) return 'starting';
+        const open = await this.prisma.commMessage.count({ where: { campaign_id: c.id, status: { in: [CommMessageStatus.QUEUED, CommMessageStatus.SENDING, CommMessageStatus.SCHEDULED] } } });
+        if (open) return 'open';
+        // An A/B holdout group is still waiting for the winner.
+        if (await this.prisma.campaignRecipient.count({ where: { campaign_id: c.id, status: CommRecipientStatus.PENDING, message_id: null } })) return 'waiting_for_winner';
+        const now = new Date();
+        const next = await this.nextOccurrence(c);
+        if (next) {
+            // Recurring campaign: schedule the next run (a new CampaignRun with a freshly resolved audience).
+            const next_run_at = claimTime(next, c.send_in_recipient_timezone);
+            const rescheduled = await this.prisma.campaign.updateMany({
+                where: { id: c.id, status: CampaignStatus.SENDING },
+                data: { status: CampaignStatus.SCHEDULED, scheduled_at: next, next_run_at },
+            });
+            if (!rescheduled.count) return 'skipped:claimed';
             await this.prisma.campaignRun.updateMany({ where: { campaign_id: c.id, status: CampaignRunStatus.RUNNING }, data: { status: CampaignRunStatus.COMPLETED, completed_at: now } });
+            await this.queue.enqueueCampaignStart({ id: c.id, next_run_at });
             const ctx = await this.schedulerContext(c);
-            await this.audit.record(ctx, 'communications.campaign.completed', { resource_type: 'campaign', resource_id: c.id, branch_id: c.branch_id, metadata: { sent_count: c.sent_count, failed_count: c.failed_count } });
-            if (ctx) {
-                this.events.publish(ctx, {
-                    event_key: 'communications.campaign.completed', module: ModuleKey.COMMUNICATION, entity_type: RecordEntityType.CAMPAIGN, entity_id: c.id,
-                    payload: { name: c.name, sent_count: c.sent_count, failed_count: c.failed_count, owner_membership_id: c.owner_membership_id },
-                    activity: { summary: `Campaign "${c.name}" finished sending`, entity_label: c.name },
-                });
-            }
+            await this.audit.record(ctx, 'communications.campaign.run_completed', { resource_type: 'campaign', resource_id: c.id, branch_id: c.branch_id, metadata: { next_run_at: next.toISOString() } });
+            if (ctx) this.events.publish(ctx, { event_key: 'communications.campaign.run_completed', module: ModuleKey.COMMUNICATION, entity_type: RecordEntityType.CAMPAIGN, entity_id: c.id, payload: { name: c.name, next_run_at: next.toISOString() } });
+            return 'rescheduled';
         }
+        const done = await this.prisma.campaign.updateMany({ where: { id: c.id, status: CampaignStatus.SENDING }, data: { status: CampaignStatus.COMPLETED, completed_at: now, next_run_at: null } });
+        if (!done.count) return 'skipped:claimed';
+        await this.prisma.campaignRun.updateMany({ where: { campaign_id: c.id, status: CampaignRunStatus.RUNNING }, data: { status: CampaignRunStatus.COMPLETED, completed_at: now } });
+        const ctx = await this.schedulerContext(c);
+        await this.audit.record(ctx, 'communications.campaign.completed', { resource_type: 'campaign', resource_id: c.id, branch_id: c.branch_id, metadata: { sent_count: c.sent_count, failed_count: c.failed_count } });
+        if (ctx) {
+            this.events.publish(ctx, {
+                event_key: 'communications.campaign.completed', module: ModuleKey.COMMUNICATION, entity_type: RecordEntityType.CAMPAIGN, entity_id: c.id,
+                payload: { name: c.name, sent_count: c.sent_count, failed_count: c.failed_count, owner_membership_id: c.owner_membership_id },
+                activity: { summary: `Campaign "${c.name}" finished sending`, entity_label: c.name },
+            });
+        }
+        return 'completed';
+    }
+
+    /**
+     * After a campaign is resumed: its message jobs were skipped while it was paused, so give every open message a fresh
+     * due time (paced from now when the campaign is throttled, otherwise now) and queue it again, plus the A/B release.
+     */
+    async resume(campaignId: string) {
+        const c = await this.prisma.campaign.findUnique({ where: { id: campaignId }, select: { id: true, status: true, send_rate_per_hour: true, ab_test_enabled: true, ab_winner_selected_at: true, started_at: true, ab_wait_hours: true } });
+        if (!c || c.status !== CampaignStatus.SENDING) return;
+        const now = new Date();
+        const open = [CommMessageStatus.QUEUED, CommMessageStatus.SCHEDULED];
+        if (c.send_rate_per_hour) {
+            const gapMs = 3_600_000 / c.send_rate_per_hour;
+            // Columns are timestamp(3) holding UTC; the ISO literal's zone suffix is ignored by the cast.
+            await this.prisma.$executeRaw`
+                UPDATE comm_messages m
+                SET next_attempt_at = ${now.toISOString()}::timestamp + ((r.rn - 1) * ${gapMs}::float8) * interval '1 millisecond'
+                FROM (
+                    SELECT id, row_number() OVER (ORDER BY created_at, id) AS rn
+                    FROM comm_messages
+                    WHERE campaign_id = ${c.id} AND status IN ('QUEUED', 'SCHEDULED') AND deleted_at IS NULL
+                ) r
+                WHERE m.id = r.id`;
+        } else {
+            await this.prisma.commMessage.updateMany({ where: { campaign_id: c.id, status: { in: open }, deleted_at: null }, data: { next_attempt_at: now } });
+        }
+        let cursor: string | undefined;
+        for (;;) {
+            const page = await this.prisma.commMessage.findMany({
+                where: { campaign_id: c.id, status: { in: open }, deleted_at: null },
+                select: { id: true, attempt_count: true, scheduled_at: true, next_attempt_at: true },
+                orderBy: { id: 'asc' },
+                take: 1000,
+                ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+            });
+            if (!page.length) break;
+            await this.queue.enqueueMessages(page);
+            cursor = page[page.length - 1].id;
+        }
+        const decideAt = c.ab_test_enabled ? this.winnerDecidesAt(c) : null;
+        if (decideAt) await this.queue.enqueueWinnerRelease(c.id, decideAt, true);
+        await this.queue.enqueueFinalize(c.id);
+    }
+
+    /**
+     * Job "sweep" (every minute, one instance): the safety net that keeps the queues and the database in step.
+     * Re-queues sends stuck in SENDING (a worker died mid-send) and any overdue message, campaign start, A/B release or
+     * completion check whose job is gone (Redis flushed, enqueue failed after the row was written, process crashed).
+     */
+    async sweep(): Promise<string> {
+        const now = Date.now();
+        const cutoff = new Date(now - SWEEP_GRACE_MS);
+
+        const stuck = await this.prisma.commMessage.findMany({ where: { status: CommMessageStatus.SENDING, updated_at: { lt: new Date(now - STUCK_MS) } }, select: { id: true }, take: SWEEP_TAKE });
+        if (stuck.length) {
+            await this.prisma.commMessage.updateMany({ where: { id: { in: stuck.map((m) => m.id) }, status: CommMessageStatus.SENDING }, data: { status: CommMessageStatus.QUEUED, next_attempt_at: new Date(now) } });
+        }
+
+        const overdue = await this.prisma.commMessage.findMany({
+            where: {
+                status: { in: [CommMessageStatus.QUEUED, CommMessageStatus.SCHEDULED] },
+                deleted_at: null,
+                updated_at: { lte: cutoff },
+                AND: [
+                    { OR: [{ scheduled_at: null }, { scheduled_at: { lte: cutoff } }] },
+                    { OR: [{ next_attempt_at: null }, { next_attempt_at: { lte: cutoff } }] },
+                    { OR: [{ campaign_id: null }, { campaign: { status: CampaignStatus.SENDING } }] },
+                ],
+            },
+            select: { id: true, attempt_count: true, scheduled_at: true, next_attempt_at: true },
+            orderBy: { created_at: 'asc' },
+            take: SWEEP_TAKE,
+        });
+        const requeued = await this.queue.ensureMessages(overdue);
+        if (stuck.length) {
+            await this.queue.enqueueMessages(await this.prisma.commMessage.findMany({ where: { id: { in: stuck.map((m) => m.id) }, status: CommMessageStatus.QUEUED }, select: { id: true, attempt_count: true, scheduled_at: true, next_attempt_at: true } }));
+        }
+
+        const due = await this.prisma.campaign.findMany({
+            where: { status: CampaignStatus.SCHEDULED, archived_at: null, OR: [{ next_run_at: { lte: new Date(now) } }, { next_run_at: null, scheduled_at: { lte: new Date(now) } }] },
+            select: { id: true, next_run_at: true },
+            take: SWEEP_TAKE,
+        });
+        for (const c of due) await this.queue.enqueueCampaignStart(c, true);
+
+        // A start that died half-way (process killed while writing messages) leaves its run PENDING: fail it visibly.
+        const interrupted = await this.prisma.campaignRun.findMany({
+            where: { status: CampaignRunStatus.PENDING, started_at: { lt: new Date(now - START_TIMEOUT_MS) }, campaign: { status: CampaignStatus.SENDING } },
+            select: { campaign: { select: { id: true, name: true, branch_id: true } } },
+        });
+        for (const { campaign } of interrupted) {
+            await this.failCampaign(null, campaign, 'Sending was interrupted while the messages were being prepared. Duplicate the campaign to send it again.');
+        }
+
+        const sending = await this.prisma.campaign.findMany({
+            where: { status: CampaignStatus.SENDING },
+            select: { id: true, ab_test_enabled: true, ab_winner_selected_at: true, started_at: true, ab_wait_hours: true },
+        });
+        for (const c of sending) {
+            const decideAt = c.ab_test_enabled ? this.winnerDecidesAt(c) : null;
+            if (decideAt && decideAt.getTime() <= now - SWEEP_GRACE_MS && (await this.prisma.campaignRecipient.count({ where: { campaign_id: c.id, status: CommRecipientStatus.PENDING, message_id: null } }))) {
+                await this.queue.enqueueWinnerRelease(c.id, decideAt, true);
+            }
+            await this.queue.enqueueFinalize(c.id);
+        }
+        if (stuck.length || requeued) this.logger.warn(`sweep: recovered ${stuck.length} stuck send(s), re-queued ${requeued} overdue message(s)`);
+        return `stuck=${stuck.length} requeued=${requeued} starts=${due.length} sending=${sending.length}`;
     }
 
     /** Next start of a recurring campaign after the run that just finished (the series is anchored at the first run). */

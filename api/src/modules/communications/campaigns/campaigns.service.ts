@@ -12,6 +12,7 @@ import { branchScopeWhere, extractVariables, htmlToText, normalizeAddress, notFo
 import { AudienceService } from '../audience/audience.service';
 import { CommProviderService } from '../delivery/comm-provider.service';
 import { CommDispatchService } from '../delivery/comm-dispatch.service';
+import { CommQueueService } from '../delivery/comm-queue.service';
 import { CampaignRunnerService, claimTime } from './campaign-runner.service';
 import { parseRRule } from '@/modules/calendar/utils/recurrence.utils';
 import { DateTime } from 'luxon';
@@ -35,7 +36,8 @@ const PERSON = { select: { id: true, user: { select: { display_name: true, first
 
 /**
  * Campaigns (11 "Marketing Campaigns", "Scheduling", "Internal Collaboration"): draft → (approval) → schedule / send now →
- * background runner (CampaignRunnerService) resolves the audience, creates one CommMessage per recipient and sends in batches.
+ * a "start" job on the comm-campaigns queue (CampaignRunnerService) resolves the audience, creates one CommMessage per
+ * recipient and queues one send job each on comm-messages.
  */
 @Injectable()
 export class CampaignsService {
@@ -47,6 +49,7 @@ export class CampaignsService {
         private readonly providers: CommProviderService,
         private readonly dispatch: CommDispatchService,
         private readonly runner: CampaignRunnerService,
+        private readonly queue: CommQueueService,
     ) { }
 
     private scope(ctx: OrgContext): Prisma.CampaignWhereInput {
@@ -357,10 +360,12 @@ export class CampaignsService {
         if (scheduledAt.getTime() < Date.now() - 60_000) throw new BadRequestException({ message: 'The send time is in the past', code: 'schedule_in_past' });
         const zone = dto.schedule_timezone ?? campaign.schedule_timezone ?? 'UTC';
         if (!isValidZone(zone)) throw new BadRequestException({ message: `Unknown time zone ${zone}`, code: 'timezone_invalid' });
+        const nextRunAt = claimTime(scheduledAt, campaign.send_in_recipient_timezone);
         await this.prisma.campaign.update({
             where: { id },
-            data: { status: CampaignStatus.SCHEDULED, scheduled_at: scheduledAt, schedule_timezone: zone, next_run_at: claimTime(scheduledAt, campaign.send_in_recipient_timezone) },
+            data: { status: CampaignStatus.SCHEDULED, scheduled_at: scheduledAt, schedule_timezone: zone, next_run_at: nextRunAt },
         });
+        await this.queue.enqueueCampaignStart({ id, next_run_at: nextRunAt });
         const now = !dto.scheduled_at;
         await this.audit.record(ctx, 'communications.campaign.scheduled', { resource_type: 'campaign', resource_id: id, branch_id: campaign.branch_id, metadata: { scheduled_at: scheduledAt.toISOString(), send_now: now, audience_count: check.counts?.included, sensitive: true } });
         this.events.publish(ctx, {
@@ -368,7 +373,6 @@ export class CampaignsService {
             payload: { name: campaign.name, scheduled_at: scheduledAt.toISOString(), audience_count: check.counts?.included },
             activity: { summary: now ? `Campaign "${campaign.name}" is being sent` : `Campaign "${campaign.name}" scheduled`, entity_label: campaign.name },
         });
-        if (now) this.runner.kick();
         return this.findOne(ctx, id);
     }
 
@@ -397,7 +401,7 @@ export class CampaignsService {
         if (!res.count) throw new ConflictException({ message: 'Only paused campaigns can be resumed', code: 'campaign_not_paused' });
         await this.audit.record(ctx, 'communications.campaign.resumed', { resource_type: 'campaign', resource_id: id, branch_id: campaign.branch_id, metadata: { sensitive: true } });
         this.events.publish(ctx, { event_key: 'communications.campaign.resumed', module: ModuleKey.COMMUNICATION, entity_type: RecordEntityType.CAMPAIGN, entity_id: id, payload: { name: campaign.name } });
-        this.runner.kick();
+        await this.runner.resume(id);
         return this.findOne(ctx, id);
     }
 

@@ -5,6 +5,7 @@ import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { normalizeAddress, randomToken, smsSegments } from '../common/comm.utils';
 import { CommProviderService, ProviderError } from './comm-provider.service';
 import { CommStatsService } from './comm-stats.service';
+import { CommQueueService } from './comm-queue.service';
 
 const MAX_ATTEMPTS = 3;
 
@@ -37,6 +38,7 @@ export class CommDispatchService {
         private readonly providers: CommProviderService,
         private readonly stats: CommStatsService,
         private readonly config: ConfigService,
+        private readonly queue: CommQueueService,
     ) { }
 
     get apiBase() {
@@ -105,7 +107,7 @@ export class CommDispatchService {
 
     /**
      * Claim and send a message. Safe to call concurrently: the QUEUED/SCHEDULED → SENDING transition is the lock.
-     * Never throws; failures are written to the message.
+     * Never throws; failures are written to the message, and a retryable failure is queued again with backoff.
      */
     async dispatch(messageId: string): Promise<CommMessageStatus> {
         const claimed = await this.prisma.commMessage.updateMany({
@@ -209,10 +211,13 @@ export class CommDispatchService {
         // attempt_count was already incremented when the message was claimed.
         const attempts = message.attempt_count;
         if (!permanent && attempts < MAX_ATTEMPTS) {
-            await this.prisma.commMessage.update({
+            const retry = await this.prisma.commMessage.update({
                 where: { id: message.id },
                 data: { status: CommMessageStatus.QUEUED, last_error: reason.slice(0, 1000), next_attempt_at: new Date(Date.now() + 2 ** attempts * 60_000) },
+                select: { id: true, attempt_count: true, scheduled_at: true, next_attempt_at: true },
             });
+            // The retry runs as a delayed job; if Redis is unreachable the sweep picks the message up later.
+            await this.queue.enqueueMessage(retry).catch((e) => this.logger.warn(`retry of ${message.id} not queued: ${(e as Error).message}`));
             return CommMessageStatus.QUEUED;
         }
         await this.prisma.commMessage.update({ where: { id: message.id }, data: { last_error: reason.slice(0, 1000) } });
