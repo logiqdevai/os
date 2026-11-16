@@ -13,7 +13,7 @@ const A = () => ApiRoutes.messaging.admin;
 export const uploadAttachment = async ({ channelId, file, onProgress }: { channelId: string; file: File; onProgress?: (pct: number) => void }): Promise<UploadedAttachment> => {
     const body = new FormData();
     body.append("file", file);
-    return (await axiosInstance.post(R().channels.attachments(channelId), body, { onUploadProgress: (e) => e.total && onProgress?.(Math.round((e.loaded / e.total) * 100)) })).data;
+    return (await axiosInstance.post(R().channels.attachments(channelId), body, { headers: { "Content-Type": "multipart/form-data" }, onUploadProgress: (e) => e.total && onProgress?.(Math.round((e.loaded / e.total) * 100)) })).data;
 };
 export const getAttachmentUrl = async ({ id, disposition }: { id: string; disposition: "inline" | "attachment" }): Promise<{ path: string; expires_at: string; filename: string; mimetype: string }> =>
     (await axiosInstance.get(R().attachment_url(id), { params: { disposition } })).data;

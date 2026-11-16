@@ -120,8 +120,8 @@ export default function ConversationPage() {
             <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-2 md:px-4">
                 <Button variant="ghost" size="icon-sm" className="md:hidden" onClick={() => navigate(MessagesPaths.root)} aria-label="Back to channels"><ChevronLeft /></Button>
                 <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                        {isDm ? other && <PersonAvatar size="sm" name={other.name} src={other.profile_photo_url} presence={presenceOf(other.membership_id)} /> : <Icon className="size-4 shrink-0 text-muted-foreground" />}
+                    <div className="flex items-center gap-1.5 text-[17px] font-bold text-foreground">
+                        {isDm ? other && <PersonAvatar size="sm" name={other.name} src={other.profile_photo_url} presence={presenceOf(other.membership_id)} /> : <Icon className="size-4 shrink-0" />}
                         <span className="truncate">{title}</span>
                         {archived && <span className="rounded-xs bg-secondary px-1.5 text-[11px] font-medium text-muted-foreground">Archived</span>}
                         {c.project && (

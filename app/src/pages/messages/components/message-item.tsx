@@ -1,6 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bookmark, BookmarkCheck, Flag, MessageSquareReply, MoreHorizontal, Pencil, Pin, PinOff, SmilePlus, Trash2, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, ChevronRight, Flag, MessageSquareReply, MoreHorizontal, Pencil, Pin, PinOff, SmilePlus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -71,7 +71,7 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
     }
     if (m.deleted_at) {
         return (
-            <div className="px-4 py-1 pl-14 text-[13px] italic text-muted-foreground">
+            <div className="py-1 pl-[68px] pr-5 text-[13px] italic text-muted-foreground">
                 This message was deleted.
                 {!inThread && m.reply_count > 0 && onOpenThread && (
                     <button type="button" className="ml-2 not-italic text-primary hover:underline" onClick={() => onOpenThread(m.id)}>{m.reply_count} {m.reply_count === 1 ? "reply" : "replies"}</button>
@@ -105,10 +105,10 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
     const canReport = !mine && !integration && !!myMembershipId;
 
     return (
-        <div className={cn("group relative flex gap-3 px-4 hover:bg-accent/40", compact ? "py-0.5" : "pt-2 pb-0.5", m.pinned_at && "bg-warning-soft/40")}>
-            <div className="w-8 shrink-0">
+        <div className={cn("group relative flex gap-2.5 px-5 hover:bg-accent/40", compact ? "py-px" : "pt-2 pb-px", m.pinned_at && "bg-warning-soft/40")}>
+            <div className="w-9 shrink-0">
                 {compact ? (
-                    <span className="invisible block pt-1 text-[10px] text-muted-foreground tabular group-hover:visible">{formatDate(m.created_at, "HH:mm")}</span>
+                    <span className="invisible block pt-[3px] text-right text-[11px] text-muted-foreground tabular group-hover:visible">{formatDate(m.created_at, "HH:mm")}</span>
                 ) : (
                     <PersonAvatar name={authorName} src={m.author?.profile_photo_url} presence={m.author?.membership_id ? presenceOf(m.author.membership_id) : undefined} />
                 )}
@@ -116,10 +116,10 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
             <div className="min-w-0 flex-1">
                 {!compact && (
                     <div className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="text-[13.5px] font-semibold text-foreground">{authorName}</span>
+                        <span className="text-[15px] font-bold text-foreground">{authorName}</span>
                         {integration && <span className="rounded-xs bg-info-soft px-1 text-[10px] font-medium text-info">App</span>}
                         {m.author?.external && <span className="rounded-xs bg-violet-soft px-1 text-[10px] font-medium text-violet">External</span>}
-                        <time className="text-[11px] text-muted-foreground" dateTime={m.created_at} title={formatDateTime(m.created_at)}>{formatDate(m.created_at, "HH:mm")}</time>
+                        <time className="text-xs text-muted-foreground hover:underline" dateTime={m.created_at} title={formatDateTime(m.created_at)}>{formatDate(m.created_at, "HH:mm")}</time>
                         {m.pinned_at && <span className="flex items-center gap-0.5 text-[11px] text-warning"><Pin className="size-3" /> Pinned</span>}
                     </div>
                 )}
@@ -133,8 +133,8 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
                         </div>
                     </div>
                 ) : (
-                    <div className={cn(pending && "opacity-60")}>
-                        <MessageBody body={m.body} />
+                    <div className={cn("text-[15px] leading-[1.46]", pending && "opacity-60")}>
+                        <MessageBody body={m.body} className="text-[15px]" />
                         {m.is_edited && <span className="text-[11px] text-muted-foreground"> (edited)</span>}
                     </div>
                 )}
@@ -157,7 +157,7 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
                                     type="button"
                                     onClick={() => toggle(r.emoji)}
                                     disabled={!canPost}
-                                    className={cn("flex h-6 items-center gap-1 rounded-full border px-2 text-xs transition-colors", reacted ? "border-primary/40 bg-info-soft text-info" : "border-border bg-card text-muted-foreground hover:border-border-strong")}
+                                    className={cn("flex h-6 items-center gap-1 rounded-full border px-2 text-xs transition-colors", reacted ? "border-info/60 bg-info-soft text-info" : "border-transparent bg-secondary text-foreground hover:border-border-strong")}
                                     aria-pressed={reacted}
                                     aria-label={`${r.emoji} ${r.count}`}
                                 >
@@ -169,16 +169,24 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
                     </div>
                 )}
                 {!inThread && m.reply_count > 0 && onOpenThread && (
-                    <button type="button" onClick={() => onOpenThread(m.id)} className="mt-1 flex items-center gap-1.5 rounded-md px-1 py-0.5 text-xs font-medium text-primary hover:bg-accent">
-                        <MessageSquareReply className="size-3.5" />
-                        {m.reply_count} {m.reply_count === 1 ? "reply" : "replies"}
-                        {m.last_reply_at && <span className="font-normal text-muted-foreground">· last {formatDateTime(m.last_reply_at)}</span>}
+                    <button type="button" onClick={() => onOpenThread(m.id)} className="group/thread mt-1 flex w-full max-w-lg items-center gap-2 rounded-lg border border-transparent px-1.5 py-1 text-left text-[13px] hover:border-border hover:bg-background">
+                        <span className="font-semibold text-info group-hover/thread:underline">{m.reply_count} {m.reply_count === 1 ? "reply" : "replies"}</span>
+                        {m.last_reply_at && (
+                            <>
+                                <span className="text-muted-foreground group-hover/thread:hidden">Last reply {formatDateTime(m.last_reply_at)}</span>
+                                <span className="hidden text-muted-foreground group-hover/thread:inline">View thread</span>
+                            </>
+                        )}
+                        <ChevronRight className="ml-auto hidden size-4 text-muted-foreground group-hover/thread:block" />
                     </button>
                 )}
             </div>
 
             {!pending && !editing && (
-                <div className={cn("absolute -top-3 right-4 hidden items-center rounded-md border border-border bg-popover shadow-sm group-hover:flex group-focus-within:flex", (pickerOpen || menuOpen) && "flex")}>
+                <div className={cn("absolute -top-4 right-5 hidden items-center rounded-lg border border-border bg-popover p-0.5 shadow-sm group-hover:flex group-focus-within:flex", (pickerOpen || menuOpen) && "flex")}>
+                    {canPost && ["✅", "👀", "🙌"].map((e) => (
+                        <button key={e} type="button" onClick={() => toggle(e)} className="grid size-7 place-items-center rounded-md text-[15px] hover:bg-accent" aria-label={`React ${e}`}>{e}</button>
+                    ))}
                     {canPost && (
                         <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
                             <PopoverTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="Add reaction"><SmilePlus /></Button></PopoverTrigger>

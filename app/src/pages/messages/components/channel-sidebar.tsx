@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { AtSign, Bookmark, ChevronDown, Hash, Headphones, Lock, MessagesSquare, Plus, Search, Shield } from "lucide-react";
+import { AtSign, Bookmark, ChevronDown, Hash, Headphones, Lock, MessagesSquare, Plus, Search, Shield, SquarePen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
@@ -36,7 +36,7 @@ function ChannelRow({ channel, onNavigate }: { channel: MyChannel; onNavigate?: 
             onClick={onNavigate}
             className={({ isActive }) =>
                 cn(
-                    "flex h-8 items-center gap-2 rounded-md px-2 text-[13px] transition-colors",
+                    "flex h-7 items-center gap-2 rounded-md px-2 text-sm transition-colors",
                     isActive ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
                     unread && !muted && "font-medium text-foreground",
                     muted && "opacity-60",
@@ -59,7 +59,7 @@ function Group({ title, action, children }: { title: string; action?: ReactNode;
     return (
         <div className="space-y-0.5">
             <div className="flex items-center justify-between pr-1">
-                <button type="button" onClick={() => setOpen(!open)} className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground" aria-expanded={open}>
+                <button type="button" onClick={() => setOpen(!open)} className="flex items-center gap-1 rounded-md px-2 py-1 text-[13px] font-medium text-muted-foreground hover:bg-accent/60 hover:text-foreground" aria-expanded={open}>
                     <ChevronDown className={cn("size-3 transition-transform", !open && "-rotate-90")} /> {title}
                 </button>
                 {action}
@@ -96,7 +96,7 @@ export function ChannelSidebar({ onNewDm, onNavigate, className }: { onNewDm: ()
                     Messages
                     <span className={cn("size-1.5 rounded-full", connected ? "bg-success" : "bg-muted-foreground")} title={connected ? "Live" : "Reconnecting…"} />
                 </span>
-                <Button variant="ghost" size="icon-sm" onClick={onNewDm} aria-label="New message"><Plus /></Button>
+                <Button variant="outline" size="icon-sm" className="rounded-full" onClick={onNewDm} aria-label="New message"><SquarePen /></Button>
             </div>
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-2">
                 <div className="space-y-0.5">

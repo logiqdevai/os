@@ -18,9 +18,9 @@ export function PresenceDot({ state, className }: { state: PresenceState; classN
 export function PersonAvatar({ name, src, size = "md", presence }: { name: string; src?: string | null; size?: "sm" | "md"; presence?: PresenceState }) {
     return (
         <span className="relative inline-flex shrink-0">
-            <Avatar className={cn("rounded-md", size === "sm" ? "size-5" : "size-8")}>
-                {src && <AvatarImage src={src} alt="" />}
-                <AvatarFallback className={cn("rounded-md bg-secondary font-medium text-muted-foreground", size === "sm" ? "text-[9px]" : "text-xs")}>{initials(name)}</AvatarFallback>
+            <Avatar className={cn(size === "sm" ? "size-5 rounded-[5px]" : "size-9 rounded-lg")}>
+                {src && <AvatarImage src={src} alt="" className="rounded-[inherit]" />}
+                <AvatarFallback className={cn("bg-secondary font-medium text-muted-foreground", size === "sm" ? "rounded-[5px] text-[9px]" : "rounded-lg text-xs")}>{initials(name)}</AvatarFallback>
             </Avatar>
             {presence && <PresenceDot state={presence} className="absolute -bottom-0.5 -right-0.5 ring-2 ring-background" />}
         </span>

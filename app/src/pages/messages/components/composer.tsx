@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AtSign, Paperclip, SendHorizontal } from "lucide-react";
+import { AtSign, Plus, SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
@@ -202,12 +202,12 @@ export function Composer({ channelId, threadRootId, placeholder, disabled, disab
         <Popover open={open} onOpenChange={(o) => !o && setQuery(null)}>
             <PopoverAnchor asChild>
                 <div
-                    className="rounded-lg border border-border bg-card p-1.5 focus-within:border-border-strong"
+                    className="rounded-xl border border-border-strong bg-card p-1.5 shadow-xs focus-within:border-muted-foreground"
                     onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) e.preventDefault(); }}
                     onDrop={(e) => { if (e.dataTransfer.files.length) { e.preventDefault(); addFiles(e.dataTransfer.files); } }}
                 >
                 <PendingAttachments files={files} onRemove={(key) => setFiles((prev) => prev.filter((f) => f.key !== key))} />
-                <div className="flex items-end gap-2">
+                <div className="flex flex-col">
                     <Textarea
                         ref={ref}
                         value={text}
@@ -218,18 +218,20 @@ export function Composer({ channelId, threadRootId, placeholder, disabled, disab
                         autoFocus={autoFocus}
                         rows={1}
                         aria-label={placeholder}
-                        className="max-h-48 min-h-9 flex-1 resize-none border-0 bg-transparent px-1.5 py-1.5 text-[13.5px] shadow-none focus-visible:ring-0 [field-sizing:content]"
+                        className="max-h-60 min-h-10 resize-none border-0 bg-transparent px-2 py-2 text-[15px] shadow-none focus-visible:ring-0 [field-sizing:content]"
                     />
                     <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
-                    <Button type="button" variant="ghost" size="icon-sm" aria-label="Attach files" onClick={() => fileRef.current?.click()} disabled={files.length >= 10}>
-                        <Paperclip />
-                    </Button>
-                    <Button type="button" variant="ghost" size="icon-sm" aria-label="Mention someone" onClick={() => { onChange(`${text}${text && !text.endsWith(" ") ? " " : ""}@`); ref.current?.focus(); }}>
-                        <AtSign />
-                    </Button>
-                    <Button type="button" size="icon-sm" onClick={send} disabled={(!text.trim() && !ready.length) || uploading} aria-label="Send">
-                        <SendHorizontal />
-                    </Button>
+                    <div className="flex items-center gap-0.5 px-0.5 pt-0.5">
+                        <Button type="button" variant="ghost" size="icon-sm" aria-label="Attach files" onClick={() => fileRef.current?.click()} disabled={files.length >= 10}>
+                            <Plus />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon-sm" aria-label="Mention someone" onClick={() => { onChange(`${text}${text && !text.endsWith(" ") ? " " : ""}@`); ref.current?.focus(); }}>
+                            <AtSign />
+                        </Button>
+                        <Button type="button" size="icon-sm" className="ml-auto" onClick={send} disabled={(!text.trim() && !ready.length) || uploading} aria-label="Send">
+                            <SendHorizontal />
+                        </Button>
+                    </div>
                 </div>
                 </div>
             </PopoverAnchor>
