@@ -23,7 +23,7 @@ export function AppBar({ app, panelCollapsed, onExpandPanel, onOpenMobileNav, on
     const action = app?.newAction && (!app.newAction.permission || p.can(app.newAction.permission)) ? app.newAction : null;
 
     return (
-        <header className="flex h-[52px] flex-none items-center gap-2 border-b border-border px-3 md:px-4">
+        <header className="flex h-16 flex-none items-center gap-2.5 border-b border-border bg-[var(--shell-bar)] px-4 md:px-7">
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={onOpenMobileNav} aria-label="Open navigation">
                 <Menu />
             </Button>
@@ -52,7 +52,7 @@ export function AppBar({ app, panelCollapsed, onExpandPanel, onOpenMobileNav, on
             <button
                 type="button"
                 onClick={onOpenSearch}
-                className="hidden h-8 w-56 items-center gap-2 rounded-md border border-border bg-secondary px-2.5 text-[13px] text-ash transition-colors hover:border-border-strong md:flex"
+                className="hidden h-10 w-64 items-center gap-2 rounded-full border border-border bg-card px-3 text-[13px] text-ash transition-colors hover:border-border-strong md:flex"
             >
                 <Search className="size-4" />
                 <span className="flex-1 text-left">Search…</span>
@@ -62,7 +62,7 @@ export function AppBar({ app, panelCollapsed, onExpandPanel, onOpenMobileNav, on
                 <Search />
             </Button>
             {action && (
-                <Button asChild size="sm" className="h-8">
+                <Button asChild size="sm" className="h-10 rounded-full px-4">
                     <Link to={action.to}>
                         <Plus />
                         <span className="hidden sm:inline">{action.label}</span>

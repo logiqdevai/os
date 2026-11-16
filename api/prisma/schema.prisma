@@ -58,20 +58,18 @@ enum AppColorMode {
   SYSTEM
 }
 
-/// 01 §127 — app color themes (accent + tinted navigation). DEFAULT is the neutral monochrome look.
+/// 01 §127 — app color themes (full surface palette + accent). DEFAULT is the neutral graphite look.
 enum AppTheme {
   DEFAULT
   CYAN
-  OCEAN
-  INDIGO
   AUBERGINE
-  ROSE
-  CRIMSON
-  SUNSET
-  HONEY
+  OCEAN
   FOREST
-  SLATE
-  MOCHA
+  SUNSET
+  MONOCHROME
+  SOLARIZED
+  NORD
+  DRACULA
 }
 
 /// 01 §5
@@ -539,15 +537,19 @@ model UserPreference {
 /// 01 §127 — how the app looks for one user inside one organization (Slack-style: every workspace keeps its own theme).
 /// Personal preference, not a permission. One row per (user, organization); no row = defaults (SYSTEM / DEFAULT / theme color).
 model UserAppearance {
-  id              String       @id @default(uuid())
-  user_id         String
-  organization_id String
-  color_mode      AppColorMode @default(SYSTEM)
-  theme           AppTheme     @default(DEFAULT)
-  /// Custom primary color (#rrggbb) that overrides the theme accent; null = the theme color.
-  primary_color   String?
-  created_at      DateTime     @default(now())
-  updated_at      DateTime     @updatedAt
+  id               String       @id @default(uuid())
+  user_id          String
+  organization_id  String
+  color_mode       AppColorMode @default(SYSTEM)
+  theme            AppTheme     @default(DEFAULT)
+  /// Custom accent color (#rrggbb) that overrides the theme accent; null = the theme color.
+  primary_color    String?
+  /// Interface and monospace font ids (see app config font-family.options) and the base font size in px (12–18).
+  font_family      String       @default("inter")
+  mono_font_family String       @default("jetbrains-mono")
+  font_size        Int          @default(14)
+  created_at       DateTime     @default(now())
+  updated_at       DateTime     @updatedAt
 
   user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
@@ -1525,7 +1527,6 @@ model Membership {
   notification_keywords               NotificationKeyword[]
   notification_digests                NotificationDigest[]
   owned_wiki_spaces                   WikiSpace[]                      @relation("WikiSpaceOwner")
-  wiki_space_memberships              WikiSpaceMember[]
   owned_wiki_pages                    WikiPage[]                       @relation("WikiPageOwner")
   wiki_page_reviews                   WikiPageReviewer[]
   wiki_page_comments                  WikiPageComment[]                @relation("WikiPageCommentAuthor")
@@ -16991,19 +16992,21 @@ model WikiSpace {
   @@map("wiki_spaces")
 }
 
-/// 15 §2, §8 — explicit space members with their access level (space managers hold `docs.spaces.manage`).
+/// 15 §2, §8 — explicit space access: members, teams (user groups), branches, roles or departments with an access level (space managers hold `docs.spaces.manage`).
 model WikiSpaceMember {
+  id               String              @id @default(uuid())
   space_id         String
-  membership_id    String
+  /// Who gets access: a member, a team (user group), a branch, a role or a department.
+  principal_type   WikiPrincipalType   @default(MEMBERSHIP)
+  principal_id     String
   level            WikiPermissionLevel @default(VIEW)
   added_by_user_id String?
   created_at       DateTime            @default(now())
 
-  space      WikiSpace  @relation(fields: [space_id], references: [id], onDelete: Cascade)
-  membership Membership @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+  space WikiSpace @relation(fields: [space_id], references: [id], onDelete: Cascade)
 
-  @@id([space_id, membership_id])
-  @@index([membership_id])
+  @@unique([space_id, principal_type, principal_id])
+  @@index([principal_type, principal_id])
   @@map("wiki_space_members")
 }
 

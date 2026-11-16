@@ -60,18 +60,18 @@ export function TaskBoard({ team, query, projectId, hidden }: { team: string; qu
     if (board.error) return <ErrorState error={board.error} onRetry={() => board.refetch()} />;
     return (
         <>
-            <div className="-mx-4 flex min-h-[28rem] flex-1 gap-3 overflow-x-auto px-4 pb-4 md:-mx-6 md:px-6" aria-label="Board columns">
+            <div className="flex min-h-[28rem] flex-1 gap-2 overflow-x-auto px-4 py-3 md:px-6" aria-label="Board columns">
                 {board.isPending
-                    ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-96 w-72 shrink-0" />)
+                    ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-96 w-80 shrink-0" />)
                     : columns.map(({ status, tasks }) => (
                         <section
                             key={status.id}
                             aria-label={status.name}
-                            className={cn("flex w-72 shrink-0 flex-col rounded-lg border border-border bg-secondary/50", over?.status === status.id && "border-border-strong bg-accent/60")}
+                            className={cn("flex w-80 shrink-0 flex-col rounded-lg bg-secondary/40", over?.status === status.id && "bg-accent/70")}
                             onDragOver={(e) => { if (!dragging) return; e.preventDefault(); if (!tasks.length) setOver({ status: status.id, index: 0 }); }}
                             onDrop={(e) => { e.preventDefault(); drop(status, over?.status === status.id ? over.index : tasks.length); }}
                         >
-                            <header className="flex items-center gap-2 px-3 py-2">
+                            <header className="flex h-10 items-center gap-2 px-3">
                                 <StatusIcon category={status.category} color={status.color} />
                                 <span className="text-[13px] font-medium text-foreground">{status.name}</span>
                                 <span className="text-xs text-muted-foreground tabular">{tasks.length}</span>
@@ -93,7 +93,7 @@ export function TaskBoard({ team, query, projectId, hidden }: { team: string; qu
                                             setOver({ status: status.id, index: e.clientY < rect.top + rect.height / 2 ? i : i + 1 });
                                         }}
                                         className={cn(
-                                            "group relative cursor-pointer rounded-md border border-border bg-card p-2.5 shadow-sm transition-colors hover:border-border-strong",
+                                            "group relative cursor-pointer rounded-lg border border-border bg-card p-3 transition-colors hover:border-border-strong",
                                             dragging === t.id && "opacity-40",
                                             over?.status === status.id && over.index === i && dragging && dragging !== t.id && "before:absolute before:-top-1.5 before:left-0 before:right-0 before:h-0.5 before:rounded before:bg-primary",
                                         )}
@@ -104,7 +104,7 @@ export function TaskBoard({ team, query, projectId, hidden }: { team: string; qu
                                         }}
                                     >
                                         <div className="mb-1 flex items-center gap-2">
-                                            {show("id") && <span className="font-mono text-[11px] text-muted-foreground">{t.identifier}</span>}
+                                            {show("id") && <span className="text-xs text-muted-foreground tabular">{t.identifier}</span>}
                                             <span className="ml-auto" />
                                             {canMove && (
                                                 <DropdownMenu>
@@ -121,15 +121,15 @@ export function TaskBoard({ team, query, projectId, hidden }: { team: string; qu
                                         </div>
                                         <p className="line-clamp-3 text-[13px] text-foreground">{t.title}</p>
                                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                                            {show("priority") && <PriorityIcon priority={t.priority} />}
+                                            {show("priority") && <span className="inline-flex h-6 items-center rounded-md border border-border px-1.5"><PriorityIcon priority={t.priority} /></span>}
                                             {show("labels") && t.labels.slice(0, 2).map((l) => <LabelChip key={l.id} label={l} />)}
                                             {show("project") && t.project && <span className="max-w-28 truncate text-[11px] text-muted-foreground">{t.project.name}</span>}
                                             {show("subtasks") && t._count.subtasks > 0 && <span className="text-[11px] text-muted-foreground">{t._count.subtasks} sub</span>}
-                                            {show("due") && t.due_date && <span className="ml-auto text-[11px] text-muted-foreground tabular">{formatDate(t.due_date, "d MMM")}</span>}
+                                            {show("due") && t.due_date && <span className="inline-flex h-6 items-center rounded-md border border-border px-1.5 text-[11px] text-muted-foreground tabular">{formatDate(t.due_date, "MMM d")}</span>}
                                         </div>
                                     </li>
                                 ))}
-                                {!tasks.length && <li className="grid flex-1 place-items-center rounded-md border border-dashed border-border py-6 text-xs text-muted-foreground">No tasks</li>}
+                                {!tasks.length && <li className="grid flex-1 place-items-center py-6 text-xs text-muted-foreground">No tasks</li>}
                             </ol>
                         </section>
                     ))}

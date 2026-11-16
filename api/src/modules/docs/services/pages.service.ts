@@ -12,6 +12,7 @@ import {
     AnalyticsQuery,
     CreateCommentDto,
     CreatePageDto,
+    DuplicatePageDto,
     MarkReviewedDto,
     MovePageDto,
     PageQuery,
@@ -430,6 +431,50 @@ export class DocsPagesService {
         });
         this.events.publish(ctx, { event_key: 'docs.page.moved', module: ModuleKey.BUSINESS_DOCS, entity_type: RecordEntityType.WIKI_PAGE, entity_id: id, payload: { title: page.title, parent_page_id: newParent, space_id: targetSpaceId } });
         return { success: true };
+    }
+
+    /** Notion "Duplicate": copies a page (and, with `include_children`, its whole subtree) next to the original or under another parent. */
+    async duplicate(ctx: OrgContext, id: string, dto: DuplicatePageDto) {
+        const p = await this.access.principals(ctx);
+        const { page } = await this.access.readablePage(ctx, id, p);
+        const spaceId = dto.space_id ?? page.space_id;
+        const parentId = dto.parent_page_id === undefined ? page.parent_page_id : dto.parent_page_id;
+        const copyTree = async (sourceId: string, targetParent: string | null, title: string | null): Promise<{ id: string; title: string }> => {
+            const src = await this.access.readablePage(ctx, sourceId, p);
+            const created = await this.create(ctx, {
+                space_id: spaceId,
+                parent_page_id: targetParent ?? undefined,
+                title: title ?? src.page.title,
+                icon: src.page.icon ?? undefined,
+                page_type: src.page.page_type,
+                content_markdown: src.page.content_markdown ?? '',
+            } as CreatePageDto);
+            if (dto.include_children) {
+                const kids = await this.prisma.wikiPage.findMany({
+                    where: { ...this.access.readablePageWhere(ctx, p), parent_page_id: sourceId, archived_at: null },
+                    select: { id: true }, orderBy: [{ sort_order: 'asc' }, { title: 'asc' }],
+                });
+                for (const k of kids) await copyTree(k.id, created.id, null);
+            }
+            return { id: created.id, title: created.title };
+        };
+        return copyTree(id, parentId, dto.title ?? `${page.title} (copy)`);
+    }
+
+    /**
+     * Notion "update_content": exact-text search & replace inside the page body (each `old_str` must match once unless
+     * `replace_all`), applied atomically as one new version. Cheaper and safer than resending the whole page.
+     */
+    async replaceContent(ctx: OrgContext, id: string, edits: { old_str: string; new_str: string; replace_all?: boolean }[], changeSummary?: string) {
+        const { page } = await this.access.readablePage(ctx, id);
+        let md = page.content_markdown ?? '';
+        for (const [i, e] of edits.entries()) {
+            const count = e.old_str ? md.split(e.old_str).length - 1 : 0;
+            if (count === 0) throw new BadRequestException({ message: `Edit ${i + 1}: old_str was not found in the page`, code: 'wiki_edit_not_found' });
+            if (count > 1 && !e.replace_all) throw new BadRequestException({ message: `Edit ${i + 1}: old_str matches ${count} places; make it unique or set replace_all`, code: 'wiki_edit_ambiguous' });
+            md = e.replace_all ? md.split(e.old_str).join(e.new_str) : md.replace(e.old_str, () => e.new_str);
+        }
+        return this.update(ctx, id, { content_markdown: md, change_summary: changeSummary, base_version_number: page.current_version_number } as UpdatePageDto);
     }
 
     async publish(ctx: OrgContext, id: string, changeSummary?: string) {

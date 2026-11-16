@@ -51,7 +51,7 @@ export default function MyWorkPage() {
             header: <span className="sr-only">Actions</span>,
             cell: (n) => (Array.isArray(n.actions) && n.actions.length ? (
                 <div className="flex justify-end gap-2">
-                    {n.actions.map((a) => <button key={a.key} type="button" className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-foreground hover:bg-accent" onClick={() => act.mutate({ id: n.id, action: a.key })}>{a.label}</button>)}
+                    {n.actions.map((a) => <button key={a.key} type="button" className="rounded-full border border-border bg-secondary px-2 py-1 text-xs text-foreground hover:bg-accent" onClick={() => act.mutate({ id: n.id, action: a.key })}>{a.label}</button>)}
                 </div>
             ) : null),
         },

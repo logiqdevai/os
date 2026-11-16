@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 /** Status badge. Use `-soft` tones for statuses (mockup `.badge.blue/.green/...`). */
 const badgeVariants = cva(
-  "inline-flex h-5 items-center gap-1.5 whitespace-nowrap rounded-xs border px-1.5 text-xs font-medium tracking-[0.2px] transition-colors",
+  "inline-flex h-5 items-center gap-1.5 whitespace-nowrap rounded-full border px-2 text-xs font-medium tracking-[0.2px] transition-colors",
   {
     variants: {
       variant: {

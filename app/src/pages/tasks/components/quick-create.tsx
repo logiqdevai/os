@@ -1,11 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useRef, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { usePermission } from "@/hooks/use-permission";
 import { TaskCreateForm, type TaskCreateDefaults } from "./task-create-form";
 
 interface QuickCreateContextValue {
-    open: (defaults?: TaskCreateDefaults) => void;
+    open: (defaults?: TaskCreateDefaults, onClose?: () => void) => void;
 }
 
 const QuickCreateContext = createContext<QuickCreateContextValue>({ open: () => undefined });
@@ -17,7 +19,18 @@ export function QuickCreateProvider({ children }: { children: ReactNode }) {
     const canCreate = usePermission("tasks.tasks.create");
     const navigate = useNavigate();
     const [defaults, setDefaults] = useState<TaskCreateDefaults | null>(null);
-    const open = useCallback((d?: TaskCreateDefaults) => canCreate && setDefaults(d ?? {}), [canCreate]);
+    const onCloseRef = useRef<(() => void) | undefined>(undefined);
+    const open = useCallback((d?: TaskCreateDefaults, onClose?: () => void) => {
+        if (!canCreate) return;
+        onCloseRef.current = onClose;
+        setDefaults(d ?? {});
+    }, [canCreate]);
+    const close = useCallback(() => {
+        setDefaults(null);
+        const cb = onCloseRef.current;
+        onCloseRef.current = undefined;
+        cb?.();
+    }, []);
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -35,18 +48,19 @@ export function QuickCreateProvider({ children }: { children: ReactNode }) {
     return (
         <QuickCreateContext.Provider value={value}>
             {children}
-            <Dialog open={!!defaults} onOpenChange={(o) => !o && setDefaults(null)}>
-                <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader>
+            <Dialog open={!!defaults} onOpenChange={(o) => !o && close()}>
+                <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[680px] sm:rounded-2xl">
+                    <DialogHeader className="sr-only">
                         <DialogTitle>New task</DialogTitle>
-                        <DialogDescription className="sr-only">Create a task. Press Ctrl+Enter to save.</DialogDescription>
+                        <DialogDescription>Create a task. Press Ctrl+Enter to save.</DialogDescription>
                     </DialogHeader>
                     {defaults && (
                         <TaskCreateForm
+                            variant="modal"
                             defaults={defaults}
                             allowCreateMore
-                            onCancel={() => setDefaults(null)}
-                            onCreated={(task) => { setDefaults(null); navigate(`/tasks/${task.identifier}`); }}
+                            onCancel={close}
+                            onCreated={(task) => toast({ title: "Task created", description: `${task.identifier} · ${task.title}`, action: <ToastAction altText="Open task" onClick={() => navigate(`/tasks/${task.identifier}`)}>Open</ToastAction> })}
                         />
                     )}
                 </DialogContent>

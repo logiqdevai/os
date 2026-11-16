@@ -16,7 +16,7 @@ interface Placed {
     cols: number;
 }
 
-/** Side-by-side columns for overlapping events of one day. */
+/** Cascading columns for overlapping events of one day (staggered, each extends to the right edge). */
 function layoutDay(events: CalendarEventItem[], day: Date): Placed[] {
     const dayStart = startOfDay(day);
     const dayEnd = addDays(dayStart, 1);
@@ -92,7 +92,7 @@ export function TimeGrid({ days, events, onSelectSlot, onOpenEvent }: TimeGridPr
                     {days.map((d) => (
                         <div key={d.toISOString()} className="min-w-0 space-y-0.5 border-l border-border-soft p-0.5">
                             {allDay.filter((e) => parseISO(e.starts_at) < addDays(startOfDay(d), 1) && parseISO(e.ends_at) > startOfDay(d)).map((e) => (
-                                <button key={e.key} type="button" style={chipStyle(e.color)} onClick={() => onOpenEvent(e)} className={cn("block w-full truncate rounded-xs border-l-2 px-1 text-left text-[11px]", chipClass(e.color), e.status === "CANCELLED" && "line-through opacity-60")}>
+                                <button key={e.key} type="button" style={chipStyle(e.color)} onClick={() => onOpenEvent(e)} className={cn("block w-full truncate rounded-l-none rounded-r-md border-l-2 px-1 text-left text-[11px]", chipClass(e.color), e.status === "CANCELLED" && "line-through opacity-60")}>
                                     {e.title}
                                 </button>
                             ))}
@@ -123,19 +123,23 @@ export function TimeGrid({ days, events, onSelectSlot, onOpenEvent }: TimeGridPr
                                 />
                             ))}
                             {layoutDay(timed, d).map(({ e, top, height, col, cols: n }) => (
-                                <button
+                                <div
                                     key={e.key}
+                                    className="absolute rounded-r-md bg-card"
+                                    style={{ top, height, left: `calc(${col * Math.min(100 / n, 24)}% + 2px)`, width: `calc(${100 - col * Math.min(100 / n, 24)}% - 4px)`, zIndex: col + 1, ...(n > 1 ? { boxShadow: "0 0 0 1px var(--card)" } : null) }}
+                                >
+                                <button
                                     type="button"
                                     onClick={() => onOpenEvent(e)}
                                     className={cn(
-                                        "absolute overflow-hidden rounded-xs border-l-2 px-1.5 py-0.5 text-left text-[11px] leading-tight shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                                        "absolute inset-0 overflow-hidden rounded-l-none rounded-r-md border-l-2 px-1.5 py-0.5 text-left text-[11px] leading-tight focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                                         chipClass(e.color),
                                         e.status === "TENTATIVE" && "opacity-80 [background-image:repeating-linear-gradient(135deg,transparent,transparent_4px,var(--border-soft)_4px,var(--border-soft)_8px)]",
                                         e.my_response === "NEEDS_ACTION" && "ring-1 ring-inset ring-current",
                                         e.my_response === "DECLINED" && "line-through opacity-50",
                                         e.status === "CANCELLED" && "line-through opacity-50",
                                     )}
-                                    style={{ ...chipStyle(e.color), top, height, left: `calc(${(col / n) * 100}% + 2px)`, width: `calc(${100 / n}% - 4px)` }}
+                                    style={chipStyle(e.color)}
                                 >
                                     <div className="flex items-center gap-1 font-medium">
                                         <span className="truncate">{e.title}</span>
@@ -143,6 +147,7 @@ export function TimeGrid({ days, events, onSelectSlot, onOpenEvent }: TimeGridPr
                                     </div>
                                     {height > 30 && <div className="truncate opacity-80 tabular">{format(parseISO(e.starts_at), "HH:mm")}{e.location ? ` · ${e.location}` : ""}</div>}
                                 </button>
+                                </div>
                             ))}
                             {isSameDay(d, now) && (
                                 <div className="pointer-events-none absolute inset-x-0 z-10 h-px bg-danger" style={{ top: differenceInMinutes(now, startOfDay(now)) * MIN_PX }}>

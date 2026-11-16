@@ -25,35 +25,35 @@
 | Model | Table | Schema line | Purpose |
 | -- | -- | -- | -- |
 | **Configuration** | | | |
-| `LedgerSettings` | `ledger_settings` | [L8646](../../api/prisma/schema.prisma#L8646) | 09 "VAT Management", "Automation", "Audit Trail" — per-organization ledger settings: VAT defaults, approval thresholds (separation of duties, 01), sync and A… |
-| `LedgerCategory` | `ledger_categories` | [L8683](../../api/prisma/schema.prisma#L8683) | 09 "Financial Categories" — income/expense categories and subcategories (parent_category_id), configurable by administrators. `system_key` marks seeded defau… |
-| `LedgerPaymentMethod` | `ledger_payment_methods` | [L8730](../../api/prisma/schema.prisma#L8730) | 09 "Financial Categories" — custom payment methods (bank account X, cash, company card, Stripe, Viva Wallet …), classified by the platform PaymentMethodType … |
-| `LedgerSupplierProfile` | `ledger_supplier_profiles` | [L8767](../../api/prisma/schema.prisma#L8767) | 09 "Expense Management", "Automation" (auto-categorizing known suppliers) — ledger defaults for a supplier. Suppliers ARE CRM companies of type VENDOR (02 §2… |
+| `LedgerSettings` | `ledger_settings` | [L8647](../../api/prisma/schema.prisma#L8647) | 09 "VAT Management", "Automation", "Audit Trail" — per-organization ledger settings: VAT defaults, approval thresholds (separation of duties, 01), sync and A… |
+| `LedgerCategory` | `ledger_categories` | [L8684](../../api/prisma/schema.prisma#L8684) | 09 "Financial Categories" — income/expense categories and subcategories (parent_category_id), configurable by administrators. `system_key` marks seeded defau… |
+| `LedgerPaymentMethod` | `ledger_payment_methods` | [L8731](../../api/prisma/schema.prisma#L8731) | 09 "Financial Categories" — custom payment methods (bank account X, cash, company card, Stripe, Viva Wallet …), classified by the platform PaymentMethodType … |
+| `LedgerSupplierProfile` | `ledger_supplier_profiles` | [L8768](../../api/prisma/schema.prisma#L8768) | 09 "Expense Management", "Automation" (auto-categorizing known suppliers) — ledger defaults for a supplier. Suppliers ARE CRM companies of type VENDOR (02 §2… |
 | **Ledger records** | | | |
-| `LedgerRecord` | `ledger_records` | [L8803](../../api/prisma/schema.prisma#L8803) | 09 "Income & Expense Management", "Financial Records", "Income Management", "Expense Management", "Search & Filtering" — the standardized income/expense reco… |
-| `LedgerSettlement` | `ledger_settlements` | [L8937](../../api/prisma/schema.prisma#L8937) | 09 "Payment & Settlement Tracking" — one payment/refund/write-off against a record; multiple settlements per record are allowed. For income synced from 08, s… |
-| `LedgerAttachment` | `ledger_attachments` | [L8973](../../api/prisma/schema.prisma#L8973) | 09 "Attachments & Documentation" — supporting documents of a record. Files are Documents (17); the original uploaded supplier invoice is flagged is_original … |
+| `LedgerRecord` | `ledger_records` | [L8804](../../api/prisma/schema.prisma#L8804) | 09 "Income & Expense Management", "Financial Records", "Income Management", "Expense Management", "Search & Filtering" — the standardized income/expense reco… |
+| `LedgerSettlement` | `ledger_settlements` | [L8938](../../api/prisma/schema.prisma#L8938) | 09 "Payment & Settlement Tracking" — one payment/refund/write-off against a record; multiple settlements per record are allowed. For income synced from 08, s… |
+| `LedgerAttachment` | `ledger_attachments` | [L8974](../../api/prisma/schema.prisma#L8974) | 09 "Attachments & Documentation" — supporting documents of a record. Files are Documents (17); the original uploaded supplier invoice is flagged is_original … |
 | **Supplier invoice intake (AI/OCR)** | | | |
-| `LedgerInvoiceImport` | `ledger_invoice_imports` | [L8997](../../api/prisma/schema.prisma#L8997) | 09 "Invoice Upload & Automatic Processing" — an uploaded supplier invoice / receipt and its AI/OCR extraction. Extracted values are editable during review; o… |
-| `LedgerInvoiceImportLine` | `ledger_invoice_import_lines` | [L9069](../../api/prisma/schema.prisma#L9069) | 09 "Invoice Upload & Automatic Processing" — extracted line items (quantities, unit prices), editable in review. |
+| `LedgerInvoiceImport` | `ledger_invoice_imports` | [L8998](../../api/prisma/schema.prisma#L8998) | 09 "Invoice Upload & Automatic Processing" — an uploaded supplier invoice / receipt and its AI/OCR extraction. Extracted values are editable during review; o… |
+| `LedgerInvoiceImportLine` | `ledger_invoice_import_lines` | [L9070](../../api/prisma/schema.prisma#L9070) | 09 "Invoice Upload & Automatic Processing" — extracted line items (quantities, unit prices), editable in review. |
 | **Recurring expenses** | | | |
-| `RecurringExpense` | `recurring_expenses` | [L9092](../../api/prisma/schema.prisma#L9092) | 09 "Recurring Expenses" — template that generates expense records on a schedule (run by 20). Generated records stay individually editable; editing the templa… |
+| `RecurringExpense` | `recurring_expenses` | [L9093](../../api/prisma/schema.prisma#L9093) | 09 "Recurring Expenses" — template that generates expense records on a schedule (run by 20). Generated records stay individually editable; editing the templa… |
 | **Payroll & employee costs** | | | |
-| `PayrollSchedule` | `payroll_schedules` | [L9167](../../api/prisma/schema.prisma#L9167) | 09 "Employee Payments & Payroll Expenses" — recurring monthly employee payment template (base payment and employer costs), so the same expense is not recreat… |
-| `PayrollEntry` | `payroll_entries` | [L9214](../../api/prisma/schema.prisma#L9214) | 09 "Employee Payments & Payroll Expenses" — one employee payment / employee cost for an accounting period. Posting creates the linked expense LedgerRecord (s… |
+| `PayrollSchedule` | `payroll_schedules` | [L9168](../../api/prisma/schema.prisma#L9168) | 09 "Employee Payments & Payroll Expenses" — recurring monthly employee payment template (base payment and employer costs), so the same expense is not recreat… |
+| `PayrollEntry` | `payroll_entries` | [L9215](../../api/prisma/schema.prisma#L9215) | 09 "Employee Payments & Payroll Expenses" — one employee payment / employee cost for an accounting period. Posting creates the linked expense LedgerRecord (s… |
 | **Periods, reports and profitability** | | | |
-| `FinancialPeriod` | `financial_periods` | [L9278](../../api/prisma/schema.prisma#L9278) | 09 "Financial Periods" — accounting periods (month/quarter/year/custom) that records and payroll entries post to. Closing a period freezes its summaries; loc… |
-| `FinancialPeriodSummary` | `financial_period_summaries` | [L9314](../../api/prisma/schema.prisma#L9314) | 09 "Financial Dashboard", "Profit & Loss", "VAT Management" (reporting), "Automation" (monthly financial summaries) — stored totals for a period, per basis (… |
-| `LedgerProfitabilitySnapshot` | `ledger_profitability_snapshots` | [L9372](../../api/prisma/schema.prisma#L9372) | 09 "Project Profitability" — stored profitability per project or customer and period. Employee cost comes from approved time entries and cost-rate snapshots … |
+| `FinancialPeriod` | `financial_periods` | [L9279](../../api/prisma/schema.prisma#L9279) | 09 "Financial Periods" — accounting periods (month/quarter/year/custom) that records and payroll entries post to. Closing a period freezes its summaries; loc… |
+| `FinancialPeriodSummary` | `financial_period_summaries` | [L9315](../../api/prisma/schema.prisma#L9315) | 09 "Financial Dashboard", "Profit & Loss", "VAT Management" (reporting), "Automation" (monthly financial summaries) — stored totals for a period, per basis (… |
+| `LedgerProfitabilitySnapshot` | `ledger_profitability_snapshots` | [L9373](../../api/prisma/schema.prisma#L9373) | 09 "Project Profitability" — stored profitability per project or customer and period. Employee cost comes from approved time entries and cost-rate snapshots … |
 | **AI insights** | | | |
-| `LedgerInsight` | `ledger_insights` | [L9414](../../api/prisma/schema.prisma#L9414) | 09 "AI Financial Assistant" — stored AI findings surfaced to administrators: unusual/unusually high expenses, suspected duplicates, missing records, category… |
+| `LedgerInsight` | `ledger_insights` | [L9415](../../api/prisma/schema.prisma#L9415) | 09 "AI Financial Assistant" — stored AI findings surfaced to administrators: unusual/unusually high expenses, suspected duplicates, missing records, category… |
 | **Cash position, budgets, VAT returns and expense claims (09)** | | | |
-| `LedgerBalanceSnapshot` | `ledger_balance_snapshots` | [L9478](../../api/prisma/schema.prisma#L9478) | 09 "Financial Dashboard" — balance of a bank account / cash box (a LedgerPaymentMethod with track_balance) confirmed at a date (bank statement, manual count)… |
-| `LedgerBudget` | `ledger_budgets` | [L9502](../../api/prisma/schema.prisma#L9502) | 09 "Financial Dashboard" — a planned budget for a fiscal year, by category, project or department. Actuals are computed from LedgerRecord on the chosen basis… |
-| `LedgerBudgetLine` | `ledger_budget_lines` | [L9529](../../api/prisma/schema.prisma#L9529) | 09 "Financial Dashboard" — planned amount of one budget subject (category, project or department) for one month of the fiscal year (1-12, counted from Ledger… |
-| `VatReturn` | `vat_returns` | [L9555](../../api/prisma/schema.prisma#L9555) | 09 "VAT Management" — the VAT return of one period and basis: totals frozen when filed, the filing reference and proof. Totals come from FinancialPeriodSumma… |
-| `ExpenseClaim` | `expense_claims` | [L9587](../../api/prisma/schema.prisma#L9587) | 09 "Employee Payments & Payroll Expenses" — an employee's expense claim: receipts submitted for reimbursement, approved by a manager (FinanceApproval, entity… |
-| `ExpenseClaimLine` | `expense_claim_lines` | [L9622](../../api/prisma/schema.prisma#L9622) | 09 "Employee Payments & Payroll Expenses" — one receipt line of an expense claim. |
+| `LedgerBalanceSnapshot` | `ledger_balance_snapshots` | [L9479](../../api/prisma/schema.prisma#L9479) | 09 "Financial Dashboard" — balance of a bank account / cash box (a LedgerPaymentMethod with track_balance) confirmed at a date (bank statement, manual count)… |
+| `LedgerBudget` | `ledger_budgets` | [L9503](../../api/prisma/schema.prisma#L9503) | 09 "Financial Dashboard" — a planned budget for a fiscal year, by category, project or department. Actuals are computed from LedgerRecord on the chosen basis… |
+| `LedgerBudgetLine` | `ledger_budget_lines` | [L9530](../../api/prisma/schema.prisma#L9530) | 09 "Financial Dashboard" — planned amount of one budget subject (category, project or department) for one month of the fiscal year (1-12, counted from Ledger… |
+| `VatReturn` | `vat_returns` | [L9556](../../api/prisma/schema.prisma#L9556) | 09 "VAT Management" — the VAT return of one period and basis: totals frozen when filed, the filing reference and proof. Totals come from FinancialPeriodSumma… |
+| `ExpenseClaim` | `expense_claims` | [L9588](../../api/prisma/schema.prisma#L9588) | 09 "Employee Payments & Payroll Expenses" — an employee's expense claim: receipts submitted for reimbursement, approved by a manager (FinanceApproval, entity… |
+| `ExpenseClaimLine` | `expense_claim_lines` | [L9623](../../api/prisma/schema.prisma#L9623) | 09 "Employee Payments & Payroll Expenses" — one receipt line of an expense claim. |
 
 **Owned enums (23):** `LedgerRecordType`, `LedgerRecordStatus`, `LedgerRecordSource`, `LedgerPaymentStatus`, `LedgerVatTreatment`, `LedgerSettlementKind`, `LedgerAttachmentKind`, `LedgerCategoryKind`, `LedgerPlLine`, `LedgerImportStatus`, `RecurringExpenseStatus`, `PayrollEntryKind`, `PayrollEntryStatus`, `FinancialPeriodType`, `FinancialPeriodStatus`, `LedgerReportBasis`, `LedgerProfitabilityScope`, `LedgerInsightKind`, `LedgerInsightStatus`, `LedgerBudgetScope`, `LedgerBudgetStatus`, `VatReturnStatus`, `ExpenseClaimStatus`
 
@@ -126,7 +126,7 @@ Definition of done for each resource of this module: permission keys in the cata
 ## Income & Expense Management
 
 <!-- schema-section:start -->
-> **Schema:** `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8803))
+> **Schema:** `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8804))
 <!-- schema-section:end -->
 
 Develop a comprehensive **Income & Expense Management** module for maintaining a detailed and scalable financial record of the agency's business activity. The system should support both automatically generated financial records from uploaded invoices and fully manual financial entries, while providing a unified view of all income, expenses, VAT, payroll, recurring costs, and other financial obligations.
@@ -138,7 +138,7 @@ The module should be designed to work alongside the existing payment provider an
 ## Financial Records
 
 <!-- schema-section:start -->
-> **Schema:** `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8803)) · enum `LedgerRecordStatus` ([L8477](../../api/prisma/schema.prisma#L8477)) · enum `LedgerRecordType` ([L8467](../../api/prisma/schema.prisma#L8467))
+> **Schema:** `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8804)) · enum `LedgerRecordStatus` ([L8478](../../api/prisma/schema.prisma#L8478)) · enum `LedgerRecordType` ([L8468](../../api/prisma/schema.prisma#L8468))
 <!-- schema-section:end -->
 
 Every financial transaction should be represented as a standardized financial record with detailed information including:
@@ -176,7 +176,7 @@ The system should automatically calculate VAT amounts and gross/net values based
 ## Income Management
 
 <!-- schema-section:start -->
-> **Schema:** `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8803)) · enum `LedgerRecordSource` ([L8486](../../api/prisma/schema.prisma#L8486))
+> **Schema:** `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8804)) · enum `LedgerRecordSource` ([L8487](../../api/prisma/schema.prisma#L8487))
 <!-- schema-section:end -->
 
 Support detailed tracking of all agency income, including:
@@ -210,7 +210,7 @@ The system should distinguish between invoiced income and actually received inco
 ## Expense Management
 
 <!-- schema-section:start -->
-> **Schema:** `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8803)) · `LedgerSupplierProfile` ([ledger_supplier_profiles](../../api/prisma/schema.prisma#L8767))
+> **Schema:** `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8804)) · `LedgerSupplierProfile` ([ledger_supplier_profiles](../../api/prisma/schema.prisma#L8768))
 <!-- schema-section:end -->
 
 Support detailed recording of all business expenses, including expenses originating from supplier invoices as well as expenses that do not have an invoice.
@@ -251,7 +251,7 @@ Users should be able to create custom expense categories and subcategories witho
 ## Invoice Upload & Automatic Processing
 
 <!-- schema-section:start -->
-> **Schema:** `LedgerAttachment` ([ledger_attachments](../../api/prisma/schema.prisma#L8973)): `is_original` · `LedgerInvoiceImport` ([ledger_invoice_imports](../../api/prisma/schema.prisma#L8997)) · `LedgerInvoiceImportLine` ([ledger_invoice_import_lines](../../api/prisma/schema.prisma#L9069)) · enum `LedgerImportStatus` ([L8554](../../api/prisma/schema.prisma#L8554))
+> **Schema:** `LedgerAttachment` ([ledger_attachments](../../api/prisma/schema.prisma#L8974)): `is_original` · `LedgerInvoiceImport` ([ledger_invoice_imports](../../api/prisma/schema.prisma#L8998)) · `LedgerInvoiceImportLine` ([ledger_invoice_import_lines](../../api/prisma/schema.prisma#L9070)) · enum `LedgerImportStatus` ([L8555](../../api/prisma/schema.prisma#L8555))
 <!-- schema-section:end -->
 
 Allow administrators to upload supplier invoices, receipts and other external financial documents into the system. Files are stored by [17 Documents](./17-documents-file-management.md); this module runs the extraction and creates the ledger record. Customer invoices issued by 08 are linked automatically and are not uploaded.
@@ -285,7 +285,7 @@ The system should avoid creating duplicate records when the same invoice is uplo
 ## Manual Financial Entries
 
 <!-- schema-section:start -->
-> **Schema:** `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8803)): `is_manual` · enum `LedgerRecordSource` ([L8486](../../api/prisma/schema.prisma#L8486))
+> **Schema:** `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8804)): `is_manual` · enum `LedgerRecordSource` ([L8487](../../api/prisma/schema.prisma#L8487))
 <!-- schema-section:end -->
 
 Users should be able to manually create financial records without uploading an invoice.
@@ -310,7 +310,7 @@ Manual entries should be clearly identified as manually created while maintainin
 ## Recurring Expenses
 
 <!-- schema-section:start -->
-> **Schema:** `RecurringExpense` ([recurring_expenses](../../api/prisma/schema.prisma#L9092)) · enum `RecurringExpenseStatus` ([L8565](../../api/prisma/schema.prisma#L8565))
+> **Schema:** `RecurringExpense` ([recurring_expenses](../../api/prisma/schema.prisma#L9093)) · enum `RecurringExpenseStatus` ([L8566](../../api/prisma/schema.prisma#L8566))
 <!-- schema-section:end -->
 
 Support recurring financial obligations that automatically generate expense records according to a defined schedule.
@@ -350,7 +350,7 @@ Recurring records should remain editable individually without modifying the unde
 ## Employee Payments & Payroll Expenses
 
 <!-- schema-section:start -->
-> **Schema:** `ExpenseClaim` ([expense_claims](../../api/prisma/schema.prisma#L9587)) · `ExpenseClaimLine` ([expense_claim_lines](../../api/prisma/schema.prisma#L9622)) · `PayrollEntry` ([payroll_entries](../../api/prisma/schema.prisma#L9214)) · `PayrollSchedule` ([payroll_schedules](../../api/prisma/schema.prisma#L9167)) · enum `ExpenseClaimStatus` ([L9468](../../api/prisma/schema.prisma#L9468)) · enum `PayrollEntryKind` ([L8573](../../api/prisma/schema.prisma#L8573)) · enum `PayrollEntryStatus` ([L8587](../../api/prisma/schema.prisma#L8587))
+> **Schema:** `ExpenseClaim` ([expense_claims](../../api/prisma/schema.prisma#L9588)) · `ExpenseClaimLine` ([expense_claim_lines](../../api/prisma/schema.prisma#L9623)) · `PayrollEntry` ([payroll_entries](../../api/prisma/schema.prisma#L9215)) · `PayrollSchedule` ([payroll_schedules](../../api/prisma/schema.prisma#L9168)) · enum `ExpenseClaimStatus` ([L9469](../../api/prisma/schema.prisma#L9469)) · enum `PayrollEntryKind` ([L8574](../../api/prisma/schema.prisma#L8574)) · enum `PayrollEntryStatus` ([L8588](../../api/prisma/schema.prisma#L8588))
 <!-- schema-section:end -->
 
 > **Expense claims.** An employee submits an `ExpenseClaim` with `ExpenseClaimLine` receipts; a manager approves it (`finance.expense_claims.approve`, via `FinanceApproval`), which creates the REIMBURSEMENT `PayrollEntry` (`payroll_entry_id`). Employees use `finance.expense_claims.create_own` / `read_own`.
@@ -385,7 +385,7 @@ Payroll records should be treated as expenses and automatically included in fina
 ## Financial Categories
 
 <!-- schema-section:start -->
-> **Schema:** `LedgerCategory` ([ledger_categories](../../api/prisma/schema.prisma#L8683)) · `LedgerPaymentMethod` ([ledger_payment_methods](../../api/prisma/schema.prisma#L8730)) · enum `LedgerCategoryKind` ([L8536](../../api/prisma/schema.prisma#L8536))
+> **Schema:** `LedgerCategory` ([ledger_categories](../../api/prisma/schema.prisma#L8684)) · `LedgerPaymentMethod` ([ledger_payment_methods](../../api/prisma/schema.prisma#L8731)) · enum `LedgerCategoryKind` ([L8537](../../api/prisma/schema.prisma#L8537))
 <!-- schema-section:end -->
 
 Provide a flexible categorization system for organizing financial activity.
@@ -431,7 +431,7 @@ Categories should be configurable by administrators.
 ## VAT Management
 
 <!-- schema-section:start -->
-> **Schema:** `FinancialPeriodSummary` ([financial_period_summaries](../../api/prisma/schema.prisma#L9314)): `vat_breakdown` · `LedgerCategory` ([ledger_categories](../../api/prisma/schema.prisma#L8683)): `default_tax_rate_id` · `LedgerSettings` ([ledger_settings](../../api/prisma/schema.prisma#L8646)): `default_income_tax_rate_id` · `VatReturn` ([vat_returns](../../api/prisma/schema.prisma#L9555)) · enum `LedgerVatTreatment` ([L8508](../../api/prisma/schema.prisma#L8508)) · enum `VatReturnStatus` ([L9461](../../api/prisma/schema.prisma#L9461))
+> **Schema:** `FinancialPeriodSummary` ([financial_period_summaries](../../api/prisma/schema.prisma#L9315)): `vat_breakdown` · `LedgerCategory` ([ledger_categories](../../api/prisma/schema.prisma#L8684)): `default_tax_rate_id` · `LedgerSettings` ([ledger_settings](../../api/prisma/schema.prisma#L8647)): `default_income_tax_rate_id` · `VatReturn` ([vat_returns](../../api/prisma/schema.prisma#L9556)) · enum `LedgerVatTreatment` ([L8509](../../api/prisma/schema.prisma#L8509)) · enum `VatReturnStatus` ([L9462](../../api/prisma/schema.prisma#L9462))
 <!-- schema-section:end -->
 
 > **VAT returns.** A `VatReturn` freezes the totals of a closed period and basis and records the filing (`status` DRAFT, FILED, PAID, `authority_reference`, proof `document_id`); managed with `finance.vat.manage`.
@@ -464,7 +464,7 @@ Provide VAT reporting that allows administrators to understand:
 ## Payment & Settlement Tracking
 
 <!-- schema-section:start -->
-> **Schema:** `LedgerSettlement` ([ledger_settlements](../../api/prisma/schema.prisma#L8937)) · enum `LedgerPaymentStatus` ([L8498](../../api/prisma/schema.prisma#L8498)) · enum `LedgerSettlementKind` ([L8518](../../api/prisma/schema.prisma#L8518))
+> **Schema:** `LedgerSettlement` ([ledger_settlements](../../api/prisma/schema.prisma#L8938)) · enum `LedgerPaymentStatus` ([L8499](../../api/prisma/schema.prisma#L8499)) · enum `LedgerSettlementKind` ([L8519](../../api/prisma/schema.prisma#L8519))
 <!-- schema-section:end -->
 
 Each financial record should support payment status tracking such as:
@@ -492,7 +492,7 @@ Support multiple payments against a single financial record when necessary.
 ## Financial Periods
 
 <!-- schema-section:start -->
-> **Schema:** `FinancialPeriod` ([financial_periods](../../api/prisma/schema.prisma#L9278)) · `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8803)) · `LedgerSettings` ([ledger_settings](../../api/prisma/schema.prisma#L8646)): `fiscal_year_start_month` · enum `FinancialPeriodStatus` ([L8605](../../api/prisma/schema.prisma#L8605)) · enum `FinancialPeriodType` ([L8595](../../api/prisma/schema.prisma#L8595))
+> **Schema:** `FinancialPeriod` ([financial_periods](../../api/prisma/schema.prisma#L9279)) · `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8804)) · `LedgerSettings` ([ledger_settings](../../api/prisma/schema.prisma#L8647)): `fiscal_year_start_month` · enum `FinancialPeriodStatus` ([L8606](../../api/prisma/schema.prisma#L8606)) · enum `FinancialPeriodType` ([L8596](../../api/prisma/schema.prisma#L8596))
 <!-- schema-section:end -->
 
 Support financial reporting by:
@@ -511,7 +511,7 @@ Financial records should remain historically consistent even when categories, su
 ## Financial Dashboard
 
 <!-- schema-section:start -->
-> **Schema:** `FinancialPeriodSummary` ([financial_period_summaries](../../api/prisma/schema.prisma#L9314)) · `LedgerBalanceSnapshot` ([ledger_balance_snapshots](../../api/prisma/schema.prisma#L9478)) · `LedgerBudget` ([ledger_budgets](../../api/prisma/schema.prisma#L9502)) · `LedgerBudgetLine` ([ledger_budget_lines](../../api/prisma/schema.prisma#L9529)) · `LedgerCategory` ([ledger_categories](../../api/prisma/schema.prisma#L8683)): `is_operating` · `LedgerPaymentMethod` ([ledger_payment_methods](../../api/prisma/schema.prisma#L8730)): `track_balance` · enum `LedgerBudgetScope` ([L9448](../../api/prisma/schema.prisma#L9448)) · enum `LedgerReportBasis` ([L8612](../../api/prisma/schema.prisma#L8612)) — other modules: `FinanceReportSchedule` ([finance_report_schedules](../../api/prisma/schema.prisma#L8420)) ([08](./08-financial-management-stripe-integration.md))
+> **Schema:** `FinancialPeriodSummary` ([financial_period_summaries](../../api/prisma/schema.prisma#L9315)) · `LedgerBalanceSnapshot` ([ledger_balance_snapshots](../../api/prisma/schema.prisma#L9479)) · `LedgerBudget` ([ledger_budgets](../../api/prisma/schema.prisma#L9503)) · `LedgerBudgetLine` ([ledger_budget_lines](../../api/prisma/schema.prisma#L9530)) · `LedgerCategory` ([ledger_categories](../../api/prisma/schema.prisma#L8684)): `is_operating` · `LedgerPaymentMethod` ([ledger_payment_methods](../../api/prisma/schema.prisma#L8731)): `track_balance` · enum `LedgerBudgetScope` ([L9449](../../api/prisma/schema.prisma#L9449)) · enum `LedgerReportBasis` ([L8613](../../api/prisma/schema.prisma#L8613)) — other modules: `FinanceReportSchedule` ([finance_report_schedules](../../api/prisma/schema.prisma#L8421)) ([08](./08-financial-management-stripe-integration.md))
 <!-- schema-section:end -->
 
 > **Cash position, budgets and report delivery.** Bank accounts and cash boxes are `LedgerPaymentMethod` rows with `track_balance`, `opening_balance` and `opening_date`; `LedgerBalanceSnapshot` stores balances confirmed from a statement. A `LedgerBudget` with `LedgerBudgetLine` rows plans a fiscal year by category, project or department (actuals computed from `LedgerRecord`, alerts as `LedgerInsight` BUDGET_ALERT at `warn_percent`); keys `finance.budgets.read` / `finance.budgets.manage`. E-mailed reports use the 08 `FinanceReportSchedule`.
@@ -549,7 +549,7 @@ where applicable.
 ## Profit & Loss
 
 <!-- schema-section:start -->
-> **Schema:** `FinancialPeriodSummary` ([financial_period_summaries](../../api/prisma/schema.prisma#L9314)): `pl_lines` · enum `LedgerPlLine` ([L8542](../../api/prisma/schema.prisma#L8542))
+> **Schema:** `FinancialPeriodSummary` ([financial_period_summaries](../../api/prisma/schema.prisma#L9315)): `pl_lines` · enum `LedgerPlLine` ([L8543](../../api/prisma/schema.prisma#L8543))
 <!-- schema-section:end -->
 
 Provide an automatically generated profit and loss overview based on recorded financial activity.
@@ -581,7 +581,7 @@ Allow filtering by:
 ## Project Profitability
 
 <!-- schema-section:start -->
-> **Schema:** `LedgerProfitabilitySnapshot` ([ledger_profitability_snapshots](../../api/prisma/schema.prisma#L9372)) · enum `LedgerProfitabilityScope` ([L8618](../../api/prisma/schema.prisma#L8618))
+> **Schema:** `LedgerProfitabilitySnapshot` ([ledger_profitability_snapshots](../../api/prisma/schema.prisma#L9373)) · enum `LedgerProfitabilityScope` ([L8619](../../api/prisma/schema.prisma#L8619))
 <!-- schema-section:end -->
 
 Connect income and expenses with projects to calculate project-level profitability. Employee cost per project comes from approved time entries and cost rate snapshots in [18 Time Tracking](./18-time-tracking.md) §7. Results are surfaced in 05 §63 and 02 §19; this module owns the calculation.
@@ -605,7 +605,7 @@ This should allow management to understand which projects and customers are actu
 ## Search & Filtering
 
 <!-- schema-section:start -->
-> **Schema:** `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8803))
+> **Schema:** `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8804))
 <!-- schema-section:end -->
 
 Provide powerful filtering and search across all financial records.
@@ -633,7 +633,7 @@ Allow filtering by:
 ## Attachments & Documentation
 
 <!-- schema-section:start -->
-> **Schema:** `LedgerAttachment` ([ledger_attachments](../../api/prisma/schema.prisma#L8973)) · enum `LedgerAttachmentKind` ([L8526](../../api/prisma/schema.prisma#L8526))
+> **Schema:** `LedgerAttachment` ([ledger_attachments](../../api/prisma/schema.prisma#L8974)) · enum `LedgerAttachmentKind` ([L8527](../../api/prisma/schema.prisma#L8527))
 <!-- schema-section:end -->
 
 > Storage defined by → [17 Documents & File Management](./17-documents-file-management.md) · Linear LOG-407.
@@ -654,7 +654,7 @@ Maintain the original uploaded document alongside the financial record for futur
 ## Audit Trail
 
 <!-- schema-section:start -->
-> **Schema:** `LedgerSettings` ([ledger_settings](../../api/prisma/schema.prisma#L8646)): `approval_threshold_amount` · enum `LedgerRecordStatus` ([L8477](../../api/prisma/schema.prisma#L8477)) — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L2319)) ([01](./01-users-organizations-permissions.md)) · `FinanceApproval` ([finance_approvals](../../api/prisma/schema.prisma#L8386)) ([08](./08-financial-management-stripe-integration.md)) · `FinanceApprovalRule` ([finance_approval_rules](../../api/prisma/schema.prisma#L8353)) ([08](./08-financial-management-stripe-integration.md)) · enum `FinanceApprovalEntityType` ([L8214](../../api/prisma/schema.prisma#L8214)) ([08](./08-financial-management-stripe-integration.md))
+> **Schema:** `LedgerSettings` ([ledger_settings](../../api/prisma/schema.prisma#L8647)): `approval_threshold_amount` · enum `LedgerRecordStatus` ([L8478](../../api/prisma/schema.prisma#L8478)) — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L2320)) ([01](./01-users-organizations-permissions.md)) · `FinanceApproval` ([finance_approvals](../../api/prisma/schema.prisma#L8387)) ([08](./08-financial-management-stripe-integration.md)) · `FinanceApprovalRule` ([finance_approval_rules](../../api/prisma/schema.prisma#L8354)) ([08](./08-financial-management-stripe-integration.md)) · enum `FinanceApprovalEntityType` ([L8215](../../api/prisma/schema.prisma#L8215)) ([08](./08-financial-management-stripe-integration.md))
 <!-- schema-section:end -->
 
 > **Approval policy.** Multi-step approval of ledger records uses the shared `FinanceApprovalRule` (`entity_type` LEDGER_RECORD, `record_type`, amount band, ordered steps) and `FinanceApproval` rows, managed with `finance.approval_rules.manage`; `LedgerSettings.approval_threshold_amount` remains the default when no rule matches.
@@ -680,7 +680,7 @@ Financial records should not be silently deleted. Where deletion is permitted, t
 ## Automation
 
 <!-- schema-section:start -->
-> **Schema:** `LedgerInvoiceImport` ([ledger_invoice_imports](../../api/prisma/schema.prisma#L8997)) · `LedgerSettings` ([ledger_settings](../../api/prisma/schema.prisma#L8646)): `auto_sync_invoices` · `LedgerSupplierProfile` ([ledger_supplier_profiles](../../api/prisma/schema.prisma#L8767)) · enum `LedgerRecordSource` ([L8486](../../api/prisma/schema.prisma#L8486))
+> **Schema:** `LedgerInvoiceImport` ([ledger_invoice_imports](../../api/prisma/schema.prisma#L8998)) · `LedgerSettings` ([ledger_settings](../../api/prisma/schema.prisma#L8647)): `auto_sync_invoices` · `LedgerSupplierProfile` ([ledger_supplier_profiles](../../api/prisma/schema.prisma#L8768)) · enum `LedgerRecordSource` ([L8487](../../api/prisma/schema.prisma#L8487))
 <!-- schema-section:end -->
 
 > Engine defined by → [20 Automation Engine](./20-automation-engine.md) · Linear LOG-410. Reminders delivered by → [14](./14-notifications-activity-center.md).
@@ -704,7 +704,7 @@ This module registers these jobs and rules with the engine:
 ## AI Financial Assistant
 
 <!-- schema-section:start -->
-> **Schema:** `FinancialPeriodSummary` ([financial_period_summaries](../../api/prisma/schema.prisma#L9314)): `ai_summary` · `LedgerInsight` ([ledger_insights](../../api/prisma/schema.prisma#L9414)) · `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8803)): `ai_suggestions` · `LedgerSettings` ([ledger_settings](../../api/prisma/schema.prisma#L8646)): `ai_enabled` · enum `LedgerInsightKind` ([L8624](../../api/prisma/schema.prisma#L8624))
+> **Schema:** `FinancialPeriodSummary` ([financial_period_summaries](../../api/prisma/schema.prisma#L9315)): `ai_summary` · `LedgerInsight` ([ledger_insights](../../api/prisma/schema.prisma#L9415)) · `LedgerRecord` ([ledger_records](../../api/prisma/schema.prisma#L8804)): `ai_suggestions` · `LedgerSettings` ([ledger_settings](../../api/prisma/schema.prisma#L8647)): `ai_enabled` · enum `LedgerInsightKind` ([L8625](../../api/prisma/schema.prisma#L8625))
 <!-- schema-section:end -->
 
 Integrate AI into the financial management system to assist with financial administration and analysis.

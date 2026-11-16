@@ -155,7 +155,7 @@ function DealCard({ deal, currency, stages, canMove, dragging, onDragStart, onDr
             draggable={canMove}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
-            className={cn("group rounded-md border border-border bg-card p-2.5 shadow-xs transition-colors hover:border-border-strong", canMove && "cursor-grab active:cursor-grabbing", dragging && "opacity-50")}
+            className={cn("group rounded-md border border-border bg-card p-2.5 transition-colors hover:border-border-strong", canMove && "cursor-grab active:cursor-grabbing", dragging && "opacity-50")}
         >
             <div className="flex items-start justify-between gap-2">
                 <Link to={CrmPaths.deal(deal.id)} className="min-w-0 text-[13px] font-medium leading-snug text-foreground hover:underline" draggable={false}>

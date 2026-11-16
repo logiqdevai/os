@@ -19,7 +19,7 @@ interface StateProps {
 export function EmptyState({ icon: Icon = Inbox, title, description, action, className, compact }: StateProps) {
     return (
         <div className={cn("flex flex-col items-center justify-center text-center", compact ? "gap-2 px-4 py-8" : "gap-3 px-6 py-16", className)}>
-            <div className="grid size-10 place-items-center rounded-lg border border-border bg-secondary text-muted-foreground">
+            <div className="grid size-11 place-items-center rounded-2xl bg-primary/10 text-primary">
                 <Icon className="size-5" />
             </div>
             <div className="space-y-1">

@@ -16,13 +16,14 @@ function RailButton({ to, label, active, children, badge }: { to: string; label:
                     to={to}
                     aria-label={label}
                     className={cn(
-                        "relative grid h-[38px] w-10 flex-none place-items-center rounded-[10px] text-muted-foreground transition-colors hover:bg-border-soft hover:text-foreground [&_svg]:size-[18px]",
-                        active && "bg-accent text-foreground shadow-[inset_0_0_0_1px_var(--border-strong)] before:absolute before:-left-2.5 before:top-[9px] before:bottom-[9px] before:w-[3px] before:rounded-r before:bg-primary"
+                        "relative grid h-9 w-9 flex-none place-items-center rounded-[10px] text-rail-foreground transition-colors hover:bg-rail-hover hover:text-white [&_svg]:size-[18px] [&_svg]:stroke-[1.6]",
+                        active &&
+                            "bg-[var(--app,var(--brand))] text-white shadow-[0_0_0_4px_color-mix(in_oklab,var(--app,var(--brand))_22%,transparent)] hover:bg-[var(--app,var(--brand))] hover:text-white before:absolute before:-left-[18px] before:top-[7px] before:bottom-[8px] before:w-[3px] before:rounded-r before:bg-white"
                     )}
                 >
                     {children}
                     {!!badge && (
-                        <span className="absolute right-0.5 top-0.5 grid h-[15px] min-w-[15px] place-items-center rounded-full border-2 border-background bg-danger px-1 text-[10px] font-semibold leading-none text-on-accent">
+                        <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full border-2 border-rail bg-danger px-1 text-[10px] font-semibold leading-none text-white">
                             {badge > 99 ? "99+" : badge}
                         </span>
                     )}
@@ -42,21 +43,21 @@ export function Rail({ unread }: { unread?: number }) {
     const notifications = visible.find((a) => a.id === "notifications");
 
     return (
-        <nav aria-label="Apps" className="hidden h-full w-[60px] flex-none flex-col items-center border-r border-sidebar-border bg-rail pb-2.5 pt-3 md:flex">
-            <Link to="/home" className="mb-2.5 flex-none" aria-label="Home">
-                <BrandMark />
+        <nav aria-label="Apps" className="hidden h-full w-[72px] flex-none flex-col items-center bg-rail pb-3 pt-3.5 md:flex">
+            <Link to="/home" className="mb-4 flex-none" aria-label="Home">
+                <BrandMark className="size-10 rounded-xl text-[15px]" />
             </Link>
-            <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-0.5 overflow-y-auto py-0.5 scrollbar-none">
+            <div className="flex w-full min-h-0 flex-1 flex-col items-center gap-2.5 overflow-y-auto py-1.5 scrollbar-none">
                 {apps.map((app) => (
                     <Fragment key={app.id}>
-                        {app.separatorBefore && <div className="my-[5px] h-px w-[22px] flex-none bg-border" />}
+                        {app.separatorBefore && <div className="my-1.5 h-px w-6 flex-none bg-white/10" />}
                         <RailButton to={app.basePath} label={app.label} active={active?.id === app.id}>
                             <app.icon />
                         </RailButton>
                     </Fragment>
                 ))}
             </div>
-            <div className="mt-1.5 flex w-9 flex-none flex-col items-center gap-0.5 border-t border-border pt-2">
+            <div className="mt-2 flex w-10 flex-none flex-col items-center gap-1.5 border-t border-white/10 pt-3">
                 {notifications && (
                     <RailButton to="/notifications" label="Notifications" active={active?.id === "notifications"} badge={unread}>
                         <Bell />

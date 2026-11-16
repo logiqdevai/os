@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Can } from "@/components/access/can";
 import { NoAccessState } from "@/components/ui/states";
+import { toast } from "@/hooks/use-toast";
 import { usePermission } from "@/hooks/use-permission";
 import { useTasks } from "@/features/tasks/hooks/use-tasks";
 import type { Task } from "@/features/tasks/interfaces/tasks.interfaces";
@@ -72,17 +73,17 @@ export function ProjectTasksTab({ project }: { project: ProjectDetail }) {
                 empty={{ icon: ListTodo, title: search || category !== "open" ? "No tasks match" : "No open tasks", description: "Tasks created for this project appear here." }}
             />
             <Dialog open={creating} onOpenChange={setCreating}>
-                <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader>
+                <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[680px] sm:rounded-2xl">
+                    <DialogHeader className="sr-only">
                         <DialogTitle>New task</DialogTitle>
-                        <DialogDescription className="sr-only">Create a task in {project.name}. Press Ctrl+Enter to save.</DialogDescription>
+                        <DialogDescription>Create a task in {project.name}. Press Ctrl+Enter to save.</DialogDescription>
                     </DialogHeader>
                     {creating && (
                         <TaskCreateForm
+                            variant="modal"
                             defaults={{ project_id: project.id, project_name: project.name, team_id: project.team_id }}
-                            allowCreateMore
                             onCancel={() => setCreating(false)}
-                            onCreated={() => setCreating(false)}
+                            onCreated={(task) => toast({ title: "Task created", description: `${task.identifier} · ${task.title}` })}
                         />
                     )}
                 </DialogContent>

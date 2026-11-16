@@ -14,7 +14,14 @@ export function AppearanceSync() {
     const orgId = session?.active_organization?.id ?? null;
 
     useEffect(() => {
-        if (appearance) applyAppearance({ color_mode: appearance.color_mode, theme: appearance.theme, primary_color: appearance.primary_color });
+        if (appearance) applyAppearance({
+                color_mode: appearance.color_mode,
+                theme: appearance.theme,
+                primary_color: appearance.primary_color,
+                font_family: appearance.font_family,
+                mono_font_family: appearance.mono_font_family,
+                font_size: appearance.font_size,
+            });
     }, [appearance]);
 
     const { mutate } = save;

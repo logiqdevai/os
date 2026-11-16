@@ -41,7 +41,7 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> = React.forwa
 });
 PhoneInput.displayName = "PhoneInput";
 
-const InputComponent = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(({ className, ...props }, ref) => <Input className={cn("rounded-e-lg rounded-s-none", className)} {...props} ref={ref} />);
+const InputComponent = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(({ className, ...props }, ref) => <Input className={cn("rounded-e-full rounded-s-none", className)} {...props} ref={ref} />);
 InputComponent.displayName = "InputComponent";
 
 type CountryEntry = { label: string; value: RPNInput.Country | undefined };
@@ -68,7 +68,7 @@ const CountrySelect = ({ disabled, value: selectedCountry, options: countryList,
       }}
     >
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" className="flex gap-1 rounded-e-none rounded-s-lg border-r-0 px-3 focus:z-10" disabled={disabled}>
+        <Button type="button" variant="outline" className="flex gap-1 rounded-e-none rounded-s-full border-r-0 px-3 focus:z-10" disabled={disabled}>
           <FlagComponent country={selectedCountry} countryName={selectedCountry} />
           <ChevronsUpDown className={cn("-mr-2 size-4 opacity-50", disabled ? "hidden" : "opacity-100")} />
         </Button>

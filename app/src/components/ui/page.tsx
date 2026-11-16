@@ -54,7 +54,7 @@ export function PageHeader({ title, description, actions, back, meta, documentTi
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                        <h1 className="truncate text-xl font-medium text-foreground">{title}</h1>
+                        <h1 className="truncate text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
                         {meta}
                     </div>
                     {description && <p className="text-[13px] text-muted-foreground">{description}</p>}
@@ -72,7 +72,7 @@ export function Section({ title, description, actions, children, className }: { 
             {(title || actions) && (
                 <div className="flex flex-wrap items-end justify-between gap-2">
                     <div>
-                        {title && <h2 className="text-[15px] font-medium text-foreground">{title}</h2>}
+                        {title && <h2 className="text-[15px] font-semibold text-foreground">{title}</h2>}
                         {description && <p className="text-[13px] text-muted-foreground">{description}</p>}
                     </div>
                     {actions}

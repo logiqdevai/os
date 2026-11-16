@@ -12,6 +12,7 @@ import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { WikiSpaceKindFormOptions } from "@/config/constants/dropdowns/docs/docs.options";
 import { useArchiveSpace, usePages, useSpace } from "@/features/docs/hooks/use-docs";
 import { DocIcon, DocsStatusBadge, SpaceFormDialog, SpaceLayout } from "../../components/docs-ui";
+import { SpaceMembersSheet } from "../../components/space-members-sheet";
 import { ExportDocsDialog, ImportDocsDialog } from "../../components/transfer-dialogs";
 
 /**
@@ -27,6 +28,7 @@ export default function SpaceDetailPage() {
     const pages = usePages({ space_id: id, parent_page_id: "root", limit: 50, order_by: "updated_at" }, !!space.data);
     const archive = useArchiveSpace();
     const [editOpen, setEditOpen] = useState(false);
+    const [membersOpen, setMembersOpen] = useState(false);
     const [archiving, setArchiving] = useState(false);
     const [transfer, setTransfer] = useState<null | "import" | "export">(null);
 
@@ -38,6 +40,7 @@ export default function SpaceDetailPage() {
 
     return (
         <SpaceLayout spaceId={id} canCreate={canWrite}>
+            <SpaceMembersSheet space={s} open={membersOpen} onOpenChange={setMembersOpen} canManage={canManage || s.my_level === "MANAGE"} />
             <Page width="wide">
                 <PageHeader
                     back={{ to: "/docs/spaces", label: "Spaces" }}
@@ -57,7 +60,7 @@ export default function SpaceDetailPage() {
                 />
                 <div className="mb-6 flex flex-wrap gap-4 text-xs text-muted-foreground">
                     {s.owner && <span>Owner: {personName(s.owner.user)}</span>}
-                    <span className="flex items-center gap-1"><Users className="size-3.5" /> {s.members.length} member{s.members.length === 1 ? "" : "s"}</span>
+                    <button type="button" onClick={() => setMembersOpen(true)} className="flex items-center gap-1 rounded hover:text-foreground hover:underline"><Users className="size-3.5" /> {s.members.length} member{s.members.length === 1 ? "" : "s"} · {canManage || s.my_level === "MANAGE" ? "Manage access" : "View"}</button>
                     {s.require_review_before_publish && <span>Pages are reviewed before publishing</span>}
                 </div>
                 <Section title="Pages">

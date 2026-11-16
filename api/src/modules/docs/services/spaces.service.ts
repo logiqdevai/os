@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ModuleKey, Prisma, RecordEntityType, WikiPermissionLevel } from 'generated/prisma';
+import { ModuleKey, Prisma, RecordEntityType, WikiPermissionLevel, WikiPrincipalType } from 'generated/prisma';
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { AuditService } from '@/shared/audit/audit.service';
 import { EventsService } from '@/shared/events/events.service';
@@ -65,10 +65,9 @@ export class DocsSpacesService {
                 branch: { select: { id: true, name: true } },
                 department: { select: { id: true, name: true } },
                 project: { select: { id: true, name: true } },
-                members: { include: { membership: { select: MEMBER_SELECT } }, orderBy: { created_at: 'asc' } },
             },
         });
-        return { ...full, my_level: level };
+        return { ...full, members: await this.labelledMembers(full.id), my_level: level };
     }
 
     async create(ctx: OrgContext, dto: CreateSpaceDto) {
@@ -85,10 +84,10 @@ export class DocsSpacesService {
                 },
             });
             const rows = [...(members ?? [])];
-            if (ctx.membership_id && !rows.some((m) => m.membership_id === ctx.membership_id)) rows.push({ membership_id: ctx.membership_id, level: WikiPermissionLevel.MANAGE });
+            if (ctx.membership_id && !rows.some((m) => (m.principal_type ?? 'MEMBERSHIP') === 'MEMBERSHIP' && m.principal_id === ctx.membership_id)) rows.push({ principal_type: WikiPrincipalType.MEMBERSHIP, principal_id: ctx.membership_id, level: WikiPermissionLevel.MANAGE });
             if (rows.length) {
                 await tx.wikiSpaceMember.createMany({
-                    data: rows.map((m) => ({ space_id: created.id, membership_id: m.membership_id, level: m.level ?? WikiPermissionLevel.VIEW, added_by_user_id: ctx.user_id })),
+                    data: rows.map((m) => ({ space_id: created.id, principal_type: m.principal_type ?? WikiPrincipalType.MEMBERSHIP, principal_id: m.principal_id, level: m.level ?? WikiPermissionLevel.VIEW, added_by_user_id: ctx.user_id })),
                     skipDuplicates: true,
                 });
             }
@@ -171,34 +170,62 @@ export class DocsSpacesService {
         return { members, teams, branches };
     }
 
-    // --- Members ------------------------------------------------------------------------
+    // --- Members & access (members, teams, branches, roles, departments) ------------------------
+
+    private async assertPrincipal(org: string, type: WikiPrincipalType, id: string) {
+        const where = { id, organization_id: org };
+        if (type === WikiPrincipalType.MEMBERSHIP) return this.prisma.membership.findFirstOrThrow({ where });
+        if (type === WikiPrincipalType.TEAM || type === WikiPrincipalType.DEPARTMENT) return this.prisma.team.findFirstOrThrow({ where });
+        if (type === WikiPrincipalType.BRANCH) return this.prisma.branch.findFirstOrThrow({ where });
+        return this.prisma.role.findFirstOrThrow({ where: { id, OR: [{ organization_id: org }, { organization_id: null }] } });
+    }
+
+    /** Access rows of a space with a display label (and the member record for people) per principal. */
+    private async labelledMembers(spaceId: string) {
+        const rows = await this.prisma.wikiSpaceMember.findMany({ where: { space_id: spaceId }, orderBy: { created_at: 'asc' } });
+        const ids = (types: WikiPrincipalType[]) => rows.filter((r) => types.includes(r.principal_type)).map((r) => r.principal_id);
+        const [members, teams, branches, roles] = await Promise.all([
+            this.prisma.membership.findMany({ where: { id: { in: ids([WikiPrincipalType.MEMBERSHIP]) } }, select: MEMBER_SELECT }),
+            this.prisma.team.findMany({ where: { id: { in: ids([WikiPrincipalType.TEAM, WikiPrincipalType.DEPARTMENT]) } }, select: { id: true, name: true, _count: { select: { members: true } } } }),
+            this.prisma.branch.findMany({ where: { id: { in: ids([WikiPrincipalType.BRANCH]) } }, select: { id: true, name: true } }),
+            this.prisma.role.findMany({ where: { id: { in: ids([WikiPrincipalType.ROLE]) } }, select: { id: true, name: true } }),
+        ]);
+        return rows.map((r) => {
+            const m = members.find((x) => x.id === r.principal_id);
+            const t = teams.find((x) => x.id === r.principal_id);
+            const label = r.principal_type === WikiPrincipalType.MEMBERSHIP
+                ? (m ? ((m as any).user?.display_name ?? [(m as any).user?.first_name, (m as any).user?.last_name].filter(Boolean).join(' ') ?? (m as any).user?.email) : 'Unknown member')
+                : t?.name ?? branches.find((x) => x.id === r.principal_id)?.name ?? roles.find((x) => x.id === r.principal_id)?.name ?? 'Unknown';
+            return { ...r, principal_label: label || 'Member', membership: m ?? null, member_count: t?._count.members ?? null };
+        });
+    }
 
     async listMembers(ctx: OrgContext, id: string) {
         const { space } = await this.access.readableSpace(ctx, id);
-        return this.prisma.wikiSpaceMember.findMany({ where: { space_id: space.id }, include: { membership: { select: MEMBER_SELECT } }, orderBy: { created_at: 'asc' } });
+        return this.labelledMembers(space.id);
     }
 
-    async upsertMember(ctx: OrgContext, id: string, membershipId: string, level: WikiPermissionLevel) {
+    async upsertMember(ctx: OrgContext, id: string, dto: { principal_type: WikiPrincipalType; principal_id: string; level: WikiPermissionLevel }) {
         const { space, level: mine } = await this.access.readableSpace(ctx, id);
         this.access.assert(mine, 'MANAGE', 'this space');
-        const m = await this.prisma.membership.findFirst({ where: { id: membershipId, organization_id: ctx.organization_id } });
-        if (!m) throw new NotFoundException({ message: 'Member not found', code: 'membership_not_found' });
+        try { await this.assertPrincipal(ctx.organization_id, dto.principal_type, dto.principal_id); } catch { throw new NotFoundException({ message: 'Member, team, branch or role not found', code: 'principal_not_found' }); }
         const row = await this.prisma.wikiSpaceMember.upsert({
-            where: { space_id_membership_id: { space_id: space.id, membership_id: membershipId } },
-            update: { level },
-            create: { space_id: space.id, membership_id: membershipId, level, added_by_user_id: ctx.user_id },
+            where: { space_id_principal_type_principal_id: { space_id: space.id, principal_type: dto.principal_type, principal_id: dto.principal_id } },
+            update: { level: dto.level },
+            create: { space_id: space.id, principal_type: dto.principal_type, principal_id: dto.principal_id, level: dto.level, added_by_user_id: ctx.user_id },
         });
-        await this.audit.record(ctx, 'wiki_space.member_set', { resource_type: 'wiki_space', resource_id: space.id, metadata: { membership_id: membershipId, level } });
-        this.events.publish(ctx, { event_key: 'docs.space.member_added', module: ModuleKey.BUSINESS_DOCS, entity_type: RecordEntityType.WIKI_SPACE, entity_id: space.id, payload: { membership_id: membershipId, level } });
+        await this.audit.record(ctx, 'wiki_space.member_set', { resource_type: 'wiki_space', resource_id: space.id, metadata: { principal_type: dto.principal_type, principal_id: dto.principal_id, level: dto.level } });
+        this.events.publish(ctx, { event_key: 'docs.space.member_added', module: ModuleKey.BUSINESS_DOCS, entity_type: RecordEntityType.WIKI_SPACE, entity_id: space.id, payload: { principal_type: dto.principal_type, principal_id: dto.principal_id, level: dto.level } });
         return row;
     }
 
-    async removeMember(ctx: OrgContext, id: string, membershipId: string) {
+    async removeMember(ctx: OrgContext, id: string, rowId: string) {
         const { space, level } = await this.access.readableSpace(ctx, id);
         this.access.assert(level, 'MANAGE', 'this space');
-        const res = await this.prisma.wikiSpaceMember.deleteMany({ where: { space_id: space.id, membership_id: membershipId } });
-        if (!res.count) throw new NotFoundException({ message: 'Member is not in this space', code: 'wiki_space_member_not_found' });
-        await this.audit.record(ctx, 'wiki_space.member_removed', { resource_type: 'wiki_space', resource_id: space.id, metadata: { membership_id: membershipId } });
+        const row = await this.prisma.wikiSpaceMember.findFirst({ where: { id: rowId, space_id: space.id } });
+        if (!row) throw new NotFoundException({ message: 'Access entry not found', code: 'wiki_space_member_not_found' });
+        await this.prisma.wikiSpaceMember.delete({ where: { id: rowId } });
+        await this.audit.record(ctx, 'wiki_space.member_removed', { resource_type: 'wiki_space', resource_id: space.id, metadata: { principal_type: row.principal_type, principal_id: row.principal_id } });
         return { success: true };
     }
 
@@ -210,7 +237,7 @@ export class DocsSpacesService {
         if (dto.branch_id) checks.push(this.prisma.branch.findFirstOrThrow({ where: { id: dto.branch_id, organization_id: org } }));
         if (dto.project_id) checks.push(this.prisma.project.findFirstOrThrow({ where: { id: dto.project_id, organization_id: org } }));
         if (dto.owner_membership_id) checks.push(this.prisma.membership.findFirstOrThrow({ where: { id: dto.owner_membership_id, organization_id: org } }));
-        for (const m of dto.members ?? []) checks.push(this.prisma.membership.findFirstOrThrow({ where: { id: m.membership_id, organization_id: org } }));
+        for (const m of dto.members ?? []) checks.push(this.assertPrincipal(org, m.principal_type ?? WikiPrincipalType.MEMBERSHIP, m.principal_id));
         try {
             await Promise.all(checks);
         } catch {

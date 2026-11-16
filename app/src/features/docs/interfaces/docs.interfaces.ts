@@ -66,11 +66,17 @@ export interface WikiSpace {
 }
 
 export interface WikiSpaceMember {
+    id: string;
     space_id: string;
-    membership_id: string;
+    principal_type: WikiPrincipalType;
+    principal_id: string;
+    principal_label: string;
     level: WikiPermissionLevel;
     created_at: string;
-    membership: MemberRef;
+    /** People only. */
+    membership: MemberRef | null;
+    /** Teams only: how many people the group has. */
+    member_count: number | null;
 }
 
 export interface WikiSpaceDetail extends WikiSpace {

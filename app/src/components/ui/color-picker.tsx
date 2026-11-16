@@ -32,7 +32,7 @@ export function ColorPicker({
                 disabled={disabled}
                 value={HEX_COLOR.test(text) ? text : hex}
                 onChange={(e) => emit(e.target.value)}
-                className="size-9 flex-none cursor-pointer rounded-md border border-input bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+                className="size-9 flex-none cursor-pointer rounded-md border-0 bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-50"
             />
             <Input
                 id={id}

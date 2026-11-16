@@ -36,7 +36,7 @@ export function MonthGrid({ anchor, from, events, onOpenDay, onOpenEvent }: Mont
                             </button>
                             <div className="hidden space-y-0.5 sm:block">
                                 {list.slice(0, 3).map((e) => (
-                                    <button style={chipStyle(e.color)} key={e.key} type="button" onClick={() => onOpenEvent(e)} className={cn("block w-full truncate rounded-xs border-l-2 px-1 text-left text-[11px]", chipClass(e.color), (e.status === "CANCELLED" || e.my_response === "DECLINED") && "line-through opacity-60")}>
+                                    <button style={chipStyle(e.color)} key={e.key} type="button" onClick={() => onOpenEvent(e)} className={cn("block w-full truncate rounded-l-none rounded-r-md border-l-2 px-1 text-left text-[11px]", chipClass(e.color), (e.status === "CANCELLED" || e.my_response === "DECLINED") && "line-through opacity-60")}>
                                         {!e.all_day && <span className="tabular opacity-80">{format(parseISO(e.starts_at), "HH:mm")} </span>}
                                         {e.title}
                                     </button>

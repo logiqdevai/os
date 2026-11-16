@@ -116,6 +116,30 @@ export class MovePageDto {
     sort_order?: number;
 }
 
+export class DuplicatePageDto {
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsString()
+    @MinLength(1)
+    @MaxLength(200)
+    title?: string;
+
+    @ApiProperty({ required: false, description: 'Duplicate under this parent (default: the same parent)' })
+    @IsOptional()
+    @IsUUID()
+    parent_page_id?: string | null;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsUUID()
+    space_id?: string;
+
+    @ApiProperty({ required: false, description: 'Also copy all sub-pages' })
+    @IsOptional()
+    @IsBoolean()
+    include_children?: boolean;
+}
+
 export class PublishPageDto {
     @ApiProperty({ required: false })
     @IsOptional()
@@ -286,4 +310,30 @@ export const UpdatePageSchema = z.object({
     content_markdown: z.string().max(MAX_CONTENT).optional(),
     change_summary: z.string().max(500).optional(),
     base_version_number: z.number().int().min(1).optional(),
+});
+
+export const MovePageSchema = z.object({
+    id: z.string().uuid(),
+    parent_page_id: z.string().uuid().nullable().optional(),
+    space_id: z.string().uuid().optional(),
+    sort_order: z.number().int().min(0).optional(),
+});
+export const DuplicatePageSchema = z.object({
+    id: z.string().uuid(),
+    title: z.string().min(1).max(200).optional(),
+    parent_page_id: z.string().uuid().nullable().optional(),
+    space_id: z.string().uuid().optional(),
+    include_children: z.boolean().optional(),
+});
+export const ReplaceContentSchema = z.object({
+    id: z.string().uuid(),
+    edits: z.array(z.object({ old_str: z.string().min(1), new_str: z.string(), replace_all: z.boolean().optional() })).min(1).max(50),
+    change_summary: z.string().max(500).optional(),
+});
+export const CreateCommentSchema = z.object({
+    id: z.string().uuid(),
+    body: z.string().min(1).max(10_000),
+    parent_comment_id: z.string().uuid().optional(),
+    block_id: z.string().max(80).optional(),
+    mentions: z.array(z.string().uuid()).optional(),
 });

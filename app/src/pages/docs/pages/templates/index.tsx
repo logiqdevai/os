@@ -24,6 +24,7 @@ import { WikiPageTypeFormOptions } from "@/config/constants/dropdowns/docs/docs.
 import { useArchiveDocTemplate, useCreateDocTemplate, useDocTemplates, useUpdateDocTemplate } from "@/features/docs/hooks/use-docs";
 import type { WikiPageType, WikiTemplate } from "@/features/docs/interfaces/docs.interfaces";
 import { DocIcon } from "../../components/docs-ui";
+import { DocIconPicker } from "../../components/doc-icons";
 
 /**
  * /docs/templates — page templates (15 §3)
@@ -124,7 +125,7 @@ function TemplateDialog({ open, onOpenChange, template }: { open: boolean; onOpe
                     <form onSubmit={submit} className="space-y-4">
                         <DialogHeader><DialogTitle>{template ? "Edit template" : "New template"}</DialogTitle><DialogDescription>Markdown content copied into new pages.{template ? " Changes save automatically." : ""}</DialogDescription></DialogHeader>
                         <div className="grid grid-cols-[72px_1fr] gap-3">
-                            <FormField control={form.control} name="icon" render={({ field }) => (<FormItem><FormLabel>Icon</FormLabel><FormControl><Input maxLength={8} {...field} /></FormControl></FormItem>)} />
+                            <FormField control={form.control} name="icon" render={({ field }) => (<FormItem><FormLabel>Icon</FormLabel><FormControl><DocIconPicker value={field.value} onChange={field.onChange} /></FormControl></FormItem>)} />
                             <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input autoFocus {...field} /></FormControl><FormMessage /></FormItem>)} />
                         </div>
                         <FormField control={form.control} name="page_type" render={({ field }) => (

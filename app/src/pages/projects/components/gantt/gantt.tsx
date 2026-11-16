@@ -55,7 +55,7 @@ export interface GanttChange {
 }
 
 const LABEL_W = 232;
-const ROW_H = 36;
+const ROW_H = 52;
 const HEADER_H = 44;
 
 const BAR_TONE: Record<GanttTone, string> = {
@@ -372,7 +372,7 @@ export function Gantt({
                         return (
                             <div key={item.id} className="group flex border-b border-border-soft" style={{ height: ROW_H }} data-row={i}>
                                 <div className="sticky left-0 z-20 flex flex-none items-center gap-1 border-r border-border bg-card pr-1" style={{ width: LABEL_W, paddingLeft: 12 + (item.depth ?? 0) * 14 }}>
-                                    <div className="min-w-0 flex-1 leading-tight">
+                                    <div className="min-w-0 flex-1 leading-snug">
                                         {item.href ? (
                                             <Link to={item.href} className="block truncate text-[13px] text-foreground hover:underline">{item.label}</Link>
                                         ) : (

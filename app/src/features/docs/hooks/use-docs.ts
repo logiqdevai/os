@@ -194,3 +194,6 @@ export const useExportDocs = () => useMutation({ mutationFn: service.exportDocs,
 /** The import dialog shows the result (and the error) inline. */
 export const useImportDocs = mutation(service.importDocs, "Import failed", false);
 export const useDocsTransfers = (enabled = true) => useQuery({ queryKey: [...KEY, "transfers"], queryFn: service.getDocsTransfers, enabled });
+export const useDuplicatePage = mutation(service.duplicatePage, "Could not duplicate the page");
+export const useSetSpaceMember = mutation(service.setSpaceMember, "Could not update access", true);
+export const useRemoveSpaceMember = mutation(service.removeSpaceMember, "Could not remove access", true);

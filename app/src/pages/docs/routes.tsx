@@ -1,5 +1,6 @@
 import { lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { DocsShortcuts } from "./components/docs-shortcuts";
 import { RequirePermission } from "@/components/access/can";
 
 const HomePage = lazy(() => import("./pages/home"));
@@ -21,7 +22,9 @@ const AnalyticsPage = lazy(() => import("./pages/analytics"));
 /** /docs/* — each route gated by its VIEW permission (app/mockups/modules/15-docs). */
 export default function DocsRoutes() {
     return (
-        <Routes>
+        <>
+        <DocsShortcuts />
+<Routes>
             <Route index element={<RequirePermission permission="docs.pages.read"><HomePage /></RequirePermission>} />
             <Route path="spaces" element={<RequirePermission permission="docs.pages.read"><SpacesPage /></RequirePermission>} />
             <Route path="spaces/:id" element={<RequirePermission permission="docs.pages.read"><SpaceDetailPage /></RequirePermission>} />
@@ -41,5 +44,6 @@ export default function DocsRoutes() {
             <Route path="trash" element={<RequirePermission permission="docs.pages.read"><TrashPage /></RequirePermission>} />
             <Route path="*" element={<Navigate to="/docs" replace />} />
         </Routes>
+        </>
     );
 }

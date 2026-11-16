@@ -12,6 +12,7 @@ import {
     AnalyticsQuerySchema,
     CreateCommentDto,
     CreatePageDto,
+    DuplicatePageDto,
     MarkReviewedDto,
     MovePageDto,
     PageQuery,
@@ -96,6 +97,13 @@ export class DocsPagesController {
     @ApiOperation({ summary: 'Move / reorder a page in the tree' })
     move(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: MovePageDto) {
         return this.pages.move(ctx, id, dto);
+    }
+
+    @Post('pages/:id/duplicate')
+    @RequirePermission('docs.pages.create')
+    @ApiOperation({ summary: 'Duplicate a page (optionally with its sub-pages)' })
+    duplicate(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: DuplicatePageDto) {
+        return this.pages.duplicate(ctx, id, dto);
     }
 
     @Post('pages/:id/publish')

@@ -125,7 +125,7 @@ export function TaskFilterMenu({ view }: { view: TaskViewState }) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8" aria-label="Filter"><Filter /> Filter{view.activeFilters.length > 0 && <span className="rounded bg-accent px-1 text-xs tabular">{view.activeFilters.length}</span>}</Button>
+                <Button variant="ghost" size="sm" className="h-7 text-muted-foreground" aria-label="Filter"><Filter /> Filter{view.activeFilters.length > 0 && <span className="rounded bg-accent px-1 text-xs tabular">{view.activeFilters.length}</span>}</Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-52">
                 {multi("status_category", "Status", TaskStatusCategoryFormOptions.map((o) => ({ id: o.id, label: o.label })))}
@@ -163,7 +163,7 @@ export function TaskFilterChips({ view, projectName }: { view: TaskViewState; pr
     const names: Record<string, string> = { status_category: "Status", priority: "Priority", label_id: "Labels", team_id: "Team", assignee: "Assignee", due: "Due", project_id: "Project" };
     if (!view.activeFilters.length) return null;
     return (
-        <div className="mb-3 flex flex-wrap items-center gap-1.5" aria-label="Active filters">
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-4 py-2 md:px-6" aria-label="Active filters">
             {view.activeFilters.map((k) => (
                 <span key={k} className="inline-flex h-6 items-center gap-1 rounded-md border border-border bg-secondary pl-2 pr-0.5 text-xs">
                     <span className="text-muted-foreground">{names[k]}</span>
@@ -199,10 +199,10 @@ export function TaskDisplayMenu({ view }: { view: TaskViewState }) {
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8" aria-label="Display options"><SlidersHorizontal /> Display</Button>
+                <Button variant="ghost" size="sm" className="h-7 text-muted-foreground" aria-label="Display options"><SlidersHorizontal /> Display</Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-72 space-y-3 p-3">
-                <div className="grid grid-cols-2 gap-1 rounded-md bg-secondary p-0.5" role="radiogroup" aria-label="Layout">
+                <div className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-0.5" role="radiogroup" aria-label="Layout">
                     {([["list", "List", List], ["board", "Board", Columns3]] as const).map(([id, name, Icon]) => (
                         <button
                             key={id}
@@ -210,7 +210,7 @@ export function TaskDisplayMenu({ view }: { view: TaskViewState }) {
                             role="radio"
                             aria-checked={view.layout === id}
                             onClick={() => view.setParam("layout", id === "list" ? null : id)}
-                            className={cn("flex h-7 items-center justify-center gap-1.5 rounded text-[13px] text-muted-foreground transition-colors hover:text-foreground", view.layout === id && "bg-card font-medium text-foreground shadow-sm")}
+                            className={cn("flex h-7 items-center justify-center gap-1.5 rounded-full text-[13px] text-muted-foreground transition-colors hover:text-foreground", view.layout === id && "bg-card font-medium text-foreground")}
                         >
                             <Icon className="size-4" /> {name}
                         </button>

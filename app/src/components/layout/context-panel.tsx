@@ -11,10 +11,10 @@ export function ContextPanelNav({ app, onNavigate }: { app: AppDefinition; onNav
     const sections = filterNav(app);
     const Extra = app.navExtra;
     return (
-        <div className="space-y-4">
+        <div className="space-y-5">
             {sections.map((section, i) => (
-                <div key={section.label ?? i} className="space-y-0.5">
-                    {section.label && <div className="px-2 pb-1 pt-1 text-[11.5px] font-medium tracking-[0.2px] text-ash">{section.label}</div>}
+                <div key={section.label ?? i} className="space-y-1">
+                    {section.label && <div className="px-3 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-ash">{section.label}</div>}
                     {section.items.map((item) => (
                         <NavLink
                             key={item.to}
@@ -23,13 +23,18 @@ export function ContextPanelNav({ app, onNavigate }: { app: AppDefinition; onNav
                             onClick={onNavigate}
                             className={({ isActive }) =>
                                 cn(
-                                    "flex h-[30px] items-center gap-2 rounded-md px-2 text-[13px] text-body transition-colors hover:bg-border-soft hover:text-foreground [&_svg]:size-4 [&_svg]:flex-none",
-                                    isActive && "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                                    "relative flex h-9 items-center gap-2.5 rounded-lg px-3 text-sm text-body transition-colors hover:bg-border-soft hover:text-foreground [&_svg]:size-4 [&_svg]:flex-none",
+                                    isActive &&
+                                        "bg-[color-mix(in_oklab,var(--app,var(--brand))_12%,transparent)] font-medium text-foreground overflow-hidden before:absolute before:left-0 before:inset-y-0 before:w-[3px] before:bg-[var(--app,var(--brand))]"
                                 )
                             }
                         >
-                            {item.icon && <item.icon className="text-muted-foreground" />}
-                            <span className="truncate">{item.label}</span>
+                            {({ isActive }) => (
+                                <>
+                                    {item.icon && <item.icon className={isActive ? "text-[var(--app,var(--brand))]" : "text-muted-foreground"} />}
+                                    <span className="truncate">{item.label}</span>
+                                </>
+                            )}
                         </NavLink>
                     ))}
                 </div>
@@ -41,14 +46,14 @@ export function ContextPanelNav({ app, onNavigate }: { app: AppDefinition; onNav
 
 export function ContextPanel({ app, onCollapse }: { app: AppDefinition; onCollapse: () => void }) {
     return (
-        <aside aria-label={`${app.label} navigation`} className="hidden h-full w-[236px] flex-none flex-col overflow-hidden border-r border-sidebar-border bg-sidebar lg:flex">
-            <div className="flex h-[52px] flex-none items-center gap-1 border-b border-sidebar-border pl-4 pr-2.5">
-                <b className="flex-1 truncate text-[15px] font-semibold text-foreground">{app.label}</b>
+        <aside aria-label={`${app.label} navigation`} className="hidden h-full w-[256px] flex-none flex-col overflow-hidden border-r border-border bg-[var(--shell-sidebar)] lg:flex">
+            <div className="flex h-16 flex-none items-center gap-1 pl-5 pr-3">
+                <b className="flex-1 truncate text-base font-semibold text-foreground">{app.label}</b>
                 <Button variant="ghost" size="icon-sm" onClick={onCollapse} aria-label="Collapse panel">
                     <PanelLeftClose />
                 </Button>
             </div>
-            <div className="flex-1 overflow-y-auto px-2.5 pb-4 pt-2">
+            <div className="flex-1 overflow-y-auto px-3.5 pb-4 pt-1">
                 <ContextPanelNav app={app} />
             </div>
         </aside>

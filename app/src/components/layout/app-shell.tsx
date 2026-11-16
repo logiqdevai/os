@@ -6,6 +6,7 @@ import { isLoggedIn, useAuthStore } from "@/stores/auth";
 import { ErrorState, NoAccessState, PageSkeleton } from "@/components/ui/states";
 import { getApiErrorStatus } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
+import { appColor } from "@/config/apps/app-colors";
 import { Rail } from "./rail";
 import { ContextPanel } from "./context-panel";
 import { AppBar } from "./app-bar";
@@ -55,7 +56,7 @@ export default function AppShell() {
     if (session.isLoading) {
         return (
             <div className="flex h-full">
-                <div className="hidden w-[60px] border-r border-border md:block" />
+                <div className="hidden w-[72px] bg-rail md:block" />
                 <div className="flex-1">
                     <PageSkeleton />
                 </div>
@@ -84,7 +85,7 @@ export default function AppShell() {
 
     return (
         <TooltipProvider delayDuration={300}>
-            <div className="flex h-dvh overflow-hidden bg-background">
+            <div className="flex h-dvh overflow-hidden bg-background" style={appColor(app?.id) ? ({ "--app": appColor(app?.id) } as React.CSSProperties) : undefined}>
                 <Rail unread={unread} />
                 {showPanel && <ContextPanel app={app} onCollapse={() => setCollapsed(true)} />}
                 <div className="flex min-w-0 flex-1 flex-col">
@@ -95,7 +96,12 @@ export default function AppShell() {
                         onOpenMobileNav={() => setMobileOpen(true)}
                         onOpenSearch={() => setSearchOpen(true)}
                     />
-                    <main className={cn("min-h-0 flex-1", app?.fill ? "overflow-hidden" : "overflow-y-auto")}>
+                    <main
+                        className={cn(
+                            "min-h-0 flex-1 bg-[color:var(--shell-content)] bg-[image:radial-gradient(44rem_24rem_at_100%_0%,color-mix(in_oklab,var(--app,var(--brand))_10%,transparent),transparent)]",
+                            app?.fill ? "overflow-hidden" : "overflow-y-auto"
+                        )}
+                    >
                         {allowed ? <Outlet /> : <NoAccessState />}
                     </main>
                 </div>

@@ -6,8 +6,8 @@ import { DocsPagesService } from './services/pages.service';
 import { DocsSpacesService } from './services/spaces.service';
 import { DocsChecklistsService } from './services/checklists.service';
 import { DocsFormsService } from './services/forms.service';
-import { CreatePageSchema, PageQuerySchema, SearchQuerySchema, UpdatePageSchema } from './dto/page.dto';
-import { SpaceQuerySchema } from './dto/space.dto';
+import { CreateCommentSchema, DuplicatePageSchema, MovePageSchema, ReplaceContentSchema, CreatePageSchema, PageQuerySchema, SearchQuerySchema, UpdatePageSchema } from './dto/page.dto';
+import { SpaceMemberSchema, SpaceQuerySchema } from './dto/space.dto';
 import { ChecklistQuerySchema, StartChecklistRunSchema } from './dto/checklist.dto';
 import { FormQuerySchema, SubmissionQuerySchema } from './dto/form.dto';
 import { AskDocsSchema } from './dto/ai-transfer.dto';
@@ -72,9 +72,79 @@ export class DocsMcp implements OnModuleInit {
                 handler: (ctx, args) => this.pages.setArchived(ctx, args.id, true),
             },
             {
+                name: 'docs_pages_replace_content', description: 'Edit part of a page by exact text search-and-replace (Notion "update_content"). Each old_str must match exactly once unless replace_all. Prefer this over docs_pages_update for small edits.',
+                permission: 'docs.pages.update', module: M, resource_type: 'wiki_page', input: ReplaceContentSchema,
+                handler: (ctx, args) => this.pages.replaceContent(ctx, args.id, args.edits, args.change_summary),
+            },
+            {
+                name: 'docs_pages_move', description: 'Move a page under another parent page, to the top level of a space (parent_page_id null) or to another space; optional sort_order.',
+                permission: 'docs.pages.update', module: M, resource_type: 'wiki_page', input: MovePageSchema,
+                handler: (ctx, { id: pageId, ...dto }) => this.pages.move(ctx, pageId, dto),
+            },
+            {
+                name: 'docs_pages_duplicate', description: 'Duplicate a page, optionally with all its sub-pages, next to the original or under another parent/space.',
+                permission: 'docs.pages.create', module: M, resource_type: 'wiki_page', input: DuplicatePageSchema,
+                handler: (ctx, { id: pageId, ...dto }) => this.pages.duplicate(ctx, pageId, dto),
+            },
+            {
+                name: 'docs_pages_trash', description: 'Move a page and its sub-pages to the trash (restorable).',
+                permission: 'docs.pages.update', module: M, resource_type: 'wiki_page', sensitive: true, input: id,
+                handler: (ctx, args) => this.pages.trash(ctx, args.id),
+            },
+            {
+                name: 'docs_pages_restore', description: 'Restore a page from the trash.',
+                permission: 'docs.pages.update', module: M, resource_type: 'wiki_page', input: id,
+                handler: (ctx, args) => this.pages.restore(ctx, args.id),
+            },
+            {
+                name: 'docs_pages_favorite', description: "Add or remove a page from the caller's favorites (sidebar).",
+                permission: 'docs.pages.read', module: M, resource_type: 'wiki_page', input: z.object({ id: z.string().uuid(), favorite: z.boolean() }),
+                handler: (ctx, args) => this.pages.setFavorite(ctx, args.id, args.favorite),
+            },
+            {
+                name: 'docs_pages_comments_list', description: 'List the comments (threads, resolved state, block anchors) of a page.',
+                permission: 'docs.pages.read', module: M, resource_type: 'wiki_page_comment', input: id,
+                handler: (ctx, args) => this.pages.comments(ctx, args.id),
+            },
+            {
+                name: 'docs_pages_comments_create', description: 'Comment on a page, reply to a thread (parent_comment_id) or anchor to a block (block_id); mention members by id.',
+                permission: 'docs.pages.read', module: M, resource_type: 'wiki_page_comment', input: CreateCommentSchema,
+                handler: (ctx, { id: pageId, ...dto }) => this.pages.addComment(ctx, pageId, dto),
+            },
+            {
+                name: 'docs_pages_versions_list', description: 'Version history of a page (page history).',
+                permission: 'docs.pages.read', module: M, resource_type: 'wiki_page_version', input: id,
+                handler: (ctx, args) => this.pages.versions(ctx, args.id),
+            },
+            {
+                name: 'docs_pages_version_restore', description: 'Restore an earlier version of a page (creates a new version).',
+                permission: 'docs.pages.update', module: M, resource_type: 'wiki_page_version', input: z.object({ id: z.string().uuid(), version: z.number().int().min(1) }),
+                handler: (ctx, args) => this.pages.restoreVersion(ctx, args.id, args.version),
+            },
+            {
+                name: 'docs_pages_links_list', description: 'Backlinks and record links of a page.',
+                permission: 'docs.pages.read', module: M, resource_type: 'wiki_page_link', input: id,
+                handler: (ctx, args) => this.pages.links(ctx, args.id),
+            },
+            {
                 name: 'docs_spaces_list', description: 'List wiki spaces the caller can read.',
                 permission: 'docs.pages.read', module: M, resource_type: 'wiki_space', input: SpaceQuerySchema,
                 handler: (ctx, args) => this.spaces.findAll(ctx, args),
+            },
+            {
+                name: 'docs_spaces_members_list', description: 'List who has access to a space: members, teams (user groups), branches and roles, with their level.',
+                permission: 'docs.pages.read', module: M, resource_type: 'wiki_space', input: id,
+                handler: (ctx, args) => this.spaces.listMembers(ctx, args.id),
+            },
+            {
+                name: 'docs_spaces_members_set', description: 'Give a member, team (group of users), branch or role access to a space (VIEW, COMMENT, EDIT, MANAGE) or change their level. Needs MANAGE on the space.',
+                permission: 'docs.pages.read', module: M, resource_type: 'wiki_space', sensitive: true, input: SpaceMemberSchema,
+                handler: (ctx, { id: spaceId, ...dto }) => this.spaces.upsertMember(ctx, spaceId, dto),
+            },
+            {
+                name: 'docs_spaces_members_remove', description: 'Remove an access entry (member, team, branch or role) from a space.',
+                permission: 'docs.pages.read', module: M, resource_type: 'wiki_space', sensitive: true, input: z.object({ id: z.string().uuid(), member_id: z.string().uuid() }),
+                handler: (ctx, args) => this.spaces.removeMember(ctx, args.id, args.member_id),
             },
             {
                 name: 'docs_spaces_tree', description: 'Page tree (flat list with parent ids) of a space, by id or slug.',

@@ -1,14 +1,19 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUUID, MaxLength, MinLength, ValidateNested } from 'class-validator';
-import { WikiPermissionLevel, WikiSpaceKind, WikiVisibility } from 'generated/prisma';
+import { WikiPermissionLevel, WikiPrincipalType, WikiSpaceKind, WikiVisibility } from 'generated/prisma';
 import { z } from 'zod';
 import { BaseListQuerySchema, boolish } from '@/shared/utils/pagination/pagination.utils';
 
 export class SpaceMemberInputDto {
-    @ApiProperty()
+    @ApiProperty({ enum: WikiPrincipalType, required: false, description: 'Defaults to MEMBERSHIP' })
+    @IsOptional()
+    @IsEnum(WikiPrincipalType)
+    principal_type?: WikiPrincipalType;
+
+    @ApiProperty({ description: 'Membership, team, branch, role or department id' })
     @IsUUID()
-    membership_id: string;
+    principal_id: string;
 
     @ApiProperty({ enum: WikiPermissionLevel, required: false })
     @IsOptional()
@@ -124,7 +129,7 @@ export const CreateSpaceSchema = z.object({
     owner_membership_id: z.string().uuid().optional(),
     default_visibility: z.nativeEnum(WikiVisibility).optional(),
     is_private: z.boolean().optional(),
-    members: z.array(z.object({ membership_id: z.string().uuid(), level: z.nativeEnum(WikiPermissionLevel).optional() })).optional(),
+    members: z.array(z.object({ principal_type: z.nativeEnum(WikiPrincipalType).optional(), principal_id: z.string().uuid(), level: z.nativeEnum(WikiPermissionLevel).optional() })).optional(),
 });
 
 export const SpaceQuerySchema = BaseListQuerySchema.extend({
@@ -132,3 +137,10 @@ export const SpaceQuerySchema = BaseListQuerySchema.extend({
     archived: boolish,
 });
 export type SpaceQuery = z.infer<typeof SpaceQuerySchema>;
+
+export const SpaceMemberSchema = z.object({
+    id: z.string().uuid(),
+    principal_type: z.nativeEnum(WikiPrincipalType),
+    principal_id: z.string().uuid(),
+    level: z.nativeEnum(WikiPermissionLevel),
+});

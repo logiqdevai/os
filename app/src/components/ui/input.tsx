@@ -2,6 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { X } from "lucide-react";
+import { DatePickerInput } from "@/components/ui/date-picker";
 import { useAutoPlaceholder } from "@/hooks/use-auto-placeholder";
 
 interface InputProps extends React.ComponentProps<"input"> {
@@ -34,9 +35,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({ className, type,
     props.onChange?.(event);
   };
 
+  if (type === "date" || type === "datetime-local") {
+    const { onChange, value, defaultValue, min, max, onBlur, name, id, disabled, required } = props;
+    return <DatePickerInput ref={ref as React.Ref<HTMLButtonElement>} type={type as "date" | "datetime-local"} className={className} placeholder={placeholder} {...{ onChange, value, defaultValue, min, max, onBlur, name, id, disabled, required }} aria-label={props["aria-label"]} aria-invalid={props["aria-invalid"]} aria-describedby={props["aria-describedby"]} />;
+  }
+
   return (
     <div className={`${avatarPreview ? "flex" : "column"} items-center gap-4`}>
-      <input type={type} className={cn("flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm", className)} ref={setRef} placeholder={placeholder} {...props} onChange={handleFileChange} />
+      <input type={type} className={cn("flex h-9 w-full rounded-full border border-input bg-transparent px-3 py-1 text-base transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm", className)} ref={setRef} placeholder={placeholder} {...props} onChange={handleFileChange} />
       {(avatarPreview || fileName) && (
         <div className="relative">
           {avatarPreview && <img src={avatarPreview} alt="Avatar Preview" className="h-16 w-16 rounded-full object-cover border" width={64} height={64} />}

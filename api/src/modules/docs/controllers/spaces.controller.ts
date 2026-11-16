@@ -1,8 +1,8 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { IsEnum } from 'class-validator';
+import { IsEnum, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { WikiPermissionLevel } from 'generated/prisma';
+import { WikiPermissionLevel, WikiPrincipalType } from 'generated/prisma';
 import { JwtGuard } from '@/shared/guards/jwt.guard';
 import { PermissionsGuard } from '@/shared/authorization/guards/permissions.guard';
 import { CurrentOrg, RequireAnyPermission, RequirePermission } from '@/shared/authorization/decorators/require-permission.decorator';
@@ -13,6 +13,14 @@ import { DocsPagesService } from '../services/pages.service';
 import { CreateSpaceDto, SpaceQuery, SpaceQuerySchema, UpdateSpaceDto } from '../dto/space.dto';
 
 class SpaceMemberLevelDto {
+    @ApiProperty({ enum: WikiPrincipalType })
+    @IsEnum(WikiPrincipalType)
+    principal_type: WikiPrincipalType;
+
+    @ApiProperty()
+    @IsUUID()
+    principal_id: string;
+
     @ApiProperty({ enum: WikiPermissionLevel })
     @IsEnum(WikiPermissionLevel)
     level: WikiPermissionLevel;
@@ -105,17 +113,17 @@ export class DocsSpacesController {
         return this.spaces.listMembers(ctx, id);
     }
 
-    @Put(':id/members/:membershipId')
+    @Put(':id/members')
     @RequirePermission('docs.pages.read')
-    @ApiOperation({ summary: 'Add a member or change their level (needs MANAGE on the space)' })
-    setMember(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Param('membershipId', ParseUUIDPipe) membershipId: string, @Body() dto: SpaceMemberLevelDto) {
-        return this.spaces.upsertMember(ctx, id, membershipId, dto.level);
+    @ApiOperation({ summary: 'Grant a member, team, branch or role access to the space, or change their level (needs MANAGE on the space)' })
+    setMember(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: SpaceMemberLevelDto) {
+        return this.spaces.upsertMember(ctx, id, dto);
     }
 
-    @Delete(':id/members/:membershipId')
+    @Delete(':id/members/:memberId')
     @RequirePermission('docs.pages.read')
-    @ApiOperation({ summary: 'Remove a member from the space (needs MANAGE on the space)' })
-    removeMember(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Param('membershipId', ParseUUIDPipe) membershipId: string) {
-        return this.spaces.removeMember(ctx, id, membershipId);
+    @ApiOperation({ summary: 'Remove an access entry from the space (needs MANAGE on the space)' })
+    removeMember(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Param('memberId', ParseUUIDPipe) memberId: string) {
+        return this.spaces.removeMember(ctx, id, memberId);
     }
 }

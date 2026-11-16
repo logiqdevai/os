@@ -1,7 +1,8 @@
 import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Patch, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsOptional, Matches, ValidateIf } from 'class-validator';
+import { IsEnum, IsIn, IsInt, IsOptional, Matches, Max, Min, ValidateIf } from 'class-validator';
+import { FONT_FAMILY_IDS, MONO_FONT_FAMILY_IDS } from '../services/account-appearance.service';
 import type { Response } from 'express';
 import { AppColorMode, AppTheme } from 'generated/prisma';
 import { JwtGuard } from '@/shared/guards/jwt.guard';

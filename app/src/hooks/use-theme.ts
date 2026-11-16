@@ -1,17 +1,29 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { DEFAULT_FONT_FAMILY_ID, DEFAULT_FONT_SIZE, DEFAULT_MONO_FONT_FAMILY_ID, FontFamilyOptions, MonoFontFamilyOptions, getFontOption, type FontOption } from "@/config/constants/dropdowns/shared/font-family.options";
 
 /** 01 §127 — mirrors the API enums `AppColorMode` / `AppTheme` (UserAppearance, per user per organization). */
 export type ColorMode = "LIGHT" | "DARK" | "SYSTEM";
-export type AppTheme = "DEFAULT" | "CYAN" | "OCEAN" | "INDIGO" | "AUBERGINE" | "ROSE" | "CRIMSON" | "SUNSET" | "HONEY" | "FOREST" | "SLATE" | "MOCHA";
+export type AppTheme = "DEFAULT" | "CYAN" | "AUBERGINE" | "OCEAN" | "FOREST" | "SUNSET" | "MONOCHROME" | "SOLARIZED" | "NORD" | "DRACULA";
 
 export interface Appearance {
     color_mode: ColorMode;
     theme: AppTheme;
     /** #rrggbb custom primary color; null = the theme's own accent. */
     primary_color: string | null;
+    /** Interface and monospace font ids (font-family.options) and the base font size in px. */
+    font_family: string;
+    mono_font_family: string;
+    font_size: number;
 }
 
-export const DEFAULT_APPEARANCE: Appearance = { color_mode: "SYSTEM", theme: "DEFAULT", primary_color: null };
+export const DEFAULT_APPEARANCE: Appearance = {
+    color_mode: "SYSTEM",
+    theme: "DEFAULT",
+    primary_color: null,
+    font_family: DEFAULT_FONT_FAMILY_ID,
+    mono_font_family: DEFAULT_MONO_FONT_FAMILY_ID,
+    font_size: DEFAULT_FONT_SIZE,
+};
 
 /** Last applied appearance on this device, read by the boot script in index.html so the first paint is already themed. */
 const STORAGE_KEY = "appearance";
@@ -40,6 +52,13 @@ export const readableOn = (hex: string) => (luminance(hex) > 0.4 ? "#000000" : "
 
 const HEX = /^#[0-9a-f]{6}$/i;
 
+const loadedFonts = new Set<string>();
+function ensureFont(font: FontOption) {
+    if (!font.load || loadedFonts.has(font.id)) return;
+    loadedFonts.add(font.id);
+    font.load().catch(() => loadedFonts.delete(font.id));
+}
+
 /** Write the appearance onto <html>: `dark` class, `data-theme`, and the custom primary color as inline tokens. */
 function apply(a: Appearance) {
     const root = document.documentElement;
@@ -58,6 +77,14 @@ function apply(a: Appearance) {
         root.style.removeProperty("--brand-foreground");
         root.style.removeProperty("--tint");
     }
+    const sans = getFontOption(FontFamilyOptions, a.font_family);
+    const mono = getFontOption(MonoFontFamilyOptions, a.mono_font_family);
+    ensureFont(sans);
+    ensureFont(mono);
+    root.style.setProperty("--font-sans", sans.stack);
+    root.style.setProperty("--font-mono", mono.stack);
+    // 14px is the design baseline and maps to the browser's default 16px root.
+    root.style.fontSize = `${(16 * a.font_size) / DEFAULT_FONT_SIZE}px`;
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#07080a" : "#ffffff");
 }
 

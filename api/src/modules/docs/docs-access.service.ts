@@ -77,10 +77,21 @@ export class DocsAccessService {
         const privacy: Prisma.WikiSpaceWhereInput = {
             OR: [
                 { is_private: false },
-                ...(p.membership_id ? [{ members: { some: { membership_id: p.membership_id } } }, { owner_membership_id: p.membership_id }] : []),
+                ...(this.spaceGrantMatch(p).length ? [{ members: { some: { OR: this.spaceGrantMatch(p) } } }] : []),
+                ...(p.membership_id ? [{ owner_membership_id: p.membership_id }] : []),
             ],
         };
         return { ...base, AND: [this.scopeWhere(ctx), privacy] };
+    }
+
+    /** Space access rows (members, teams, branches, roles, departments) that apply to the caller. */
+    private spaceGrantMatch(p: DocsPrincipals): Prisma.WikiSpaceMemberWhereInput[] {
+        const out: Prisma.WikiSpaceMemberWhereInput[] = [];
+        if (p.membership_id) out.push({ principal_type: WikiPrincipalType.MEMBERSHIP, principal_id: p.membership_id });
+        if (p.team_ids.length) out.push({ principal_type: { in: [WikiPrincipalType.TEAM, WikiPrincipalType.DEPARTMENT] }, principal_id: { in: p.team_ids } });
+        if (p.branch_ids.length) out.push({ principal_type: WikiPrincipalType.BRANCH, principal_id: { in: p.branch_ids } });
+        if (p.role_ids.length) out.push({ principal_type: WikiPrincipalType.ROLE, principal_id: { in: p.role_ids } });
+        return out;
     }
 
     private grantMatch(p: DocsPrincipals): Prisma.WikiPagePermissionWhereInput[] {
@@ -124,8 +135,11 @@ export class DocsAccessService {
         let level: DocsLevel = space.is_private ? 'NONE' : 'VIEW';
         if (p.membership_id) {
             if (space.owner_membership_id === p.membership_id) level = 'MANAGE';
-            const member = await this.prisma.wikiSpaceMember.findUnique({ where: { space_id_membership_id: { space_id: space.id, membership_id: p.membership_id } } });
-            if (member) level = maxLevel(level, member.level);
+        }
+        const grants = this.spaceGrantMatch(p);
+        if (grants.length) {
+            const rows = await this.prisma.wikiSpaceMember.findMany({ where: { space_id: space.id, OR: grants }, select: { level: true } });
+            for (const r of rows) level = maxLevel(level, r.level);
         }
         if (!space.is_private && ctx.can('docs.pages.create')) level = maxLevel(level, 'EDIT');
         if (ctx.can('docs.spaces.manage')) level = maxLevel(level, level === 'NONE' ? 'NONE' : 'MANAGE');

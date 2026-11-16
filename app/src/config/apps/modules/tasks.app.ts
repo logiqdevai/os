@@ -1,11 +1,11 @@
-import { ChartColumn, List, ListTodo, RefreshCw, Rocket, Settings, SquareCheckBig, Users } from "lucide-react";
+import { ChartColumn, List, ListTodo, RefreshCw, Rocket, Settings, SquareCheck, Users } from "lucide-react";
 import type { AppDefinition } from "../app.types";
 import { TaskSavedViewsNav } from "@/pages/tasks/components/saved-views-nav";
 
 export const tasksApp: AppDefinition = {
     id: "tasks",
     label: "Tasks",
-    icon: SquareCheckBig,
+    icon: SquareCheck,
     basePath: "/tasks",
     module: "TASKS",
     viewPermissions: ["tasks.tasks.read"],

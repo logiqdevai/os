@@ -1,45 +1,45 @@
-import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker } from "react-day-picker";
+import { DayPicker, type DayPickerProps } from "react-day-picker";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- starter component written against the react-day-picker v8 API
-export type CalendarProps = React.ComponentProps<any>;
+export type CalendarProps = DayPickerProps;
 
+/** react-day-picker v9 styled with the app tokens: pill day cells, soft rounded container, light/dark via theme variables. */
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
+      weekStartsOn={1}
+      className={cn("p-1", className)}
       classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
-        nav: "space-x-1 flex items-center",
-        nav_button: cn(buttonVariants({ variant: "outline" }), "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
-        head_row: "flex",
-        head_cell: "text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]",
-        row: "flex w-full mt-2",
-        cell: cn("relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected].day-range-end)]:rounded-r-md", props.mode === "range" ? "[&:has(>.day-range-end)]:rounded-r-md [&:has(>.day-range-start)]:rounded-l-md first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md" : "[&:has([aria-selected])]:rounded-md"),
-        day: cn(buttonVariants({ variant: "ghost" }), "h-8 w-8 p-0 font-normal aria-selected:opacity-100"),
-        day_range_start: "day-range-start",
-        day_range_end: "day-range-end",
-        day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
-        day_outside: "day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
-        day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
+        root: "w-fit",
+        months: "relative flex flex-col gap-4",
+        month: "space-y-3",
+        month_caption: "flex h-9 items-center justify-center px-9",
+        caption_label: "text-sm font-semibold text-foreground",
+        dropdowns: "flex items-center gap-1.5 text-sm font-semibold",
+        nav: "absolute inset-x-0 top-0 flex h-9 items-center justify-between",
+        button_previous: "grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40",
+        button_next: "grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40",
+        month_grid: "border-collapse",
+        weekdays: "flex",
+        weekday: "w-9 pb-1 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground",
+        week: "mt-1 flex",
+        day: "relative size-9 p-0 text-center text-[13px]",
+        day_button: "size-9 rounded-full font-normal text-foreground tabular transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        selected: "[&>button]:bg-primary [&>button]:font-semibold [&>button]:text-primary-foreground [&>button:hover]:bg-primary",
+        today: "[&>button]:bg-primary/10 [&>button]:font-semibold [&>button]:text-primary",
+        outside: "[&>button]:text-muted-foreground/60",
+        disabled: "[&>button]:pointer-events-none [&>button]:opacity-30",
+        hidden: "invisible",
+        range_start: "rounded-l-full bg-primary/10",
+        range_end: "rounded-r-full bg-primary/10",
+        range_middle: "bg-primary/10 [&>button]:bg-transparent [&>button]:text-foreground",
         ...classNames,
       }}
       components={{
-        IconLeft: () => <ChevronLeft className="h-4 w-4" />,
-        IconRight: () => <ChevronRight className="h-4 w-4" />,
+        Chevron: ({ orientation, className: c }) =>
+          orientation === "left" ? <ChevronLeft className={cn("size-4", c)} /> : orientation === "right" ? <ChevronRight className={cn("size-4", c)} /> : <ChevronRight className={cn("size-4 rotate-90", c)} />,
       }}
       {...props}
     />

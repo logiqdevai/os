@@ -63,7 +63,7 @@ export function DataTable<T>({ columns, data, rowKey, loading, error, onRetry, p
                 <TableHeader>
                     <TableRow className="hover:bg-transparent">
                         {columns.map((c) => (
-                            <TableHead key={c.key} className={cn("h-9 whitespace-nowrap text-xs font-medium text-muted-foreground", c.hideBelow && hideClass[c.hideBelow], c.headerClassName)}>
+                            <TableHead key={c.key} className={cn("h-10 whitespace-nowrap text-xs font-medium text-muted-foreground", c.hideBelow && hideClass[c.hideBelow], c.headerClassName)}>
                                 {c.header}
                             </TableHead>
                         ))}
@@ -81,7 +81,7 @@ export function DataTable<T>({ columns, data, rowKey, loading, error, onRetry, p
                             }}
                         >
                             {columns.map((c) => (
-                                <TableCell key={c.key} className={cn("py-2 text-[13px]", c.hideBelow && hideClass[c.hideBelow], c.className)}>
+                                <TableCell key={c.key} className={cn("py-3.5 text-[13px]", c.hideBelow && hideClass[c.hideBelow], c.className)}>
                                     {c.cell(row)}
                                 </TableCell>
                             ))}
@@ -92,7 +92,7 @@ export function DataTable<T>({ columns, data, rowKey, loading, error, onRetry, p
         );
 
     return (
-        <div className={cn(!bare && "overflow-hidden rounded-lg border border-border bg-card", className)}>
+        <div className={cn(!bare && "overflow-hidden rounded-2xl border border-border-soft bg-card", className)}>
             <div className="overflow-x-auto">{body}</div>
             {pagination && pagination.total_pages > 1 && onPageChange && (
                 <div className="flex flex-col items-center justify-between gap-2 border-t border-border px-3 py-2 sm:flex-row">

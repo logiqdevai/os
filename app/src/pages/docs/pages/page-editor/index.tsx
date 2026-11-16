@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Bold, Check, Code, Heading2, Italic, Link2, List, ListChecks, Save } from "lucide-react";
+import { Check, Save } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,9 +8,8 @@ import { Page, PageHeader } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import { Markdown } from "@/components/ui/markdown";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DocIconPicker } from "../../components/doc-icons";
+import { BlockEditor } from "../../components/block-editor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ErrorState, NoAccessState, PageSkeleton } from "@/components/ui/states";
@@ -57,8 +56,6 @@ export default function PageEditorPage() {
     const templates = useDocTemplates({ limit: 100 });
     const create = useCreatePage();
     const update = useUpdatePage();
-    const textRef = useRef<HTMLTextAreaElement>(null);
-    const [tab, setTab] = useState("write");
     const parent = sp.get("parent") ?? undefined;
     // Optimistic concurrency: the version this editor is based on (set once on load, then moved forward by every save and
     // by resolving a conflict; refetches never reset the draft). A ref so back-to-back autosaves send the newest base.
@@ -123,24 +120,6 @@ export default function PageEditorPage() {
     if (page.error) return <Page><ErrorState error={page.error} onRetry={() => page.refetch()} /></Page>;
     if (page.data && !page.data.can.edit) return <Page><NoAccessState description="You can read this page but not edit it." /></Page>;
 
-    const wrap = (before: string, after = before, placeholder = "text") => {
-        const el = textRef.current;
-        if (!el) return;
-        const { selectionStart: s, selectionEnd: e, value } = el;
-        const sel = value.slice(s, e) || placeholder;
-        const next = value.slice(0, s) + before + sel + after + value.slice(e);
-        form.setValue("content_markdown", next, { shouldDirty: true });
-        requestAnimationFrame(() => { el.focus(); el.setSelectionRange(s + before.length, s + before.length + sel.length); });
-    };
-    const linePrefix = (prefix: string) => {
-        const el = textRef.current;
-        if (!el) return;
-        const { selectionStart: s, value } = el;
-        const lineStart = value.lastIndexOf("\n", s - 1) + 1;
-        form.setValue("content_markdown", value.slice(0, lineStart) + prefix + value.slice(lineStart), { shouldDirty: true });
-        requestAnimationFrame(() => el.focus());
-    };
-
     const createNew = (v: Values) => {
         const review = v.review_interval_days ? Number(v.review_interval_days) : undefined;
         create.mutate(
@@ -182,7 +161,6 @@ export default function PageEditorPage() {
         form.setValue("content_markdown", merged.text, { shouldDirty: true });
         setBaseVersion(resolvedBase);
         setConflict(null);
-        setTab("write");
         setNotice(merged.conflicts ? `${merged.conflicts} block(s) to resolve: keep the right lines between <<<<<<< and >>>>>>> and remove the markers — saving resumes then.` : "No differences in the content.");
     };
 
@@ -196,9 +174,9 @@ export default function PageEditorPage() {
             />
             <Form {...form}>
                 <form onSubmit={submit} className="space-y-5">
-                    <div className="grid gap-4 sm:grid-cols-[80px_1fr]">
-                        <FormField control={form.control} name="icon" render={({ field }) => (<FormItem><FormLabel>Icon</FormLabel><FormControl><Input placeholder="📄" maxLength={8} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Title</FormLabel><FormControl><Input autoFocus placeholder="How we run client onboarding" className="text-base" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <div className="flex items-center gap-3">
+                        <FormField control={form.control} name="icon" render={({ field }) => (<FormItem><FormControl><DocIconPicker size="lg" value={field.value} onChange={field.onChange} /></FormControl></FormItem>)} />
+                        <FormField control={form.control} name="title" render={({ field }) => (<FormItem className="flex-1"><FormControl><Input aria-label="Title" autoFocus placeholder="Untitled" className="h-14 border-transparent px-1 text-4xl font-bold shadow-none placeholder:text-muted-foreground/50 focus-visible:border-transparent focus-visible:ring-0 md:text-4xl" {...field} /></FormControl><FormMessage /></FormItem>)} />
                     </div>
                     <div className="grid gap-4 sm:grid-cols-3">
                         {!id && (
@@ -251,46 +229,15 @@ export default function PageEditorPage() {
                         )}
                     </div>
 
-                    <Tabs value={tab} onValueChange={setTab}>
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <TabsList>
-                                <TabsTrigger value="write">Write</TabsTrigger>
-                                <TabsTrigger value="preview">Preview</TabsTrigger>
-                            </TabsList>
-                            {tab === "write" && (
-                                <div className="flex flex-wrap items-center gap-0.5" role="toolbar" aria-label="Formatting">
-                                    <Button type="button" variant="ghost" size="icon-sm" aria-label="Heading" onClick={() => linePrefix("## ")}><Heading2 /></Button>
-                                    <Button type="button" variant="ghost" size="icon-sm" aria-label="Bold" onClick={() => wrap("**")}><Bold /></Button>
-                                    <Button type="button" variant="ghost" size="icon-sm" aria-label="Italic" onClick={() => wrap("*")}><Italic /></Button>
-                                    <Button type="button" variant="ghost" size="icon-sm" aria-label="Code" onClick={() => wrap("`")}><Code /></Button>
-                                    <Button type="button" variant="ghost" size="icon-sm" aria-label="Bulleted list" onClick={() => linePrefix("- ")}><List /></Button>
-                                    <Button type="button" variant="ghost" size="icon-sm" aria-label="Checklist" onClick={() => linePrefix("- [ ] ")}><ListChecks /></Button>
-                                    <Button type="button" variant="ghost" size="icon-sm" aria-label="Link to a page" onClick={() => wrap("[[", "]]", "Page title")}><Link2 /></Button>
-                                </div>
-                            )}
-                        </div>
-                        <TabsContent value="write">
-                            <FormField control={form.control} name="content_markdown" render={({ field }) => (
-                                <FormItem>
-                                    <FormControl>
-                                        <Textarea
-                                            {...field}
-                                            ref={(el) => { field.ref(el); textRef.current = el; }}
-                                            rows={22}
-                                            className="min-h-[50vh] font-mono text-[13px] leading-relaxed"
-                                            placeholder={"# Overview\n\nWrite in Markdown. Link pages with [[Page title]]."}
-                                            onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); saveNow(); } }}
-                                        />
-                                    </FormControl>
-                                    <FormDescription>{words} words · Markdown{id ? " · saves automatically (⌘/Ctrl + S saves now)" : ""}</FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                        </TabsContent>
-                        <TabsContent value="preview">
-                            <div className="min-h-[50vh] rounded-lg border border-border bg-card p-4 sm:p-6">{content.trim() ? <Markdown source={content} /> : <p className="text-[13px] text-muted-foreground">Nothing to preview yet.</p>}</div>
-                        </TabsContent>
-                    </Tabs>
+                    <FormField control={form.control} name="content_markdown" render={({ field }) => (
+                        <FormItem>
+                            <FormControl>
+                                <BlockEditor value={field.value} onChange={field.onChange} onSave={saveNow} />
+                            </FormControl>
+                            <FormDescription>{words} words{id ? " · saves automatically (⌘/Ctrl + S saves now)" : ""}</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
 
                     <div className="grid gap-4 rounded-lg border border-border bg-card p-4 sm:grid-cols-2">
                         <FormField control={form.control} name="review_interval_days" render={({ field }) => (<FormItem><FormLabel>Review every (days)</FormLabel><FormControl><Input inputMode="numeric" placeholder="e.g. 180" {...field} /></FormControl><FormDescription>The owner is reminded when the page is due for review.</FormDescription><FormMessage /></FormItem>)} />

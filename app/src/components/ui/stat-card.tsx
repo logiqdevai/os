@@ -11,7 +11,15 @@ interface StatCardProps {
     className?: string;
 }
 
-const toneClass = {
+const chipClass = {
+    default: "bg-primary/10 text-primary",
+    info: "bg-info-soft text-info",
+    success: "bg-success-soft text-success",
+    warning: "bg-warning-soft text-warning",
+    danger: "bg-danger-soft text-danger",
+} as const;
+
+const hintClass = {
     default: "text-muted-foreground",
     info: "text-info",
     success: "text-success",
@@ -19,16 +27,16 @@ const toneClass = {
     danger: "text-danger",
 } as const;
 
-/** KPI tile (dashboards). */
+/** KPI tile (dashboards): rounded card with a soft tinted icon chip. */
 export function StatCard({ label, value, hint, icon: Icon, tone = "default", className }: StatCardProps) {
     return (
-        <div className={cn("rounded-lg border border-border bg-card p-4", className)}>
-            <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-muted-foreground">{label}</span>
-                {Icon && <Icon className={cn("size-4", toneClass[tone])} />}
+        <div className={cn("rounded-2xl border border-border-soft bg-card p-4", className)}>
+            <div className="flex items-start justify-between gap-2">
+                <span className="text-[13px] font-medium text-foreground">{label}</span>
+                {Icon && <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", chipClass[tone])}><Icon className="size-[18px]" /></span>}
             </div>
-            <div className="mt-2 text-2xl font-medium tracking-tight text-foreground tabular">{value}</div>
-            {hint && <div className={cn("mt-1 text-xs", tone === "default" ? "text-muted-foreground" : toneClass[tone])}>{hint}</div>}
+            <div className="mt-1 text-3xl font-semibold tracking-tight text-foreground tabular">{value}</div>
+            {hint && <div className={cn("mt-1 text-xs", hintClass[tone])}>{hint}</div>}
         </div>
     );
 }

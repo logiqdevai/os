@@ -60,6 +60,8 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-rail: var(--rail);
+  --color-rail-foreground: var(--rail-foreground);
+  --color-rail-hover: var(--rail-hover);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -71,13 +73,30 @@
   --shadow-pop: var(--shadow-pop-value);
 }
 
+/* Shell surfaces (sampled from the design reference): side panel #FAFAFC, top bar white, content #F6F6F8; dark mirrors the same ladder. */
+html {
+  --shell-sidebar: #fcfcfe;
+  --shell-bar: #fefefe;
+  --shell-content: #f6f6f8;
+}
+html.dark {
+  --shell-sidebar: #12131a;
+  --shell-bar: #0f1016;
+  --shell-content: #0a0b0f;
+}
+/* Presets repaint the shell from their own palette: content = canvas, top bar = canvas nudged to the card colour, side panel = the preset's sidebar. */
+html[data-theme] {
+  --shell-sidebar: var(--sidebar);
+  --shell-bar: color-mix(in oklab, var(--background) 55%, var(--card));
+  --shell-content: var(--background);
+}
 :root {
   color-scheme: light;
   --radius: 0.5rem;
   --background: #ffffff;
   --foreground: #0b0b0c;
   --body: #3f3f46;
-  --card: #fafafa;
+  --card: #ffffff;
   --card-foreground: #0b0b0c;
   --popover: #ffffff;
   --popover-foreground: #0b0b0c;
@@ -122,12 +141,15 @@
   --chart-3: #6d4bd1;
   --chart-4: #c27c00;
   --chart-5: #d02f2f;
-  --rail: color-mix(in oklab, var(--brand) calc(var(--tint) * 1.7), #ffffff);
-  --sidebar: color-mix(in oklab, var(--brand) var(--tint), #fafafa);
+  /* The app rail is dark in both modes (brand-tinted); the side panel and content stay light. */
+  --rail: color-mix(in oklab, var(--brand) calc(var(--tint) * 2.2), #0f1017);
+  --rail-foreground: #a9abb8;
+  --rail-hover: rgba(255, 255, 255, 0.08);
+  --sidebar: color-mix(in oklab, var(--brand) calc(var(--tint) * 0.6 + 7%), #eceef5);
   --sidebar-foreground: #3f3f46;
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: var(--brand-foreground);
-  --sidebar-accent: color-mix(in oklab, var(--brand) calc(var(--tint) * 2.4), #ececee);
+  --sidebar-accent: color-mix(in oklab, var(--brand) calc(10% + var(--tint) * 2.4), #ffffff);
   --sidebar-accent-foreground: #0b0b0c;
   --sidebar-border: color-mix(in oklab, var(--brand) calc(var(--tint) * 2.2), #e4e4e7);
   --sidebar-ring: var(--ring);
@@ -177,10 +199,12 @@
   --chart-3: #b79cff;
   --chart-4: #ffc533;
   --chart-5: #ff6161;
-  --rail: color-mix(in oklab, var(--brand) calc(var(--tint) * 1.4), #07080a);
-  --sidebar: color-mix(in oklab, var(--brand) var(--tint), #0d0d0d);
+  --rail: color-mix(in oklab, var(--brand) calc(var(--tint) * 1.6), #07080c);
+  --rail-foreground: #8b8d9a;
+  --rail-hover: rgba(255, 255, 255, 0.07);
+  --sidebar: color-mix(in oklab, var(--brand) calc(var(--tint) + 6%), #14151c);
   --sidebar-foreground: #cdcdcd;
-  --sidebar-accent: color-mix(in oklab, var(--brand) calc(var(--tint) * 2.2), #18191a);
+  --sidebar-accent: color-mix(in oklab, var(--brand) calc(var(--tint) * 2.2), #1f212b);
   --sidebar-accent-foreground: #f4f4f6;
   --sidebar-border: color-mix(in oklab, var(--brand) calc(var(--tint) * 2), #242728);
 }
@@ -312,11 +336,634 @@ html.dark[data-theme="mocha"] {
   summary,
   label[for],
   select:not(:disabled),
-  input:is([type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"], [type="file"]):not(:disabled) {
+  input:is([type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"], [type="file"]):not(:disabled),
+  :is([role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [role="tab"], [role="switch"], [role="checkbox"], [role="radio"], [role="combobox"], [role="link"], [cmdk-item]):not([aria-disabled="true"], [data-disabled]) {
     cursor: pointer;
   }
   button:disabled,
-  [role="button"][aria-disabled="true"] {
+  [role="button"][aria-disabled="true"],
+  :is([role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [role="tab"], [role="switch"], [role="checkbox"], [role="radio"], [cmdk-item]):is([aria-disabled="true"], [data-disabled]) {
+    cursor: not-allowed;
+  }
+  /* Grid items default to min-width:auto, so long text, tables or charts inside a card push the grid
+     wider than a phone screen. Let every grid item shrink; content inside truncates or scrolls itself. */
+  .grid > * {
+    min-width: 0;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Rich text editor (components/ui/rich-text-editor.tsx): theme tokens only, so light and dark both work. */
+.rich-text .ProseMirror {
+  min-height: calc(var(--rt-rows, 4) * 1.5em);
+  max-height: 24rem;
+  overflow-y: auto;
+  outline: none;
+  line-height: 1.5;
+}
+.rich-text .ProseMirror > * + * { margin-top: 0.5rem; }
+.rich-text .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--muted-foreground);
+}
+.rich-text .ProseMirror h1, .rich-text .ProseMirror h2, .rich-text .ProseMirror h3 { font-weight: 600; color: var(--foreground); }
+.rich-text .ProseMirror h1 { font-size: 1.25rem; }
+.rich-text .ProseMirror h2 { font-size: 1.1rem; }
+.rich-text .ProseMirror h3 { font-size: 1rem; }
+.rich-text .ProseMirror ul { list-style: disc; padding-left: 1.25rem; }
+.rich-text .ProseMirror ol { list-style: decimal; padding-left: 1.25rem; }
+.rich-text .ProseMirror li > p { margin: 0; }
+.rich-text .ProseMirror blockquote { border-left: 2px solid var(--border); padding-left: 0.75rem; color: var(--muted-foreground); }
+.rich-text .ProseMirror code { border-radius: 0.25rem; background: var(--secondary); padding: 0.1em 0.3em; font-family: ui-monospace, monospace; font-size: 0.85em; }
+.rich-text .ProseMirror pre { border: 1px solid var(--border); border-radius: 0.375rem; background: var(--secondary); padding: 0.5rem 0.75rem; overflow-x: auto; }
+.rich-text .ProseMirror pre code { background: none; padding: 0; }
+.rich-text .ProseMirror a { color: var(--info); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.rich-text .ProseMirror hr { border-color: var(--border); }/*
+ * Color presets (Settings → Appearance; AppTheme enum). Generated from src/config/constants/themes/theme-presets.ts:
+ * each preset repaints the whole surface/ink ladder for light and dark. "default" keeps the base tokens above.
+ */
+html[data-theme="cyan"] {
+  color-scheme: light;
+  --background: #f2fafb;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --secondary: #e6f4f6;
+  --muted: #e6f4f6;
+  --accent: #d6ecef;
+  --foreground: #082024;
+  --card-foreground: #082024;
+  --popover-foreground: #082024;
+  --secondary-foreground: #082024;
+  --accent-foreground: #082024;
+  --body: #2f4f54;
+  --muted-foreground: #5b8085;
+  --ash: #5b8085;
+  --border: #d2e8eb;
+  --input: #d2e8eb;
+  --stone: #d2e8eb;
+  --brand: #0891b2;
+  --brand-foreground: #ffffff;
+  --tint: 0%;
+  --rail: #061012;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #2f4f54;
+  --sidebar-accent: #d6ecef;
+  --sidebar-accent-foreground: #082024;
+  --sidebar-border: #d2e8eb;
+}
+html.dark[data-theme="cyan"] {
+  color-scheme: dark;
+  --background: #0a1517;
+  --card: #0f1f22;
+  --popover: #0f1f22;
+  --secondary: #14292d;
+  --muted: #14292d;
+  --accent: #1a353a;
+  --foreground: #e6f7f8;
+  --card-foreground: #e6f7f8;
+  --popover-foreground: #e6f7f8;
+  --secondary-foreground: #e6f7f8;
+  --accent-foreground: #e6f7f8;
+  --body: #b8d8db;
+  --muted-foreground: #7fa7ab;
+  --ash: #7fa7ab;
+  --border: #1c3a3f;
+  --input: #1c3a3f;
+  --stone: #1c3a3f;
+  --brand: #22d3ee;
+  --brand-foreground: #03242b;
+  --tint: 0%;
+  --rail: #061012;
+  --sidebar: #0f1f22;
+  --sidebar-foreground: #b8d8db;
+  --sidebar-accent: #1a353a;
+  --sidebar-accent-foreground: #e6f7f8;
+  --sidebar-border: #1c3a3f;
+}
+html[data-theme="aubergine"] {
+  color-scheme: light;
+  --background: #f8f4f8;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --secondary: #f1e8f2;
+  --muted: #f1e8f2;
+  --accent: #e8d9ea;
+  --foreground: #1d0b1f;
+  --card-foreground: #1d0b1f;
+  --popover-foreground: #1d0b1f;
+  --secondary-foreground: #1d0b1f;
+  --accent-foreground: #1d0b1f;
+  --body: #4a3a4c;
+  --muted-foreground: #7a6580;
+  --ash: #7a6580;
+  --border: #e3d3e5;
+  --input: #e3d3e5;
+  --stone: #e3d3e5;
+  --brand: #4a154b;
+  --brand-foreground: #ffffff;
+  --tint: 0%;
+  --rail: #1a0a1c;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #4a3a4c;
+  --sidebar-accent: #e8d9ea;
+  --sidebar-accent-foreground: #1d0b1f;
+  --sidebar-border: #e3d3e5;
+}
+html.dark[data-theme="aubergine"] {
+  color-scheme: dark;
+  --background: #1f0a21;
+  --card: #2a1030;
+  --popover: #2a1030;
+  --secondary: #351a3b;
+  --muted: #351a3b;
+  --accent: #412247;
+  --foreground: #f5eef6;
+  --card-foreground: #f5eef6;
+  --popover-foreground: #f5eef6;
+  --secondary-foreground: #f5eef6;
+  --accent-foreground: #f5eef6;
+  --body: #d8c8da;
+  --muted-foreground: #a58aa9;
+  --ash: #a58aa9;
+  --border: #4a2b50;
+  --input: #4a2b50;
+  --stone: #4a2b50;
+  --brand: #e8a5eb;
+  --brand-foreground: #2a0a2c;
+  --tint: 0%;
+  --rail: #170718;
+  --sidebar: #2a1030;
+  --sidebar-foreground: #d8c8da;
+  --sidebar-accent: #412247;
+  --sidebar-accent-foreground: #f5eef6;
+  --sidebar-border: #4a2b50;
+}
+html[data-theme="ocean"] {
+  color-scheme: light;
+  --background: #f3f8fc;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --secondary: #e8f1f8;
+  --muted: #e8f1f8;
+  --accent: #dae8f3;
+  --foreground: #0a1a28;
+  --card-foreground: #0a1a28;
+  --popover-foreground: #0a1a28;
+  --secondary-foreground: #0a1a28;
+  --accent-foreground: #0a1a28;
+  --body: #34495c;
+  --muted-foreground: #5f7c93;
+  --ash: #5f7c93;
+  --border: #d5e3ee;
+  --input: #d5e3ee;
+  --stone: #d5e3ee;
+  --brand: #0b6fa8;
+  --brand-foreground: #ffffff;
+  --tint: 0%;
+  --rail: #06101a;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #34495c;
+  --sidebar-accent: #dae8f3;
+  --sidebar-accent-foreground: #0a1a28;
+  --sidebar-border: #d5e3ee;
+}
+html.dark[data-theme="ocean"] {
+  color-scheme: dark;
+  --background: #0b1622;
+  --card: #102132;
+  --popover: #102132;
+  --secondary: #152b40;
+  --muted: #152b40;
+  --accent: #1b364f;
+  --foreground: #e6f1fa;
+  --card-foreground: #e6f1fa;
+  --popover-foreground: #e6f1fa;
+  --secondary-foreground: #e6f1fa;
+  --accent-foreground: #e6f1fa;
+  --body: #b9cfe0;
+  --muted-foreground: #7f9db5;
+  --ash: #7f9db5;
+  --border: #1f3a54;
+  --input: #1f3a54;
+  --stone: #1f3a54;
+  --brand: #4cc2ff;
+  --brand-foreground: #04202e;
+  --tint: 0%;
+  --rail: #06101a;
+  --sidebar: #102132;
+  --sidebar-foreground: #b9cfe0;
+  --sidebar-accent: #1b364f;
+  --sidebar-accent-foreground: #e6f1fa;
+  --sidebar-border: #1f3a54;
+}
+html[data-theme="forest"] {
+  color-scheme: light;
+  --background: #f4f8f5;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --secondary: #e9f1eb;
+  --muted: #e9f1eb;
+  --accent: #dbe8de;
+  --foreground: #0c1a12;
+  --card-foreground: #0c1a12;
+  --popover-foreground: #0c1a12;
+  --secondary-foreground: #0c1a12;
+  --accent-foreground: #0c1a12;
+  --body: #37503f;
+  --muted-foreground: #628070;
+  --ash: #628070;
+  --border: #d6e4da;
+  --input: #d6e4da;
+  --stone: #d6e4da;
+  --brand: #1f7a4a;
+  --brand-foreground: #ffffff;
+  --tint: 0%;
+  --rail: #08110c;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #37503f;
+  --sidebar-accent: #dbe8de;
+  --sidebar-accent-foreground: #0c1a12;
+  --sidebar-border: #d6e4da;
+}
+html.dark[data-theme="forest"] {
+  color-scheme: dark;
+  --background: #0f1a14;
+  --card: #15241c;
+  --popover: #15241c;
+  --secondary: #1b2e24;
+  --muted: #1b2e24;
+  --accent: #22392d;
+  --foreground: #e8f4ec;
+  --card-foreground: #e8f4ec;
+  --popover-foreground: #e8f4ec;
+  --secondary-foreground: #e8f4ec;
+  --accent-foreground: #e8f4ec;
+  --body: #bcd4c3;
+  --muted-foreground: #86a591;
+  --ash: #86a591;
+  --border: #24402f;
+  --input: #24402f;
+  --stone: #24402f;
+  --brand: #5ed394;
+  --brand-foreground: #05210f;
+  --tint: 0%;
+  --rail: #08110c;
+  --sidebar: #15241c;
+  --sidebar-foreground: #bcd4c3;
+  --sidebar-accent: #22392d;
+  --sidebar-accent-foreground: #e8f4ec;
+  --sidebar-border: #24402f;
+}
+html[data-theme="sunset"] {
+  color-scheme: light;
+  --background: #fdf6f2;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --secondary: #f8ebe3;
+  --muted: #f8ebe3;
+  --accent: #f0dccf;
+  --foreground: #26130c;
+  --card-foreground: #26130c;
+  --popover-foreground: #26130c;
+  --secondary-foreground: #26130c;
+  --accent-foreground: #26130c;
+  --body: #5a3d31;
+  --muted-foreground: #8c6a5a;
+  --ash: #8c6a5a;
+  --border: #efd9cc;
+  --input: #efd9cc;
+  --stone: #efd9cc;
+  --brand: #c2410c;
+  --brand-foreground: #ffffff;
+  --tint: 0%;
+  --rail: #120b09;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #5a3d31;
+  --sidebar-accent: #f0dccf;
+  --sidebar-accent-foreground: #26130c;
+  --sidebar-border: #efd9cc;
+}
+html.dark[data-theme="sunset"] {
+  color-scheme: dark;
+  --background: #1c1210;
+  --card: #271916;
+  --popover: #271916;
+  --secondary: #32201c;
+  --muted: #32201c;
+  --accent: #3d2822;
+  --foreground: #fbeee8;
+  --card-foreground: #fbeee8;
+  --popover-foreground: #fbeee8;
+  --secondary-foreground: #fbeee8;
+  --accent-foreground: #fbeee8;
+  --body: #e0c6bb;
+  --muted-foreground: #b08e80;
+  --ash: #b08e80;
+  --border: #4a2f28;
+  --input: #4a2f28;
+  --stone: #4a2f28;
+  --brand: #ff8a4c;
+  --brand-foreground: #2a1000;
+  --tint: 0%;
+  --rail: #120b09;
+  --sidebar: #271916;
+  --sidebar-foreground: #e0c6bb;
+  --sidebar-accent: #3d2822;
+  --sidebar-accent-foreground: #fbeee8;
+  --sidebar-border: #4a2f28;
+}
+html[data-theme="monochrome"] {
+  color-scheme: light;
+  --background: #fafafa;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --secondary: #f0f0f0;
+  --muted: #f0f0f0;
+  --accent: #e6e6e6;
+  --foreground: #0a0a0a;
+  --card-foreground: #0a0a0a;
+  --popover-foreground: #0a0a0a;
+  --secondary-foreground: #0a0a0a;
+  --accent-foreground: #0a0a0a;
+  --body: #3a3a3a;
+  --muted-foreground: #737373;
+  --ash: #737373;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --stone: #e5e5e5;
+  --brand: #0a0a0a;
+  --brand-foreground: #ffffff;
+  --tint: 0%;
+  --rail: #0a0a0a;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #3a3a3a;
+  --sidebar-accent: #e6e6e6;
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #e5e5e5;
+}
+html.dark[data-theme="monochrome"] {
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --card: #141414;
+  --popover: #141414;
+  --secondary: #1c1c1c;
+  --muted: #1c1c1c;
+  --accent: #262626;
+  --foreground: #fafafa;
+  --card-foreground: #fafafa;
+  --popover-foreground: #fafafa;
+  --secondary-foreground: #fafafa;
+  --accent-foreground: #fafafa;
+  --body: #c8c8c8;
+  --muted-foreground: #8a8a8a;
+  --ash: #8a8a8a;
+  --border: #2a2a2a;
+  --input: #2a2a2a;
+  --stone: #2a2a2a;
+  --brand: #fafafa;
+  --brand-foreground: #0a0a0a;
+  --tint: 0%;
+  --rail: #000000;
+  --sidebar: #141414;
+  --sidebar-foreground: #c8c8c8;
+  --sidebar-accent: #262626;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #2a2a2a;
+}
+html[data-theme="solarized"] {
+  color-scheme: light;
+  --background: #fdf6e3;
+  --card: #fffdf5;
+  --popover: #fffdf5;
+  --secondary: #eee8d5;
+  --muted: #eee8d5;
+  --accent: #e4ddc5;
+  --foreground: #073642;
+  --card-foreground: #073642;
+  --popover-foreground: #073642;
+  --secondary-foreground: #073642;
+  --accent-foreground: #073642;
+  --body: #586e75;
+  --muted-foreground: #839496;
+  --ash: #839496;
+  --border: #e6dfc8;
+  --input: #e6dfc8;
+  --stone: #e6dfc8;
+  --brand: #268bd2;
+  --brand-foreground: #ffffff;
+  --tint: 0%;
+  --rail: #001e26;
+  --sidebar: #fffdf5;
+  --sidebar-foreground: #586e75;
+  --sidebar-accent: #e4ddc5;
+  --sidebar-accent-foreground: #073642;
+  --sidebar-border: #e6dfc8;
+}
+html.dark[data-theme="solarized"] {
+  color-scheme: dark;
+  --background: #002b36;
+  --card: #073642;
+  --popover: #073642;
+  --secondary: #0d4250;
+  --muted: #0d4250;
+  --accent: #14505f;
+  --foreground: #eee8d5;
+  --card-foreground: #eee8d5;
+  --popover-foreground: #eee8d5;
+  --secondary-foreground: #eee8d5;
+  --accent-foreground: #eee8d5;
+  --body: #93a1a1;
+  --muted-foreground: #839496;
+  --ash: #839496;
+  --border: #12505e;
+  --input: #12505e;
+  --stone: #12505e;
+  --brand: #b58900;
+  --brand-foreground: #002b36;
+  --tint: 0%;
+  --rail: #001e26;
+  --sidebar: #073642;
+  --sidebar-foreground: #93a1a1;
+  --sidebar-accent: #14505f;
+  --sidebar-accent-foreground: #eee8d5;
+  --sidebar-border: #12505e;
+}
+html[data-theme="nord"] {
+  color-scheme: light;
+  --background: #eceff4;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --secondary: #e5e9f0;
+  --muted: #e5e9f0;
+  --accent: #d8dee9;
+  --foreground: #2e3440;
+  --card-foreground: #2e3440;
+  --popover-foreground: #2e3440;
+  --secondary-foreground: #2e3440;
+  --accent-foreground: #2e3440;
+  --body: #4c566a;
+  --muted-foreground: #6b7891;
+  --ash: #6b7891;
+  --border: #d8dee9;
+  --input: #d8dee9;
+  --stone: #d8dee9;
+  --brand: #5e81ac;
+  --brand-foreground: #ffffff;
+  --tint: 0%;
+  --rail: #1e222a;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #4c566a;
+  --sidebar-accent: #d8dee9;
+  --sidebar-accent-foreground: #2e3440;
+  --sidebar-border: #d8dee9;
+}
+html.dark[data-theme="nord"] {
+  color-scheme: dark;
+  --background: #242933;
+  --card: #2e3440;
+  --popover: #2e3440;
+  --secondary: #3b4252;
+  --muted: #3b4252;
+  --accent: #434c5e;
+  --foreground: #eceff4;
+  --card-foreground: #eceff4;
+  --popover-foreground: #eceff4;
+  --secondary-foreground: #eceff4;
+  --accent-foreground: #eceff4;
+  --body: #d8dee9;
+  --muted-foreground: #9aa5b8;
+  --ash: #9aa5b8;
+  --border: #3b4252;
+  --input: #3b4252;
+  --stone: #3b4252;
+  --brand: #88c0d0;
+  --brand-foreground: #1d2530;
+  --tint: 0%;
+  --rail: #1e222a;
+  --sidebar: #2e3440;
+  --sidebar-foreground: #d8dee9;
+  --sidebar-accent: #434c5e;
+  --sidebar-accent-foreground: #eceff4;
+  --sidebar-border: #3b4252;
+}
+html[data-theme="dracula"] {
+  color-scheme: light;
+  --background: #f8f8fb;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --secondary: #eeeef4;
+  --muted: #eeeef4;
+  --accent: #e2e2ec;
+  --foreground: #282a36;
+  --card-foreground: #282a36;
+  --popover-foreground: #282a36;
+  --secondary-foreground: #282a36;
+  --accent-foreground: #282a36;
+  --body: #4b4d63;
+  --muted-foreground: #6c6f8c;
+  --ash: #6c6f8c;
+  --border: #e0e0ea;
+  --input: #e0e0ea;
+  --stone: #e0e0ea;
+  --brand: #7c3aed;
+  --brand-foreground: #ffffff;
+  --tint: 0%;
+  --rail: #191a21;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #4b4d63;
+  --sidebar-accent: #e2e2ec;
+  --sidebar-accent-foreground: #282a36;
+  --sidebar-border: #e0e0ea;
+}
+html.dark[data-theme="dracula"] {
+  color-scheme: dark;
+  --background: #1e1f29;
+  --card: #282a36;
+  --popover: #282a36;
+  --secondary: #303341;
+  --muted: #303341;
+  --accent: #3a3d4f;
+  --foreground: #f8f8f2;
+  --card-foreground: #f8f8f2;
+  --popover-foreground: #f8f8f2;
+  --secondary-foreground: #f8f8f2;
+  --accent-foreground: #f8f8f2;
+  --body: #d6d6e0;
+  --muted-foreground: #9aa0c0;
+  --ash: #9aa0c0;
+  --border: #3a3d4f;
+  --input: #3a3d4f;
+  --stone: #3a3d4f;
+  --brand: #bd93f9;
+  --brand-foreground: #1e1f29;
+  --tint: 0%;
+  --rail: #191a21;
+  --sidebar: #282a36;
+  --sidebar-foreground: #d6d6e0;
+  --sidebar-accent: #3a3d4f;
+  --sidebar-accent-foreground: #f8f8f2;
+  --sidebar-border: #3a3d4f;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-body antialiased;
+    font-family: var(--font-sans);
+    font-feature-settings: "calt", "kern", "liga", "ss03";
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply text-foreground;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+  }
+  ::placeholder {
+    color: var(--ash);
+  }
+  /* Tailwind v4 preflight resets buttons to the default cursor; every clickable control shows a pointer. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  summary,
+  label[for],
+  select:not(:disabled),
+  input:is([type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"], [type="file"]):not(:disabled),
+  :is([role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [role="tab"], [role="switch"], [role="checkbox"], [role="radio"], [role="combobox"], [role="link"], [cmdk-item]):not([aria-disabled="true"], [data-disabled]) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"][aria-disabled="true"],
+  :is([role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [role="tab"], [role="switch"], [role="checkbox"], [role="radio"], [cmdk-item]):is([aria-disabled="true"], [data-disabled]) {
     cursor: not-allowed;
   }
   /* Grid items default to min-width:auto, so long text, tables or charts inside a card push the grid
@@ -371,3 +1018,20 @@ html.dark[data-theme="mocha"] {
 .rich-text .ProseMirror pre code { background: none; padding: 0; }
 .rich-text .ProseMirror a { color: var(--info); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .rich-text .ProseMirror hr { border-color: var(--border); }
+
+/* Docs block editor (pages/docs/components/block-editor.tsx): Notion-like full-page writing surface, theme tokens only. */
+.notion-blocks .ProseMirror { max-height: none; overflow: visible; min-height: 50vh; }
+.notion-blocks .ProseMirror > * + * { margin-top: 0.35rem; }
+.notion-blocks .ProseMirror h1 { font-size: 1.875rem; margin-top: 1.5rem; }
+.notion-blocks .ProseMirror h2 { font-size: 1.5rem; margin-top: 1.25rem; }
+.notion-blocks .ProseMirror h3 { font-size: 1.2rem; margin-top: 1rem; }
+.notion-blocks .ProseMirror p.is-empty::before,
+.notion-blocks .ProseMirror h1.is-empty::before,
+.notion-blocks .ProseMirror h2.is-empty::before,
+.notion-blocks .ProseMirror h3.is-empty::before { content: attr(data-placeholder); float: left; height: 0; pointer-events: none; color: var(--muted-foreground); }
+.notion-blocks .ProseMirror blockquote { border-left-width: 3px; font-size: 1.05em; }
+.notion-blocks .ProseMirror ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+.notion-blocks .ProseMirror ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 0.5rem; }
+.notion-blocks .ProseMirror ul[data-type="taskList"] li > label { margin-top: 0.3em; user-select: none; }
+.notion-blocks .ProseMirror ul[data-type="taskList"] li > div { flex: 1; }
+.notion-blocks .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--muted-foreground); text-decoration: line-through; }

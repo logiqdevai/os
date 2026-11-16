@@ -1,5 +1,7 @@
-import { Plus } from "lucide-react";
-import { Page, PageHeader } from "@/components/ui/page";
+import { Columns3, List, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { usePageMetadata } from "@/hooks/use-page-metadata";
+import { Page } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
 import { TableToolbar } from "@/components/ui/data-table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,6 +24,7 @@ import { SavedViewsMenu } from "@/pages/crm/components/saved-views-menu";
  * @states loading · empty-filtered (with clear filters) · error
  */
 export default function AllTasksPage() {
+    usePageMetadata({ title: "Tasks" });
     const { params, setPage, search, setSearch } = useListParams({ limit: 100 });
     const view = useTaskViewState();
     const workflows = useWorkflows();
@@ -40,13 +43,28 @@ export default function AllTasksPage() {
     const filtered = view.activeFilters.length > 0 || !!search;
 
     return (
-        <Page className={board ? "flex h-full flex-col" : undefined}>
-            <PageHeader
-                title="Tasks"
-                description="Tasks across teams and projects you can see."
-                actions={<Can permission="tasks.tasks.create"><Button onClick={() => quick.open({ team_id: view.filterQuery.team_id, project_id: view.filterQuery.project_id })}><Plus /> New task</Button></Can>}
-            />
-            <TableToolbar search={search} onSearch={setSearch} placeholder="Search by title or WEB-142…">
+        <Page className={cn("max-w-none p-0 md:p-0", board && "flex h-full flex-col")}>
+            <header className="flex h-12 items-center gap-3 border-b border-border px-4 md:px-6">
+                <h1 className="text-[13px] font-medium text-foreground">Tasks</h1>
+                <div className="flex items-center gap-0.5" role="tablist" aria-label="Layout">
+                    {([["list", "List", List], ["board", "Board", Columns3]] as const).map(([id, name, Icon]) => (
+                        <button
+                            key={id}
+                            type="button"
+                            role="tab"
+                            aria-selected={view.layout === id}
+                            onClick={() => view.setParam("layout", id === "list" ? null : id)}
+                            className={cn("flex h-7 items-center gap-1.5 rounded-md px-2 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground", view.layout === id && "bg-accent font-medium text-foreground")}
+                        >
+                            <Icon className="size-3.5" /> {name}
+                        </button>
+                    ))}
+                </div>
+                <div className="ml-auto">
+                    <Can permission="tasks.tasks.create"><Button size="sm" onClick={() => quick.open({ team_id: view.filterQuery.team_id, project_id: view.filterQuery.project_id })}><Plus /> New task</Button></Can>
+                </div>
+            </header>
+            <TableToolbar className="mb-0 border-b border-border px-4 py-1.5 md:px-6" search={search} onSearch={setSearch} placeholder="Search by title or WEB-142…">
                 <SavedViewsMenu entityType="TASK" onSearch={setSearch} allLabel="All tasks" layout={view.layout} />
                 <TaskFilterMenu view={view} />
                 <div className="w-full sm:w-40">

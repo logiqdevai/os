@@ -20,6 +20,8 @@ interface RichTextEditorProps {
     "aria-label"?: string;
     className?: string;
     onBlur?: () => void;
+    /** No border, ring or formatting toolbar: a plain writing area (formatting shortcuts still work). */
+    bare?: boolean;
 }
 
 /**
@@ -27,7 +29,7 @@ interface RichTextEditorProps {
  * It reads and writes Markdown, so stored values stay plain strings and render with `<Markdown>` / `MarkdownField`.
  * Works with react-hook-form: `<RichTextEditor value={field.value} onChange={field.onChange} />`.
  */
-export function RichTextEditor({ value, onChange, placeholder = "Write something…", disabled, autoFocus, rows = 4, id, "aria-label": ariaLabel, className, onBlur }: RichTextEditorProps) {
+export function RichTextEditor({ value, onChange, placeholder = "Write something…", disabled, autoFocus, rows = 4, id, "aria-label": ariaLabel, className, onBlur, bare }: RichTextEditorProps) {
     const lastEmitted = useRef(value ?? "");
     const editor = useEditor({
         extensions: [
@@ -80,8 +82,8 @@ export function RichTextEditor({ value, onChange, placeholder = "Write something
     ];
 
     return (
-        <div className={cn("rounded-md border border-input bg-transparent shadow-sm focus-within:ring-1 focus-within:ring-ring", disabled && "cursor-not-allowed opacity-50", className)}>
-            <div className="flex flex-wrap gap-0.5 border-b border-border px-1.5 py-1" role="toolbar" aria-label="Formatting">
+        <div className={cn(!bare && "rounded-md border border-input bg-transparent focus-within:ring-1 focus-within:ring-ring", disabled && "cursor-not-allowed opacity-50", className)}>
+            <div className={cn("flex flex-wrap gap-0.5 border-b border-border px-1.5 py-1", bare && "hidden")} role="toolbar" aria-label="Formatting">
                 {tools.map((t) => (
                     <button
                         key={t.label}
@@ -99,7 +101,7 @@ export function RichTextEditor({ value, onChange, placeholder = "Write something
                     </button>
                 ))}
             </div>
-            <EditorContent editor={editor} className="rich-text px-3 py-2 text-sm" style={{ ["--rt-rows" as string]: rows }} />
+            <EditorContent editor={editor} className={cn("rich-text text-sm", bare ? "px-0 py-0" : "px-3 py-2")} style={{ ["--rt-rows" as string]: rows }} />
         </div>
     );
 }

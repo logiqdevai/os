@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarDays, Tag } from "lucide-react";
+import { CalendarDays, MoreHorizontal, Tag } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -35,6 +37,8 @@ interface TaskCreateFormProps {
     /** Show the "create more" toggle (dialog). */
     allowCreateMore?: boolean;
     autoFocus?: boolean;
+    /** `modal`: Linear-style layout for the quick-create dialog (team chip header, borderless fields, pill properties). */
+    variant?: "default" | "modal";
 }
 
 /**
@@ -42,7 +46,7 @@ interface TaskCreateFormProps {
  * @perm tasks.tasks.create · assigning someone else needs tasks.tasks.assign
  * @api POST /tasks
  */
-export function TaskCreateForm({ defaults, onCreated, onCancel, allowCreateMore, autoFocus = true }: TaskCreateFormProps) {
+export function TaskCreateForm({ defaults, onCreated, onCancel, allowCreateMore, autoFocus = true, variant = "default" }: TaskCreateFormProps) {
     const session = useSessionData();
     const me = session?.active_organization?.membership_id ?? null;
     const canAssign = usePermission("tasks.tasks.assign");
@@ -88,14 +92,96 @@ export function TaskCreateForm({ defaults, onCreated, onCancel, allowCreateMore,
             },
             {
                 onSuccess: (task) => {
-                    if (createMore) form.reset({ ...v, title: "", description: "" });
-                    else onCreated?.(task);
+                    // The quick-create dialog stays open for the next task; the page form hands over to onCreated.
+                    if (createMore || variant === "modal") {
+                        form.reset({ ...v, title: "", description: "" });
+                        if (variant === "modal") { onCreated?.(task); setTimeout(() => form.setFocus("title"), 0); }
+                    } else onCreated?.(task);
                 },
             },
         );
     });
 
     const selectedLabels = (labels.data ?? []).filter((l) => form.watch("label_ids").includes(l.id));
+
+    if (variant === "modal") {
+        const pill = "h-7 w-auto rounded-full border-0 bg-secondary px-2.5 text-[13px] font-normal text-foreground hover:bg-accent";
+        const pickerPill = cn(pill, "[&>svg:last-child]:hidden");
+        const teamLabel = workflow?.team?.task_key ?? workflow?.team?.name ?? "No team";
+        return (
+            <Form {...form}>
+                <form onSubmit={submit} onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void submit(); } }} className="flex flex-col">
+                    <div className="flex items-center gap-2 px-4 pb-1 pr-12 pt-3.5">
+                        <FormField control={form.control} name="team_id" render={({ field }) => (
+                            <Select value={field.value} onValueChange={field.onChange}>
+                                <SelectTrigger className={cn(pill, "gap-1 font-medium [&>svg]:hidden")} aria-label="Team"><SelectValue>{teamLabel}</SelectValue></SelectTrigger>
+                                <SelectContent>
+                                    {(workflows.data ?? []).map((w) => (
+                                        <SelectItem key={w.team?.id ?? NO_TEAM} value={w.team?.id ?? NO_TEAM}>{w.team ? `${w.team.name}${w.team.task_key ? ` · ${w.team.task_key}` : ""}` : "No team"}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )} />
+                        <span className="text-muted-foreground">›</span>
+                        <span className="text-[13px] font-medium text-foreground">New task</span>
+                    </div>
+                    <div className="space-y-2 px-5 pt-2">
+                        <FormField control={form.control} name="title" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="sr-only">Title</FormLabel>
+                                <FormControl><Input autoFocus={autoFocus} className="h-10 rounded-none border-0 bg-transparent px-0 text-xl font-medium focus-visible:ring-0" placeholder="Task title" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="description" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="sr-only">Description</FormLabel>
+                                <RichTextEditor bare value={field.value} onChange={field.onChange} rows={5} placeholder="Add description…" aria-label="Description" />
+                            </FormItem>
+                        )} />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3 pt-4">
+                        <FormField control={form.control} name="status_id" render={({ field }) => (
+                            <StatusPicker className={pickerPill} statuses={statuses} value={field.value} onChange={(v) => field.onChange(v ?? undefined)} />
+                        )} />
+                        <FormField control={form.control} name="priority" render={({ field }) => (
+                            <PriorityPicker className={pickerPill} value={field.value} onChange={field.onChange} />
+                        )} />
+                        <FormField control={form.control} name="assignee_membership_id" render={({ field }) => (
+                            canAssign
+                                ? <AssigneePicker className={pickerPill} value={field.value} onChange={field.onChange} />
+                                : <Button type="button" variant="secondary" className={pill} onClick={() => field.onChange(field.value ? null : me)}>{field.value ? "Assigned to me" : "Assign to me"}</Button>
+                        )} />
+                        <FormField control={form.control} name="project_id" render={({ field }) => (
+                            <ProjectPicker className={pickerPill} value={field.value} onChange={field.onChange} currentName={defaults?.project_name} />
+                        )} />
+                        <FormField control={form.control} name="label_ids" render={({ field }) => (
+                            <LabelsPicker value={field.value} onChange={field.onChange} trigger={<Button type="button" variant="secondary" className={pill}><Tag /> {field.value.length ? `${field.value.length} labels` : "Labels"}</Button>} />
+                        )} />
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button type="button" variant="secondary" size="icon-sm" className="size-7 rounded-full border-0 bg-secondary text-muted-foreground hover:bg-accent" aria-label="More properties"><MoreHorizontal /></Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="start" className="w-64 space-y-2 p-3">
+                                <FormField control={form.control} name="due_date" render={({ field }) => (
+                                    <label className="relative flex items-center">
+                                        <CalendarDays className="pointer-events-none absolute left-2 size-4 text-ash" />
+                                        <Input type="date" aria-label="Due date" className="h-8 pl-8" {...field} />
+                                    </label>
+                                )} />
+                                <FormField control={form.control} name="estimate_points" render={({ field }) => (
+                                    <Input aria-label="Estimate (points)" placeholder="Estimate (points)" inputMode="decimal" className="h-8" {...field} />
+                                )} />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                    <div className="flex items-center justify-end gap-4 px-4 pb-4 pt-1">
+                        <Button type="submit" loading={create.isPending}>Create task</Button>
+                    </div>
+                </form>
+            </Form>
+        );
+    }
 
     return (
         <Form {...form}>

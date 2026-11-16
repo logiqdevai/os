@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Check, ChevronRight, ChevronsUpDown, FileText, FolderTree, Plus } from "lucide-react";
+import { Check, ChevronRight, ChevronsUpDown, FolderTree, Plus } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { personName } from "@/lib/format";
@@ -39,11 +39,8 @@ export function DocsStatusBadge({ status }: { status: string | null | undefined 
     return <Badge variant={TONE[status] ?? "neutral"} dot>{getDropdownOptionLabel(LABELS, status)}</Badge>;
 }
 
-/** Emoji / icon of a page or space, falling back to a document glyph. */
-export function DocIcon({ icon, className }: { icon: string | null | undefined; className?: string }) {
-    if (icon) return <span className={cn("inline-grid size-5 shrink-0 place-items-center text-base leading-none", className)} aria-hidden>{icon}</span>;
-    return <FileText className={cn("size-4 shrink-0 text-muted-foreground", className)} aria-hidden />;
-}
+export { DocIcon } from "./doc-icons";
+import { DocIcon, DocIconPicker } from "./doc-icons";
 
 interface TreeItem extends WikiTreeNode { children: TreeItem[] }
 
@@ -172,7 +169,7 @@ export function SpaceFormDialog({ open, onOpenChange, space, onCreated }: { open
                             <DialogDescription>Spaces group pages by department, team or topic.{space ? " Changes save automatically." : ""}</DialogDescription>
                         </DialogHeader>
                         <div className="grid grid-cols-[72px_1fr] gap-3">
-                            <FormField control={form.control} name="icon" render={({ field }) => (<FormItem><FormLabel>Icon</FormLabel><FormControl><Input placeholder="📘" maxLength={8} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="icon" render={({ field }) => (<FormItem><FormLabel>Icon</FormLabel><FormControl><DocIconPicker value={field.value} onChange={field.onChange} /></FormControl></FormItem>)} />
                             <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input autoFocus placeholder="Engineering handbook" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         </div>
                         <FormField

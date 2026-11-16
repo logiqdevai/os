@@ -24,7 +24,7 @@ const isHex = (color: string | null | undefined): color is string => !!color && 
 /** Token colors map to theme classes; a picked hex is rendered through `chipStyle` / `dotStyle` instead. */
 export const chipClass = (color: string | null | undefined) => (isHex(color) ? "text-foreground" : CHIP[color ?? "info"] ?? CHIP.info);
 export const dotClass = (color: string | null | undefined) => (isHex(color) ? "" : DOT[color ?? "info"] ?? DOT.info);
-export const chipStyle = (color: string | null | undefined): CSSProperties | undefined => (isHex(color) ? { borderLeftColor: color, backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)` } : undefined);
+export const chipStyle = (color: string | null | undefined): CSSProperties | undefined => (isHex(color) ? { borderLeftColor: color, backgroundColor: `color-mix(in srgb, ${color} 14%, var(--card))` } : undefined);
 export const dotStyle = (color: string | null | undefined): CSSProperties | undefined => (isHex(color) ? { backgroundColor: color } : undefined);
 
 export const WEEK_STARTS_ON = 1 as const;

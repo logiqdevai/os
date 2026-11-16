@@ -16,7 +16,7 @@ export function ThemeToggle({ variant = "button" }: { variant?: "button" | "rail
                     size="icon"
                     aria-label={label}
                     onClick={toggleTheme}
-                    className={cn(variant === "rail" && "h-[38px] w-10 rounded-[10px] [&_svg]:size-[18px]")}
+                    className={cn(variant === "rail" && "h-10 w-10 rounded-xl text-rail-foreground hover:bg-rail-hover hover:text-white [&_svg]:size-[18px]")}
                 >
                     <Icon />
                 </Button>

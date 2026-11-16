@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Download, FileUp, Lock, Archive, ArchiveRestore, CheckCircle2, ChevronRight, FilePlus, History, Link2, MessageSquare, MoreHorizontal, Pencil, Rocket, Star, Trash2 } from "lucide-react";
+import { Copy, Download, FileUp, Lock, Archive, ArchiveRestore, CheckCircle2, ChevronRight, FilePlus, History, Link2, MessageSquare, MoreHorizontal, Pencil, Rocket, Star, Trash2 } from "lucide-react";
 import { Page } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { WikiPageTypeFormOptions } from "@/config/constants/dropdowns/docs/docs.options";
 import * as service from "@/features/docs/services/docs.services";
 import {
-    useAddComment, useCommentAction, useDeleteComment, usePage, usePageAction, useRenamePage, usePageComments, usePageLinks, usePageVersion, usePageVersions, useRestoreVersion, useSetFavorite,
+    useAddComment, useCommentAction, useDeleteComment, usePage, usePageAction, useRenamePage, usePageComments, usePageLinks, usePageVersion, usePageVersions, useRestoreVersion, useSetFavorite, useDuplicatePage,
 } from "@/features/docs/hooks/use-docs";
 import type { WikiPageDetail } from "@/features/docs/interfaces/docs.interfaces";
 import { DocIcon, DocsStatusBadge, SpaceLayout } from "../../components/docs-ui";
@@ -36,6 +36,7 @@ export default function PageViewPage() {
     const navigate = useNavigate();
     const page = usePage(id);
     const favorite = useSetFavorite();
+    const duplicate = useDuplicatePage();
     const action = usePageAction();
     const rename = useRenamePage();
     const [panel, setPanel] = useState<null | "history" | "comments" | "links" | "permissions">(null);
@@ -54,6 +55,7 @@ export default function PageViewPage() {
     const pg = page.data;
     // Optimistic: the status, banner or list change at once; no success toast.
     const act = (a: "publish" | "unpublish" | "archive" | "unarchive" | "trash" | "acknowledge") => action.mutate({ id: pg.id, action: a });
+    const canCreateHere = perms.can("docs.pages.create");
     const canRename = pg.can.edit && !pg.archived_at;
 
     return (
@@ -93,6 +95,7 @@ export default function PageViewPage() {
                                 {perms.can("docs.pages.export") && <DropdownMenuItem onSelect={() => setTransfer("export")}><Download /> Export as Markdown</DropdownMenuItem>}
                                 {pg.can.edit && perms.can("docs.pages.import") && <DropdownMenuItem onSelect={() => setTransfer("import")}><FileUp /> Import sub-pages</DropdownMenuItem>}
                                 {pg.can.edit && <DropdownMenuItem onSelect={() => navigate(`/docs/pages/new?space=${pg.space_id}&parent=${pg.id}`)}><FilePlus /> Add sub-page</DropdownMenuItem>}
+                                {canCreateHere && <DropdownMenuItem onSelect={() => duplicate.mutate({ id: pg.id }, { onSuccess: (c) => navigate(`/docs/pages/${c.id}`) })}><Copy /> Duplicate</DropdownMenuItem>}
                                 {pg.can.publish && pg.status === "PUBLISHED" && <DropdownMenuItem onSelect={() => act("unpublish")}><Pencil /> Unpublish</DropdownMenuItem>}
                                 {pg.can.archive && (
                                     <>

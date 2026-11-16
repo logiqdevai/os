@@ -4,7 +4,7 @@ import type {
     ChecklistItemInput, CreateChecklistDto, CreateFormDto, CreatePageDto, CreateSpaceDto, CreateTemplateDto, CustomForm, CustomFormDetail, DocsDirectory,
     FillableForm, FormAssignment, FormRecipient, FormSubmission, FormSummary, MyFormAssignment, Paginated, UpdateFormDto, UpdatePageDto, UpdateSpaceDto,
     WikiAcknowledgements, WikiChecklist, WikiChecklistRun, WikiChecklistRunDetail, WikiHome, WikiPageComment, WikiPageDetail, WikiPageLinks, WikiPageListItem, WikiPagePermissions, SetPagePermissionsDto,
-    WikiPageVersion, WikiSpace, WikiSpaceDetail, WikiTemplate, WikiTreeNode, DocsAiAnswer, DocsAiStatus, DocsAnalytics, DocsExportScope, DocsImportResult, DocsTransferJob,
+    WikiPageVersion, WikiSpace, WikiSpaceDetail, WikiPrincipalType, WikiPermissionLevel, WikiTemplate, WikiTreeNode, DocsAiAnswer, DocsAiStatus, DocsAnalytics, DocsExportScope, DocsImportResult, DocsTransferJob,
 } from "../interfaces/docs.interfaces";
 
 const R = () => ApiRoutes.docs;
@@ -130,3 +130,6 @@ export const importDocs = async ({ file, space_id, parent_page_id, publish }: { 
     return (await axiosInstance.post<DocsImportResult>(R().import, form, { headers: { "Content-Type": "multipart/form-data" } })).data;
 };
 export const getDocsTransfers = () => get<DocsTransferJob[]>(R().transfers);
+export const duplicatePage = ({ id, ...dto }: { id: string; title?: string; parent_page_id?: string | null; space_id?: string; include_children?: boolean }) => post<{ id: string; title: string }>(R().pages.action(id, "duplicate"), dto);
+export const setSpaceMember = ({ id, ...dto }: { id: string; principal_type: WikiPrincipalType; principal_id: string; level: WikiPermissionLevel }) => put(R().spaces.members(id), dto);
+export const removeSpaceMember = ({ id, memberId }: { id: string; memberId: string }) => del(R().spaces.member(id, memberId));

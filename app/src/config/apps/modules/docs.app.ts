@@ -1,5 +1,6 @@
 import { BarChart3, BookOpen, ClipboardList, House, Layers, LayoutTemplate, ListChecks, Sparkles, Trash2 } from "lucide-react";
 import type { AppDefinition } from "../app.types";
+import { DocsPageTreeNav } from "@/pages/docs/components/page-tree-nav";
 
 export const docsApp: AppDefinition = {
     id: "docs",
@@ -9,6 +10,7 @@ export const docsApp: AppDefinition = {
     module: "BUSINESS_DOCS",
     viewPermissions: ["docs.pages.read"],
     newAction: { label: "New page", to: "/docs/pages/new", permission: "docs.pages.create" },
+    navExtra: DocsPageTreeNav,
     nav: [
         { items: [
             { label: "Home", to: "/docs", icon: House, end: true },
