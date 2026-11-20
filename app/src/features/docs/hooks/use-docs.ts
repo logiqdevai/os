@@ -1,7 +1,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { patchEntity, removeEntity, useEntityRemove, useEntityUpdate, useOptimisticMutation } from "@/lib/query/optimistic";
 import * as service from "../services/docs.services";
-import type { MemberRef, WikiChecklistRunDetail, WikiPageComment, WikiPageDetail } from "../interfaces/docs.interfaces";
+import { useNavigate } from "react-router-dom";
+import type { MemberRef, WikiChecklistRunDetail, WikiPageComment, WikiPageDetail, WikiTreeNode } from "../interfaces/docs.interfaces";
 
 const KEY = ["docs"] as const;
 type Params = Record<string, unknown>;
@@ -49,16 +50,46 @@ export const useMovePage = () =>
         roots: [KEY],
         meta: { errorTitle: "Could not move the page" },
         mutationFn: service.movePage,
-        apply: (qc, { id, ...to }) => patchEntity(qc, KEY, id, to),
+        apply: (qc, { id, ...to }) => {
+            // Re-order the space tree at once: the node takes its new parent and index, siblings shift.
+            qc.setQueriesData<WikiTreeNode[]>({ queryKey: [...KEY, "space"], predicate: (q) => q.queryKey[3] === "tree" }, (tree) => {
+                if (!tree?.some((n) => n.id === id)) return tree;
+                const node = tree.find((n) => n.id === id) as WikiTreeNode;
+                const parent = to.parent_page_id === undefined ? node.parent_page_id : to.parent_page_id;
+                const siblings = tree.filter((n) => n.parent_page_id === parent && n.id !== id).sort((a, b) => a.sort_order - b.sort_order);
+                siblings.splice(Math.min(to.sort_order ?? siblings.length, siblings.length), 0, { ...node, parent_page_id: parent });
+                const order = new Map(siblings.map((n, i) => [n.id, i]));
+                return tree.map((n) => (n.id === id ? { ...n, parent_page_id: parent, sort_order: order.get(id) ?? 0 } : order.has(n.id) ? { ...n, sort_order: order.get(n.id) as number } : n));
+            });
+            if (to.parent_page_id !== undefined) patchEntity(qc, KEY, id, { parent_page_id: to.parent_page_id });
+        },
     });
+/**
+ * Notion "+": create an empty "Untitled" page and open it with the title focused (`?new=1`). Uses the last space when
+ * none is given.
+ */
+export const useCreateUntitledPage = () => {
+    const create = useCreatePage();
+    const navigate = useNavigate();
+    return {
+        isPending: create.isPending,
+        create: (opts: { space_id: string; parent_page_id?: string; template_id?: string }, after?: () => void) =>
+            create.mutate({ ...opts, title: "" }, {
+                onSuccess: (pg) => {
+                    try { localStorage.setItem("docs:last-space", opts.space_id); } catch { /* storage blocked */ }
+                    navigate(`/docs/pages/${pg.id}?new=1`);
+                    after?.();
+                },
+            }),
+    };
+};
+export const useUploadPageImage = () => useMutation({ mutationFn: service.uploadPageImage, meta: { errorTitle: "Could not upload the image" } });
 const PAGE_ACTION_PATCH: Partial<Record<PageAction, () => Partial<WikiPageDetail>>> = {
-    publish: () => ({ status: "PUBLISHED", has_unpublished_changes: false }),
-    unpublish: () => ({ status: "DRAFT" }),
     archive: () => ({ archived_at: new Date().toISOString() }),
     unarchive: () => ({ archived_at: null }),
 };
 /**
- * Publish / unpublish / archive / trash / restore / acknowledge. The page shows its new state at once: trashed pages
+ * Archive / trash / restore / acknowledge / ask to re-acknowledge. The page shows its new state at once: trashed pages
  * leave lists and the tree, restored ones leave the trash, the acknowledgement banner turns green.
  */
 export const usePageAction = () =>

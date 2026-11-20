@@ -33,8 +33,15 @@ export const getPages = (params: Params) => get<Paginated<WikiPageListItem>>(R()
 export const getPage = (id: string) => get<WikiPageDetail>(R().pages.detail(id));
 export const createPage = (dto: CreatePageDto) => post<WikiPageDetail>(R().pages.list, dto);
 export const updatePage = ({ id, ...dto }: UpdatePageDto & { id: string }) => patch<WikiPageDetail>(R().pages.detail(id), dto);
-export const movePage = ({ id, ...dto }: { id: string; parent_page_id?: string | null; sort_order?: number }) => post(R().pages.action(id, "move"), dto);
-export const pageAction = ({ id, action, body }: { id: string; action: "publish" | "unpublish" | "archive" | "unarchive" | "trash" | "restore" | "acknowledge"; body?: unknown }) => post(R().pages.action(id, action), body);
+export const movePage = ({ id, ...dto }: { id: string; parent_page_id?: string | null; space_id?: string; sort_order?: number }) => post(R().pages.action(id, "move"), dto);
+export const pageAction = ({ id, action, body }: { id: string; action: "archive" | "unarchive" | "trash" | "restore" | "acknowledge" | "reacknowledge"; body?: unknown }) => post(R().pages.action(id, action), body);
+/** Upload an image for the page (cover or inline). `src` goes in the markdown, `document_id` in cover_document_id. */
+export const uploadPageImage = async ({ id, file }: { id: string; file: File }) => {
+    const form = new FormData();
+    form.append("file", file);
+    return (await axiosInstance.post<{ document_id: string; src: string; url: string; expires_at: string }>(R().pages.attachments(id), form, { headers: { "Content-Type": "multipart/form-data" } })).data;
+};
+export const getPageImageUrl = (id: string, documentId: string) => get<{ url: string; expires_at: string }>(R().pages.attachmentUrl(id, documentId));
 export const deletePage = (id: string) => del(R().pages.detail(id));
 export const setFavorite = ({ id, on }: { id: string; on: boolean }) => (on ? post(R().pages.action(id, "favorite")) : del(R().pages.action(id, "favorite")));
 export const recordView = (id: string) => post(R().pages.action(id, "view"));
@@ -121,12 +128,11 @@ export const exportDocs = async (params: { scope: DocsExportScope; page_id?: str
     setTimeout(() => URL.revokeObjectURL(href), 1000);
     return name;
 };
-export const importDocs = async ({ file, space_id, parent_page_id, publish }: { file: File; space_id: string; parent_page_id?: string; publish?: boolean }) => {
+export const importDocs = async ({ file, space_id, parent_page_id }: { file: File; space_id: string; parent_page_id?: string }) => {
     const form = new FormData();
     form.append("file", file);
     form.append("space_id", space_id);
     if (parent_page_id) form.append("parent_page_id", parent_page_id);
-    if (publish) form.append("publish", "true");
     return (await axiosInstance.post<DocsImportResult>(R().import, form, { headers: { "Content-Type": "multipart/form-data" } })).data;
 };
 export const getDocsTransfers = () => get<DocsTransferJob[]>(R().transfers);

@@ -31,7 +31,7 @@ export class DocsTransferController {
     @RequirePermission('docs.pages.import', 'docs.pages.create')
     @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_IMPORT_BYTES, files: 1 } }))
     @ApiConsumes('multipart/form-data')
-    @ApiBody({ schema: { type: 'object', required: ['file', 'space_id'], properties: { file: { type: 'string', format: 'binary' }, space_id: { type: 'string' }, parent_page_id: { type: 'string' }, publish: { type: 'boolean' } } } })
+    @ApiBody({ schema: { type: 'object', required: ['file', 'space_id'], properties: { file: { type: 'string', format: 'binary' }, space_id: { type: 'string' }, parent_page_id: { type: 'string' } } } })
     @ApiOperation({ summary: 'Import Markdown pages (.md or .zip); folders become parent pages' })
     import(@CurrentOrg() ctx: OrgContext, @UploadedFile() file: { buffer: Buffer; originalname: string } | undefined, @Body(new ZodValidationPipe(ImportDocsSchema)) dto: ImportDocsInput) {
         if (file?.originalname) file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');

@@ -4,9 +4,7 @@ import { Download, FileUp } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { usePermission } from "@/hooks/use-permission";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { DocsExportScopeOptions } from "@/config/constants/dropdowns/docs/docs.options";
 import { useExportDocs, useImportDocs } from "@/features/docs/hooks/use-docs";
@@ -27,19 +25,17 @@ interface ImportProps {
 export function ImportDocsDialog({ open, onOpenChange, spaceId, parentPageId, parentTitle }: ImportProps) {
     const navigate = useNavigate();
     const importDocs = useImportDocs();
-    const canPublish = usePermission("docs.pages.publish");
     const [file, setFile] = useState<File | null>(null);
-    const [publish, setPublish] = useState(false);
     const [result, setResult] = useState<DocsImportResult | null>(null);
     const input = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (open) { setFile(null); setPublish(false); setResult(null); }
+        if (open) { setFile(null); setResult(null); }
     }, [open]);
 
     const submit = () => {
         if (!file) return;
-        importDocs.mutate({ file, space_id: spaceId, parent_page_id: parentPageId, publish: canPublish && publish }, {
+        importDocs.mutate({ file, space_id: spaceId, parent_page_id: parentPageId }, {
             onSuccess: (r) => setResult(r),
         });
     };
@@ -53,7 +49,7 @@ export function ImportDocsDialog({ open, onOpenChange, spaceId, parentPageId, pa
                 </DialogHeader>
                 {result ? (
                     <div className="space-y-3 text-[13px]">
-                        <p className="text-foreground">{result.page_count} page(s) created as {publish && canPublish ? "published pages" : "drafts"}.</p>
+                        <p className="text-foreground">{result.page_count} page(s) created.</p>
                         {result.warnings.length > 0 && (
                             <ul className="max-h-40 list-inside list-disc overflow-auto rounded-md border border-warning/40 bg-warning-soft p-2 text-xs text-foreground">
                                 {result.warnings.map((w) => <li key={w}>{w}</li>)}
@@ -72,12 +68,6 @@ export function ImportDocsDialog({ open, onOpenChange, spaceId, parentPageId, pa
                             <span className="text-[13px] text-foreground">{file ? file.name : "Choose a .md or .zip file"}</span>
                             <span className="text-xs text-muted-foreground">Up to 50 MB · at most 500 pages</span>
                         </button>
-                        {canPublish && (
-                            <div className="flex items-center justify-between gap-3">
-                                <Label htmlFor="import-publish">Publish imported pages</Label>
-                                <Switch id="import-publish" checked={publish} onCheckedChange={setPublish} />
-                            </div>
-                        )}
                         {importDocs.error && <p role="alert" className="text-xs text-danger">Import failed: {getApiErrorMessage(importDocs.error)}</p>}
                     </div>
                 )}

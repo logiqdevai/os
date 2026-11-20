@@ -1,5 +1,7 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, ParseUUIDPipe, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, ParseUUIDPipe, Patch, Post, Put, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { IncomingFile } from '@/modules/files/services/documents.service';
 import { JwtGuard } from '@/shared/guards/jwt.guard';
 import { PermissionsGuard } from '@/shared/authorization/guards/permissions.guard';
 import { CurrentOrg, RequirePermission } from '@/shared/authorization/decorators/require-permission.decorator';
@@ -17,7 +19,6 @@ import {
     MovePageDto,
     PageQuery,
     PageQuerySchema,
-    PublishPageDto,
     RequireAckDto,
     RestoreVersionDto,
     SearchQuery,
@@ -66,7 +67,7 @@ export class DocsPagesController {
 
     @Get('pages')
     @RequirePermission('docs.pages.read')
-    @ApiOperation({ summary: 'List pages (filters: space, parent, status, type, owner, review)' })
+    @ApiOperation({ summary: 'List pages (filters: space, parent, type, owner, review)' })
     findAll(@CurrentOrg() ctx: OrgContext, @Query(new ZodValidationPipe(PageQuerySchema)) query: PageQuery) {
         return this.pages.findAll(ctx, query);
     }
@@ -80,7 +81,7 @@ export class DocsPagesController {
 
     @Post('pages')
     @RequirePermission('docs.pages.create')
-    @ApiOperation({ summary: 'Create a page (optionally from a template, optionally published)' })
+    @ApiOperation({ summary: 'Create a page (optionally from a template). Every edit is live; there is no draft/publish step.' })
     create(@CurrentOrg() ctx: OrgContext, @Body() dto: CreatePageDto) {
         return this.pages.create(ctx, dto);
     }
@@ -106,18 +107,29 @@ export class DocsPagesController {
         return this.pages.duplicate(ctx, id, dto);
     }
 
-    @Post('pages/:id/publish')
-    @RequirePermission('docs.pages.publish')
-    @ApiOperation({ summary: 'Publish the current version' })
-    publish(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Body() dto: PublishPageDto) {
-        return this.pages.publish(ctx, id, dto.change_summary);
+    @Post('pages/:id/attachments')
+    @RequirePermission('docs.pages.update')
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 25 * 1024 * 1024, files: 1 } }))
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({ schema: { type: 'object', required: ['file'], properties: { file: { type: 'string', format: 'binary' } } } })
+    @ApiOperation({ summary: 'Upload an image for the page (cover or inline). Returns { document_id, src: "attachment:<id>", url } — put src in the markdown or document_id in cover_document_id.' })
+    uploadAttachment(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @UploadedFile() file: IncomingFile) {
+        if (file?.originalname) file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
+        return this.pages.uploadAttachment(ctx, id, file);
     }
 
-    @Post('pages/:id/unpublish')
-    @RequirePermission('docs.pages.publish')
-    @ApiOperation({ summary: 'Move a published page back to draft' })
-    unpublish(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string) {
-        return this.pages.unpublish(ctx, id);
+    @Get('pages/:id/attachments/:documentId/url')
+    @RequirePermission('docs.pages.read')
+    @ApiOperation({ summary: 'Short-lived signed URL of an image (or the cover) of this page, for <img src>' })
+    attachmentUrl(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @Param('documentId', ParseUUIDPipe) documentId: string) {
+        return this.pages.attachmentUrl(ctx, id, documentId);
+    }
+
+    @Post('pages/:id/reacknowledge')
+    @RequirePermission('docs.pages.update')
+    @ApiOperation({ summary: 'Ask readers to confirm the page again: the current version becomes the one to acknowledge' })
+    reacknowledge(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string) {
+        return this.pages.requestReacknowledge(ctx, id);
     }
 
     @Post('pages/:id/archive')
@@ -263,7 +275,7 @@ export class DocsPagesController {
 
     @Post('pages/:id/acknowledge')
     @RequirePermission('docs.pages.read')
-    @ApiOperation({ summary: 'Acknowledge that you read the current published version' })
+    @ApiOperation({ summary: 'Acknowledge that you read the current version' })
     acknowledge(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string) {
         return this.pages.acknowledge(ctx, id);
     }

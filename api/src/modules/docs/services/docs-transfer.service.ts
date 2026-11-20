@@ -21,7 +21,6 @@ export interface ExportInput {
 export interface ImportInput {
     space_id: string;
     parent_page_id?: string;
-    publish?: boolean;
 }
 
 /** `---` front matter with simple `key: value` lines (quoted or bare). */
@@ -85,7 +84,7 @@ export class DocsTransferService {
         }
         const rows = await this.prisma.wikiPage.findMany({
             where,
-            select: { id: true, parent_page_id: true, title: true, slug: true, icon: true, page_type: true, status: true, content_markdown: true, current_version_number: true, updated_at: true, depth: true, sort_order: true },
+            select: { id: true, parent_page_id: true, title: true, slug: true, icon: true, page_type: true, content_markdown: true, current_version_number: true, updated_at: true, depth: true, sort_order: true },
             orderBy: [{ depth: 'asc' }, { sort_order: 'asc' }, { title: 'asc' }],
             take: 5000,
         });
@@ -102,7 +101,7 @@ export class DocsTransferService {
             for (let i = 2; used.has(`${parentFolder}${base}`); i++) base = `${r.slug || 'page'}-${i}`;
             used.add(`${parentFolder}${base}`);
             if (hasChildren.has(r.id)) folderOf.set(r.id, `${parentFolder}${base}/`);
-            const front = ['---', `title: ${yaml(r.title)}`, ...(r.icon ? [`icon: ${yaml(r.icon)}`] : []), `page_type: ${r.page_type}`, `status: ${r.status}`, `version: ${r.current_version_number}`, `updated_at: ${r.updated_at.toISOString()}`, `source_id: ${r.id}`, '---', ''];
+            const front = ['---', `title: ${yaml(r.title)}`, ...(r.icon ? [`icon: ${yaml(r.icon)}`] : []), `page_type: ${r.page_type}`, `version: ${r.current_version_number}`, `updated_at: ${r.updated_at.toISOString()}`, `source_id: ${r.id}`, '---', ''];
             entries.push({ name: `${parentFolder}${base}.md`, data: Buffer.from(`${front.join('\n')}\n${r.content_markdown ?? ''}\n`, 'utf8') });
         }
         const buffer = createZip(entries);
@@ -199,7 +198,6 @@ export class DocsTransferService {
                     ...(icon ? { icon } : {}),
                     ...(pageType ? { page_type: pageType } : {}),
                     content_markdown: content.trim(),
-                    publish: !!input.publish && ctx.can('docs.pages.publish'),
                 });
                 created.set(node.key, page.id);
                 createdPages.push({ id: page.id, title: page.title });

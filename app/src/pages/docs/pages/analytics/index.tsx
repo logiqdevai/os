@@ -9,7 +9,7 @@ import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { useListParams } from "@/hooks/use-list-params";
 import { formatDate } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
-import { DocsAnalyticsPeriodOptions, WikiPageStatusOptions } from "@/config/constants/dropdowns/docs/docs.options";
+import { DocsAnalyticsPeriodOptions, WikiPageTypeFormOptions } from "@/config/constants/dropdowns/docs/docs.options";
 import { useDocsAnalytics, useSpaces } from "@/features/docs/hooks/use-docs";
 import { DocIcon } from "../../components/docs-ui";
 
@@ -61,7 +61,7 @@ export default function DocsAnalyticsPage() {
         <Page width="wide">
             {header}
             <StatGrid className="mb-6">
-                <StatCard label="Pages" value={a.pages.total} hint={`${a.pages.by_status.PUBLISHED ?? 0} published · ${a.pages.by_status.DRAFT ?? 0} drafts`} icon={BookOpen} />
+                <StatCard label="Pages" value={a.pages.total} hint={`${a.pages.by_type.POLICY ?? 0} policies · ${a.pages.by_type.PROCEDURE ?? 0} procedures`} icon={BookOpen} />
                 <StatCard label="Views" value={a.views.total} hint={`Last ${days} days`} icon={Eye} />
                 <StatCard label="Review overdue" value={a.pages.review_overdue} hint="Past their review date" tone={a.pages.review_overdue ? "warning" : "success"} icon={Clock} />
                 <StatCard label="Acknowledged" value={ackRate === null ? "—" : `${ackRate}%`} hint={`${a.acknowledgements.acknowledged} of ${a.acknowledgements.total} required readings`} icon={CheckCheck} />
@@ -114,9 +114,9 @@ export default function DocsAnalyticsPage() {
                 </Section>
             </div>
 
-            <Section title="Pages by status" className="mt-6">
+            <Section title="Pages by type" className="mt-6">
                 <div className="flex flex-wrap gap-2">
-                    {Object.entries(a.pages.by_status).map(([status, n]) => <Badge key={status} variant="neutral">{getDropdownOptionLabel(WikiPageStatusOptions, status)}: {n}</Badge>)}
+                    {Object.entries(a.pages.by_type).map(([type, n]) => <Badge key={type} variant="neutral">{getDropdownOptionLabel(WikiPageTypeFormOptions, type)}: {n}</Badge>)}
                 </div>
             </Section>
         </Page>

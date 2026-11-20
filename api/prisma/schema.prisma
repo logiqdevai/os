@@ -1539,7 +1539,6 @@ model Membership {
   wiki_search_queries                 WikiSearchQuery[]
   wiki_page_feedback                  WikiPageFeedback[]
   wiki_page_watches                   WikiPageWatcher[]
-  wiki_review_requests                WikiPageReviewRequest[]          @relation("WikiReviewRequestReviewer")
   wiki_checklist_runs                 WikiChecklistRun[]               @relation("WikiChecklistRunSubject")
   owned_custom_forms                  CustomForm[]                     @relation("CustomFormOwner")
   form_assignment_receipts            FormAssignmentRecipient[]
@@ -6842,7 +6841,7 @@ model Task {
   description                String?
   priority                   TaskPriority             @default(NONE)
   reporter_membership_id     String?
-  estimate_points           Decimal?                 @db.Decimal(6, 2)
+  estimate_points            Decimal?                 @db.Decimal(6, 2)
   estimate_hours             Decimal?                 @db.Decimal(8, 2)
   start_date                 DateTime?                @db.Date
   due_date                   DateTime?                @db.Date
@@ -16688,14 +16687,6 @@ enum WikiSpaceKind {
   TOPIC
 }
 
-/// 15 §2 — page lifecycle: draft, published, needs review, archived.
-enum WikiPageStatus {
-  DRAFT
-  PUBLISHED
-  NEEDS_REVIEW
-  ARCHIVED
-}
-
 /// 15 §2, §3, §4 — template / page kinds (policy, procedure, runbook, meeting notes, decision record,
 /// handbook chapter, onboarding/offboarding guides, FAQ).
 enum WikiPageType {
@@ -16918,52 +16909,41 @@ enum WikiTransferStatus {
   FAILED
 }
 
-/// 15 §2 — approval of a page version in a space that requires review before publishing.
-enum WikiReviewRequestStatus {
-  PENDING
-  APPROVED
-  CHANGES_REQUESTED
-}
-
 // --- Spaces -----------------------------------------------------------------------
 
 /// 15 §2, §4 — a space groups pages per department, team, branch, project or topic.
 /// Exactly one of team_id / branch_id / department_id / project_id is normally set for the matching kind;
 /// TOPIC spaces set none.
 model WikiSpace {
-  id                            String         @id @default(uuid())
-  organization_id               String
-  name                          String
-  slug                          String
-  description                   String?
-  icon                          String?
-  color                         String?
-  kind                          WikiSpaceKind  @default(TOPIC)
-  team_id                       String?
-  branch_id                     String?
+  id                       String         @id @default(uuid())
+  organization_id          String
+  name                     String
+  slug                     String
+  description              String?
+  icon                     String?
+  color                    String?
+  kind                     WikiSpaceKind  @default(TOPIC)
+  team_id                  String?
+  branch_id                String?
   /// Department = Team of kind DEPARTMENT (01 §43).
-  department_id                 String?
+  department_id            String?
   /// 15 §4 — project help center space (05 §34).
-  project_id                    String?
-  owner_membership_id           String?
+  project_id               String?
+  owner_membership_id      String?
   /// Default visibility applied to new pages in this space (15 §2).
-  default_visibility            WikiVisibility @default(ORGANIZATION)
+  default_visibility       WikiVisibility @default(ORGANIZATION)
   /// Private spaces are visible only to WikiSpaceMember rows regardless of page visibility.
-  is_private                    Boolean        @default(false)
+  is_private               Boolean        @default(false)
   /// 15 §4 — pages of this space may be set customer_visible (WikiPage.customer_visible).
-  allow_customer_visible        Boolean        @default(false)
-  /// 15 §2 — members with edit access may publish; otherwise only space managers / `docs.pages.publish` holders.
-  members_can_publish           Boolean        @default(true)
-  /// 15 §2 — publishing goes through a WikiPageReviewRequest approval.
-  require_review_before_publish Boolean        @default(false)
-  sort_order                    Int            @default(0)
-  archived_at                   DateTime?
+  allow_customer_visible   Boolean        @default(false)
+  sort_order               Int            @default(0)
+  archived_at              DateTime?
   /// 15 §2 — trash: soft-deleted space, purged after the retention period (30 days). Different from archived.
-  deleted_at                    DateTime?
-  deleted_by_membership_id      String?
-  created_by_user_id            String?
-  created_at                    DateTime       @default(now())
-  updated_at                    DateTime       @updatedAt
+  deleted_at               DateTime?
+  deleted_by_membership_id String?
+  created_by_user_id       String?
+  created_at               DateTime       @default(now())
+  updated_at               DateTime       @updatedAt
 
   organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   team         Team?        @relation(fields: [team_id], references: [id], onDelete: SetNull)
@@ -17020,9 +17000,7 @@ model WikiPageTemplate {
   description                  String?
   icon                         String?
   page_type                    WikiPageType @default(GENERAL)
-  /// Block-structured content (same shape as WikiPage.content).
-  content                      Json?
-  /// Markdown rendering of `content` for preview/search.
+  /// Template body in the same Markdown dialect as WikiPage.content_markdown.
   content_markdown             String?
   /// Default review cadence for pages created from this template (15 §2).
   default_review_interval_days Int?
@@ -17056,12 +17034,12 @@ model WikiPage {
   title                          String
   slug                           String
   icon                           String?
-  /// Cover image Document (17); id only.
+  /// Cover image Document (17); id only. Uploaded through POST /docs/pages/:id/attachments.
   cover_document_id              String?
+  /// Vertical focal point of the cover image, 0 (top) – 100 (bottom); Notion's "Reposition".
+  cover_position                 Int                      @default(50)
   page_type                      WikiPageType             @default(GENERAL)
-  status                         WikiPageStatus           @default(DRAFT)
-  /// Block tree: [{ id, type, props, children: [...] }].
-  content                        Json?
+  /// Markdown is the single source of truth (callouts `> [!NOTE]`, toggles `<details>`, GFM tables, `[[Page]]` links).
   content_markdown               String?
   /// Short plain-text excerpt for lists and search snippets.
   excerpt                        String?
@@ -17088,11 +17066,10 @@ model WikiPage {
   requires_acknowledgement       Boolean                  @default(false)
   /// 15 §3 — default due date for the acknowledgements expanded from WikiPageAckTarget.
   ack_due_at                     DateTime?                @db.Date
-  // 15 §2 — versions & publishing
+  /// 15 §3 — version readers must have acknowledged; set when acknowledgement is turned on and by "Ask readers to confirm again".
+  ack_version_number             Int?
+  // 15 §2 — versions (every edit is live; there is no draft/publish step)
   current_version_number         Int                      @default(0)
-  published_at                   DateTime?
-  published_by_membership_id     String?
-  published_version_number       Int?
   /// Set while a member holds an edit lock (collaborative editing guard).
   locked_by_membership_id        String?
   locked_at                      DateTime?
@@ -17138,12 +17115,10 @@ model WikiPage {
   feedback             WikiPageFeedback[]
   ack_targets          WikiPageAckTarget[]
   watchers             WikiPageWatcher[]
-  review_requests      WikiPageReviewRequest[]
   search_clicks        WikiSearchQuery[]
   transfer_jobs        WikiTransferJob[]
 
   @@unique([space_id, slug])
-  @@index([organization_id, status])
   @@index([organization_id, customer_visible])
   @@index([search_vector], type: Gin)
   @@index([space_id, parent_page_id, sort_order])
@@ -17169,18 +17144,15 @@ model WikiPageReviewer {
   @@map("wiki_page_reviewers")
 }
 
-/// 15 §2 — immutable snapshot per save/publish; `WikiPage.current_version_number` points at the latest.
+/// 15 §2 — immutable snapshot per save (quick autosaves by the same author are coalesced); `WikiPage.current_version_number` points at the latest.
 model WikiPageVersion {
   id                       String   @id @default(uuid())
   page_id                  String
   version_number           Int
   title                    String
-  content                  Json?
   content_markdown         String?
   /// Optional author note describing the change.
   change_summary           String?
-  /// True when this snapshot was the published copy at the time.
-  is_published_snapshot    Boolean  @default(false)
   /// Version this one was restored from, when created by a rollback.
   restored_from_version_id String?
   /// 15 §6 — produced by accepting an AI suggestion.
@@ -17299,7 +17271,7 @@ model WikiPageFavorite {
 }
 
 /// 15 §3 — required-reading acknowledgement tracking: one row per member per page; re-acknowledgement
-/// is required when `acknowledged_version_number` falls behind the published version.
+/// is required when `acknowledged_version_number` falls behind `WikiPage.ack_version_number`.
 model WikiPageAcknowledgement {
   id                          String    @id @default(uuid())
   page_id                     String
@@ -17833,7 +17805,7 @@ model WikiTransferJob {
 }
 
 /// 15 §3 — who must acknowledge a page (member, team, branch, role or department). Expanded into
-/// WikiPageAcknowledgement rows on publish and for new members; the denominator of "17 of 24".
+/// WikiPageAcknowledgement rows when acknowledgement is requested and for new members; the denominator of "17 of 24".
 model WikiPageAckTarget {
   id             String            @id @default(uuid())
   page_id        String
@@ -17850,7 +17822,7 @@ model WikiPageAckTarget {
   @@map("wiki_page_ack_targets")
 }
 
-/// 15 §2 — member follows a page and is notified (14) on publish and comments. Author, owner, reviewers and mentioned members follow implicitly.
+/// 15 §2 — member follows a page and is notified (14) on edits and comments. Author, owner, reviewers and mentioned members follow implicitly.
 model WikiPageWatcher {
   page_id       String
   membership_id String
@@ -17862,26 +17834,6 @@ model WikiPageWatcher {
   @@id([page_id, membership_id])
   @@index([membership_id])
   @@map("wiki_page_watchers")
-}
-
-/// 15 §2 — review request for a page version in a space with require_review_before_publish.
-model WikiPageReviewRequest {
-  id                         String                  @id @default(uuid())
-  page_id                    String
-  version_number             Int
-  requested_by_membership_id String?
-  reviewer_membership_id     String
-  status                     WikiReviewRequestStatus @default(PENDING)
-  notes                      String?
-  decided_at                 DateTime?
-  created_at                 DateTime                @default(now())
-
-  page     WikiPage   @relation(fields: [page_id], references: [id], onDelete: Cascade)
-  reviewer Membership @relation("WikiReviewRequestReviewer", fields: [reviewer_membership_id], references: [id], onDelete: Cascade)
-
-  @@index([page_id, version_number])
-  @@index([reviewer_membership_id, status])
-  @@map("wiki_page_review_requests")
 }
 
 // =====================================================================

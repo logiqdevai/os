@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatRelative, personName } from "@/lib/format";
 import type { WikiPageConflict } from "@/features/docs/interfaces/docs.interfaces";
-import { diffLines } from "../../../utils/line-diff";
+import { diffLines } from "../utils/line-diff";
 
 interface Props {
     conflict: WikiPageConflict | null;

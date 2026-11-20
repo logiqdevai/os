@@ -1,11 +1,14 @@
 import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
-import { RecordEntityType, WikiPageStatus, WikiPageType, WikiPermissionLevel, WikiPrincipalType, WikiVisibility } from 'generated/prisma';
+import { RecordEntityType, WikiPageType, WikiPermissionLevel, WikiPrincipalType, WikiVisibility } from 'generated/prisma';
 import { z } from 'zod';
 import { BaseListQuerySchema, boolish, csv } from '@/shared/utils/pagination/pagination.utils';
 
 const MAX_CONTENT = 500_000;
+
+/** Markdown dialect of a page body (the Notion-style editor reads and writes exactly this). */
+const MARKDOWN_HINT = 'Markdown. Callout: "> [!NOTE] text" (also TIP, IMPORTANT, WARNING, CAUTION); toggle: <details><summary>Title</summary>body</details>; GFM tables; to-do: "- [ ] item"; link to a page: [[Page title]]; mention: [@Name](mention:member/<membership_id>); image: ![alt](attachment:<document_id>).';
 
 export class CreatePageDto {
     @ApiProperty()
@@ -22,17 +25,29 @@ export class CreatePageDto {
     @IsUUID()
     template_id?: string;
 
-    @ApiProperty({ example: 'Deployment runbook' })
+    @ApiProperty({ example: 'Deployment runbook', required: false, description: 'Empty = "Untitled" (Notion: a new page opens with the title focused)' })
+    @IsOptional()
     @IsString()
-    @MinLength(1)
     @MaxLength(200)
-    title: string;
+    title?: string;
 
     @ApiProperty({ required: false })
     @IsOptional()
     @IsString()
     @MaxLength(16)
     icon?: string;
+
+    @ApiProperty({ required: false, nullable: true, description: 'Cover image: a document id returned by POST /docs/pages/:id/attachments (null removes it)' })
+    @IsOptional()
+    @IsUUID()
+    cover_document_id?: string | null;
+
+    @ApiProperty({ required: false, description: 'Vertical focal point of the cover, 0 (top) – 100 (bottom)' })
+    @IsOptional()
+    @IsInt()
+    @Min(0)
+    @Max(100)
+    cover_position?: number;
 
     @ApiProperty({ enum: WikiPageType, required: false })
     @IsOptional()
@@ -77,14 +92,9 @@ export class CreatePageDto {
     @IsArray()
     @IsUUID('all', { each: true })
     reviewer_ids?: string[];
-
-    @ApiProperty({ required: false, description: 'Publish immediately (needs docs.pages.publish)' })
-    @IsOptional()
-    @IsBoolean()
-    publish?: boolean;
 }
 
-export class UpdatePageDto extends PartialType(OmitType(CreatePageDto, ['space_id', 'parent_page_id', 'template_id', 'publish'] as const)) {
+export class UpdatePageDto extends PartialType(OmitType(CreatePageDto, ['space_id', 'parent_page_id', 'template_id'] as const)) {
     @ApiProperty({ required: false, description: 'Note stored on the new version' })
     @IsOptional()
     @IsString()
@@ -138,14 +148,6 @@ export class DuplicatePageDto {
     @IsOptional()
     @IsBoolean()
     include_children?: boolean;
-}
-
-export class PublishPageDto {
-    @ApiProperty({ required: false })
-    @IsOptional()
-    @IsString()
-    @MaxLength(500)
-    change_summary?: string;
 }
 
 export class PageGrantDto {
@@ -259,7 +261,6 @@ export class RestoreVersionDto {
 export const PageQuerySchema = BaseListQuerySchema.extend({
     space_id: z.string().uuid().optional(),
     parent_page_id: z.string().optional(),
-    status: csv(z.nativeEnum(WikiPageStatus)),
     page_type: csv(z.nativeEnum(WikiPageType)),
     owner_id: z.string().uuid().optional(),
     review: z.enum(['overdue', 'due_soon']).optional(),
@@ -272,7 +273,6 @@ export const SearchQuerySchema = BaseListQuerySchema.extend({
     q: z.string().trim().min(1).max(200),
     space_id: z.string().uuid().optional(),
     page_type: csv(z.nativeEnum(WikiPageType)),
-    status: csv(z.nativeEnum(WikiPageStatus)),
     owner_id: z.string().uuid().optional(),
     updated_after: z.string().datetime().optional(),
 });
@@ -295,19 +295,20 @@ export const CreatePageSchema = z.object({
     space_id: z.string().uuid(),
     parent_page_id: z.string().uuid().optional(),
     template_id: z.string().uuid().optional(),
-    title: z.string().min(1).max(200),
+    title: z.string().max(200).optional().describe('Empty = Untitled'),
     icon: z.string().max(16).optional(),
     page_type: z.nativeEnum(WikiPageType).optional(),
-    content_markdown: z.string().max(MAX_CONTENT).optional(),
+    content_markdown: z.string().max(MAX_CONTENT).optional().describe(MARKDOWN_HINT),
     visibility: z.nativeEnum(WikiVisibility).optional(),
-    publish: z.boolean().optional(),
 });
 export const UpdatePageSchema = z.object({
     id: z.string().uuid(),
-    title: z.string().min(1).max(200).optional(),
+    title: z.string().max(200).optional(),
     icon: z.string().max(16).optional(),
+    cover_document_id: z.string().uuid().nullable().optional(),
+    cover_position: z.number().int().min(0).max(100).optional(),
     page_type: z.nativeEnum(WikiPageType).optional(),
-    content_markdown: z.string().max(MAX_CONTENT).optional(),
+    content_markdown: z.string().max(MAX_CONTENT).optional().describe(MARKDOWN_HINT),
     change_summary: z.string().max(500).optional(),
     base_version_number: z.number().int().min(1).optional(),
 });

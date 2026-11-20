@@ -35,6 +35,10 @@ const SPACES: SpaceSeed[] = [
             md: `# Keyboard shortcuts\n\nUse **Ctrl** on Windows/Linux and **⌘** on Mac.\n\n## Pages\n\n- \`Ctrl+K\` — search and jump to any page\n- \`Ctrl+Alt+N\` — new page (inside the current page)\n- \`Ctrl+[\` / \`Ctrl+]\` — go back / forward\n- \`Ctrl+Shift+U\` — go up to the parent page\n- \`Ctrl+S\` — save now\n\n## Blocks\n\n- \`/\` — block menu\n- \`Ctrl+Alt+1/2/3\` — heading 1 / 2 / 3\n- \`Ctrl+Shift+4\` — to-do list\n- \`Ctrl+Shift+5\` — bulleted list\n- \`Ctrl+Shift+6\` — numbered list\n- \`Ctrl+Shift+8\` — code block\n- \`Ctrl+Shift+Up/Down\` — move the block up / down\n- \`Ctrl+D\` — duplicate the block\n\n## Text\n\n- \`Ctrl+B\` bold · \`Ctrl+I\` italic · \`Ctrl+U\` underline\n- \`Ctrl+Shift+S\` strikethrough · \`Ctrl+E\` inline code`,
           },
           {
+            title: 'Callouts, toggles and tables', icon: 'layout-list',
+            md: `# Callouts, toggles and tables\n\n> [!TIP]\n> Hover a block and drag the ⋮⋮ handle to move it, or click + to add a block below.\n\n> [!WARNING]\n> Every edit is live — there is no draft. Use Version history to go back.\n\n<details>\n<summary>What is a toggle?</summary>\n\nA toggle hides its content until you open it. Great for FAQs and long details.\n\n</details>\n\n| Shortcut | Block |\n| --- | --- |\n| \`/callout\` | Callout |\n| \`/toggle\` | Toggle list |\n| \`/table\` | Table |\n| \`@\` | Mention a person or page |`,
+          },
+          {
             title: 'Blocks and the slash menu', icon: 'blocks',
             md: `# Blocks and the slash menu\n\n## Markdown shortcuts\n\nType these at the start of a line:\n\n1. \`# \`, \`## \`, \`### \` for headings\n2. \`- \` or \`* \` for a bulleted list\n3. \`1. \` for a numbered list\n4. \`[] \` for a to-do\n5. \`> \` for a quote\n6. \`---\` for a divider\n\n\`\`\`\nconst block = "code blocks keep their formatting";\n\`\`\``,
           },
@@ -139,15 +143,15 @@ async function main() {
     const created = await prisma.wikiPage.create({
       data: {
         organization_id: org, space_id: spaceId, parent_page_id: parent?.id ?? null, title: p.title, slug, icon: p.icon, page_type: p.type ?? 'GENERAL',
-        status: 'PUBLISHED', content: { format: 'markdown' }, content_markdown: p.md, excerpt: excerpt(p.md), word_count: words(p.md),
+        content_markdown: p.md, excerpt: excerpt(p.md), word_count: words(p.md),
         path: parent ? `${parent.path}${parent.id}/` : '', depth: parent ? parent.depth + 1 : 0, sort_order: order,
-        owner_membership_id: me.id, current_version_number: version, published_version_number: version, published_at: new Date(now), published_by_membership_id: me.id,
+        owner_membership_id: me.id, current_version_number: version,
         last_edited_by_membership_id: me.id, last_edited_at: new Date(now - order * 3_600_000), created_by_user_id: user.id,
       },
     });
     for (const [i, summary] of versions.entries()) {
       await prisma.wikiPageVersion.create({
-        data: { page_id: created.id, version_number: i + 1, title: p.title, content: { format: 'markdown' }, content_markdown: p.md, change_summary: summary, is_published_snapshot: i + 1 === version, created_by_membership_id: author(i).id, created_at: new Date(now - (versions.length - i) * 86_400_000) },
+        data: { page_id: created.id, version_number: i + 1, title: p.title, content_markdown: p.md, change_summary: summary, created_by_membership_id: author(i).id, created_at: new Date(now - (versions.length - i) * 86_400_000) },
       });
     }
     if (p.favorite) await prisma.wikiPageFavorite.create({ data: { page_id: created.id, membership_id: me.id, sort_order: pages } });
@@ -171,7 +175,7 @@ async function main() {
   }
 
   for (const [i, t] of TEMPLATES.entries()) {
-    await prisma.wikiPageTemplate.create({ data: { organization_id: org, name: t.name, slug: slugify(t.name), icon: t.icon, page_type: t.type, content: { format: 'markdown' }, content_markdown: t.md, sort_order: i, created_by_user_id: user.id } });
+    await prisma.wikiPageTemplate.create({ data: { organization_id: org, name: t.name, slug: slugify(t.name), icon: t.icon, page_type: t.type, content_markdown: t.md, sort_order: i, created_by_user_id: user.id } });
   }
   console.log(`Seeded ${SPACES.length} spaces, ${pages} pages, ${TEMPLATES.length} templates for ${EMAIL}.`);
 }

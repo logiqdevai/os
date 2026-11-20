@@ -8,9 +8,6 @@ export interface Paginated<T> {
 export const WikiSpaceKinds = { DEPARTMENT: "DEPARTMENT", TEAM: "TEAM", BRANCH: "BRANCH", PROJECT: "PROJECT", TOPIC: "TOPIC" } as const;
 export type WikiSpaceKind = (typeof WikiSpaceKinds)[keyof typeof WikiSpaceKinds];
 
-export const WikiPageStatuses = { DRAFT: "DRAFT", PUBLISHED: "PUBLISHED", NEEDS_REVIEW: "NEEDS_REVIEW", ARCHIVED: "ARCHIVED" } as const;
-export type WikiPageStatus = (typeof WikiPageStatuses)[keyof typeof WikiPageStatuses];
-
 export type WikiPageType =
     | "GENERAL" | "POLICY" | "PROCEDURE" | "RUNBOOK" | "MEETING_NOTES" | "DECISION_RECORD"
     | "HANDBOOK_CHAPTER" | "ONBOARDING_GUIDE" | "OFFBOARDING_GUIDE" | "FAQ";
@@ -51,8 +48,6 @@ export interface WikiSpace {
     default_visibility: WikiVisibility;
     is_private: boolean;
     allow_customer_visible: boolean;
-    members_can_publish: boolean;
-    require_review_before_publish: boolean;
     archived_at: string | null;
     created_at: string;
     updated_at: string;
@@ -93,15 +88,15 @@ export interface WikiPageListItem {
     slug: string;
     icon: string | null;
     page_type: WikiPageType;
-    status: WikiPageStatus;
     excerpt: string | null;
     visibility: WikiVisibility;
     customer_visible: boolean;
     depth: number;
     sort_order: number;
     current_version_number: number;
-    published_version_number: number | null;
-    published_at: string | null;
+    cover_document_id: string | null;
+    /** Vertical focal point of the cover, 0 (top) – 100 (bottom). */
+    cover_position: number;
     next_review_at: string | null;
     stale_flagged_at: string | null;
     requires_acknowledgement: boolean;
@@ -124,7 +119,6 @@ export interface WikiTreeNode {
     title: string;
     slug: string;
     icon: string | null;
-    status: WikiPageStatus;
     page_type: WikiPageType;
     depth: number;
     sort_order: number;
@@ -133,19 +127,21 @@ export interface WikiTreeNode {
 
 export interface WikiPageDetail extends Omit<WikiPageListItem, "space" | "snippet" | "title_match"> {
     content_markdown: string | null;
+    /** Short-lived signed path of the cover image (prefix with the API base URL). */
+    cover_url: string | null;
+    ack_version_number: number | null;
     review_interval_days: number | null;
     last_reviewed_at: string | null;
     owner_membership_id: string | null;
     template?: { id: string; name: string } | null;
-    space: { id: string; name: string; slug: string; icon: string | null; color: string | null; allow_customer_visible: boolean; members_can_publish: boolean; require_review_before_publish: boolean };
+    space: { id: string; name: string; slug: string; icon: string | null; color: string | null; allow_customer_visible: boolean };
     breadcrumbs: { id: string; title: string; icon: string | null }[];
-    children: { id: string; title: string; icon: string | null; status: WikiPageStatus; page_type: WikiPageType; excerpt: string | null; updated_at: string }[];
+    children: { id: string; title: string; icon: string | null; page_type: WikiPageType; excerpt: string | null; updated_at: string }[];
     reviewers: MemberRef[];
     my_level: DocsLevel;
-    can: { comment: boolean; edit: boolean; manage: boolean; publish: boolean; archive: boolean; delete: boolean };
+    can: { comment: boolean; edit: boolean; manage: boolean; archive: boolean; delete: boolean };
     is_favorite: boolean;
     my_acknowledgement: { required_by: string | null; acknowledged_at: string | null; acknowledged_version_number: number | null; is_current: boolean } | null;
-    has_unpublished_changes: boolean;
     backlink_count: number;
     comment_count: number;
 }
@@ -164,7 +160,6 @@ export interface WikiPageVersion {
     version_number: number;
     title: string;
     change_summary: string | null;
-    is_published_snapshot: boolean;
     restored_from_version_id: string | null;
     created_at: string;
     author: MemberRef | null;
@@ -419,7 +414,7 @@ export interface DocsDirectory {
 }
 
 export interface DocsAnalytics {
-    pages: { total: number; by_status: Partial<Record<WikiPageStatus, number>>; review_overdue: number };
+    pages: { total: number; by_type: Partial<Record<WikiPageType, number>>; review_overdue: number };
     views: { total: number; daily: { day: string; views: number; readers: number }[]; top_pages: { page: { id: string; title: string; icon: string | null }; views: number }[] };
     search: { top: { query: string; count: number }[]; zero_results: { query: string; count: number }[] };
     acknowledgements: { total: number; acknowledged: number };
@@ -435,8 +430,6 @@ export interface CreateSpaceDto {
     default_visibility?: WikiVisibility;
     is_private?: boolean;
     allow_customer_visible?: boolean;
-    members_can_publish?: boolean;
-    require_review_before_publish?: boolean;
 }
 export type UpdateSpaceDto = Partial<CreateSpaceDto>;
 
@@ -444,19 +437,21 @@ export interface CreatePageDto {
     space_id: string;
     parent_page_id?: string;
     template_id?: string;
-    title: string;
+    /** Empty = "Untitled" (Notion: create first, name it on the page). */
+    title?: string;
     icon?: string;
     page_type?: WikiPageType;
     content_markdown?: string;
     visibility?: WikiVisibility;
     review_interval_days?: number;
     requires_acknowledgement?: boolean;
-    publish?: boolean;
 }
 
 export interface UpdatePageDto {
     title?: string;
     icon?: string;
+    cover_document_id?: string | null;
+    cover_position?: number;
     page_type?: WikiPageType;
     content_markdown?: string;
     review_interval_days?: number;

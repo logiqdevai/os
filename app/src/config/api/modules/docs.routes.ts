@@ -25,7 +25,9 @@ export const DocsApiRoutes = {
     pages: {
         list: "/docs/pages",
         detail: (id: string) => `/docs/pages/${id}`,
-        action: (id: string, action: "move" | "duplicate" | "publish" | "unpublish" | "archive" | "unarchive" | "trash" | "restore" | "favorite" | "view" | "acknowledge" | "review") => `/docs/pages/${id}/${action}`,
+        action: (id: string, action: "move" | "duplicate" | "archive" | "unarchive" | "trash" | "restore" | "favorite" | "view" | "acknowledge" | "reacknowledge" | "review") => `/docs/pages/${id}/${action}`,
+        attachments: (id: string) => `/docs/pages/${id}/attachments`,
+        attachmentUrl: (id: string, documentId: string) => `/docs/pages/${id}/attachments/${documentId}/url`,
         versions: (id: string) => `/docs/pages/${id}/versions`,
         version: (id: string, n: number) => `/docs/pages/${id}/versions/${n}`,
         restoreVersion: (id: string, n: number) => `/docs/pages/${id}/versions/${n}/restore`,

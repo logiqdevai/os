@@ -1,31 +1,36 @@
 /* =====================================================================================================================
-   DOCS APP — module 15 Business Docs (docs/features/15-notion-business-docs.md). Notion-style wiki: spaces, nested pages, block editor,
+   DOCS APP — module 15 Business Docs (docs/features/15-notion-business-docs.md). Notion-style wiki: spaces, nested pages edited in place, block editor,
    versions, comments, review cadence, acknowledgements, onboarding checklists (generate Tasks), custom forms, AI knowledge, search.
    =====================================================================================================================
    SCHEMA-ALIGNED to api/prisma/schema.prisma: WikiSpace, WikiSpaceMember, WikiPageTemplate, WikiPage, WikiPageReviewer, WikiPageVersion, WikiPagePermission, WikiPageLink, WikiPageAttachment, WikiPageComment,
    WikiPageFavorite, WikiPageAcknowledgement, WikiChecklist, WikiChecklistItem, WikiChecklistRun, WikiChecklistRunItem, CustomForm, CustomFormVersion, FormAssignment, FormAssignmentRecipient, FormSubmission,
-   FormSubmissionFile, WikiAiIndexEntry, WikiAiSuggestion. Enums are real values: WikiSpaceKind (DEPARTMENT, TEAM, BRANCH, PROJECT, TOPIC), WikiPageStatus (DRAFT, PUBLISHED, NEEDS_REVIEW, ARCHIVED), WikiPageType (GENERAL,
+   FormSubmissionFile, WikiAiIndexEntry, WikiAiSuggestion. Enums are real values: WikiSpaceKind (DEPARTMENT, TEAM, BRANCH, PROJECT, TOPIC), WikiPageType (GENERAL,
    POLICY, PROCEDURE, RUNBOOK, MEETING_NOTES, DECISION_RECORD, HANDBOOK_CHAPTER, ONBOARDING_GUIDE, OFFBOARDING_GUIDE, FAQ), WikiVisibility (ORGANIZATION, BRANCH, TEAM, ROLE, MEMBERS), WikiPermissionLevel (VIEW, COMMENT, EDIT,
    MANAGE), WikiPrincipalType (MEMBERSHIP, TEAM, BRANCH, ROLE, DEPARTMENT), WikiChecklistKind (ONBOARDING, OFFBOARDING), WikiChecklistAssigneeKind (SUBJECT, MANAGER, CHECKLIST_OWNER, SPECIFIC_MEMBER), WikiChecklistRunStatus
    (NOT_STARTED, IN_PROGRESS, COMPLETED, CANCELLED), WikiChecklistTrigger (MEMBER_ONBOARDING, MEMBER_OFFBOARDING, MANUAL, AUTOMATION), WikiChecklistItemStatus (PENDING, IN_PROGRESS, COMPLETED, SKIPPED), CustomFormStatus
    (DRAFT, PUBLISHED, CLOSED, ARCHIVED), CustomFormKind (FEEDBACK_SURVEY, CHECK_IN, EQUIPMENT_REQUEST, INCIDENT_REPORT, COMPLIANCE_ACKNOWLEDGEMENT, EXIT_INTERVIEW, CUSTOM), CustomFormFieldType (SHORT_TEXT, LONG_TEXT, NUMBER,
    EMAIL, SINGLE_CHOICE, MULTI_CHOICE, CHECKBOX, SCALE, DATE, FILE_UPLOAD, SIGNATURE, SECTION), FormAssignmentTargetType, FormAssignmentRecipientStatus, FormSubmissionStatus, WikiAiSourceType, WikiAiIndexStatus,
-   WikiAiSuggestionKind, WikiAiSuggestionStatus.
-   Permission keys (catalog): docs.pages.read / create / update / publish / archive / delete*, docs.spaces.manage, docs.checklists.manage, docs.forms.read / create / update / delete* / archive / export* / assign / review,
-   docs.forms.anonymous_responses.read*, docs.ai.query. (* sensitive). Closed gaps: WikiPageView(+Daily), WikiSearchQuery, WikiPageFeedback, trash (deleted_at), WikiTransferJob, WikiPageAckTarget, WikiPageWatcher, WikiPageReviewRequest, space publishing switches; keys docs.analytics.read, docs.pages.import, docs.pages.export*.
+   WikiAiSuggestionKind, WikiAiSuggestionStatus. Wiki pages have NO status enum: every edit is live; archive = archived_at, trash = deleted_at.
+   Permission keys (catalog): docs.pages.read / create / update / share_customers* / archive / delete*, docs.spaces.manage, docs.checklists.manage, docs.forms.read / create / update / delete* / archive / export* / assign / review,
+   docs.forms.anonymous_responses.read*, docs.ai.query. (* sensitive). Closed gaps: WikiPageView(+Daily), WikiSearchQuery, WikiPageFeedback, trash (deleted_at), WikiTransferJob, WikiPageAckTarget, WikiPageWatcher;
+   keys docs.analytics.read, docs.pages.import, docs.pages.export*.
    Comment tags (legend in README.md): @screen @route @perm @api @mcp @data @ui @states @audit @note @gap. Every screen ends with a "Data model" footer (REVIEW-ONLY, do not ship).
 
    RULES THAT APPLY TO EVERY SCREEN HERE:
-     - Pages are structured content (WikiPage.content = block tree Json, content_markdown = derived plain text for search and AI). Files and images embedded in a page are Documents (17, WikiPageAttachment.document_id);
-       links to platform records are WikiPageLink (entity_type = RecordEntityType). Customer-facing help center articles belong to 13: a page only flags customer_visible and the help center publishes a VIEW of it.
-     - Status lifecycle is WikiPageStatus. Every save writes an immutable WikiPageVersion (current_version_number). Publishing sets published_version_number (readers see the published snapshot, editors the draft).
-       Editing a PUBLISHED page creates a draft on top; "Publish changes" needs docs.pages.publish.
+     - WikiPage.content_markdown is the single source of truth (search, AI index, versions, MCP). The block editor reads and writes this Markdown dialect: callout "> [!NOTE] text" (NOTE, TIP, IMPORTANT, WARNING,
+       CAUTION), toggle "<details><summary>Title</summary> …markdown… </details>", GFM tables, to-dos "- [ ]", page links "[Title](/docs/pages/<id>)" (legacy "[[Title]]" still read), mentions
+       "[@Name](mention:member/<membership_id>)", images "![alt](attachment:<document_id>)". Images and the cover (cover_document_id, cover_position 0–100) are uploaded with POST /docs/pages/:id/attachments
+       (page EDIT level) as Documents (17) and tracked as WikiPageAttachment; they are shown through short-lived signed URLs (GET /docs/pages/:id/attachments/:documentId/url). Links to platform records are WikiPageLink.
+       Customer-facing help center articles belong to 13: a page only flags customer_visible (docs.pages.share_customers) and the help center shows a VIEW of it.
+     - Every edit is live: there is no draft / publish step. The page autosaves title + content with base_version_number; every save writes a WikiPageVersion (quick autosaves by the same author within 10 minutes are
+       coalesced into one entry). A 409 wiki_page_version_conflict opens the merge prompt. Restoring a version writes a new version.
      - Access = space default_visibility + WikiSpaceMember levels + WikiPagePermission grants (VIEW < COMMENT < EDIT < MANAGE), narrowed by branch/team scope. The UI never lists a page, a search hit, a mention or an AI
-       citation the caller may not read: the server filters, the client never post-filters. Restricted pages show a lock icon, never their title to non-members.
-     - Review cadence: next_review_at = last_reviewed_at + review_interval_days. A scheduled job sets status NEEDS_REVIEW and stale_flagged_at when overdue and notifies the owner and reviewers (14).
-     - Required reading: WikiPage.requires_acknowledgement + WikiPageAcknowledgement rows; a new published version older than acknowledged_version_number requires re-acknowledgement.
+       citation the caller may not read: the server filters, the client never post-filters. Restricted pages show a lock icon, never their title to non-members. Viewers get the same page, read-only.
+     - Review cadence: next_review_at = last_reviewed_at + review_interval_days. A scheduled job sets stale_flagged_at when overdue and notifies the owner and reviewers (14); "Mark reviewed" clears it.
+     - Required reading: WikiPage.requires_acknowledgement + WikiPageAcknowledgement rows. The version to acknowledge is WikiPage.ack_version_number: set when acknowledgement is turned on, moved to the current
+       version by "Ask readers to confirm again" (POST /docs/pages/:id/reacknowledge, MCP docs_pages_reacknowledge, MANAGE level). An acknowledgement is current when acknowledged_version_number >= ack_version_number.
      - Onboarding/offboarding: WikiChecklist (definition) -> WikiChecklistRun (one member) -> WikiChecklistRunItem; each item generates a Task (06) assigned by assignee_kind. Progress is progress_percent.
-     - Every mutation writes audit_events; webhooks docs.page_published, docs.page_updated, docs.form_assigned, docs.form_submitted (20).
+     - Every mutation writes audit_events; webhooks docs.page_updated, docs.form_assigned, docs.form_submitted (20).
    ===================================================================================================================== */
 (function () {
   const U = window.UI;
@@ -46,9 +51,8 @@
   const filt = (chips, extra) => window.UI.filters.filterBar(chips, extra);
   const pager = (t) => '<div class="pager"><span class="muted">' + t + '</span><span style="flex:1"></span>' + btn("Previous", "", "sm") + btn("Next", "", "sm") + "</div>";
 
-  /* @impl statusBadge(WikiPageStatus): DRAFT yellow, PUBLISHED green, NEEDS_REVIEW red, ARCHIVED neutral. Same map everywhere (page tree, lists, search, analytics). */
-  const PS = { DRAFT: "yellow", PUBLISHED: "green", NEEDS_REVIEW: "red", ARCHIVED: "" };
-  const pst = (s) => ES(s, PS[s]);
+  /* @impl Pages have no status badge (every edit is live). A stale page (stale_flagged_at / next_review_at passed) shows the red "Stale" badge, nothing else. */
+  const stale = (on) => (on ? '<span class="badge red" title="stale_flagged_at">Stale</span>' : "");
   const PT = { GENERAL: "", POLICY: "purple", PROCEDURE: "blue", RUNBOOK: "red", MEETING_NOTES: "", DECISION_RECORD: "yellow", HANDBOOK_CHAPTER: "green", ONBOARDING_GUIDE: "blue", OFFBOARDING_GUIDE: "yellow", FAQ: "green" };
   const ptp = (t) => E(t, PT[t]);
   const pico = (t) => ({ POLICY: "shield", PROCEDURE: "list", RUNBOOK: "zap", MEETING_NOTES: "calendar", DECISION_RECORD: "flag", HANDBOOK_CHAPTER: "book", ONBOARDING_GUIDE: "users", OFFBOARDING_GUIDE: "users", FAQ: "help", GENERAL: "file" }[t] || "file");
@@ -65,64 +69,60 @@
     ["Legacy intranet", "legacy-intranet", "TOPIC", "Topic", "ORGANIZATION", 120, 0, "AM", "box", "", 1],
   ];
 
-  /* Page tree of the Engineering space: title, type, status, depth, children count, icon override, flags */
+  /* Page tree of the Engineering space: title, type, depth, children count, icon override */
   const TREE = [
-    ["Engineering home", "GENERAL", "PUBLISHED", 0, 4, "home"],
-    ["Runbooks", "GENERAL", "PUBLISHED", 0, 3, "zap"],
-    ["Production deploy runbook", "RUNBOOK", "PUBLISHED", 1, 0, "zap", "on"],
-    ["Database failover runbook", "RUNBOOK", "NEEDS_REVIEW", 1, 0, "zap"],
-    ["Incident response", "PROCEDURE", "PUBLISHED", 1, 0, "list"],
-    ["Engineering handbook", "HANDBOOK_CHAPTER", "PUBLISHED", 0, 5, "book"],
-    ["Code review guidelines", "POLICY", "PUBLISHED", 1, 0, "shield"],
-    ["Branching and releases", "PROCEDURE", "PUBLISHED", 1, 0, "list"],
-    ["Security baseline", "POLICY", "PUBLISHED", 1, 0, "shield"],
-    ["Architecture decisions", "GENERAL", "PUBLISHED", 0, 12, "flag"],
-    ["Meeting notes", "GENERAL", "PUBLISHED", 0, 38, "calendar"],
-    ["Drafts", "GENERAL", "DRAFT", 0, 2, "edit"],
+    ["Engineering home", "GENERAL", 0, 4, "home"],
+    ["Runbooks", "GENERAL", 0, 3, "zap"],
+    ["Production deploy runbook", "RUNBOOK", 1, 0, "zap"],
+    ["Database failover runbook", "RUNBOOK", 1, 0, "zap"],
+    ["Incident response", "PROCEDURE", 1, 0, "list"],
+    ["Engineering handbook", "HANDBOOK_CHAPTER", 0, 5, "book"],
+    ["Code review guidelines", "POLICY", 1, 0, "shield"],
+    ["Branching and releases", "PROCEDURE", 1, 0, "list"],
+    ["Security baseline", "POLICY", 1, 0, "shield"],
+    ["Architecture decisions", "GENERAL", 0, 12, "flag"],
+    ["Meeting notes", "GENERAL", 0, 38, "calendar"],
   ];
-  const pg = (t, on) => '<div class="tr-row' + (on ? " on" : "") + '"><span class="ch">' + I("down", 12) + '</span><span class="em">' + I("file", 14) + '</span><span class="t">' + t + "</span></div>";
-  /* @impl PageTree: lazy, one level per request (GET /docs/spaces/:id/pages?parent=), drag to reorder (PATCH sort_order, parent_page_id; path and depth are maintained by the server), keyboard: arrows expand/collapse,
-       Enter opens, Alt+Up/Down reorders. A page the caller cannot read is omitted together with its subtree unless a child grants access (then shown as "Restricted page"). */
+  /* @impl DocsPageTreeNav — the ONLY page tree (sidebar of the Docs app; the page itself has no second tree). Spaces load their tree lazily (GET /docs/spaces/:id/tree) and the tree auto-expands to the page
+       being viewed (its breadcrumbs); open / closed state per node is remembered in the browser. Hover a row: ⋯ (Add to favorites, Copy link, Rename, Duplicate, Move to trash) and + (new "Untitled" page inside,
+       POST /docs/pages {space_id, parent_page_id, title: ""} then open it). Double-click renames in place. Drag and drop: top quarter of a row = before it, bottom quarter = after it, middle = inside it, drop on a
+       space = top level there → POST /docs/pages/:id/move {parent_page_id, space_id, sort_order} (the server renumbers both sibling lists densely 0..n and rewrites path / depth of the subtree; a page cannot go into
+       its own subtree). Optimistic: the row moves at once. A page the caller cannot read is omitted together with its subtree. */
   function tree(active) {
-    return TREE.map((r) => '<div class="tr-row' + (r[0] === active ? " on" : "") + '" style="padding-left:' + (8 + r[3] * 16) + 'px"><span class="ch">' + (r[4] ? I("down", 12) : "") + '</span><span class="em">' + I(r[5] || pico(r[1]), 14) + '</span><span class="t">' + r[0] + "</span>" + (r[2] === "NEEDS_REVIEW" ? '<span class="badge red" title="WikiPageStatus NEEDS_REVIEW">Review</span>' : r[2] === "DRAFT" ? '<span class="badge yellow" title="WikiPageStatus DRAFT">Draft</span>' : "") + "</div>").join("");
+    return TREE.map((r) => '<div class="tr-row' + (r[0] === active ? " on" : "") + '" style="padding-left:' + (8 + r[2] * 16) + 'px"><span class="ch">' + I(r[3] ? "down" : "right", 12) + '</span><span class="em">' + I(r[4] || pico(r[1]), 14) + '</span><span class="t">' + r[0] + "</span>" + (r[0] === active ? '<span class="r" style="margin-left:auto;display:flex;gap:2px">' + I("more", 13) + I("plus", 13) + "</span>" : "") + "</div>").join("") +
+      '<div class="tr-row" style="padding-left:24px;border-top:2px solid var(--blue)"><span class="t muted">drop indicator: before / after a row, highlight = inside</span></div>';
   }
   const sideTree = (active, space) => '<div class="dk-side"><div class="dk-h">' + I("star", 12) + " Favorites</div>" +
     '<div class="tr-row"><span class="em">' + I("zap", 14) + '</span><span class="t">Production deploy runbook</span></div><div class="tr-row"><span class="em">' + I("shield", 14) + '</span><span class="t">Security baseline</span></div>' +
-    '<div class="dk-h">' + I("layers", 12) + " " + (space || "Engineering") + '<span class="r">' + btn("", "plus", "ghost sm icon") + "</span></div>" + tree(active) +
-    '<div class="dk-h">' + I("time", 12) + ' Recent</div><div class="tr-row"><span class="em">' + I("file", 14) + '</span><span class="t">Expense policy</span></div><div class="tr-row"><span class="em">' + I("file", 14) + '</span><span class="t">Brand voice guide</span></div></div>';
+    '<div class="dk-h">Spaces<span class="r">' + btn("", "plus", "ghost sm icon") + '</span></div><div class="tr-row"><span class="ch">' + I("down", 12) + '</span><span class="em">' + I("layers", 14) + '</span><span class="t"><b>' + (space || "Engineering") + '</b></span></div>' + tree(active) +
+    '<div class="tr-row"><span class="ch">' + I("right", 12) + '</span><span class="em">' + I("settings", 14) + '</span><span class="t"><b>Operations</b></span></div><div class="tr-row"><span class="ch">' + I("right", 12) + '</span><span class="em">' + I("book", 14) + '</span><span class="t"><b>Company handbook</b></span></div></div>';
 
   /* =====================================================================================================================
-     DOCS HOME (spec §2, §3, §7)
+     DOCS HOME (spec §2, §3, §7) — Notion-style home
      @route  /docs
      @perm   VIEW docs.pages.read (lists only pages the caller may read) · New page docs.pages.create · New space docs.spaces.manage
-     @api    GET /docs/home (favorites, recent, needs-my-review, required reading, spaces) · GET /docs/pages?filter=
+     @api    GET /docs/home (favorites, recent, recently_updated, required_reading, needs_review, spaces) · GET /docs/search?q= (search dialog)
      @mcp    docs_pages_read · docs_pages_search
-     @data   WikiSpace · WikiPage (status, next_review_at, requires_acknowledgement, owner_membership_id, last_edited_at) · WikiPageFavorite (membership_id, sort_order) · WikiPageAcknowledgement (membership_id, acknowledged_at)
-             · WikiPageReviewer · WikiChecklistRun (subject_membership_id = me)
-     @ui     Card, Table, Badge, Avatar, Command trigger (search), Tabs for Recent | Created by me | Shared with me
-     @states loading skeleton · empty ("No spaces yet" + create space for docs.spaces.manage holders) · error · no-access
+     @data   WikiPage (title, icon, cover_document_id, next_review_at, stale_flagged_at, requires_acknowledgement, owner_membership_id, last_edited_at) · WikiPageView (recent) · WikiPageFavorite · WikiPageAcknowledgement
+     @ui     Greeting heading, search button opening a CommandDialog (empty query = recently visited), "New page" button (instant "Untitled"), horizontal "Recently visited" cards (cover strip + icon), compact page rows
+     @states loading skeleton · empty ("No spaces yet" + New space for docs.spaces.manage holders) · error · no-access
      @audit  none for reads
-     @note   "Recent" = the member's latest WikiPageView rows (index membership_id, viewed_at desc), one per page.
-     Reads are logged as WikiPageView (source UI | SEARCH | AI_CITATION), kept 180 days and rolled up into WikiPageViewDaily; no permission needed for the own list.
+     @note   "Recently visited" = the member's latest WikiPageView rows (one per page). Spaces live in the sidebar, not on home. Reads are logged as WikiPageView (source UI | SEARCH | AI_CITATION), kept 180 days and
+             rolled up into WikiPageViewDaily.
      ===================================================================================================================== */
   function home() {
-    const rec = [["Production deploy runbook", "Engineering", "RUNBOOK", "PUBLISHED", "Edited 2 h ago by Marco Silva"], ["Expense policy", "Operations", "POLICY", "PUBLISHED", "Viewed yesterday"], ["Brand voice guide", "Company handbook", "HANDBOOK_CHAPTER", "PUBLISHED", "Viewed Nov 9"], ["Sprint 14 retro notes", "Engineering", "MEETING_NOTES", "DRAFT", "Edited Nov 8 by you"], ["Q4 sales kickoff", "Sales playbook", "MEETING_NOTES", "PUBLISHED", "Viewed Nov 7"]];
-    return '<div class="a-page">' + head("Docs", "Company knowledge: how the business works, written once.", btn("Import", "inbox") + btn("New page", "plus", "primary")) +
-      '<div class="mini-stats">' + stat("Published pages", 431, "across 7 spaces") + stat("Needs review", 9, "overdue by cadence", 1) + stat("Required reading", "3 open", "you must acknowledge") + stat("My onboarding", "62%", "checklist run") + stat("AI answers", 128, "last 30 days") + "</div>" +
-      '<div class="toolbar">' + search("Search pages, forms and linked records  (Ctrl+K)") + sel("All spaces", "layers") + sel("Any type", "file") + btn("Ask AI", "sparkles") + "</div>" +
-      '<div class="g2" style="grid-template-columns:1.5fr 1fr;align-items:start"><div>' +
-      '<div class="tabset">' + tabs([["r", "Recent"], ["m", "Created by me", 14], ["s", "Shared with me", 6]], "r") +
-      pane("r", 1, '<div class="panel" style="margin-top:0">' + rec.map((r) => '<div class="rowx">' + I(pico(r[2]), 16) + '<div class="grow"><b>' + r[0] + "</b><small>" + r[1] + " · " + r[4] + "</small></div>" + ptp(r[2]) + pst(r[3]) + "</div>").join("") + "</div>") +
-      pane("m", 0, tbl(["Page", "Space", "Status", "Edited"], [[ink("Sprint 14 retro notes"), "Engineering", pst("DRAFT"), "Nov 8"], [ink("Hotfix process"), "Engineering", pst("PUBLISHED"), "Nov 2"]])) +
-      pane("s", 0, tbl(["Page", "Space", "Your access", "Shared by"], [[ink("Client NDA checklist"), "Sales playbook", E("COMMENT", "blue"), "Jonas Koch"], [ink("Berlin office rules"), "Berlin office", E("VIEW"), "Kim Lund"]])) + "</div>" +
-      gap() + cd("<b>Needs your attention</b><span class='r muted'>WikiPage.status NEEDS_REVIEW and unacknowledged required reading</span>",
-        [["Database failover runbook", "Review overdue by 12 days · you are a reviewer", "NEEDS_REVIEW"], ["Security baseline", "Required reading: version 4 changed since you acknowledged v3", "PUBLISHED"], ["Remote work policy", "Required reading due Nov 15", "PUBLISHED"]].map((r) => '<div class="rowx"><div class="grow"><b>' + r[0] + "</b><small>" + r[1] + "</small></div>" + pst(r[2]) + btn(r[2] === "NEEDS_REVIEW" ? "Review" : "Read and acknowledge", "", "sm") + "</div>").join(""), 1) +
-      "</div><div>" +
-      cd("<b>Favorites</b><span class='r muted'>WikiPageFavorite</span>", [["Production deploy runbook", "Engineering"], ["Security baseline", "Engineering"], ["Expense policy", "Operations"], ["Client NDA checklist", "Sales playbook"]].map((r) => '<div class="rowx">' + I("star", 14) + '<div class="grow"><b>' + r[0] + "</b><small>" + r[1] + "</small></div></div>").join(""), 1) + gap() +
-      cd("<b>Spaces</b><span class='r'>" + btn("All spaces", "", "sm") + "</span>", SP.filter((s) => !s[10]).slice(0, 5).map((s) => '<div class="rowx">' + I(s[8], 14) + '<div class="grow"><b>' + s[0] + "</b><small>" + s[5] + " pages</small></div></div>").join(""), 1) + gap() +
-      cd("<b>My onboarding</b><span class='r muted'>WikiChecklistRun</span>", '<div class="rowx"><div class="ring" style="--p:62%"><span>62%</span></div><div class="grow"><b>Engineer onboarding</b><small>8 of 13 items done · due Nov 21</small></div>' + btn("Open", "", "sm") + "</div>", 1) +
-      "</div></div>" +
-      dm(["WikiSpace · name, slug, kind, default_visibility, archived_at", "WikiPage · title, page_type, status, next_review_at, requires_acknowledgement, last_edited_at, owner_membership_id", "WikiPageFavorite · membership_id, sort_order", "WikiPageAcknowledgement · membership_id, acknowledged_version_number", "WikiChecklistRun · progress_percent, due_at"], ["Recent pages: no per-member view log (WikiPageView)"]) + "</div>";
+    const rec = [["Production deploy runbook", "zap", "2 h ago"], ["Expense policy", "shield", "Yesterday"], ["Brand voice guide", "book", "Nov 9"], ["Sprint 14 retro notes", "calendar", "Nov 8"], ["Q4 sales kickoff", "file", "Nov 7"]];
+    const rows = (a) => a.map((r) => '<div class="rowx">' + I(r[1], 15) + '<div class="grow"><b>' + r[0] + "</b></div>" + muted(r[2]) + "</div>").join("");
+    return '<div class="a-page" style="max-width:920px;margin:0 auto">' +
+      '<h1 style="text-align:center;font-size:32px;margin:28px 0 16px">Good morning, Anna</h1>' +
+      '<div class="toolbar" style="max-width:560px;margin:0 auto">' + search("Search pages…  (opens a command dialog)") + btn("New page", "plus", "primary") + "</div>" + gap(24) +
+      '<div class="dk-h">' + I("time", 12) + ' Recently visited</div><div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:6px">' +
+      rec.map((r) => '<div class="tp-card" style="flex:none;width:160px"><div class="pv" style="height:46px"></div><div class="bd">' + I(r[1], 18) + "<b>" + r[0] + "</b><small>" + r[2] + "</small></div></div>").join("") + "</div>" + gap(20) +
+      '<div class="dk-h">' + I("flag", 12) + " Required reading</div>" + cd("", rows([["Security baseline", "shield", "Confirm by Nov 15"], ["Remote work policy", "home", "Confirm by Nov 15"]]), 1) + gap() +
+      '<div class="g2" style="align-items:start"><div><div class="dk-h">' + I("star", 12) + " Favorites</div>" + cd("", rows([["Production deploy runbook", "zap", "Engineering"], ["Security baseline", "shield", "Engineering"], ["Expense policy", "shield", "Operations"]]), 1) + "</div>" +
+      '<div><div class="dk-h">' + I("time", 12) + " Recently updated</div>" + cd("", rows([["Incident response", "list", "Marco Silva"], ["Hotfix process", "list", "Anna Meyer"], ["Q4 sales kickoff", "calendar", "Jonas Koch"]]), 1) + "</div></div>" + gap() +
+      '<div class="dk-h">' + I("flag", 12) + " Reviews due</div>" + cd("", '<div class="rowx">' + I("zap", 15) + '<div class="grow"><b>Database failover runbook</b><small>Review overdue by 12 days · you are a reviewer</small></div>' + stale(1) + btn("Open", "", "sm") + "</div>", 1) +
+      dm(["WikiPage · title, icon, cover_document_id, next_review_at, stale_flagged_at, requires_acknowledgement, last_edited_at, owner_membership_id", "WikiPageView · membership_id, viewed_at (recently visited)", "WikiPageFavorite · membership_id, sort_order", "WikiPageAcknowledgement · membership_id, acknowledged_version_number (vs WikiPage.ack_version_number)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -173,31 +173,31 @@
       cd("<b>Starter pages</b><span class='r muted'>WikiPageTemplate</span>", ["Space home", "Handbook chapter", "Runbook", "Meeting notes"].map((t, i) => '<div class="rowx">' + cb(i < 2) + '<div class="grow">' + t + "</div></div>").join(""), 1) + gap() +
       callout("shield", "<b>Permission check</b> You need docs.spaces.manage to create a space. Creating a PROJECT space also needs projects.projects.update on that project (05).") +
       "</div></div>" +
-      dm(["WikiSpace · every column written on create (incl. allow_customer_visible, members_can_publish, require_review_before_publish)", "WikiSpaceMember · space_id, membership_id, level", "WikiPageTemplate · starter pages (copied)", "Team (department/team) · Branch · Project · Membership (read-only pickers)"], ["WikiSpace.allow_customer_visible gates WikiPage.customer_visible"]) + "</div>";
+      dm(["WikiSpace · every column written on create (incl. allow_customer_visible)", "WikiSpaceMember · space_id, membership_id, level", "WikiPageTemplate · starter pages (copied)", "Team (department/team) · Branch · Project · Membership (read-only pickers)"], ["WikiSpace.allow_customer_visible gates WikiPage.customer_visible"]) + "</div>";
   }
 
   /* =====================================================================================================================
      SPACE OVERVIEW — page tree + page table (spec §2)
-     @route  /docs/s/:spaceSlug · /docs/s/:spaceSlug/pages?status=&type=&owner=
+     @route  /docs/spaces/:id · /docs/spaces/:id?type=&owner=&review=
      @perm   VIEW docs.pages.read · New page docs.pages.create · reorder docs.pages.update · space settings docs.spaces.manage
-     @api    GET /docs/spaces/:id · GET /docs/spaces/:id/pages?status=&page_type=&owner=&review=&cursor= · PATCH /docs/pages/:id {parent_page_id, sort_order} · POST /docs/pages/bulk
+     @api    GET /docs/spaces/:id · GET /docs/pages?space_id=&parent_page_id=root&page_type=&owner_id=&review= · POST /docs/pages/:id/move {parent_page_id, space_id, sort_order} · POST /docs/pages/bulk
      @mcp    docs_pages_read · docs_pages_update
-     @data   WikiSpace · WikiPage (title, slug, icon, page_type, status, parent_page_id, path, depth, sort_order, owner_membership_id, next_review_at, word_count, last_edited_at, visibility, customer_visible) · WikiPageFavorite
+     @data   WikiSpace · WikiPage (title, slug, icon, page_type, stale_flagged_at, parent_page_id, path, depth, sort_order, owner_membership_id, next_review_at, word_count, last_edited_at, visibility, customer_visible) · WikiPageFavorite
      @ui     Tree (ARIA treeview) + Table with column chooser, filter bar, multi-select with bulk bar (move, change owner, set review interval, archive), DropdownMenu
      @states loading · empty ("This space has no pages. Start from a template") · error · no-access (404 for private spaces)
      @audit  page moved, archived (bulk writes one event per page)
      @note   Moving a page rewrites path and depth of its subtree in one transaction. Bulk archive needs docs.pages.archive.
      ===================================================================================================================== */
   function space() {
-    const rows = [["Production deploy runbook", "RUNBOOK", "PUBLISHED", "MS", "Nov 11", "Mar 11", 1, "ORGANIZATION", 1240], ["Database failover runbook", "RUNBOOK", "NEEDS_REVIEW", "JK", "Aug 2", "Overdue", 0, "TEAM", 860], ["Incident response", "PROCEDURE", "PUBLISHED", "MS", "Oct 20", "Apr 20", 1, "ORGANIZATION", 1530], ["Code review guidelines", "POLICY", "PUBLISHED", "AM", "Sep 14", "Dec 14", 1, "ORGANIZATION", 720], ["Security baseline", "POLICY", "PUBLISHED", "KL", "Nov 3", "May 3", 1, "ORGANIZATION", 2010], ["Branching and releases", "PROCEDURE", "DRAFT", "MS", "Nov 9", "None", 0, "TEAM", 480]];
+    const rows = [["Production deploy runbook", "RUNBOOK", 0, "MS", "Nov 11", "Mar 11", 1, "ORGANIZATION", 1240], ["Database failover runbook", "RUNBOOK", 1, "JK", "Aug 2", "Overdue", 0, "TEAM", 860], ["Incident response", "PROCEDURE", 0, "MS", "Oct 20", "Apr 20", 1, "ORGANIZATION", 1530], ["Code review guidelines", "POLICY", 0, "AM", "Sep 14", "Dec 14", 1, "ORGANIZATION", 720], ["Security baseline", "POLICY", 0, "KL", "Nov 3", "May 3", 1, "ORGANIZATION", 2010], ["Branching and releases", "PROCEDURE", 0, "MS", "Nov 9", "None", 0, "TEAM", 480]];
     return '<div class="a-page">' + head("Engineering", "Space · Department: Engineering · 86 pages · 24 members", btn("Space settings", "settings") + btn("Templates", "file") + btn("New page", "plus", "primary")) +
       '<div class="dk-2">' + sideTree("") + '<div class="dk-main">' +
       '<div class="toolbar">' + search("Search in this space") + sel("Table", "grid") + sel("Sort: Edited ↓", "sort") + sel("Columns (8)", "settings") + sel("View: Needs review", "star") + "</div>" +
-      filt([["Status", "is any of", "Published, Draft, Needs review"], ["Type", "is any of", "Runbook, Policy, Procedure"], ["Owner", "is", "Anyone"], ["Review due", "before", "Dec 31"]], btn("Clear", "", "sm ghost") + btn("Save view", "plus", "sm")) +
+      filt([["Stale", "is", "Any"], ["Type", "is any of", "Runbook, Policy, Procedure"], ["Owner", "is", "Anyone"], ["Review due", "before", "Dec 31"]], btn("Clear", "", "sm ghost") + btn("Save view", "plus", "sm")) +
       '<div class="bulk"><span class="cb on"></span><b>2 selected</b><span class="muted">bulk bar appears on selection</span><span style="flex:1"></span>' + sel("Move to…", "folder") + sel("Owner…", "users") + sel("Review every…", "time") + btn("Archive", "archive", "sm") + "</div>" +
-      '<div class="panel" style="margin-top:0"><table>' + th(["", "Page", "Type", "Status", "Owner", ">Words", "Edited", "Next review", "Visibility", "Ack", ""]) + "<tbody>" + rows.map((r, i) => "<tr><td>" + cb(i < 2) + "</td><td>" + I(pico(r[1]), 14) + " " + ink(r[0]) + "</td><td>" + ptp(r[1]) + "</td><td>" + pst(r[2]) + "</td><td>" + wh(r[3]) + "</td><td class='num'>" + r[8] + "</td><td>" + r[4] + "</td><td>" + (r[5] === "Overdue" ? '<span class="badge red">Overdue</span>' : r[5]) + "</td><td>" + E(r[7]) + "</td><td>" + cb(r[6]) + "</td><td>" + more + "</td></tr>").join("") + "</tbody></table></div>" +
+      '<div class="panel" style="margin-top:0"><table>' + th(["", "Page", "Type", "Review", "Owner", ">Words", "Edited", "Next review", "Visibility", "Ack", ""]) + "<tbody>" + rows.map((r, i) => "<tr><td>" + cb(i < 2) + "</td><td>" + I(pico(r[1]), 14) + " " + ink(r[0]) + "</td><td>" + ptp(r[1]) + "</td><td>" + stale(r[2]) + "</td><td>" + wh(r[3]) + "</td><td class='num'>" + r[8] + "</td><td>" + r[4] + "</td><td>" + (r[5] === "Overdue" ? '<span class="badge red">Overdue</span>' : r[5]) + "</td><td>" + E(r[7]) + "</td><td>" + cb(r[6]) + "</td><td>" + more + "</td></tr>").join("") + "</tbody></table></div>" +
       pager("1–6 of 86") + "</div></div>" +
-      dm(["WikiPage · title, page_type, status, parent_page_id, path, depth, sort_order, owner_membership_id, next_review_at, word_count, last_edited_at, visibility, requires_acknowledgement", "SavedView · entity_type WIKI_PAGE (filters, sorting, columns)", "WikiSpace · name, kind, member count"], []) + "</div>";
+      dm(["WikiPage · title, page_type, stale_flagged_at, parent_page_id, path, depth, sort_order, owner_membership_id, next_review_at, word_count, last_edited_at, visibility, requires_acknowledgement", "SavedView · entity_type WIKI_PAGE (filters, sorting, columns)", "WikiSpace · name, kind, member count"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -220,138 +220,123 @@
       pane("g", 1, '<div class="g2" style="align-items:start">' + cd("<b>Details</b>", f("Name", box("Engineering")) + f("Slug", box("engineering")) + f("Description", box("Engineering runbooks, standards and decisions.")) + row2(f("Icon", sel("Layers", "layers")), f("Colour", sel("Blue"))) + f("Owner", sel("Marco Silva", "users"))) +
         cd("<b>Scope</b>", f("Kind", sel("Department")) + f("Department", sel("Engineering", "building")) + f("Team", sel("—", "users")) + f("Branch", sel("—", "building")) + f("Project", sel("—", "folder"), "Exactly one scope field is set, matching the kind.")) + "</div>") +
       pane("m", 0, '<div class="toolbar">' + search("Find member") + sel("Level: any") + btn("Add member or team", "plus", "primary") + "</div>" + cd("<b>Members</b><span class='r muted'>WikiSpaceMember</span>", mem.map((r) => '<div class="rowx">' + av(r[0]) + '<div class="grow"><b>' + PEOPLE[r[0]][0] + "</b><small>" + r[2] + "</small></div>" + sel(U.en(r[1])) + more + "</div>").join("") + '<div class="rowx"><div class="grow muted">+ 19 more members through Team: Engineering</div></div>', 1)) +
-      pane("p", 0, '<div class="g2" style="align-items:start">' + cd("<b>Default visibility</b>", f("New pages are visible to", sel("Organization", "globe")) + '<div class="rowx"><div class="grow"><b>Private space</b><small>is_private: hidden from non-members</small></div>' + sw(0) + "</div>" + '<div class="rowx"><div class="grow"><b>Members may publish</b><small>Otherwise only holders of docs.pages.publish publish</small></div>' + sw(1) + "</div>" + '<div class="rowx"><div class="grow"><b>Require review before publish</b><small>A reviewer must approve changes</small></div>' + sw(0) + "</div>") +
+      pane("p", 0, '<div class="g2" style="align-items:start">' + cd("<b>Default visibility</b>", f("New pages are visible to", sel("Organization", "globe")) + '<div class="rowx"><div class="grow"><b>Private space</b><small>is_private: hidden from non-members</small></div>' + sw(0) + "</div>" + '<div class="rowx"><div class="grow"><b>Allow customer-visible pages</b><small>allow_customer_visible: pages may be shown to customers (docs.pages.share_customers)</small></div>' + sw(0) + "</div>") +
         cd("<b>Level matrix</b>", tbl(["Level", "Read", "Comment", "Edit", "Share and delete"], [["VIEW", "Yes", "No", "No", "No"], ["COMMENT", "Yes", "Yes", "No", "No"], ["EDIT", "Yes", "Yes", "Yes", "No"], ["MANAGE", "Yes", "Yes", "Yes", "Yes"]]).replace('class="panel"', 'class="panel" data-flush="1"')) + "</div>" + gap() + callout("shield", "Space levels combine with the global keys: a member with EDIT here but without docs.pages.update at the organization level cannot edit. The stricter of the two wins.")) +
       pane("t", 0, tbl(["Template", "Type", "Review cycle", "Used", ""], [[ink("Runbook"), ptp("RUNBOOK"), "180 days", 14, more], [ink("Incident postmortem"), ptp("PROCEDURE"), "None", 9, more], [ink("Architecture decision"), ptp("DECISION_RECORD"), "None", 21, more], [ink("Sprint retro"), ptp("MEETING_NOTES"), "None", 28, more]])) +
       pane("d", 0, cd("<b>Archive space</b>", '<div class="rowx"><div class="grow"><b>Archive Engineering</b><small>Hides the space and its 86 pages. Versions and audit stay. Reversible.</small></div>' + btn("Archive", "archive") + "</div>" + '<div class="rowx"><div class="grow"><b>Delete space</b><small>Permanent. Needs docs.pages.delete (sensitive) and typing the space name.</small></div>' + btn("Delete", "x") + "</div>", 1)) + "</div>" +
-      dm(["WikiSpace · name, slug, description, icon, color, kind, scope ids, owner_membership_id, default_visibility, is_private, allow_customer_visible, members_can_publish, require_review_before_publish, archived_at, deleted_at", "WikiSpaceMember · membership_id, level, added_by_user_id", "WikiPageTemplate · space_id", "WikiPageReviewRequest · page_id, version_number, reviewer_membership_id, status PENDING | APPROVED | CHANGES_REQUESTED, decided_at, notes (approval when require_review_before_publish)"], []) + "</div>";
+      dm(["WikiSpace · name, slug, description, icon, color, kind, scope ids, owner_membership_id, default_visibility, is_private, allow_customer_visible, archived_at, deleted_at", "WikiSpaceMember · membership_id, level, added_by_user_id", "WikiPageTemplate · space_id"], []) + "</div>";
   }
 
   /* =====================================================================================================================
-     PAGE — view and block editor (spec §2, §3, §4, §6)
-     @route  /docs/p/:pageSlug?v=<version>&comment=<id> (one URL for read and edit; Edit toggles in place)
-     @perm   VIEW docs.pages.read + level VIEW · comment level COMMENT · edit docs.pages.update + level EDIT · publish docs.pages.publish · archive docs.pages.archive · delete docs.pages.delete* · share level MANAGE
-     @api    GET /docs/pages/:id · PATCH /docs/pages/:id {title, icon, content, page_type, owner_membership_id, review_interval_days, visibility, customer_visible, requires_acknowledgement, reviewer_ids[]} (autosave, debounced 800 ms,
-             If-Match on current_version_number) · POST /docs/pages/:id/publish {change_summary} · POST /docs/pages/:id/lock · POST/PATCH/DELETE /docs/pages/:id/comments · POST /docs/pages/:id/links · POST /docs/pages/:id/attachments {document_id}
-             · POST /docs/pages/:id/favorite · POST /docs/pages/:id/review (mark reviewed) · POST /docs/pages/:id/acknowledge
-     @mcp    docs_pages_read · docs_pages_update · docs_pages_publish · docs_comments_create
-     @data   WikiPage (all columns) · WikiPageVersion · WikiPageComment (block_id, mentions[], resolved_at) · WikiPageLink (entity_type, entity_id, label, block_id) · WikiPageAttachment (document_id, block_id) · WikiPageReviewer
-             · WikiPageFavorite · WikiPageAcknowledgement · WikiPagePermission · Project.runbook_page_id (05) · custom fields (WIKI_PAGE) · taggings (tags)
-     @ui     Block editor (Tiptap/ProseMirror) with drag handles, "/" slash menu (Popover+Command), floating format toolbar, "@" mention Command (members, pages, records), "#" record link; right panel Tabs (Details, Comments,
-             Links, Access); DropdownMenu for the page menu; Dialog for publish; Tooltip on every icon button
-     @states loading skeleton · not found · error · no-access (a page the caller cannot read answers 404, not 403, to avoid revealing titles) · offline (edits queue and sync, version conflict dialog) · locked by another editor
-             · read-only (viewer) · stale warning banner (stale_flagged_at) · "newer published version" banner when the reader is on an old version
-     @audit  page created/updated (debounced into one event per editing session), published, visibility changed, customer_visible changed, owner changed, locked/unlocked, archived, reviewed, acknowledged
-     @note   content is a block tree Json: paragraph, heading, bulleted/numbered list, checklist, table, code, callout, quote, divider, toggle, image and file embeds (WikiPageAttachment, Documents 17), record link (WikiPageLink).
-             Every autosave bumps current_version_number and writes a WikiPageVersion; the published snapshot stays what readers see until "Publish changes" (published_version_number). locked_by_membership_id gives a soft
-             edit lock (concurrent edits are merged by CRDT in production, the lock is for approval-style pages). Embedded record links render a live card (title, status) and respect the viewer's access to that record.
-             The AI assistant may draft a section from the slash menu, as a suggestion the editor accepts (WikiPageVersion.ai_suggestion_id) and ai_generated is set only when AI wrote most of the page.
-     Follow = WikiPageWatcher (page_id, membership_id); notified (14) on publish and comments. Author, owner, reviewers and mentioned members follow implicitly. Needs docs.pages.read only.
+     PAGE — Notion-style, always editable in place (spec §2, §3, §4, §6)
+     @route  /docs/pages/:id (?new=1 focuses the title of a just-created page). There is NO /edit route: /docs/pages/:id/edit redirects here.
+     @perm   VIEW docs.pages.read + page level VIEW (read-only page) · comment level COMMENT · edit docs.pages.update + level EDIT (title, content, icon, cover, properties) · archive / trash docs.pages.archive
+             · delete docs.pages.delete* · share and "Ask readers to confirm again" level MANAGE · customer_visible docs.pages.share_customers*
+     @api    GET /docs/pages/:id · PATCH /docs/pages/:id {title, content_markdown, base_version_number} (autosave 1.2 s after typing stops; 409 wiki_page_version_conflict → merge prompt: use theirs / keep mine / merge in editor)
+             · PATCH /docs/pages/:id {icon, cover_document_id, cover_position, page_type, review_interval_days, requires_acknowledgement, owner_membership_id} (optimistic, no version needed)
+             · POST /docs/pages/:id/attachments (multipart image → {document_id, src: "attachment:<id>", url}) · GET /docs/pages/:id/attachments/:documentId/url (signed inline URL)
+             · POST /docs/pages/:id/reacknowledge · POST /docs/pages/:id/{view|favorite|acknowledge|duplicate|archive|unarchive|trash} · GET versions | comments | links | permissions
+     @mcp    docs_pages_read · docs_pages_update · docs_pages_replace_content · docs_pages_reacknowledge · docs_comments_create
+     @data   WikiPage (title, icon, cover_document_id, cover_position, page_type, content_markdown, owner_membership_id, review_interval_days, next_review_at, requires_acknowledgement, ack_version_number,
+             current_version_number, archived_at) · WikiPageVersion · WikiPageAttachment (document_id) · WikiPageLink (page links + mentions from the markdown) · WikiPageComment · WikiPageFavorite · WikiPageAcknowledgement
+     @ui     Sticky slim top bar: breadcrumbs (space › ancestors › page, each with icon), "Edited 2m ago" / Saving…, Share (permissions sheet), Comments, Favorite star, ⋯ menu (Copy link, Duplicate, Version history,
+             Backlinks, Permissions, Export as Markdown, Import sub-pages, Archive, Move to trash). Optional full-width cover with hover "Change cover · Reposition (drag, Save position) · Remove". Big icon (click to change),
+             hover row "Add icon · Add cover · Add comment", borderless 40px title (Enter / ↓ jumps into the body, ↑ at the top of the body jumps back). Properties row: Type, Owner, Review every N days, Required reading
+             (+ "Ask readers to confirm again" when the page changed since ack_version_number), Last edited. Block editor (Tiptap): "/" menu (Basic blocks: Text, Page, Headings, To-do, Bulleted, Numbered, Toggle, Quote,
+             Callout, Divider, Link to page · Media: Image, Code · Advanced: Table), "@" people and pages, ⋮⋮ handle (drag to move; click: Delete, Duplicate, Turn into, Move up / down), + adds a block below, selection
+             bubble (bold, italic, underline, strike, code, highlight, link field), paste / drop images. Sub-pages not linked in the content show as underlined page rows under it.
+     @states loading skeleton · not found (404, never reveals titles) · error · read-only (viewer: same layout, no hover controls) · saving / saved / failed with Retry · paused (conflict, merge markers) · archived banner
+             · required-reading banner ("I have read this" / confirmed) · empty page ("Press Enter to start writing, or pick a template" + template list + Import Markdown + All templates)
+     @audit  page updated (versions), icon / cover / properties changed, attachment added, re-acknowledgement requested, archived, trashed, duplicated, acknowledged
+     @note   No draft, no publish: readers always see the current content. Every content save is a version (coalesced per author for 10 minutes). Follow = WikiPageWatcher (notified on edits and comments).
      ===================================================================================================================== */
   function blk(inner, o) { o = o || {}; return '<div class="blk' + (o.sel ? " sel" : "") + '"><span class="gut">' + I("plus", 13) + I("menu", 13) + "</span>" + inner + "</div>"; }
   function editorCanvas(showSlash) {
     return blk("<h2>1. Before you deploy</h2>") +
-      blk('<div class="blk-call">' + I("flag", 16) + '<div><b>Deploys are frozen Friday 16:00 to Monday 08:00</b> unless the incident commander approves. Check <span class="lrec">' + I("calendar", 12) + ' Release calendar</span> first.</div></div>') +
-      blk('<p>The on-call engineer <span class="mention">@Marco Silva</span> owns the deploy. Link the release record for the change: <span class="lrec">' + I("flag", 12) + ' Release 2026.11 website</span> and project <span class="lrec">' + I("folder", 12) + " Acme Rebrand Website</span>.</p>") +
-      blk('<div class="blk-ck">' + cb(1) + "<span>CI is green on <b>main</b></span></div>") + blk('<div class="blk-ck">' + cb(1) + "<span>Release notes drafted</span></div>") + blk('<div class="blk-ck">' + cb(0) + '<span>Database migration reviewed by a second engineer <span class="anchor">(required for schema changes)</span></span></div>', { sel: 1 }) +
-      (showSlash ? '<div class="fmt"><span>Turn into</span><span class="on"><b>B</b></span><span><i>I</i></span><span>Link</span><span>Code</span><span>' + I("chat", 13) + " Comment</span><span>" + I("sparkles", 13) + " AI</span></div>" : "") +
+      blk('<div class="blk-call" style="background:var(--yellow-soft)">' + I("flag", 16) + '<div><b>Deploys are frozen Friday 16:00 to Monday 08:00</b> unless the incident commander approves. <span class="muted">callout · "> [!WARNING]"</span></div></div>') +
+      blk('<p>The on-call engineer <span class="mention">@Marco Silva</span> owns the deploy. Follow <span class="lrec">' + I("file", 12) + ' Incident response</span> if anything fails. <span class="muted">mention + page-link chip</span></p>') +
+      blk('<div class="blk-ck">' + cb(1) + "<span>CI is green on <b>main</b></span></div>") + blk('<div class="blk-ck">' + cb(0) + "<span>Database migration reviewed by a second engineer</span></div>", { sel: 1 }) +
+      (showSlash ? '<div class="fmt"><span class="on"><b>B</b></span><span><i>I</i></span><span><u>U</u></span><span><s>S</s></span><span>Code</span><span>Highlight</span><span>' + I("link", 13) + " Link</span></div>" : "") +
       blk("<h2>2. Run the deploy</h2>") +
-      blk('<div class="blk-code">$ pnpm release:prepare --env production\n$ pnpm release:deploy --env production --wait\n$ pnpm release:verify --smoke</div>') +
-      blk("<p>Expected output ends with <b>smoke tests passed</b>. If a health check fails, roll back with the command below and open an incident.</p>") +
-      blk('<table><thead><tr><th>Check</th><th>Owner</th><th>Pass criteria</th></tr></thead><tbody><tr><td>API health</td><td>On-call</td><td>200 on /health for 5 minutes</td></tr><tr><td>Error rate</td><td>On-call</td><td>Below 0.5% after 10 minutes</td></tr><tr><td>Payments</td><td>Finance eng</td><td>Test charge succeeds</td></tr></tbody></table>') +
-      blk('<div class="blk-emb"><span class="ic">' + I("file", 18) + '</span><div class="grow"><b>Rollback checklist.pdf</b><div class="muted">Document (17) · 2 pages · 184 KB</div></div>' + btn("Open", "", "sm") + "</div>") +
-      blk('<div class="blk-img">Image block: architecture-overview.png (Document, 17)</div>') +
-      blk('<div class="blk-toggle">' + I("down", 14) + " <b>Troubleshooting</b></div>") +
-      (showSlash ? blk('<p>/dep<span class="cur"></span></p>') + '<div class="slash"><div class="q">Blocks matching "dep"</div>' +
-        [["Heading", "H", "Section title"], ["Checklist", "☑", "Tick-off items"], ["Table", "▦", "Rows and columns"], ["Code block", "</>", "Monospaced snippet"], ["Callout", "!", "Highlighted note"], ["Image or file", "◫", "Embed a Document (17)"], ["Record link", "↗", "Project, customer, task, ticket"], ["AI draft", "✦", "Write with AI, you review"]].map((r, i) => '<div class="it' + (i === 4 ? " on" : "") + '"><span class="g">' + r[1] + "</span><div>" + r[0] + "<small>" + r[2] + "</small></div></div>").join("") + "</div>" : "");
+      blk('<div class="blk-code">$ pnpm release:deploy --env production --wait\n$ pnpm release:verify --smoke</div>') +
+      blk('<table><thead><tr><th>Check</th><th>Owner</th><th>Pass criteria</th></tr></thead><tbody><tr><td>API health</td><td>On-call</td><td>200 on /health for 5 minutes</td></tr><tr><td>Error rate</td><td>On-call</td><td>Below 0.5% after 10 minutes</td></tr></tbody></table>') +
+      blk('<div class="blk-img">Image block: architecture-overview.png · "![](attachment:&lt;document_id&gt;)"</div>') +
+      blk('<div class="blk-toggle">' + I("right", 14) + ' <b>Troubleshooting</b> <span class="muted">toggle · &lt;details&gt;</span></div>') +
+      (showSlash ? blk('<p>/cal<span class="cur"></span></p>') + '<div class="slash"><div class="q">Basic blocks</div>' +
+        [["Callout", "!", "Make writing stand out"], ["Toggle list", "▸", "Hide and show content"], ["Page", "▤", "Embed a sub-page"], ["Link to page", "↗", "Link an existing page"]].map((r, i) => '<div class="it' + (i === 0 ? " on" : "") + '"><span class="g">' + r[1] + "</span><div>" + r[0] + "<small>" + r[2] + "</small></div></div>").join("") +
+        '<div class="q">Media</div><div class="it"><span class="g">◫</span><div>Image<small>Upload an image</small></div></div><div class="q">Advanced</div><div class="it"><span class="g">▦</span><div>Table<small>Add a simple table</small></div></div></div>' : "");
   }
   function page() {
-    return '<div class="a-page">' + head("Production deploy runbook", "Engineering · Runbooks · version 14 · published version 13", btn("Share", "send") + btn("History", "time") + btn("Edit", "edit") + btn("Publish changes", "check", "primary")) +
-      '<div class="dk-3">' + sideTree("Production deploy runbook") + '<div class="dk-main">' +
-      '<div class="dk-crumbs">' + I("layers", 12) + " <b>Engineering</b> / <b>Runbooks</b> / Production deploy runbook<span style='margin-left:auto;display:flex;gap:6px'>" + btn("", "star", "ghost sm icon") + btn("", "link", "ghost sm icon") + more + "</span></div>" +
-      '<div class="lockbar">' + I("lock", 14) + " <span>Marco Silva is editing this page. Unpublished changes: version 14 differs from published version 13.</span>" + btn("View diff", "", "sm") + "</div>" +
-      '<div class="dk-cover"></div><div class="dk-ico">' + I("zap", 26) + '</div><div class="dk-title">Production deploy runbook</div>' +
+    return '<div class="a-page">' +
+      '<div class="dk-2">' + sideTree("Production deploy runbook") + '<div class="dk-main">' +
+      '<div class="dk-crumbs" style="position:sticky;top:0">' + I("layers", 12) + " Engineering / " + I("zap", 12) + " Runbooks / " + I("zap", 12) + " <b>Production deploy runbook</b><span style='margin-left:auto;display:flex;gap:6px;align-items:center'>" + muted("Edited 2m ago") + btn("Share", "lock", "ghost sm") + btn("", "chat", "ghost sm icon") + btn("", "star", "ghost sm icon") + more + "</span></div>" +
+      '<div class="dk-cover" title="Cover: hover shows Change cover · Reposition · Remove"></div><div class="dk-ico">' + I("zap", 26) + '</div>' +
+      '<div class="muted" style="padding-left:46px;font-size:13px">' + I("smile", 13) + " Add icon · " + I("clip", 13) + " Add cover · " + I("chat", 13) + " Add comment  <i>(hover row, only for editors)</i></div>" +
+      '<div class="dk-title">Production deploy runbook</div>' +
       '<div class="dk-props">' +
       '<div class="pr"><span>' + I("tag", 13) + " Type</span><div>" + ptp("RUNBOOK") + "</div></div>" +
-      '<div class="pr"><span>' + I("check", 13) + " Status</span><div>" + pst("PUBLISHED") + '<span class="badge yellow">Unpublished changes</span></div></div>' +
       '<div class="pr"><span>' + I("users", 13) + " Owner</span><div>" + av("MS") + " Marco Silva</div></div>" +
-      '<div class="pr"><span>' + I("pen", 13) + " Reviewers</span><div>" + av("JK") + av("AM") + '<span class="muted">review every 180 days</span></div></div>' +
-      '<div class="pr"><span>' + I("calendar", 13) + " Next review</span><div>Mar 11, 2027 " + muted("last reviewed Sep 13 by Jonas Koch") + "</div></div>" +
-      '<div class="pr"><span>' + I("globe", 13) + " Visibility</span><div>" + E("ORGANIZATION") + "</div></div>" +
-      '<div class="pr"><span>' + I("folder", 13) + " Linked</span><div><span class='lrec'>Project: Acme Rebrand Website</span><span class='lrec'>Release 2026.11</span></div></div>" +
-      '<div class="pr"><span>' + I("hash", 13) + " Tags</span><div>" + tok("deploy") + tok("production") + tok("on-call") + "</div></div>" +
-      '<div class="pr"><span>' + I("shield", 13) + " Required reading</span><div>" + sw(1) + " " + muted("18 of 24 acknowledged") + "</div></div>" +
+      '<div class="pr"><span>' + I("time", 13) + " Review every</span><div>180 days " + muted("next Mar 11, 2027") + "</div></div>" +
+      '<div class="pr"><span>' + I("shield", 13) + " Required reading</span><div>" + sw(1) + " " + muted("18 of 24 confirmed") + " " + btn("Ask readers to confirm again", "", "ghost sm") + "</div></div>" +
+      '<div class="pr"><span>' + I("time", 13) + " Last edited</span><div>" + muted("2 minutes ago") + "</div></div>" +
       "</div>" + editorCanvas(true) +
-      '<div class="sub-note" style="margin-top:14px;padding-left:46px">Saved 2 s ago · 1,240 words · autosave writes WikiPageVersion 14 · Ctrl+S saves, Ctrl+Enter publishes</div>' +
-      "</div>" +
-      '<div class="dk-right"><div class="tabset tabs-in">' + tabs([["d", "Details"], ["c", "Comments", 3], ["l", "Links", 4], ["a", "Access"]], "c") +
-      pane("d", 0, kv("Created", "Jun 2, 2026 by Marco Silva") + kv("Last edited", "Nov 11 by Marco Silva") + kv("Words", "1,240") + kv("Slug", "production-deploy-runbook") + kv("Parent", "Runbooks") + kv("Template", "Runbook") + kv("Customer visible", sw(0)) + kv("AI generated", "No") + kv("Indexed for AI", E("INDEXED", "green")) + kv("Help center", muted("not published (13)"))) +
-      pane("c", 1, '<div class="cmt"><div class="h">' + av("AM") + '<b>Anna Meyer</b> · Nov 10 · on checklist item</div><div class="q">Database migration reviewed by a second engineer</div>Should this also apply to data backfills? <span class="mention">@Jonas Koch</span> what do you think?' +
-        '<div class="rp"><div class="h">' + av("JK") + "<b>Jonas Koch</b> · Nov 10</div>Yes, backfills too. I will add a line.</div><div style='margin-top:6px'>" + btn("Reply", "reply", "sm") + btn("Resolve", "check", "sm") + "</div></div>" +
-        '<div class="cmt"><div class="h">' + av("SJ") + "<b>Sofia Jensen</b> · Nov 9 · page comment</div>Add a link to the rollback checklist.<div style='margin-top:6px'>" + E("RESOLVED", "green") + "</div></div>" +
-        '<div class="cmt done"><div class="h">' + av("KL") + "<b>Kim Lund</b> · Nov 5</div>Typo in the second command." + '<div style="margin-top:6px">' + E("RESOLVED", "green") + "</div></div>" +
-        '<div style="padding:10px 12px"><div class="input-fake">Comment or @mention. Select text to anchor it to a block.</div><div class="rowx" style="padding:6px 0">' + sel("Page comment") + '<span style="flex:1"></span>' + btn("Comment", "", "primary sm") + "</div></div>") +
-      pane("l", 0, '<div class="dk-h">Records (WikiPageLink)</div>' + [["PROJECT", "Acme Rebrand Website"], ["PROJECT_MILESTONE", "Launch Nov 28"], ["WIKI_PAGE", "Incident response"], ["DOCUMENT", "Rollback checklist.pdf"]].map((r) => '<div class="rowx">' + I("link", 13) + '<div class="grow"><b>' + r[1] + "</b><small>" + U.en(r[0]) + "</small></div>" + more + "</div>").join("") + '<div class="dk-h">Backlinks</div><div class="rowx"><div class="grow"><b>Engineering home</b><small>mentions this page</small></div></div><div class="rowx"><div class="grow"><b>Project Acme Rebrand Website</b><small>Project.runbook_page_id</small></div></div>') +
-      pane("a", 0, '<div class="dk-h">Who can open</div><div class="rowx">' + I("globe", 14) + '<div class="grow"><b>Everyone in the organization</b><small>visibility ORGANIZATION (from the space)</small></div>' + sel("View") + '</div><div class="rowx">' + av("MS") + '<div class="grow"><b>Marco Silva</b><small>owner</small></div>' + E("MANAGE", "purple") + '</div><div class="rowx">' + I("users", 14) + '<div class="grow"><b>Team: Engineering</b><small>WikiPagePermission TEAM</small></div>' + sel("Edit") + "</div>" + '<div style="padding:10px 12px">' + btn("Manage sharing", "send", "sm") + "</div>") + "</div></div></div>" +
-      '<div class="sub-note" style="margin-top:8px">Mock: the slash menu and the format toolbar are shown open for review; in the product they appear on "/" and on text selection.</div>' +
-      dm(["WikiPage · title, icon, cover_document_id, page_type, status, content, visibility, customer_visible, owner_membership_id, review_interval_days, last_reviewed_at, next_review_at, requires_acknowledgement, current_version_number, published_version_number, locked_by_membership_id, ai_generated, word_count", "WikiPageComment · block_id, body, mentions, resolved_at, parent_comment_id", "WikiPageLink · entity_type, entity_id, label, block_id", "WikiPageAttachment · document_id (17)", "WikiPageReviewer · membership_id", "WikiPageFavorite", "Project.runbook_page_id (05) · taggings · custom fields (WIKI_PAGE)", "WikiAiIndexEntry · status (indexed flag)", "WikiPageWatcher · membership_id (Follow)", "WikiPageView · membership_id, version_number, source, viewed_at", "WikiPageFeedback · helpful, comment, version_number"], []) + "</div>";
+      '<div style="padding-left:46px;margin-top:14px">' + ['Rollback checklist', 'Smoke test catalogue'].map((t) => '<div class="rowx" style="padding:4px 0">' + I("file", 15) + ' <u>' + t + "</u></div>").join("") + "</div>" +
+      '<div class="sub-note" style="margin-top:14px;padding-left:46px">Saved 2 s ago · autosave writes WikiPageVersion 14 (coalesced) · Ctrl+S saves now · every edit is live</div>' +
+      "</div></div>" +
+      '<div class="sub-note" style="margin-top:8px">Mock: the slash menu and the selection bubble are shown open for review; in the product they appear on "/" and on text selection. ⋯ menu: Copy link, Duplicate, Version history, Backlinks, Permissions, Export as Markdown, Import sub-pages, Archive, Move to trash.</div>' +
+      dm(["WikiPage · title, icon, cover_document_id, cover_position, page_type, content_markdown, visibility, customer_visible, owner_membership_id, review_interval_days, last_reviewed_at, next_review_at, requires_acknowledgement, ack_version_number, current_version_number, archived_at, word_count", "WikiPageVersion · version_number, title, content_markdown, change_summary, created_by_membership_id", "WikiPageAttachment · document_id (17) — cover + inline images", "WikiPageLink · page links and record links parsed from the markdown", "WikiPageComment · block_id, body, mentions, resolved_at", "WikiPageFavorite · WikiPageWatcher · WikiPageAcknowledgement · WikiPageView"], []) + "</div>";
   }
 
   /* =====================================================================================================================
-     CREATE PAGE — full page (spec §2, §3)
-     @route  /docs/p/new?space=&parent=&template=&type=&from=<entityType>:<id>
-     @perm   docs.pages.create (+ EDIT level in the target space) · visibility beyond the space default needs MANAGE · customer_visible needs docs.pages.publish
-     @api    POST /docs/pages {space_id, parent_page_id?, template_id?, title, page_type, icon?, content?, visibility, owner_membership_id, reviewer_ids[], review_interval_days?, requires_acknowledgement, customer_visible,
-             permissions[{principal_type, principal_id, level}], links[{entity_type, entity_id}], tag_ids[], custom_fields{}, status: DRAFT|PUBLISHED}
-     @mcp    docs_pages_create
-     @data   WikiPage · WikiPageTemplate (content, default_review_interval_days, page_type) · WikiPageReviewer · WikiPagePermission · WikiPageLink · WikiPageVersion (version 1) · taggings · custom field values
-     @ui     Template gallery (Card grid) + form: Input, Popover+Command for space/parent/owner/reviewers/links, Select for type and visibility, Switch, Textarea, "Create more" toggle
-     @states validation (title, space) · saving · saved (opens the page in edit mode, toast with Undo) · permission error on a field (disabled with reason)
-     @audit  page created (with template and source record)
-     @note   Picking a template copies its content (never linked) and applies page_type and default_review_interval_days, but keeps anything the user already typed. "From record" prefills the title and a WikiPageLink
-             from the source (a project runbook from the project workspace sets Project.runbook_page_id after save). slug is derived from the title and unique per space. Create as DRAFT unless the caller may publish.
+     NEW PAGE — instant creation, no form (spec §2, §3)
+     @route  /docs/pages/new?space=&parent=&template= (also: sidebar +, "New page" buttons, ⌘⇧N / ⌘⌥N, "/page" in the editor)
+     @perm   docs.pages.create (+ EDIT level in the target space)
+     @api    POST /docs/pages {space_id, parent_page_id?, template_id?, title: ""} → then opens /docs/pages/:id?new=1 with the title focused. Space default: the last space used, else the first readable space.
+     @mcp    docs_pages_create (title optional = "Untitled")
+     @data   WikiPage (title "", slug "untitled[-n]", page_type from the template, content_markdown from the template, version 1) · WikiPageTemplate (content_markdown, page_type, default_review_interval_days)
+     @ui     No form: the new page opens empty, title focused. While the body is empty the page lists "Get started with" templates (pick one = fill the body and set its type), Import Markdown and All templates.
+     @states creating (skeleton) · no space yet ("Create a space first") · error · no-access
+     @audit  page created (with template)
+     @note   The title can be empty ("Untitled" placeholder); type, owner, review cadence and required reading are set later in the properties row.
      ===================================================================================================================== */
   function pageNew() {
-    const tp = [["Blank page", "GENERAL"], ["Policy", "POLICY"], ["Procedure", "PROCEDURE"], ["Runbook", "RUNBOOK"], ["Meeting notes", "MEETING_NOTES"], ["Decision record", "DECISION_RECORD"], ["Handbook chapter", "HANDBOOK_CHAPTER"], ["Onboarding guide", "ONBOARDING_GUIDE"]];
-    return '<div class="a-page">' + head("New page", "Start from a template or a blank page.", btn("Cancel") + btn("Save draft", "") + btn("Create page", "plus", "primary")) +
-      '<div class="g2" style="grid-template-columns:1.7fr 1fr;align-items:start"><div>' +
-      cd("<b>Template</b><span class='r'>" + btn("Browse all", "", "sm") + "</span>", '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">' + tp.map((t, i) => '<div class="tp-card" style="' + (i === 3 ? "border-color:var(--blue)" : "") + '"><div class="pv" style="height:64px"><i class="h"></i><i></i><i style="width:70%"></i></div><div class="bd"><b>' + t[0] + "</b><small>" + U.en(t[1]) + "</small></div></div>").join("") + "</div>") + gap() +
-      cd("<b>Content</b>", f("Title", box("Staging deploy runbook")) + f("Body", '<div class="editor"><div class="ed-bar">' + ["B", "I", "H", "•", "1.", "☑", "</>", "▦", "/"].map((x) => "<span>" + x + "</span>").join("") + '</div><div class="ed-body">The Runbook template inserts: Purpose, Before you start (checklist), Steps (numbered), Verification, Rollback, Contacts. Type “/” for blocks, “@” to mention, “#” to link a record.</div></div>')) + gap() +
-      cd("<b>Links to records</b><span class='r'>" + btn("Add", "plus", "sm") + "</span>", '<div class="rowx">' + I("folder", 14) + '<div class="grow"><b>Acme Rebrand Website</b><small>Project (05) · becomes Project.runbook_page_id when type is Runbook</small></div>' + more + "</div>", 1) +
-      "</div><div>" +
-      cd("<b>Placement</b>", f("Space", sel("Engineering", "layers")) + f("Parent page", sel("Runbooks", "file")) + f("Page type", sel("Runbook", "tag"), "WikiPageType: " + ["GENERAL", "POLICY", "PROCEDURE", "RUNBOOK", "MEETING_NOTES", "DECISION_RECORD", "HANDBOOK_CHAPTER", "ONBOARDING_GUIDE", "OFFBOARDING_GUIDE", "FAQ"].join(", ") + ".") + f("Icon", sel("Bolt", "zap"))) + gap() +
-      cd("<b>Ownership and review</b>", f("Owner", sel("Marco Silva", "users")) + f("Reviewers", sel("Add reviewers…", "users")) + f("Review every (days)", box("180"), "Template default 180. Empty = no review cadence (no stale detection).") + '<div class="rowx"><div class="grow"><b>Required reading</b><small>Members must acknowledge (requires_acknowledgement)</small></div>' + sw(0) + "</div>") + gap() +
-      cd("<b>Visibility</b>", f("Who can read", sel("Same as space: Organization", "globe")) + '<div class="rowx"><div class="grow"><b>Customer visible</b><small>Exposed to the portal (07) and publishable to the help center (13)</small></div>' + sw(0) + "</div>" + f("Tags", sel("Add tags…", "tag")) + f("Custom fields", sel("Add property…", "settings"), "From custom_field_definitions for WIKI_PAGE (02).")) + gap() +
-      '<div class="rowx"><div class="grow"><b>Create more</b><small>Keep the space, parent and template</small></div>' + sw(0) + "</div>" +
+    return '<div class="a-page">' +
+      '<div class="dk-2">' + sideTree("") + '<div class="dk-main">' +
+      '<div class="dk-crumbs">' + I("layers", 12) + " Engineering / " + I("file", 12) + " <b>Untitled</b><span style='margin-left:auto;display:flex;gap:6px'>" + muted("Edited just now") + btn("", "star", "ghost sm icon") + more + "</span></div>" +
+      '<div class="muted" style="padding:48px 0 0 46px;font-size:13px">' + I("smile", 13) + " Add icon · " + I("clip", 13) + " Add cover · " + I("chat", 13) + " Add comment</div>" +
+      '<div class="dk-title" style="color:var(--mute)">Untitled<span class="cur"></span></div>' +
+      '<div style="padding-left:46px">' + muted("Press Enter to start writing, or pick a template below…") + gap(12) +
+      '<div class="muted" style="font-size:12px">Get started with</div>' +
+      [["Runbook", "zap"], ["Policy", "shield"], ["Meeting notes", "calendar"], ["Decision record", "flag"], ["Import Markdown", "inbox"], ["All templates", "file"]].map((t) => '<div class="rowx" style="padding:4px 0">' + I(t[1], 14) + " " + t[0] + "</div>").join("") + "</div>" +
       "</div></div>" +
-      dm(["WikiPage · every column written on create (space_id, parent_page_id, template_id, title, slug, page_type, status, content, visibility, owner_membership_id, review_interval_days, requires_acknowledgement, customer_visible)", "WikiPageTemplate · content, page_type, default_review_interval_days", "WikiPageReviewer · WikiPagePermission · WikiPageLink · WikiPageVersion (v1)", "taggings · custom_field_definitions (WIKI_PAGE)"], []) + "</div>";
+      dm(["WikiPage · space_id, parent_page_id, template_id, title (may be empty), slug, page_type, content_markdown, current_version_number 1", "WikiPageTemplate · content_markdown, page_type, default_review_interval_days", "WikiPageVersion · v1 (change_summary Created)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      VERSION HISTORY (spec §2)
-     @route  /docs/p/:pageSlug/history?version=&compare=
-     @perm   VIEW docs.pages.read · restore docs.pages.update · publish a version docs.pages.publish
+     @route  /docs/pages/:id → ⋯ Version history (Sheet)
+     @perm   VIEW docs.pages.read · restore docs.pages.update + EDIT level
      @api    GET /docs/pages/:id/versions · GET /docs/pages/:id/versions/:n · GET /docs/pages/:id/diff?from=&to= · POST /docs/pages/:id/versions/:n/restore {change_summary}
      @mcp    docs_pages_read · docs_pages_update (restore)
-     @data   WikiPageVersion (version_number, title, content, content_markdown, change_summary, is_published_snapshot, restored_from_version_id, ai_suggestion_id, created_by_membership_id, created_at) · WikiPage (published_version_number)
+     @data   WikiPageVersion (version_number, title, content_markdown, change_summary, restored_from_version_id, ai_suggestion_id, created_by_membership_id, created_at) · WikiPage (current_version_number)
      @ui     Two-pane: version list (Table) + diff (block-level, word diff), Select to pick the compared version, AlertDialog for restore
      @states loading · no earlier versions · error · no-access
      @audit  page restored (version number and source version)
-     @note   Versions are immutable. Restoring creates a NEW version (restored_from_version_id) and never rewrites history. Autosaves within one editing session are collapsed into one listed version by the UI
-             (is_published_snapshot marks versions that were published). A version written from an accepted AI suggestion shows the AI badge (ai_suggestion_id).
+     @note   Versions are immutable. Restoring creates a NEW version (restored_from_version_id) and never rewrites history. Quick autosaves by the same author (10 minutes) are coalesced into one version on the server;
+             there is no published snapshot — every version was live. A version written from an accepted AI suggestion shows the AI badge (ai_suggestion_id).
      ===================================================================================================================== */
   function history() {
-    const v = [[14, "Marco Silva", "Today 10:42", "Added migration review checklist item", 0, 0], [13, "Marco Silva", "Nov 3", "Published: updated smoke test commands", 1, 0], [12, "AI assistant", "Oct 28", "Accepted AI suggestion: rollback section", 0, 1], [11, "Jonas Koch", "Oct 14", "Fixed typo in command", 0, 0], [10, "Marco Silva", "Sep 13", "Published: review cycle", 1, 0], [9, "Marco Silva", "Sep 12", "Restored from version 6", 0, 0]];
-    return '<div class="a-page">' + head("Version history", "Production deploy runbook · 14 versions · published version 13", btn("Back to page", "file") + btn("Restore version 13", "reply", "primary")) +
-      '<div class="g2" style="grid-template-columns:1fr 1.5fr;align-items:start">' + cd("<b>Versions</b><span class='r muted'>WikiPageVersion</span>", v.map((r, i) => '<div class="rowx" style="' + (i === 1 ? "background:var(--blue-soft)" : "") + '">' + cb(i < 2) + '<div class="grow"><b>Version ' + r[0] + (r[4] ? " " + E("PUBLISHED", "green") : "") + (r[5] ? ' <span class="cite">' + I("sparkles", 11) + " AI</span>" : "") + "</b><small>" + r[1] + " · " + r[2] + " · " + r[3] + "</small></div>" + more + "</div>").join("") + '<div class="rowx"><button class="btn sm ghost">Load older versions</button></div>', 1) +
-      cd("<b>Changes: version 13 to version 14</b><span class='r'>" + sel("Compare with…") + btn("Side by side", "", "sm") + "</span>", '<div class="diff"><div class="hd">Block 12 · checklist</div><div>CI is green on main</div><div>Release notes drafted</div><div class="add">+ Database migration reviewed by a second engineer (required for schema changes)</div><div class="hd">Block 18 · paragraph</div><div class="del">Expected output ends with all tests passed.</div><div class="add">+ Expected output ends with smoke tests passed.</div><div class="hd">Block 21 · table</div><div class="add">+ Row added: Payments | Finance eng | Test charge succeeds</div></div>' + '<div class="sub-note" style="margin-top:8px">3 blocks changed · +2 −1 · title unchanged · change_summary "Added migration review checklist item"</div>' + callout("flag", "Restoring creates <b>version 15</b> with the content of version 13. Nothing is deleted. Readers keep seeing the published version until you publish.")) + "</div>" +
-      dm(["WikiPageVersion · version_number, title, content, change_summary, is_published_snapshot, restored_from_version_id, ai_suggestion_id, created_by_membership_id, created_at", "WikiPage · current_version_number, published_version_number"], []) + "</div>";
+    const v = [[14, "Marco Silva", "Today 10:42", "Added migration review checklist item", 0, 0], [13, "Marco Silva", "Nov 3", "Updated smoke test commands", 0, 0], [12, "AI assistant", "Oct 28", "Accepted AI suggestion: rollback section", 0, 1], [11, "Jonas Koch", "Oct 14", "Fixed typo in command", 0, 0], [10, "Marco Silva", "Sep 13", "Review cycle", 0, 0], [9, "Marco Silva", "Sep 12", "Restored from version 6", 0, 0]];
+    return '<div class="a-page">' + head("Version history", "Production deploy runbook · 14 versions · current version 14", btn("Back to page", "file") + btn("Restore version 13", "reply", "primary")) +
+      '<div class="g2" style="grid-template-columns:1fr 1.5fr;align-items:start">' + cd("<b>Versions</b><span class='r muted'>WikiPageVersion</span>", v.map((r, i) => '<div class="rowx" style="' + (i === 1 ? "background:var(--blue-soft)" : "") + '">' + cb(i < 2) + '<div class="grow"><b>Version ' + r[0] + (i === 0 ? " " + E("CURRENT", "green") : "") + (r[5] ? ' <span class="cite">' + I("sparkles", 11) + " AI</span>" : "") + "</b><small>" + r[1] + " · " + r[2] + " · " + r[3] + "</small></div>" + more + "</div>").join("") + '<div class="rowx"><button class="btn sm ghost">Load older versions</button></div>', 1) +
+      cd("<b>Changes: version 13 to version 14</b><span class='r'>" + sel("Compare with…") + btn("Side by side", "", "sm") + "</span>", '<div class="diff"><div class="hd">Block 12 · checklist</div><div>CI is green on main</div><div>Release notes drafted</div><div class="add">+ Database migration reviewed by a second engineer (required for schema changes)</div><div class="hd">Block 18 · paragraph</div><div class="del">Expected output ends with all tests passed.</div><div class="add">+ Expected output ends with smoke tests passed.</div><div class="hd">Block 21 · table</div><div class="add">+ Row added: Payments | Finance eng | Test charge succeeds</div></div>' + '<div class="sub-note" style="margin-top:8px">3 blocks changed · +2 −1 · title unchanged · change_summary "Added migration review checklist item"</div>' + callout("flag", "Restoring creates <b>version 15</b> with the content of version 13. Nothing is deleted. The restore is live for everyone at once.")) + "</div>" +
+      dm(["WikiPageVersion · version_number, title, content_markdown, change_summary, restored_from_version_id, ai_suggestion_id, created_by_membership_id, created_at", "WikiPage · current_version_number"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      SHARE AND PERMISSIONS OF A PAGE (spec §2, §8) — Dialog opened by Share, also a full page for deep links
      @route  /docs/p/:pageSlug/share
-     @perm   level MANAGE on the page (or docs.spaces.manage) · customer_visible and visibility changes are audited · docs.pages.publish for customer_visible
+     @perm   level MANAGE on the page (or docs.spaces.manage) · customer_visible and visibility changes are audited · docs.pages.share_customers* for customer_visible
      @api    GET /docs/pages/:id/permissions · PUT /docs/pages/:id/permissions {visibility, grants[{principal_type, principal_id, level, inherit}]} · PATCH /docs/pages/:id {customer_visible} · POST /docs/pages/:id/permissions/preview {membership_id}
      @mcp    docs_pages_update (permissions are part of the page update, MANAGE level checked server-side)
      @data   WikiPage (visibility, customer_visible) · WikiPagePermission (principal_type, principal_id, level, inherit, granted_by_user_id) · WikiSpaceMember (inherited, read-only here) · Membership/Team/Branch/Role/Team(DEPARTMENT) pickers
@@ -371,7 +356,7 @@
         '<div class="rowx">' + I("key", 16) + '<div class="grow"><b>Role: Finance manager</b><small>WikiPagePermission · ROLE</small></div>' + sel("View") + sw(0) + more + "</div>" +
         '<div class="rowx" style="background:var(--surface)">' + I("layers", 16) + '<div class="grow"><b>Space Engineering · 24 members</b><small>Inherited from space settings, edit there</small></div>' + E("EDIT") + "</div>", 1) +
       "</div><div>" +
-      cd("<b>Customer-visible</b>", '<div class="rowx"><div class="grow"><b>Expose to customers</b><small>Shows in the customer portal (07) and can be published to the help center (13). The page stays the source.</small></div>' + sw(0) + '</div><div class="sub-note" style="padding:8px 16px">Turning this on needs docs.pages.publish and is audited. Runbooks for internal systems should stay off.</div>', 1) + gap() +
+      cd("<b>Customer-visible</b>", '<div class="rowx"><div class="grow"><b>Expose to customers</b><small>Shows in the customer portal (07) and can be published to the help center (13). The page stays the source.</small></div>' + sw(0) + '</div><div class="sub-note" style="padding:8px 16px">Turning this on needs docs.pages.share_customers and is audited. Runbooks for internal systems should stay off.</div>', 1) + gap() +
       cd("<b>Link</b>", '<div class="share-link">' + I("link", 14) + ' https://os.logiqdev.example/docs/p/production-deploy-runbook <span style="margin-left:auto">' + btn("Copy", "", "sm") + '</span></div><div class="sub-note" style="margin-top:6px">Opening the link still checks the reader\'s access. There are no anonymous links.</div>') + gap() +
       cd("<b>Who will be notified</b>", '<div class="rowx"><div class="grow">People added receive a notification (14) with the page link.</div>' + sw(1) + "</div>", 1) + gap() +
       callout("shield", "<b>Effective access</b> 24 members can read, 11 can edit, 2 can manage. Check any member with Preview.") +
@@ -381,31 +366,31 @@
 
   /* =====================================================================================================================
      SEARCH WITH FILTERS (spec §7)
-     @route  /docs/search?q=&space=&type=&status=&owner=&updated=&tag=&mode=keyword|semantic
+     @route  /docs/search?q=&space=&type=&owner=&updated=&tag=&mode=keyword|semantic (also the ⌘K-style search dialog on Docs home)
      @perm   VIEW docs.pages.read (results are permission-checked on the server) · "Ask AI" docs.ai.query
-     @api    GET /docs/search?q=&space_id=&page_type=&status=&owner_id=&updated_after=&tag=&linked_entity=&mode=&cursor= · POST /saved-views {entity_type: WIKI_PAGE, filters, search}
+     @api    GET /docs/search?q=&space_id=&page_type=&owner_id=&updated_after=&tag=&linked_entity=&mode=&cursor= · POST /saved-views {entity_type: WIKI_PAGE, filters, search}
      @mcp    docs_pages_search · docs_ai_query
-     @data   WikiPage (search_vector tsvector, title, excerpt, page_type, status, owner_membership_id, last_edited_at, space_id) · WikiAiIndexEntry (embedding, heading_path, content_text, status) for semantic mode · WikiPageLink · taggings
+     @data   WikiPage (search_vector tsvector, title, excerpt, page_type, owner_membership_id, last_edited_at, space_id) · WikiAiIndexEntry (embedding, heading_path, content_text, status) for semantic mode · WikiPageLink · taggings
              · CustomForm (forms are searchable) · SavedView (entity_type WIKI_PAGE)
      @ui     Command-style search input (debounced 250 ms, synced to ?q=), filter bar (Popover+Command), ToggleGroup Keyword | Semantic, result list with highlighted snippets, Tabs: Pages | Forms | Linked records
      @states loading skeleton · empty ("No pages match. Ask the AI assistant instead") · error · no-access · partial ("Some results are hidden because you cannot access them" is NEVER shown: hidden results simply do not exist for the caller)
      @audit  none for plain search; AI queries are logged through the shared AI layer
      @note   Keyword mode = Postgres full-text on WikiPage.search_vector (title weighted above body). Semantic mode = vector similarity over WikiAiIndexEntry chunks, grouped per page, each hit carries heading_path.
-             Both modes filter by the caller's access BEFORE ranking. Archived pages and drafts of other people are excluded unless the filter says otherwise. The same endpoint feeds platform global search (01 §140).
+             Both modes filter by the caller's access BEFORE ranking. Archived and trashed pages are excluded unless the filter says otherwise. The same endpoint feeds platform global search (01 §140).
      Every query is logged as WikiSearchQuery (mode, filters, result_count, clicked_page_id) for top searches and zero-result tracking (docs.analytics.read).
      ===================================================================================================================== */
   function searchPage() {
-    const r = [["Production deploy runbook", "Engineering / Runbooks", "RUNBOOK", "PUBLISHED", "…run <mark>deploy</mark> with release:deploy. Check the <mark>deploy</mark> freeze window before…", "MS", "Nov 11", "Deploy steps › Run the deploy"], ["Branching and releases", "Engineering / Handbook", "PROCEDURE", "PUBLISHED", "…hotfix branches are cut from the last <mark>deploy</mark>ed tag…", "AM", "Oct 22", "Hotfixes"], ["Release calendar and freezes", "Operations", "POLICY", "PUBLISHED", "…no <mark>deploy</mark> on Fridays after 16:00 unless approved by the incident commander…", "KL", "Oct 2", "Freeze windows"], ["Staging environment guide", "Engineering / Handbook", "GENERAL", "DRAFT", "…how to <mark>deploy</mark> a branch preview to staging…", "JK", "Nov 8", "Previews"]];
+    const r = [["Production deploy runbook", "Engineering / Runbooks", "RUNBOOK", "", "…run <mark>deploy</mark> with release:deploy. Check the <mark>deploy</mark> freeze window before…", "MS", "Nov 11", "Deploy steps › Run the deploy"], ["Branching and releases", "Engineering / Handbook", "PROCEDURE", "", "…hotfix branches are cut from the last <mark>deploy</mark>ed tag…", "AM", "Oct 22", "Hotfixes"], ["Release calendar and freezes", "Operations", "POLICY", "", "…no <mark>deploy</mark> on Fridays after 16:00 unless approved by the incident commander…", "KL", "Oct 2", "Freeze windows"], ["Staging environment guide", "Engineering / Handbook", "GENERAL", "", "…how to <mark>deploy</mark> a branch preview to staging…", "JK", "Nov 8", "Previews"]];
     return '<div class="a-page">' + head("Search", "Full-text and semantic search across pages and forms you can access.", btn("Save search", "plus") + btn("Ask AI instead", "sparkles", "primary")) +
       '<div class="toolbar">' + '<div class="search-in" style="flex:1">' + I("search", 14) + "<span>deploy production</span></div>" + sel("Keyword", "search") + sel("Semantic", "sparkles") + "</div>" +
-      filt([["Space", "is any of", "Engineering, Operations"], ["Type", "is any of", "Runbook, Procedure, Policy"], ["Status", "is", "Published"], ["Updated", "after", "Aug 1"], ["Owner", "is", "Anyone"], ["Tag", "is", "deploy"]], btn("Clear", "", "sm ghost") + sel("Sort: Relevance", "sort")) +
+      filt([["Space", "is any of", "Engineering, Operations"], ["Type", "is any of", "Runbook, Procedure, Policy"], ["Updated", "after", "Aug 1"], ["Owner", "is", "Anyone"], ["Tag", "is", "deploy"]], btn("Clear", "", "sm ghost") + sel("Sort: Relevance", "sort")) +
       '<div class="g2" style="grid-template-columns:1fr 250px;align-items:start"><div><div class="tabset">' + tabs([["p", "Pages", 24], ["f", "Forms", 1], ["r", "Linked records", 3]], "p") +
-      pane("p", 1, '<div class="panel" style="margin-top:0;padding:4px 14px">' + r.map((x) => '<div class="srch"><div style="display:flex;gap:8px;align-items:center">' + I(pico(x[2]), 15) + "<b>" + x[0] + "</b>" + ptp(x[2]) + pst(x[3]) + '</div><div class="x">' + x[4] + '</div><div class="p"><span>' + x[1] + "</span><span>·</span><span>" + x[7] + "</span><span>·</span><span>" + PEOPLE[x[5]][0] + " · " + x[6] + "</span></div></div>").join("") + "</div>" + pager("1–4 of 24")) +
+      pane("p", 1, '<div class="panel" style="margin-top:0;padding:4px 14px">' + r.map((x) => '<div class="srch"><div style="display:flex;gap:8px;align-items:center">' + I(pico(x[2]), 15) + "<b>" + x[0] + "</b>" + ptp(x[2]) + '</div><div class="x">' + x[4] + '</div><div class="p"><span>' + x[1] + "</span><span>·</span><span>" + x[7] + "</span><span>·</span><span>" + PEOPLE[x[5]][0] + " · " + x[6] + "</span></div></div>").join("") + "</div>" + pager("1–4 of 24")) +
       pane("f", 0, '<div class="panel" style="margin-top:0;padding:4px 14px"><div class="srch"><b>Deploy retrospective survey</b> ' + E("FEEDBACK_SURVEY", "blue") + " " + E("PUBLISHED", "green") + '<div class="p">Form · Engineering · 18 responses</div></div></div>') +
       pane("r", 0, '<div class="panel" style="margin-top:0;padding:4px 14px"><div class="srch"><b>Release 2026.11 website</b> <div class="p">Release (06) linked from Production deploy runbook</div></div></div>') + "</div></div>" +
       "<div>" + cd("<b>AI answer</b><span class='r muted'>docs.ai.query</span>", '<div class="ai-msg">Deploys run with <code>pnpm release:deploy --env production</code> after CI is green and the migration is reviewed. Avoid Friday after 16:00. <span class="cite">' + I("book", 11) + ' Production deploy runbook</span> <span class="cite">' + I("book", 11) + " Release calendar and freezes</span></div><div class='sub-note'>Answers use only pages you can read. Citations link to the page and heading.</div>") + gap() +
-      cd("<b>Saved searches</b>", ["Needs review in Engineering", "Policies updated this quarter", "My drafts"].map((s) => '<div class="rowx">' + I("star", 13) + '<div class="grow">' + s + "</div></div>").join(""), 1) + "</div></div>" +
-      dm(["WikiPage · search_vector, title, excerpt, page_type, status, owner_membership_id, last_edited_at", "WikiAiIndexEntry · embedding, heading_path, content_text, status", "WikiPageLink · taggings · SavedView (entity_type WIKI_PAGE)", "CustomForm · name, kind, status"], ["Search query log (what people search, zero-result queries)"]) + "</div>";
+      cd("<b>Saved searches</b>", ["Stale pages in Engineering", "Policies updated this quarter", "Pages I own"].map((s) => '<div class="rowx">' + I("star", 13) + '<div class="grow">' + s + "</div></div>").join(""), 1) + "</div></div>" +
+      dm(["WikiPage · search_vector, title, excerpt, page_type, owner_membership_id, last_edited_at", "WikiAiIndexEntry · embedding, heading_path, content_text, status", "WikiPageLink · taggings · SavedView (entity_type WIKI_PAGE)", "CustomForm · name, kind, status"], ["Search query log (what people search, zero-result queries)"]) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -414,7 +399,7 @@
      @perm   VIEW docs.pages.read · create from template docs.pages.create · create/edit organization templates docs.spaces.manage · system templates (is_system) are read-only
      @api    GET /docs/templates?type=&space_id= · POST /docs/templates · POST /docs/templates/:id/duplicate · POST /docs/pages {template_id}
      @mcp    docs_templates_read · docs_templates_manage
-     @data   WikiPageTemplate (organization_id null = system, space_id, name, slug, description, icon, page_type, content, content_markdown, default_review_interval_days, is_system, sort_order, archived_at)
+     @data   WikiPageTemplate (organization_id null = system, space_id, name, slug, description, icon, page_type, content_markdown, default_review_interval_days, is_system, sort_order, archived_at)
      @ui     Card grid with live mini preview, Tabs (All | Organization | Space | System), filter by type, Dialog "Use template"
      @states loading · empty · error · no-access
      @audit  template created, edited, archived
@@ -448,16 +433,16 @@
       '<div class="g2" style="grid-template-columns:1.7fr 1fr;align-items:start"><div>' + cd("<b>Template content</b>", blk("<h2>Purpose</h2>") + blk("<p>What this runbook does and when to use it. Owner: {{owner}}. Created {{today}}.</p>") + blk("<h2>Before you start</h2>") + blk('<div class="blk-ck">' + cb(0) + "<span>Access to the target environment</span></div>") + blk('<div class="blk-ck">' + cb(0) + "<span>Incident channel opened</span></div>") + blk("<h2>Steps</h2>") + blk("<p>1. First step…</p>") + blk("<h2>Rollback</h2>") + blk('<div class="blk-code">$ command</div>')) + "</div><div>" +
       cd("<b>Settings</b>", f("Name", box("Runbook")) + f("Slug", box("runbook")) + f("Description", box("Operational steps with verification and rollback.")) + f("Page type", sel("Runbook", "tag")) + f("Icon", sel("Bolt", "zap")) + f("Default review interval (days)", box("180")) + f("Available in", sel("Organization", "globe"), "Organization-wide or one space (WikiPageTemplate.space_id).")) + gap() +
       cd("<b>Usage</b>", kv("Pages created", 14) + kv("Last used", "Nov 4") + kv("Created by", "Marco Silva") + kv("System template", "No")) + "</div></div>" +
-      dm(["WikiPageTemplate · name, slug, description, icon, page_type, content, content_markdown, default_review_interval_days, space_id, organization_id, is_system, archived_at"], []) + "</div>";
+      dm(["WikiPageTemplate · name, slug, description, icon, page_type, content_markdown, default_review_interval_days, space_id, organization_id, is_system, archived_at"], []) + "</div>";
   }
 
   /* =====================================================================================================================
      RUNBOOKS (spec §4 Project Help Center)
-     @route  /docs/runbooks?project=&status=&q=
+     @route  /docs/runbooks?project=&review=&q=
      @perm   VIEW docs.pages.read · link a runbook to a project: docs.pages.update on the page + projects.projects.update (05)
      @api    GET /docs/pages?page_type=RUNBOOK&project_id= · PATCH /projects/:id {runbook_page_id} · POST /docs/pages {page_type: RUNBOOK, space_id: <project space>}
      @mcp    docs_pages_read · docs_pages_create
-     @data   WikiPage (page_type RUNBOOK, status, next_review_at, owner_membership_id, customer_visible, help_center_article_id, help_center_published_at) · Project.runbook_page_id (05, plain id) · WikiSpace (kind PROJECT, project_id) · WikiPageLink (PROJECT)
+     @data   WikiPage (page_type RUNBOOK, stale_flagged_at, next_review_at, owner_membership_id, customer_visible, help_center_article_id, help_center_published_at) · Project.runbook_page_id (05, plain id) · WikiSpace (kind PROJECT, project_id) · WikiPageLink (PROJECT)
      @ui     Table with filter bar, Badge, DropdownMenu (open, link to project, publish to help center), Tabs All | Project runbooks | Internal systems | Customer-visible
      @states loading · empty ("No runbooks. Create one from the Runbook template") · error · no-access
      @audit  runbook linked or unlinked, customer_visible changed, published to help center
@@ -465,14 +450,14 @@
              the page is the source and 13 keeps help_center_article_id (a view, no copy). Review cadence matters most here: an overdue runbook is flagged on the project too.
      ===================================================================================================================== */
   function runbooks() {
-    const R = [["Production deploy runbook", "Engineering", "Acme Rebrand Website", "PUBLISHED", "MS", "Mar 11", 0, 0], ["Customer portal go-live runbook", "Acme Rebrand Website", "Customer Portal Build", "PUBLISHED", "AM", "Jan 4", 1, 1], ["Database failover runbook", "Engineering", "Internal system", "NEEDS_REVIEW", "JK", "Overdue", 0, 0], ["Mobile release runbook", "Engineering", "Mobile App v2", "DRAFT", "SJ", "None", 0, 0], ["Billing webhook recovery", "Operations", "Stripe Billing Migration", "PUBLISHED", "KL", "Feb 2", 0, 0]];
+    const R = [["Production deploy runbook", "Engineering", "Acme Rebrand Website", 0, "MS", "Mar 11", 0, 0], ["Customer portal go-live runbook", "Acme Rebrand Website", "Customer Portal Build", 0, "AM", "Jan 4", 1, 1], ["Database failover runbook", "Engineering", "Internal system", 1, "JK", "Overdue", 0, 0], ["Mobile release runbook", "Engineering", "Mobile App v2", 0, "SJ", "None", 0, 0], ["Billing webhook recovery", "Operations", "Stripe Billing Migration", 0, "KL", "Feb 2", 0, 0]];
     return '<div class="a-page">' + head("Runbooks", "Step-by-step operational pages, linked to projects.", btn("Link runbook to project", "link") + btn("New runbook", "plus", "primary")) +
-      '<div class="mini-stats">' + stat("Runbooks", 24, "page_type RUNBOOK") + stat("Linked to a project", 11, "Project.runbook_page_id") + stat("Needs review", 3, "overdue", 1) + stat("Customer-visible", 2, "published to help center") + "</div>" +
-      '<div class="toolbar">' + search("Search runbooks") + sel("Project: any", "folder") + sel("Status: any") + "</div>" +
+      '<div class="mini-stats">' + stat("Runbooks", 24, "page_type RUNBOOK") + stat("Linked to a project", 11, "Project.runbook_page_id") + stat("Stale", 3, "review overdue", 1) + stat("Customer-visible", 2, "published to help center") + "</div>" +
+      '<div class="toolbar">' + search("Search runbooks") + sel("Project: any", "folder") + sel("Review: any") + "</div>" +
       filt([["Type", "is", "Runbook"], ["Review", "is", "Any"]], btn("Save view", "plus", "sm")) +
-      '<div class="panel" style="margin-top:0"><table>' + th(["Runbook", "Space", "Linked project", "Status", "Owner", "Next review", "Customer visible", "Help center", ""]) + "<tbody>" + R.map((r) => "<tr><td>" + I("zap", 14) + " " + ink(r[0]) + "</td><td>" + r[1] + "</td><td>" + (r[2] === "Internal system" ? muted("Internal system") : I("folder", 12) + " " + r[2]) + "</td><td>" + pst(r[3]) + "</td><td>" + wh(r[4]) + "</td><td>" + (r[5] === "Overdue" ? '<span class="badge red">Overdue</span>' : r[5]) + "</td><td>" + sw(r[6]) + "</td><td>" + (r[7] ? E("PUBLISHED", "green") : muted("not published")) + "</td><td>" + more + "</td></tr>").join("") + "</tbody></table></div>" +
+      '<div class="panel" style="margin-top:0"><table>' + th(["Runbook", "Space", "Linked project", "Review", "Owner", "Next review", "Customer visible", "Help center", ""]) + "<tbody>" + R.map((r) => "<tr><td>" + I("zap", 14) + " " + ink(r[0]) + "</td><td>" + r[1] + "</td><td>" + (r[2] === "Internal system" ? muted("Internal system") : I("folder", 12) + " " + r[2]) + "</td><td>" + stale(r[3]) + "</td><td>" + wh(r[4]) + "</td><td>" + (r[5] === "Overdue" ? '<span class="badge red">Overdue</span>' : r[5]) + "</td><td>" + sw(r[6]) + "</td><td>" + (r[7] ? E("PUBLISHED", "green") : muted("not published")) + "</td><td>" + more + "</td></tr>").join("") + "</tbody></table></div>" +
       gap() + callout("book", "<b>Help center publishing</b> Customer-visible runbooks are served to the portal (07) and can be published to the help center (13) without duplicating the text: 13 keeps only <code>help_center_article_id</code>.") +
-      dm(["WikiPage · page_type RUNBOOK, status, next_review_at, owner_membership_id, customer_visible, help_center_article_id, help_center_published_at", "WikiSpace · kind PROJECT, project_id", "Project.runbook_page_id (05, plain id)"], []) + "</div>";
+      dm(["WikiPage · page_type RUNBOOK, stale_flagged_at, next_review_at, owner_membership_id, customer_visible, help_center_article_id, help_center_published_at", "WikiSpace · kind PROJECT, project_id", "Project.runbook_page_id (05, plain id)"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -484,7 +469,7 @@
      @data   WikiPage (page_type ONBOARDING_GUIDE | OFFBOARDING_GUIDE, requires_acknowledgement) · WikiChecklist (kind, department_id, role_id, guide_page_id, auto_assign, is_active) · WikiChecklistRun (active runs) · WikiPageAcknowledgement
      @ui     Tabs Guides | Checklists | Required reading, Card per department, Progress, Table
      @states loading · empty ("No onboarding guides for this department yet") · error · no-access
-     @audit  guide published, checklist activated, auto_assign toggled
+     @audit  guide linked, checklist activated, auto_assign toggled
      @note   Per department and per role: a guide page (what to read), a checklist (what to do, generates Tasks) and required reading with acknowledgement. Offboarding aligns with 01 §131. The member onboarding
              flow (01 §130) starts a WikiChecklistRun for every active checklist whose department/role matches and auto_assign is on.
      ===================================================================================================================== */
@@ -586,24 +571,24 @@
      @perm   VIEW docs.pages.read · mark reviewed: page reviewer or owner with docs.pages.update · send reminders docs.pages.update · acknowledge: any reader of the page
      @api    GET /docs/reviews?status=overdue|due_soon · POST /docs/pages/:id/review {notes} · GET /docs/pages/:id/acknowledgements · POST /docs/pages/:id/acknowledge · POST /docs/pages/:id/acknowledgements/remind
      @mcp    docs_pages_update (review) · docs_pages_read
-     @data   WikiPage (review_interval_days, last_reviewed_at, last_reviewed_by_membership_id, next_review_at, stale_flagged_at, status NEEDS_REVIEW, requires_acknowledgement, owner_membership_id) · WikiPageReviewer · WikiPageAcknowledgement
+     @data   WikiPage (review_interval_days, last_reviewed_at, last_reviewed_by_membership_id, next_review_at, stale_flagged_at, requires_acknowledgement, ack_version_number, owner_membership_id) · WikiPageReviewer · WikiPageAcknowledgement
              (membership_id, required_by, acknowledged_at, acknowledged_version_number) · WikiAiSuggestion (kind STALE_PAGE, CONTRADICTION)
      @ui     Tabs, Table with filters, Progress, Dialog for "Mark reviewed" with notes, Popover+Command for reassigning the owner
      @states loading · empty ("Nothing is due for review") · error · no-access
-     @audit  page reviewed (who, version), acknowledgement recorded, reminders sent, status set NEEDS_REVIEW
-     @note   A daily job sets NEEDS_REVIEW + stale_flagged_at when next_review_at passed and notifies owner and reviewers (14). Marking reviewed sets last_reviewed_at and recomputes next_review_at; it does NOT create a
+     @audit  page reviewed (who, version), acknowledgement recorded, re-acknowledgement requested, reminders sent, stale flag set by the job
+     @note   A daily job sets stale_flagged_at when next_review_at passed (there is no page status) and notifies owner and reviewers (14). Marking reviewed sets last_reviewed_at and recomputes next_review_at; it does NOT create a
              version unless the content changed. AI flags (WikiAiSuggestion STALE_PAGE / CONTRADICTION) appear as extra rows with the reason and a link to the conflicting page. Re-acknowledgement is required when
-             acknowledged_version_number < published_version_number of a page that requires acknowledgement.
-     Audience = WikiPageAckTarget rows (principal_type WikiPrincipalType + principal_id, optional due_at; WikiPage.ack_due_at is the default). Publishing expands them into WikiPageAcknowledgement rows (also for new members), which gives the denominator of "17 of 24".
+             acknowledged_version_number < WikiPage.ack_version_number ("Ask readers to confirm again", POST /docs/pages/:id/reacknowledge, MANAGE level).
+     Audience = WikiPageAckTarget rows (principal_type WikiPrincipalType + principal_id, optional due_at; WikiPage.ack_due_at is the default). Requesting acknowledgement expands them into WikiPageAcknowledgement rows (also for new members), which gives the denominator of "17 of 24".
      ===================================================================================================================== */
   function reviews() {
-    const rv = [["Database failover runbook", "Engineering", "JK", "Aug 2", "12 days overdue", "NEEDS_REVIEW", "Manual"], ["Expense policy", "Operations", "AM", "Nov 15", "due in 4 days", "PUBLISHED", ""], ["Remote work policy", "People and HR", "SJ", "Dec 1", "due in 20 days", "PUBLISHED", ""], ["Onboarding handbook", "Company handbook", "AM", "Jul 9", "126 days overdue", "NEEDS_REVIEW", "AI: contradicts Remote work policy"], ["Brand voice guide", "Company handbook", "KL", "Sep 20", "52 days overdue", "NEEDS_REVIEW", "AI: references retired tool"]];
+    const rv = [["Database failover runbook", "Engineering", "JK", "Aug 2", "12 days overdue", 1, "Manual"], ["Expense policy", "Operations", "AM", "Nov 15", "due in 4 days", 0, ""], ["Remote work policy", "People and HR", "SJ", "Dec 1", "due in 20 days", 0, ""], ["Onboarding handbook", "Company handbook", "AM", "Jul 9", "126 days overdue", 1, "AI: contradicts Remote work policy"], ["Brand voice guide", "Company handbook", "KL", "Sep 20", "52 days overdue", 1, "AI: references retired tool"]];
     return '<div class="a-page">' + head("Reviews and acknowledgements", "Keep pages fresh and prove people read the important ones.", btn("Send reminders", "bell") + btn("Export report", "file", "primary")) +
-      '<div class="mini-stats">' + stat("Needs review", 9, "overdue", 1) + stat("Due in 30 days", 14, "pages") + stat("Required pages", 7, "with acknowledgement") + stat("Acknowledged", "84%", "current versions") + stat("AI stale flags", 3, "WikiAiSuggestion") + "</div>" +
+      '<div class="mini-stats">' + stat("Stale", 9, "review overdue", 1) + stat("Due in 30 days", 14, "pages") + stat("Required pages", 7, "with acknowledgement") + stat("Acknowledged", "84%", "current versions") + stat("AI stale flags", 3, "WikiAiSuggestion") + "</div>" +
       '<div class="tabset">' + tabs([["c", "Review cadence", 9], ["a", "Acknowledgements", 7]], "c") +
-      pane("c", 1, filt([["Status", "is any of", "Needs review, Published"], ["Review due", "before", "Dec 31"], ["Space", "is", "Any"]], btn("Save view", "plus", "sm")) + '<div class="panel" style="margin-top:0"><table>' + th(["Page", "Space", "Owner", "Next review", "State", "Status", "Flag", ""]) + "<tbody>" + rv.map((r) => "<tr><td>" + ink(r[0]) + "</td><td>" + r[1] + "</td><td>" + wh(r[2]) + "</td><td>" + r[3] + "</td><td>" + (r[4].indexOf("overdue") > -1 ? '<span class="badge red">' + r[4] + "</span>" : r[4]) + "</td><td>" + pst(r[5]) + "</td><td>" + (r[6] ? '<span class="cite">' + I("sparkles", 11) + " " + r[6] + "</span>" : "") + "</td><td>" + btn("Mark reviewed", "check", "sm") + "</td></tr>").join("") + "</tbody></table></div>") +
-      pane("a", 0, '<div class="g2" style="grid-template-columns:1.4fr 1fr;align-items:start">' + cd("<b>Security baseline</b><span class='r muted'>version 4 · 18 of 24 acknowledged</span>", [["MS", "v4", "Nov 5"], ["AM", "v4", "Nov 5"], ["JK", "v3", "Oct 1"], ["KL", "—", "pending"], ["SJ", "v4", "Nov 7"], ["LN", "—", "pending"]].map((r) => '<div class="rowx">' + av(r[0]) + '<div class="grow"><b>' + PEOPLE[r[0]][0] + "</b><small>" + (r[1] === "—" ? "Not acknowledged" : "Acknowledged " + r[1] + " on " + r[2]) + "</small></div>" + (r[1] === "v4" ? E("CURRENT", "green") : r[1] === "v3" ? E("RE-ACK NEEDED", "yellow") : E("PENDING", "red")) + "</div>").join(""), 1) + cd("<b>Required pages</b>", tbl(["Page", "Ack", "Due"], [["Security baseline", bar(75), "Nov 15"], ["Code of conduct", bar(90, "green"), "Nov 30"], ["Remote work policy", bar(69), "Nov 15"]]), 1) + "</div>") + "</div>" +
-      dm(["WikiPage · review_interval_days, last_reviewed_at, last_reviewed_by_membership_id, next_review_at, stale_flagged_at, status, requires_acknowledgement", "WikiPageReviewer", "WikiPageAcknowledgement · membership_id, required_by, acknowledged_at, acknowledged_version_number", "WikiPageAckTarget · principal_type, principal_id, due_at (audience, denominator)", "WikiAiSuggestion · kind STALE_PAGE | CONTRADICTION, related_page_id, rationale"], []) + "</div>";
+      pane("c", 1, filt([["Stale", "is", "Yes"], ["Review due", "before", "Dec 31"], ["Space", "is", "Any"]], btn("Save view", "plus", "sm")) + '<div class="panel" style="margin-top:0"><table>' + th(["Page", "Space", "Owner", "Next review", "State", "Stale", "Flag", ""]) + "<tbody>" + rv.map((r) => "<tr><td>" + ink(r[0]) + "</td><td>" + r[1] + "</td><td>" + wh(r[2]) + "</td><td>" + r[3] + "</td><td>" + (r[4].indexOf("overdue") > -1 ? '<span class="badge red">' + r[4] + "</span>" : r[4]) + "</td><td>" + stale(r[5]) + "</td><td>" + (r[6] ? '<span class="cite">' + I("sparkles", 11) + " " + r[6] + "</span>" : "") + "</td><td>" + btn("Mark reviewed", "check", "sm") + "</td></tr>").join("") + "</tbody></table></div>") +
+      pane("a", 0, '<div class="g2" style="grid-template-columns:1.4fr 1fr;align-items:start">' + cd("<b>Security baseline</b><span class='r muted'>ack_version_number 4 · 18 of 24 acknowledged · " + btn("Ask readers to confirm again", "", "ghost sm") + "</span>", [["MS", "v4", "Nov 5"], ["AM", "v4", "Nov 5"], ["JK", "v3", "Oct 1"], ["KL", "—", "pending"], ["SJ", "v4", "Nov 7"], ["LN", "—", "pending"]].map((r) => '<div class="rowx">' + av(r[0]) + '<div class="grow"><b>' + PEOPLE[r[0]][0] + "</b><small>" + (r[1] === "—" ? "Not acknowledged" : "Acknowledged " + r[1] + " on " + r[2]) + "</small></div>" + (r[1] === "v4" ? E("CURRENT", "green") : r[1] === "v3" ? E("RE-ACK NEEDED", "yellow") : E("PENDING", "red")) + "</div>").join(""), 1) + cd("<b>Required pages</b>", tbl(["Page", "Ack", "Due"], [["Security baseline", bar(75), "Nov 15"], ["Code of conduct", bar(90, "green"), "Nov 30"], ["Remote work policy", bar(69), "Nov 15"]]), 1) + "</div>") + "</div>" +
+      dm(["WikiPage · review_interval_days, last_reviewed_at, last_reviewed_by_membership_id, next_review_at, stale_flagged_at, requires_acknowledgement, ack_version_number", "WikiPageReviewer", "WikiPageAcknowledgement · membership_id, required_by, acknowledged_at, acknowledged_version_number", "WikiPageAckTarget · principal_type, principal_id, due_at (audience, denominator)", "WikiAiSuggestion · kind STALE_PAGE | CONTRADICTION, related_page_id, rationale"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -711,24 +696,24 @@
      @perm   docs.spaces.manage (content health of managed spaces) · reader and search analytics docs.analytics.read
      @api    GET /docs/analytics/{summary|health|coverage|acknowledgements|ai} ?space_id=&from=&to=
      @mcp    docs_spaces_manage (read)
-     @data   Computable now: WikiPage (status, page_type, next_review_at, stale_flagged_at, last_edited_at, owner_membership_id, word_count, requires_acknowledgement) · WikiPageAcknowledgement · WikiPageVersion (edit activity) · WikiPageComment · WikiAiIndexEntry (status)
+     @data   Computable now: WikiPage (page_type, next_review_at, stale_flagged_at, last_edited_at, owner_membership_id, word_count, requires_acknowledgement) · WikiPageAcknowledgement · WikiPageVersion (edit activity) · WikiPageComment · WikiAiIndexEntry (status)
              · WikiChecklistRun · FormAssignmentRecipient · WikiAiSuggestion
      @ui     Card, Stat, bar and line charts, Table, Select range
      @states loading · empty ("Not enough data yet") · error · no-access
      @audit  none (read only)
-     @note   Content health (stale, unowned, never reviewed, drafts older than 30 days), coverage (pages per space and type), edit activity from WikiPageVersion, acknowledgement and onboarding completion.
+     @note   Content health (stale, unowned, never reviewed, pages still empty after 30 days), coverage (pages per space and type), edit activity from WikiPageVersion, acknowledgement and onboarding completion.
      Reader analytics read WikiPageViewDaily (views, unique_readers), WikiSearchQuery (top and zero-result searches) and WikiPageFeedback ("was this helpful"). Needs docs.analytics.read.
      ===================================================================================================================== */
   function analytics() {
     const wk = [22, 31, 18, 40, 36, 28, 44, 39];
     return '<div class="a-page">' + head("Docs analytics", "How healthy and used the knowledge base is.", sel("Last 90 days") + sel("All spaces", "layers") + btn("Export", "file")) +
-      '<div class="mini-stats">' + stat("Pages", 431, "+27 this quarter") + stat("Healthy", "88%", "not stale, owned, reviewed") + stat("Stale", 9, "NEEDS_REVIEW", 1) + stat("Orphaned", 5, "no owner", 1) + stat("Drafts over 30 days", 12, "unpublished", 1) + stat("AI index", "99.3%", "chunks indexed") + "</div>" +
+      '<div class="mini-stats">' + stat("Pages", 431, "+27 this quarter") + stat("Healthy", "88%", "not stale, owned, reviewed") + stat("Stale", 9, "stale_flagged_at", 1) + stat("Orphaned", 5, "no owner", 1) + stat("Empty pages", 12, "no content after 30 days", 1) + stat("AI index", "99.3%", "chunks indexed") + "</div>" +
       '<div class="g2">' + cd("<b>Edit activity</b><span class='r muted'>WikiPageVersion per week</span>", '<div class="bars">' + wk.map((v) => '<span style="height:' + v * 2 + 'px" title="' + v + ' versions"></span>').join("") + '</div><div class="sub-note">Weeks 38 to 45 · 258 versions by 31 editors</div>') +
-      cd("<b>Pages by status</b>", [["PUBLISHED", 391, "green"], ["DRAFT", 31, "yellow"], ["NEEDS_REVIEW", 9, "red"], ["ARCHIVED", 120, ""]].map((r) => '<div class="bar-row"><span class="l">' + U.en(r[0]) + '</span><span class="tr"><i style="width:' + Math.round(r[1] / 4) + "%;background:var(--" + (r[2] || "mute") + ')"></i></span><span class="v">' + r[1] + "</span></div>").join("")) + "</div>" + gap() +
-      '<div class="g2">' + cd("<b>Coverage by space</b>", tbl(["Space", ">Pages", ">Needs review", "Owner coverage", ">Avg age"], [["Engineering", 86, 3, bar(96, "green"), "112 d"], ["Operations", 41, 1, bar(100, "green"), "88 d"], ["People and HR", 58, 2, bar(91, "green"), "140 d"], ["Company handbook", 64, 3, bar(78), "205 d"]]), 1) +
+      cd("<b>Pages by type</b><span class='r muted'>pages.by_type</span>", [["POLICY", 64, "purple"], ["PROCEDURE", 88, "blue"], ["RUNBOOK", 24, "red"], ["GENERAL", 255, ""]].map((r) => '<div class="bar-row"><span class="l">' + U.en(r[0]) + '</span><span class="tr"><i style="width:' + Math.round(r[1] / 4) + "%;background:var(--" + (r[2] || "mute") + ')"></i></span><span class="v">' + r[1] + "</span></div>").join("")) + "</div>" + gap() +
+      '<div class="g2">' + cd("<b>Coverage by space</b>", tbl(["Space", ">Pages", ">Stale", "Owner coverage", ">Avg age"], [["Engineering", 86, 3, bar(96, "green"), "112 d"], ["Operations", 41, 1, bar(100, "green"), "88 d"], ["People and HR", 58, 2, bar(91, "green"), "140 d"], ["Company handbook", 64, 3, bar(78), "205 d"]]), 1) +
       cd("<b>Reader analytics</b><span class='r muted'>WikiPageViewDaily</span>", tbl(["Most read page", ">Views (30d)", ">Unique readers", "Helpful"], [[ink("Production deploy runbook"), 412, 88, "94%"], [ink("Security baseline"), 301, 120, "88%"], [ink("Expense policy"), 255, 97, "71%"]]) + '<div class="sub-note" style="padding:10px 16px">Top searches: "vpn" (41), "expense report" (33). Zero-result: "parental leave" (6) from WikiSearchQuery.result_count = 0.</div>', 1) + "</div>" + gap() +
       '<div class="g3">' + cd("<b>Acknowledgements</b>", [["Security baseline", 75], ["Code of conduct", 90], ["Remote work policy", 69]].map((r) => '<div class="rowx"><div class="grow">' + r[0] + "</div>" + bar(r[1]) + "</div>").join(""), 1) + cd("<b>Onboarding</b>", kv("Active runs", 6) + kv("Avg completion", "17 days") + kv("Overdue items", 3), 1) + cd("<b>AI usage</b>", kv("Questions (30 d)", 128) + kv("Answered with citations", "91%") + kv("Suggestions accepted", "14 of 22"), 1) + "</div>" +
-      dm(["WikiPage · status, page_type, owner_membership_id, next_review_at, stale_flagged_at, last_edited_at", "WikiPageVersion · created_at, created_by_membership_id", "WikiPageAcknowledgement · WikiChecklistRun · FormAssignmentRecipient · WikiAiIndexEntry · WikiAiSuggestion", "WikiPageViewDaily · page_id, day, view_count, unique_readers", "WikiPageView (raw, 180 days) · WikiSearchQuery · query, mode, result_count, clicked_page_id · WikiPageFeedback · helpful"], []) + "</div>";
+      dm(["WikiPage · page_type, owner_membership_id, next_review_at, stale_flagged_at, last_edited_at", "WikiPageVersion · created_at, created_by_membership_id", "WikiPageAcknowledgement · WikiChecklistRun · FormAssignmentRecipient · WikiAiIndexEntry · WikiAiSuggestion", "WikiPageViewDaily · page_id, day, view_count, unique_readers", "WikiPageView (raw, 180 days) · WikiSearchQuery · query, mode, result_count, clicked_page_id · WikiPageFeedback · helpful"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -741,7 +726,7 @@
      @ui     Tabs Import | Export, Dropzone (Documents upload), Select, Popover+Command for target, Progress for the job, Table of past jobs
      @states idle · uploading · parsing (progress) · preview with warnings (unsupported blocks) · done · failed with a downloadable report · no-access
      @audit  import started/finished (counts), export requested/downloaded (sensitive scopes)
-     @note   Imports land as DRAFT pages with the importer as owner; links between imported pages are rewritten. Exports respect the caller's access: pages the caller cannot read are omitted from a subtree or space export.
+     @note   Imported pages are live at once (no draft step) with the importer as owner; front matter (title, icon, page_type) is read, the export writes title, icon, page_type, version, updated_at, source_id (no status); links between imported pages are rewritten. Exports respect the caller's access: pages the caller cannot read are omitted from a subtree or space export.
              Export of an entire space is audited as a sensitive action.
      Jobs are WikiTransferJob rows (kind IMPORT | EXPORT, format WikiTransferFormat, scope WikiTransferScope, status, page_count, warning_count, error_report, result_document_id).
      ===================================================================================================================== */
@@ -750,7 +735,7 @@
       '<div class="tabset">' + tabs([["i", "Import"], ["e", "Export"], ["h", "History", 6]], "i") +
       pane("i", 1, '<div class="g2" style="grid-template-columns:1.4fr 1fr;align-items:start"><div>' + cd("<b>Source</b>", '<div style="padding:14px 16px">' + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' + [["Markdown files", "md, zip", 1], ["Word documents", "docx", 0], ["HTML export", "html, zip", 0], ["Notion export", "zip", 0], ["Confluence export", "zip", 0], ["Google Docs", "from Drive", 0]].map((s) => '<div class="tp-card" style="' + (s[2] ? "border-color:var(--blue)" : "") + '"><div class="bd"><b>' + s[0] + "</b><small>" + s[1] + "</small></div></div>").join("") + '</div><div style="height:12px"></div><div class="drop2">' + I("clip", 18) + " Drop files here or choose from Documents (17)</div></div>") + gap() +
         cd("<b>Preview</b><span class='r muted'>24 files · 3 warnings</span>", [["Deploy guide.md", "OK", "green"], ["Onboarding.md", "OK", "green"], ["Old runbook.md", "2 unsupported blocks (embedded video) become links", "yellow"], ["Policies/Expense.md", "OK", "green"]].map((r) => '<div class="rowx">' + cb(1) + '<div class="grow"><b>' + r[0] + "</b><small>" + r[1] + "</small></div>" + E(r[2] === "green" ? "READY" : "WARNING", r[2]) + "</div>").join(""), 1) + "</div><div>" +
-        cd("<b>Destination</b>", f("Space", sel("Engineering", "layers")) + f("Parent page", sel("Runbooks", "file")) + f("Page type", sel("General", "tag")) + f("Owner", sel("Me", "users")) + '<div class="rowx"><div class="grow"><b>Keep folder structure as nested pages</b></div>' + sw(1) + '</div><div class="rowx"><div class="grow"><b>Import as draft</b><small>Always on, publishing is a separate step</small></div>' + sw(1) + "</div>") + gap() + btn("Start import", "inbox", "primary") + "</div></div>") +
+        cd("<b>Destination</b>", f("Space", sel("Engineering", "layers")) + f("Parent page", sel("Runbooks", "file")) + f("Page type", sel("General", "tag")) + f("Owner", sel("Me", "users")) + '<div class="rowx"><div class="grow"><b>Keep folder structure as nested pages</b></div>' + sw(1) + "</div>") + gap() + btn("Start import", "inbox", "primary") + "</div></div>") +
       pane("e", 0, '<div class="g2" style="align-items:start">' + cd("<b>What to export</b>", f("Scope", sel("A page and its sub-pages")) + f("Page or space", sel("Engineering / Runbooks", "file")) + f("Format", sel("Markdown (zip)")) + '<div class="rowx"><div class="grow"><b>Include attachments</b><small>Documents embedded in pages (17)</small></div>' + sw(1) + '</div><div class="rowx"><div class="grow"><b>Include comments and version history</b></div>' + sw(0) + "</div>") + cd("<b>Rules</b>", '<div class="sub-note" style="padding:12px 16px">Pages you cannot read are left out. Exporting a whole space needs docs.spaces.manage and is audited as a sensitive action. Form responses are exported from the form (docs.forms.export).</div>' + '<div style="padding:0 16px 14px">' + btn("Export", "file", "primary") + "</div>", 1) + "</div>") +
       pane("h", 0, tbl(["Job", "Type", "Scope", "Status", "By", "When"], [["IMP-0031", E("IMPORT", "blue"), "24 Markdown files to Engineering", E("COMPLETED", "green"), "Marco Silva", "Nov 6"], ["EXP-0019", E("EXPORT"), "Space: Operations (zip)", E("COMPLETED", "green"), "Anna Meyer", "Oct 30"], ["IMP-0030", E("IMPORT", "blue"), "Notion export to Company handbook", E("FAILED", "red"), "Sofia Jensen", "Oct 12"]])) + "</div>" +
       dm(["WikiPage · WikiPageVersion · WikiPageAttachment (written on import)", "Documents (17) · source files and export archives", "WikiTransferJob · kind, format, scope, space_id, page_id, source_document_ids, result_document_id, status, page_count, warning_count, error_report, requested_by_membership_id, finished_at"], []) + "</div>";
@@ -760,13 +745,13 @@
      TRASH AND ARCHIVE
      @route  /docs/trash?tab=archived|deleted&space=
      @perm   VIEW docs.pages.read · archive/unarchive docs.pages.archive · delete permanently docs.pages.delete* (sensitive) · restore from trash docs.pages.archive
-     @api    GET /docs/pages?status=ARCHIVED · POST /docs/pages/:id/unarchive · GET /docs/trash · POST /docs/pages/:id/restore · DELETE /docs/pages/:id (permanent)
+     @api    GET /docs/trash?tab=archived|deleted · POST /docs/pages/:id/unarchive · GET /docs/trash · POST /docs/pages/:id/restore · DELETE /docs/pages/:id (permanent)
      @mcp    docs_pages_archive · docs_pages_delete (sensitive, confirmation when an AI agent calls it)
-     @data   WikiPage (status ARCHIVED, archived_at, deleted_at, deleted_by_membership_id) · WikiSpace (archived_at, deleted_at) · WikiPageVersion (kept on archive)
+     @data   WikiPage (archived_at, deleted_at, deleted_by_membership_id) · WikiSpace (archived_at, deleted_at) · WikiPageVersion (kept on archive)
      @ui     Tabs Archived | Trash, Table with bulk bar (Restore, Delete forever), AlertDialog with typed confirmation for permanent delete
      @states loading · empty ("Nothing archived") · error · no-access
      @audit  page archived/unarchived/deleted (title, space, who)
-     @note   ARCHIVE is a status (WikiPageStatus ARCHIVED + archived_at): hidden from the tree, search and AI index, reversible, versions kept. TRASH = soft delete (WikiPage.deleted_at, deleted_by_membership_id; same on WikiSpace), purged after 30 days by a scheduled job, distinct from ARCHIVED.
+     @note   ARCHIVE = archived_at (read-only): hidden from the tree, search and AI index, reversible, versions kept. TRASH = soft delete (WikiPage.deleted_at, deleted_by_membership_id; same on WikiSpace), purged after 30 days by a scheduled job, distinct from archiving.
      Restore needs docs.pages.archive; purging early needs docs.pages.delete*. Trashed pages are hidden from tree, search and the AI index.
      ===================================================================================================================== */
   function trash() {
@@ -776,8 +761,8 @@
       pane("a", 1, '<div class="toolbar">' + search("Search archived pages") + sel("Space: any", "layers") + sel("Type: any") + "</div>" + filt([["Archived", "before", "Dec 1"]], btn("Save view", "plus", "sm")) +
         '<div class="bulk"><span class="cb on"></span><b>2 selected</b><span style="flex:1"></span>' + btn("Restore", "reply", "sm") + btn("Delete forever", "x", "sm") + "</div>" +
         '<div class="panel" style="margin-top:0"><table>' + th(["", "Page", "Space", "Type", "Archived", "By", ">Versions", ""]) + "<tbody>" + A.map((r, i) => "<tr><td>" + cb(i < 2) + "</td><td>" + ink(r[0]) + "</td><td>" + r[1] + "</td><td>" + ptp(r[2]) + "</td><td>" + r[3] + "</td><td>" + r[4] + "</td><td class='num'>" + r[5] + "</td><td>" + btn("Restore", "", "sm") + "</td></tr>").join("") + "</tbody></table></div>" + pager("1–4 of 120")) +
-      pane("d", 0, callout("flag", "<b>Trash keeps deleted pages for 30 days.</b> Restore with docs.pages.archive; delete forever needs docs.pages.delete (sensitive). Archived pages are a separate, reversible status.") + gap(8) + tbl(["Page", "Deleted", "By", "Purges in"], [[ink("Sketch notes"), "Nov 5", "Anna Meyer", "24 days"], [ink("Draft: pricing"), "Nov 2", "Sofia Jensen", "21 days"]])) + "</div>" +
-      dm(["WikiPage · status ARCHIVED, archived_at, title, space_id, page_type", "WikiPageVersion · count", "WikiSpace · archived_at, deleted_at, deleted_by_membership_id", "WikiPage · deleted_at, deleted_by_membership_id (trash, purged after 30 days)"], []) + "</div>";
+      pane("d", 0, callout("flag", "<b>Trash keeps deleted pages for 30 days.</b> Restore with docs.pages.archive; delete forever needs docs.pages.delete (sensitive). Archiving is separate and reversible.") + gap(8) + tbl(["Page", "Deleted", "By", "Purges in"], [[ink("Sketch notes"), "Nov 5", "Anna Meyer", "24 days"], [ink("Draft: pricing"), "Nov 2", "Sofia Jensen", "21 days"]])) + "</div>" +
+      dm(["WikiPage · archived_at, title, space_id, page_type", "WikiPageVersion · count", "WikiSpace · archived_at, deleted_at, deleted_by_membership_id", "WikiPage · deleted_at, deleted_by_membership_id (trash, purged after 30 days)"], []) + "</div>";
   }
 
   const MAP = { home, spaces, spaceNew, space, spaceSettings, page, pageNew, history, share, search: searchPage, templates, templateEdit, runbooks, onboarding, checklists, checklistEdit, runs, runDetail, reviews, forms, formBuilder, formResponses, ai, analytics, importExport, trash };

@@ -41,7 +41,7 @@ export class DocsMcp implements OnModuleInit {
                 handler: (ctx, args) => this.pages.search(ctx, args),
             },
             {
-                name: 'docs_pages_list', description: 'List wiki pages, filtered by space, parent (use "root"), status, page type, owner or review state.',
+                name: 'docs_pages_list', description: 'List wiki pages, filtered by space, parent (use "root"), page type, owner or review state.',
                 permission: 'docs.pages.read', module: M, resource_type: 'wiki_page', input: PageQuerySchema,
                 handler: (ctx, args) => this.pages.findAll(ctx, args),
             },
@@ -56,15 +56,14 @@ export class DocsMcp implements OnModuleInit {
                 handler: (ctx, args) => this.pages.create(ctx, args),
             },
             {
-                name: 'docs_pages_update', description: 'Update the title or markdown content of a wiki page; creates a new version.',
+                name: 'docs_pages_update', description: 'Update the title, icon, cover or markdown content of a wiki page; every edit is live and creates a new version.',
                 permission: 'docs.pages.update', module: M, resource_type: 'wiki_page', input: UpdatePageSchema,
                 handler: (ctx, { id: pageId, ...dto }) => this.pages.update(ctx, pageId, dto),
             },
             {
-                name: 'docs_pages_publish', description: 'Publish the current version of a wiki page.',
-                permission: 'docs.pages.publish', module: M, resource_type: 'wiki_page', sensitive: true,
-                input: z.object({ id: z.string().uuid(), change_summary: z.string().max(500).optional() }),
-                handler: (ctx, args) => this.pages.publish(ctx, args.id, args.change_summary),
+                name: 'docs_pages_reacknowledge', description: 'Ask readers to confirm a required-reading page again (the current version becomes the one to acknowledge).',
+                permission: 'docs.pages.update', module: M, resource_type: 'wiki_page', input: id,
+                handler: (ctx, args) => this.pages.requestReacknowledge(ctx, args.id),
             },
             {
                 name: 'docs_pages_archive', description: 'Archive a wiki page.',

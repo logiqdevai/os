@@ -37,6 +37,12 @@ export function parsePageRefs(md: string | null | undefined): { ids: string[]; t
     return { ids: [...ids], titles: [...titles] };
 }
 
+/** Document ids of the page's inline images: `![alt](attachment:<document_id>)` (15 §2, uploaded via POST /docs/pages/:id/attachments). */
+export function parseAttachmentRefs(md: string | null | undefined): string[] {
+    if (!md) return [];
+    return [...new Set([...md.matchAll(new RegExp(`\\(attachment:(${UUID})\\)`, 'gi'))].map((m) => m[1].toLowerCase()))];
+}
+
 /** Context for public (unauthenticated) actions such as an anonymous public form submission. */
 export function publicContext(organizationId: string, meta: { ip?: string | null; user_agent?: string | null } = {}): OrgContext {
     return {

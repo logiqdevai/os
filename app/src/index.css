@@ -1035,3 +1035,25 @@ html.dark[data-theme="dracula"] {
 .notion-blocks .ProseMirror ul[data-type="taskList"] li > label { margin-top: 0.3em; user-select: none; }
 .notion-blocks .ProseMirror ul[data-type="taskList"] li > div { flex: 1; }
 .notion-blocks .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--muted-foreground); text-decoration: line-through; }
+
+/* Docs editor blocks (pages/docs/components/editor/*): toggles, tables, mentions, page links, read-only. Tokens only. */
+.notion-blocks .ProseMirror .notion-toggle { display: flex; gap: 0.25rem; align-items: flex-start; }
+.notion-blocks .ProseMirror .notion-toggle > button { flex: none; display: flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.6em; border-radius: 0.25rem; color: var(--muted-foreground); }
+.notion-blocks .ProseMirror .notion-toggle > button:hover { background: var(--accent); color: var(--foreground); }
+.notion-blocks .ProseMirror .notion-toggle > button::before { content: ""; width: 0; height: 0; border-top: 0.32em solid transparent; border-bottom: 0.32em solid transparent; border-left: 0.5em solid currentColor; transition: transform 0.15s; }
+.notion-blocks .ProseMirror .notion-toggle.is-open > button::before { transform: rotate(90deg); }
+.notion-blocks .ProseMirror .notion-toggle > div { flex: 1; min-width: 0; }
+.notion-blocks .ProseMirror .notion-toggle summary { list-style: none; font-weight: 500; cursor: text; }
+.notion-blocks .ProseMirror .notion-toggle summary::-webkit-details-marker { display: none; }
+.notion-blocks .ProseMirror .notion-toggle [data-type="detailsContent"] { margin-top: 0.25rem; }
+.notion-blocks .ProseMirror table.notion-table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; table-layout: fixed; font-size: 0.95em; }
+.notion-blocks .ProseMirror table.notion-table td, .notion-blocks .ProseMirror table.notion-table th { border: 1px solid var(--border); padding: 0.35rem 0.6rem; vertical-align: top; text-align: left; }
+.notion-blocks .ProseMirror table.notion-table th { background: var(--secondary); font-weight: 600; color: var(--foreground); }
+.notion-blocks .ProseMirror table.notion-table .selectedCell { background: color-mix(in oklab, var(--info) 14%, transparent); }
+.notion-blocks .ProseMirror table.notion-table p { margin: 0; }
+.notion-blocks .ProseMirror .notion-mention { border-radius: 0.25rem; padding: 0 0.15em; color: var(--foreground); font-weight: 500; background: color-mix(in oklab, var(--info) 12%, transparent); }
+.notion-blocks .ProseMirror mark { background: var(--warning-soft); color: inherit; border-radius: 0.15em; padding: 0 0.1em; }
+.notion-blocks .ProseMirror img.ProseMirror-selectednode, .notion-blocks .ProseMirror .ProseMirror-selectednode > img { outline: 2px solid var(--ring); }
+.notion-blocks .ProseMirror [data-callout] p.is-empty::before, .notion-blocks .ProseMirror summary.is-empty::before { content: attr(data-placeholder); float: left; height: 0; pointer-events: none; color: var(--muted-foreground); }
+.notion-blocks.is-readonly .ProseMirror { min-height: 0; }
+.notion-blocks.is-readonly .ProseMirror p.is-empty::before { content: none; }

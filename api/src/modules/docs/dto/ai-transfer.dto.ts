@@ -21,6 +21,5 @@ export type ExportDocsInput = z.infer<typeof ExportDocsSchema>;
 export const ImportDocsSchema = z.object({
     space_id: z.string().uuid(),
     parent_page_id: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
-    publish: z.preprocess((v) => v === true || v === 'true', z.boolean()).optional(),
 });
 export type ImportDocsInput = z.infer<typeof ImportDocsSchema>;

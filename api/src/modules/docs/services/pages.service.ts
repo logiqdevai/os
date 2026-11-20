@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ModuleKey, Prisma, RecordEntityType, WikiPageStatus, WikiSearchMode, WikiVisibility } from 'generated/prisma';
+import { ModuleKey, Prisma, RecordEntityType, WikiSearchMode, WikiVisibility } from 'generated/prisma';
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
+import { DocumentsService, IncomingFile } from '@/modules/files/services/documents.service';
 import { AuditService } from '@/shared/audit/audit.service';
 import { EventsService } from '@/shared/events/events.service';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
@@ -22,7 +23,7 @@ import {
     TrashQuery,
     UpdatePageDto,
 } from '../dto/page.dto';
-import { excerptOf, markdownToText, MEMBER_SELECT, parsePageRefs, wordCount } from '../utils/docs.utils';
+import { excerptOf, markdownToText, MEMBER_SELECT, parseAttachmentRefs, parsePageRefs, wordCount } from '../utils/docs.utils';
 
 const LIST_SELECT = {
     id: true,
@@ -32,15 +33,14 @@ const LIST_SELECT = {
     slug: true,
     icon: true,
     page_type: true,
-    status: true,
     excerpt: true,
     visibility: true,
     customer_visible: true,
     depth: true,
     sort_order: true,
     current_version_number: true,
-    published_version_number: true,
-    published_at: true,
+    cover_document_id: true,
+    cover_position: true,
     next_review_at: true,
     stale_flagged_at: true,
     requires_acknowledgement: true,
@@ -56,11 +56,15 @@ const LIST_SELECT = {
 
 const DAY = 86_400_000;
 
+/** Exposing a page to customers (portal / help center) is its own permission (15 §4). */
+const SHARE_CUSTOMERS = 'docs.pages.share_customers';
+
 /** Autosave: saves by the same editor within this window share one history entry. */
 const VERSION_COALESCE_MS = 10 * 60_000;
 
 /**
- * Wiki pages (15 §2): tree, content + versions, publishing, permissions, comments, favorites,
+ * Wiki pages (15 §2), Notion-style: every edit is live (no draft/publish step). Tree, content + versions, cover and
+ * inline images (attachments), permissions, comments, favorites,
  * acknowledgements, review cadence, record links / backlinks, search, views, archive and trash.
  */
 @Injectable()
@@ -70,6 +74,7 @@ export class DocsPagesService {
         private readonly audit: AuditService,
         private readonly events: EventsService,
         private readonly access: DocsAccessService,
+        private readonly documents: DocumentsService,
     ) { }
 
     // ---------------------------------------------------------------------------------------------
@@ -88,7 +93,7 @@ export class DocsPagesService {
             p.membership_id
                 ? this.prisma.wikiPageView.findMany({ where: { membership_id: p.membership_id, organization_id: ctx.organization_id }, orderBy: { viewed_at: 'desc' }, take: 60, select: { page_id: true, viewed_at: true } })
                 : [],
-            this.prisma.wikiPage.findMany({ where: { ...live, status: { not: WikiPageStatus.DRAFT } }, select: LIST_SELECT, orderBy: { updated_at: 'desc' }, take: 8 }),
+            this.prisma.wikiPage.findMany({ where: live, select: LIST_SELECT, orderBy: { updated_at: 'desc' }, take: 8 }),
             p.membership_id
                 ? this.prisma.wikiPageAcknowledgement.findMany({
                     where: { membership_id: p.membership_id, acknowledged_at: null, page: live },
@@ -131,7 +136,6 @@ export class DocsPagesService {
             ...(query.archived ? { archived_at: { not: null } } : { archived_at: null }),
             ...(query.space_id && { space_id: query.space_id }),
             ...(query.parent_page_id && { parent_page_id: query.parent_page_id === 'root' ? null : query.parent_page_id }),
-            ...(query.status?.length && { status: { in: query.status } }),
             ...(query.page_type?.length && { page_type: { in: query.page_type } }),
             ...(query.owner_id && { owner_membership_id: query.owner_id }),
             ...(query.review === 'overdue' && { next_review_at: { lt: now } }),
@@ -151,7 +155,7 @@ export class DocsPagesService {
         const { space, principals } = await this.access.readableSpace(ctx, spaceIdOrSlug);
         return this.prisma.wikiPage.findMany({
             where: { ...this.access.readablePageWhere(ctx, principals), space_id: space.id, archived_at: null },
-            select: { id: true, parent_page_id: true, title: true, slug: true, icon: true, status: true, page_type: true, depth: true, sort_order: true, updated_at: true },
+            select: { id: true, parent_page_id: true, title: true, slug: true, icon: true, page_type: true, depth: true, sort_order: true, updated_at: true },
             orderBy: [{ depth: 'asc' }, { sort_order: 'asc' }, { title: 'asc' }],
         });
     }
@@ -165,13 +169,13 @@ export class DocsPagesService {
                 include: {
                     owner: { select: MEMBER_SELECT },
                     template: { select: { id: true, name: true } },
-                    space: { select: { id: true, name: true, slug: true, icon: true, color: true, allow_customer_visible: true, members_can_publish: true, require_review_before_publish: true } },
+                    space: { select: { id: true, name: true, slug: true, icon: true, color: true, allow_customer_visible: true } },
                 },
             }),
             ancestorIds.length ? this.prisma.wikiPage.findMany({ where: { id: { in: ancestorIds }, organization_id: ctx.organization_id }, select: { id: true, title: true, icon: true } }) : [],
             this.prisma.wikiPage.findMany({
                 where: { ...this.access.readablePageWhere(ctx, principals), parent_page_id: id, archived_at: null },
-                select: { id: true, title: true, icon: true, status: true, page_type: true, excerpt: true, updated_at: true },
+                select: { id: true, title: true, icon: true, page_type: true, excerpt: true, updated_at: true },
                 orderBy: [{ sort_order: 'asc' }, { title: 'asc' }],
             }),
             principals.membership_id ? this.prisma.wikiPageFavorite.findUnique({ where: { page_id_membership_id: { page_id: id, membership_id: principals.membership_id } } }) : null,
@@ -180,9 +184,11 @@ export class DocsPagesService {
             this.prisma.wikiPageComment.count({ where: { page_id: id, deleted_at: null } }),
             this.prisma.wikiPageReviewer.findMany({ where: { page_id: id }, include: { membership: { select: MEMBER_SELECT } } }),
         ]);
-        const publishedVersion = full.published_version_number ?? 0;
+        const ackVersion = full.ack_version_number ?? 0;
+        const cover = full.cover_document_id ? await this.documents.issueRecordDownloadUrl(ctx.organization_id, full.cover_document_id, 'inline').catch(() => null) : null;
         return {
             ...full,
+            cover_url: cover?.path ?? null,
             breadcrumbs: ancestorIds.map((aid) => ancestors.find((a) => a.id === aid)).filter(Boolean),
             children,
             reviewers: reviewers.map((r) => r.membership),
@@ -191,15 +197,13 @@ export class DocsPagesService {
                 comment: atLeast(level, 'COMMENT'),
                 edit: atLeast(level, 'EDIT'),
                 manage: atLeast(level, 'MANAGE'),
-                publish: atLeast(level, 'EDIT') && ctx.can('docs.pages.publish'),
                 archive: atLeast(level, 'EDIT') && ctx.can('docs.pages.archive'),
                 delete: atLeast(level, 'MANAGE') && ctx.can('docs.pages.delete'),
             },
             is_favorite: !!favorite,
             my_acknowledgement: ack
-                ? { required_by: ack.required_by, acknowledged_at: ack.acknowledged_at, acknowledged_version_number: ack.acknowledged_version_number, is_current: !!ack.acknowledged_at && (ack.acknowledged_version_number ?? 0) >= publishedVersion }
+                ? { required_by: ack.required_by, acknowledged_at: ack.acknowledged_at, acknowledged_version_number: ack.acknowledged_version_number, is_current: !!ack.acknowledged_at && (ack.acknowledged_version_number ?? 0) >= ackVersion }
                 : null,
-            has_unpublished_changes: full.status === WikiPageStatus.PUBLISHED && (full.published_version_number ?? 0) < full.current_version_number,
             backlink_count: backlinkCount,
             comment_count: commentCount,
         };
@@ -231,7 +235,7 @@ export class DocsPagesService {
             templateReview = tpl.default_review_interval_days;
         }
         if (dto.customer_visible) this.assertCustomerVisible(ctx, space);
-        if (dto.publish && !ctx.can('docs.pages.publish')) throw new ForbiddenException({ message: 'You need docs.pages.publish to publish', code: 'permission_denied', permissions: ['docs.pages.publish'] });
+        if (dto.cover_document_id) await this.assertDocument(ctx, dto.cover_document_id);
         await this.assertMembers(ctx, [dto.owner_membership_id, ...(dto.reviewer_ids ?? [])]);
 
         const md = dto.content_markdown ?? templateMd ?? '';
@@ -247,12 +251,12 @@ export class DocsPagesService {
                     space_id: space.id,
                     parent_page_id: parent?.id ?? null,
                     template_id: dto.template_id ?? null,
-                    title: dto.title,
-                    slug: await this.uniqueSlug(space.id, dto.title),
+                    title: dto.title ?? '',
+                    slug: await this.uniqueSlug(space.id, dto.title || 'untitled'),
                     icon: dto.icon,
+                    cover_document_id: dto.cover_document_id ?? null,
+                    cover_position: dto.cover_position ?? 50,
                     page_type: dto.page_type ?? templatePageType ?? 'GENERAL',
-                    status: dto.publish ? WikiPageStatus.PUBLISHED : WikiPageStatus.DRAFT,
-                    content: { format: 'markdown' },
                     content_markdown: md,
                     excerpt: excerptOf(md),
                     word_count: wordCount(md),
@@ -265,17 +269,15 @@ export class DocsPagesService {
                     review_interval_days: reviewInterval,
                     next_review_at: reviewInterval ? new Date(now.getTime() + reviewInterval * DAY) : null,
                     requires_acknowledgement: dto.requires_acknowledgement ?? false,
+                    ack_version_number: dto.requires_acknowledgement ? 1 : null,
                     current_version_number: 1,
-                    published_at: dto.publish ? now : null,
-                    published_by_membership_id: dto.publish ? ctx.membership_id : null,
-                    published_version_number: dto.publish ? 1 : null,
                     last_edited_by_membership_id: ctx.membership_id,
                     last_edited_at: now,
                     created_by_user_id: ctx.user_id,
                 },
             });
             await tx.wikiPageVersion.create({
-                data: { page_id: created.id, version_number: 1, title: created.title, content: { format: 'markdown' }, content_markdown: md, change_summary: 'Created', is_published_snapshot: !!dto.publish, created_by_membership_id: ctx.membership_id },
+                data: { page_id: created.id, version_number: 1, title: created.title, content_markdown: md, change_summary: 'Created', created_by_membership_id: ctx.membership_id },
             });
             if (dto.reviewer_ids?.length) await tx.wikiPageReviewer.createMany({ data: dto.reviewer_ids.map((m) => ({ page_id: created.id, membership_id: m })), skipDuplicates: true });
             // Restricted children inherit the parent's inheritable grants so the subtree stays readable by the same people.
@@ -289,16 +291,16 @@ export class DocsPagesService {
                 }
             }
             await this.syncPageRefs(tx, ctx, created.id, md);
-            await this.audit.record(ctx, 'wiki_page.created', { resource_type: 'wiki_page', resource_id: created.id, metadata: { after: { title: created.title, space_id: space.id, parent_page_id: parent?.id, visibility, status: created.status } } }, tx);
+            await this.syncAttachments(tx, ctx, created.id, md, created.cover_document_id);
+            await this.audit.record(ctx, 'wiki_page.created', { resource_type: 'wiki_page', resource_id: created.id, metadata: { after: { title: created.title, space_id: space.id, parent_page_id: parent?.id, visibility } } }, tx);
             return created;
         });
 
         this.events.publish(ctx, {
             event_key: 'docs.page.created', module: ModuleKey.BUSINESS_DOCS, entity_type: RecordEntityType.WIKI_PAGE, entity_id: page.id,
-            payload: { title: page.title, space_id: space.id, page_type: page.page_type, status: page.status },
+            payload: { title: page.title, space_id: space.id, page_type: page.page_type },
             activity: { summary: `created the page ${page.title}`, entity_label: page.title },
         });
-        if (dto.publish) this.publishEvent(ctx, page.id, page.title, 1);
         return page;
     }
 
@@ -310,8 +312,9 @@ export class DocsPagesService {
         }
         if (dto.customer_visible !== undefined && dto.customer_visible !== page.customer_visible) {
             if (dto.customer_visible) this.assertCustomerVisible(ctx, page.space);
-            else if (!ctx.can('docs.pages.publish')) throw new ForbiddenException({ message: 'You need docs.pages.publish to change customer visibility', code: 'permission_denied' });
+            else if (!ctx.can(SHARE_CUSTOMERS)) throw new ForbiddenException({ message: `You need ${SHARE_CUSTOMERS} to change customer visibility`, code: 'permission_denied', permissions: [SHARE_CUSTOMERS] });
         }
+        if (dto.cover_document_id && dto.cover_document_id !== page.cover_document_id) await this.assertDocument(ctx, dto.cover_document_id);
         if (dto.visibility && dto.visibility !== page.visibility) this.access.assert(level, 'MANAGE');
         await this.assertMembers(ctx, [dto.owner_membership_id, ...(dto.reviewer_ids ?? [])]);
 
@@ -332,6 +335,8 @@ export class DocsPagesService {
             data.next_review_at = dto.review_interval_days ? new Date(from.getTime() + dto.review_interval_days * DAY) : null;
         }
         if (contentChanged) data.current_version_number = page.current_version_number + 1;
+        // Turning acknowledgement on asks readers to confirm the page as it is now.
+        if (dto.requires_acknowledgement && !page.requires_acknowledgement) data.ack_version_number = contentChanged ? page.current_version_number + 1 : page.current_version_number;
 
         const updated = await this.prisma.$transaction(async (tx) => {
             // The version guard in the WHERE makes concurrent saves safe: the second writer gets a conflict, not a silent overwrite.
@@ -345,18 +350,19 @@ export class DocsPagesService {
                 // history entry (renumbered to the new version) instead of creating a version per keystroke pause.
                 // The page's version number still increases on every save, so concurrent-edit detection is unchanged.
                 const latest = await tx.wikiPageVersion.findFirst({ where: { page_id: id }, orderBy: { version_number: 'desc' } });
-                const coalesce = !!latest && !change_summary && !latest.is_published_snapshot && !latest.restored_from_version_id && !latest.ai_suggestion_id
+                const coalesce = !!latest && !change_summary && !latest.restored_from_version_id && !latest.ai_suggestion_id
                     && latest.version_number === page.current_version_number && latest.created_by_membership_id === ctx.membership_id
                     && latest.created_at.getTime() > now.getTime() - VERSION_COALESCE_MS;
                 if (coalesce) {
                     await tx.wikiPageVersion.update({ where: { id: latest.id }, data: { version_number: row.current_version_number, title: row.title, content_markdown: row.content_markdown } });
                 } else {
                     await tx.wikiPageVersion.create({
-                    data: { page_id: id, version_number: row.current_version_number, title: row.title, content: { format: 'markdown' }, content_markdown: row.content_markdown, change_summary: change_summary ?? null, created_by_membership_id: ctx.membership_id },
+                    data: { page_id: id, version_number: row.current_version_number, title: row.title, content_markdown: row.content_markdown, change_summary: change_summary ?? null, created_by_membership_id: ctx.membership_id },
                     });
                 }
                 if (dto.content_markdown !== undefined) await this.syncPageRefs(tx, ctx, id, row.content_markdown);
             }
+            if (dto.content_markdown !== undefined || dto.cover_document_id !== undefined) await this.syncAttachments(tx, ctx, id, row.content_markdown, row.cover_document_id);
             if (reviewer_ids) {
                 await tx.wikiPageReviewer.deleteMany({ where: { page_id: id, membership_id: { notIn: reviewer_ids } } });
                 await tx.wikiPageReviewer.createMany({ data: reviewer_ids.map((m) => ({ page_id: id, membership_id: m })), skipDuplicates: true });
@@ -406,16 +412,16 @@ export class DocsPagesService {
         const oldPrefix = `${page.path}${id}/`;
         const newPrefix = `${newPath}${id}/`;
         await this.prisma.$transaction(async (tx) => {
-            await tx.wikiPage.update({
-                where: { id },
-                data: { parent_page_id: newParent, path: newPath, depth: newDepth, space_id: targetSpaceId, ...(dto.sort_order !== undefined && { sort_order: dto.sort_order }) },
-            });
-            if (dto.sort_order !== undefined) {
-                // Shift following siblings so the order stays dense and stable.
-                await tx.wikiPage.updateMany({
-                    where: { space_id: targetSpaceId, parent_page_id: newParent, id: { not: id }, sort_order: { gte: dto.sort_order } },
-                    data: { sort_order: { increment: 1 } },
-                });
+            await tx.wikiPage.update({ where: { id }, data: { parent_page_id: newParent, path: newPath, depth: newDepth, space_id: targetSpaceId } });
+            // Renumber the new sibling list densely (0..n) with the page at the requested index (default: last), and
+            // close the gap in the old list — drag-and-drop in the sidebar sends the target index among the new siblings.
+            const siblings = await tx.wikiPage.findMany({ where: { space_id: targetSpaceId, parent_page_id: newParent, id: { not: id }, deleted_at: null }, select: { id: true }, orderBy: [{ sort_order: 'asc' }, { title: 'asc' }] });
+            const ordered = siblings.map((x) => x.id);
+            ordered.splice(Math.min(dto.sort_order ?? ordered.length, ordered.length), 0, id);
+            for (const [i, sid] of ordered.entries()) await tx.wikiPage.update({ where: { id: sid }, data: { sort_order: i } });
+            if (newParent !== page.parent_page_id || targetSpaceId !== page.space_id) {
+                const old = await tx.wikiPage.findMany({ where: { space_id: page.space_id, parent_page_id: page.parent_page_id, deleted_at: null }, select: { id: true }, orderBy: [{ sort_order: 'asc' }, { title: 'asc' }] });
+                for (const [i, o] of old.entries()) await tx.wikiPage.update({ where: { id: o.id }, data: { sort_order: i } });
             }
             if (oldPrefix !== newPrefix || targetSpaceId !== page.space_id) {
                 const descendants = await tx.wikiPage.findMany({ where: { organization_id: ctx.organization_id, path: { startsWith: oldPrefix } }, select: { id: true, path: true } });
@@ -477,38 +483,11 @@ export class DocsPagesService {
         return this.update(ctx, id, { content_markdown: md, change_summary: changeSummary, base_version_number: page.current_version_number } as UpdatePageDto);
     }
 
-    async publish(ctx: OrgContext, id: string, changeSummary?: string) {
-        const { page, level } = await this.access.readablePage(ctx, id);
-        this.access.assert(level, 'EDIT');
-        const now = new Date();
-        const updated = await this.prisma.$transaction(async (tx) => {
-            const row = await tx.wikiPage.update({
-                where: { id },
-                data: { status: WikiPageStatus.PUBLISHED, published_at: now, published_by_membership_id: ctx.membership_id, published_version_number: page.current_version_number, archived_at: null },
-            });
-            await tx.wikiPageVersion.updateMany({ where: { page_id: id, version_number: page.current_version_number }, data: { is_published_snapshot: true, ...(changeSummary && { change_summary: changeSummary }) } });
-            await this.audit.record(ctx, 'wiki_page.published', { resource_type: 'wiki_page', resource_id: id, metadata: { version_number: page.current_version_number, before: { status: page.status } } }, tx);
-            return row;
-        });
-        this.publishEvent(ctx, id, page.title, page.current_version_number);
-        return updated;
-    }
-
-    async unpublish(ctx: OrgContext, id: string) {
-        const { page, level } = await this.access.readablePage(ctx, id);
-        this.access.assert(level, 'EDIT');
-        const updated = await this.prisma.wikiPage.update({ where: { id }, data: { status: WikiPageStatus.DRAFT } });
-        await this.audit.record(ctx, 'wiki_page.unpublished', { resource_type: 'wiki_page', resource_id: id, metadata: { before: { status: page.status } } });
-        this.events.publish(ctx, { event_key: 'docs.page.unpublished', module: ModuleKey.BUSINESS_DOCS, entity_type: RecordEntityType.WIKI_PAGE, entity_id: id, payload: { title: page.title } });
-        return updated;
-    }
-
     async setArchived(ctx: OrgContext, id: string, archived: boolean) {
         const { page, level } = await this.access.readablePage(ctx, id);
         this.access.assert(level, 'EDIT');
-        const status = archived ? WikiPageStatus.ARCHIVED : page.published_at ? WikiPageStatus.PUBLISHED : WikiPageStatus.DRAFT;
-        const updated = await this.prisma.wikiPage.update({ where: { id }, data: { status, archived_at: archived ? new Date() : null } });
-        await this.audit.record(ctx, archived ? 'wiki_page.archived' : 'wiki_page.unarchived', { resource_type: 'wiki_page', resource_id: id, metadata: { before: { status: page.status }, after: { status } } });
+        const updated = await this.prisma.wikiPage.update({ where: { id }, data: { archived_at: archived ? new Date() : null } });
+        await this.audit.record(ctx, archived ? 'wiki_page.archived' : 'wiki_page.unarchived', { resource_type: 'wiki_page', resource_id: id, metadata: { before: { archived_at: page.archived_at }, after: { archived_at: updated.archived_at } } });
         this.events.publish(ctx, {
             event_key: archived ? 'docs.page.archived' : 'docs.page.unarchived', module: ModuleKey.BUSINESS_DOCS, entity_type: RecordEntityType.WIKI_PAGE, entity_id: id,
             payload: { title: page.title }, activity: { summary: `${archived ? 'archived' : 'unarchived'} the page ${page.title}`, entity_label: page.title },
@@ -591,7 +570,7 @@ export class DocsPagesService {
         await this.access.readablePage(ctx, id);
         const rows = await this.prisma.wikiPageVersion.findMany({
             where: { page_id: id },
-            select: { id: true, version_number: true, title: true, change_summary: true, is_published_snapshot: true, restored_from_version_id: true, created_by_membership_id: true, created_at: true },
+            select: { id: true, version_number: true, title: true, change_summary: true, restored_from_version_id: true, created_by_membership_id: true, created_at: true },
             orderBy: { version_number: 'desc' },
         });
         const authors = await this.prisma.membership.findMany({ where: { id: { in: rows.map((r) => r.created_by_membership_id).filter((x): x is string => !!x) } }, select: MEMBER_SELECT });
@@ -615,12 +594,13 @@ export class DocsPagesService {
         const updated = await this.prisma.$transaction(async (tx) => {
             const row = await tx.wikiPage.update({
                 where: { id },
-                data: { title: v.title, content: v.content ?? { format: 'markdown' }, content_markdown: v.content_markdown, excerpt: excerptOf(v.content_markdown), word_count: wordCount(v.content_markdown), current_version_number: next, last_edited_at: now, last_edited_by_membership_id: ctx.membership_id },
+                data: { title: v.title, content_markdown: v.content_markdown, excerpt: excerptOf(v.content_markdown), word_count: wordCount(v.content_markdown), current_version_number: next, last_edited_at: now, last_edited_by_membership_id: ctx.membership_id },
             });
             await tx.wikiPageVersion.create({
-                data: { page_id: id, version_number: next, title: v.title, content: v.content ?? { format: 'markdown' }, content_markdown: v.content_markdown, change_summary: changeSummary ?? `Restored version ${n}`, restored_from_version_id: v.id, created_by_membership_id: ctx.membership_id },
+                data: { page_id: id, version_number: next, title: v.title, content_markdown: v.content_markdown, change_summary: changeSummary ?? `Restored version ${n}`, restored_from_version_id: v.id, created_by_membership_id: ctx.membership_id },
             });
             await this.syncPageRefs(tx, ctx, id, v.content_markdown);
+            await this.syncAttachments(tx, ctx, id, v.content_markdown, row.cover_document_id);
             await this.audit.record(ctx, 'wiki_page.version_restored', { resource_type: 'wiki_page', resource_id: id, metadata: { restored_version: n, new_version: next } }, tx);
             return row;
         });
@@ -774,7 +754,7 @@ export class DocsPagesService {
     async acknowledge(ctx: OrgContext, id: string) {
         const { page } = await this.access.readablePage(ctx, id);
         const membershipId = this.requireMember(ctx);
-        const version = page.published_version_number ?? page.current_version_number;
+        const version = page.current_version_number;
         const now = new Date();
         const row = await this.prisma.wikiPageAcknowledgement.upsert({
             where: { page_id_membership_id: { page_id: id, membership_id: membershipId } },
@@ -793,7 +773,7 @@ export class DocsPagesService {
     async acknowledgements(ctx: OrgContext, id: string) {
         const { page } = await this.access.readablePage(ctx, id);
         const rows = await this.prisma.wikiPageAcknowledgement.findMany({ where: { page_id: id }, include: { membership: { select: MEMBER_SELECT } }, orderBy: { created_at: 'asc' } });
-        const version = page.published_version_number ?? page.current_version_number;
+        const version = page.ack_version_number ?? 0;
         const out = rows.map((r) => ({ ...r, is_current: !!r.acknowledged_at && (r.acknowledged_version_number ?? 0) >= version }));
         return { total: out.length, acknowledged: out.filter((r) => r.is_current).length, rows: out };
     }
@@ -804,11 +784,22 @@ export class DocsPagesService {
         await this.assertMembers(ctx, dto.membership_ids);
         const requiredBy = dto.required_by ? new Date(dto.required_by) : null;
         await this.prisma.$transaction([
-            this.prisma.wikiPage.update({ where: { id }, data: { requires_acknowledgement: true, ...(requiredBy && { ack_due_at: requiredBy }) } }),
+            this.prisma.wikiPage.update({ where: { id }, data: { requires_acknowledgement: true, ack_version_number: page.ack_version_number ?? page.current_version_number, ...(requiredBy && { ack_due_at: requiredBy }) } }),
             this.prisma.wikiPageAcknowledgement.createMany({ data: dto.membership_ids.map((m) => ({ page_id: id, membership_id: m, required_by: requiredBy })), skipDuplicates: true }),
         ]);
         await this.audit.record(ctx, 'wiki_page.acknowledgement_requested', { resource_type: 'wiki_page', resource_id: id, metadata: { membership_ids: dto.membership_ids, required_by: dto.required_by } });
         this.events.publish(ctx, { event_key: 'docs.page.acknowledgement_requested', module: ModuleKey.BUSINESS_DOCS, entity_type: RecordEntityType.WIKI_PAGE, entity_id: id, payload: { title: page.title, membership_ids: dto.membership_ids, required_by: dto.required_by } });
+        return this.acknowledgements(ctx, id);
+    }
+
+    /** "Ask readers to confirm again": the current version becomes the one everyone must acknowledge (after a significant change). */
+    async requestReacknowledge(ctx: OrgContext, id: string) {
+        const { page, level } = await this.access.readablePage(ctx, id);
+        this.access.assert(level, 'MANAGE');
+        if (!page.requires_acknowledgement) throw new BadRequestException({ message: 'Turn on "Readers must acknowledge" first', code: 'wiki_ack_not_required' });
+        await this.prisma.wikiPage.update({ where: { id }, data: { ack_version_number: page.current_version_number } });
+        await this.audit.record(ctx, 'wiki_page.reacknowledge_requested', { resource_type: 'wiki_page', resource_id: id, metadata: { before: { ack_version_number: page.ack_version_number }, after: { ack_version_number: page.current_version_number } } });
+        this.events.publish(ctx, { event_key: 'docs.page.acknowledgement_requested', module: ModuleKey.BUSINESS_DOCS, entity_type: RecordEntityType.WIKI_PAGE, entity_id: id, payload: { title: page.title, version_number: page.current_version_number } });
         return this.acknowledgements(ctx, id);
     }
 
@@ -826,7 +817,6 @@ export class DocsPagesService {
                 last_reviewed_by_membership_id: ctx.membership_id,
                 stale_flagged_at: null,
                 next_review_at: page.review_interval_days ? new Date(now.getTime() + page.review_interval_days * DAY) : null,
-                ...(page.status === WikiPageStatus.NEEDS_REVIEW && { status: WikiPageStatus.PUBLISHED }),
             },
         });
         await this.audit.record(ctx, 'wiki_page.reviewed', { resource_type: 'wiki_page', resource_id: id, metadata: { notes: dto.notes } });
@@ -893,7 +883,6 @@ export class DocsPagesService {
             OR: [{ title: { contains: q, mode: 'insensitive' } }, { content_markdown: { contains: q, mode: 'insensitive' } }],
             ...(query.space_id && { space_id: query.space_id }),
             ...(query.page_type?.length && { page_type: { in: query.page_type } }),
-            ...(query.status?.length && { status: { in: query.status } }),
             ...(query.owner_id && { owner_membership_id: query.owner_id }),
             ...(query.updated_after && { updated_at: { gte: new Date(query.updated_after) } }),
         };
@@ -907,7 +896,7 @@ export class DocsPagesService {
             .sort((a, b) => Number(b.title_match) - Number(a.title_match));
         if (query.page === 1) {
             this.prisma.wikiSearchQuery
-                .create({ data: { organization_id: ctx.organization_id, membership_id: ctx.membership_id, query: q.slice(0, 200), mode: WikiSearchMode.KEYWORD, filters: { space_id: query.space_id, page_type: query.page_type, status: query.status } as Prisma.InputJsonValue, result_count: total } })
+                .create({ data: { organization_id: ctx.organization_id, membership_id: ctx.membership_id, query: q.slice(0, 200), mode: WikiSearchMode.KEYWORD, filters: { space_id: query.space_id, page_type: query.page_type } as Prisma.InputJsonValue, result_count: total } })
                 .catch(() => undefined);
         }
         return paginate(items, total, query);
@@ -919,8 +908,8 @@ export class DocsPagesService {
         const from = new Date(Date.now() - query.days * DAY);
         const now = new Date();
         const pageIds = (await this.prisma.wikiPage.findMany({ where: readable, select: { id: true } })).map((r) => r.id);
-        const [byStatus, overdue, daily, topViews, searches, zeroSearches, ackTotal, ackDone] = await Promise.all([
-            this.prisma.wikiPage.groupBy({ by: ['status'], where: readable, _count: { _all: true } }),
+        const [byType, overdue, daily, topViews, searches, zeroSearches, ackTotal, ackDone] = await Promise.all([
+            this.prisma.wikiPage.groupBy({ by: ['page_type'], where: readable, _count: { _all: true } }),
             this.prisma.wikiPage.count({ where: { ...readable, next_review_at: { lt: now } } }),
             this.prisma.wikiPageViewDaily.groupBy({ by: ['day'], where: { organization_id: ctx.organization_id, page_id: { in: pageIds }, day: { gte: from } }, _sum: { view_count: true, unique_readers: true }, orderBy: { day: 'asc' } }),
             this.prisma.wikiPageViewDaily.groupBy({ by: ['page_id'], where: { organization_id: ctx.organization_id, page_id: { in: pageIds }, day: { gte: from } }, _sum: { view_count: true }, orderBy: { _sum: { view_count: 'desc' } }, take: 10 }),
@@ -931,7 +920,7 @@ export class DocsPagesService {
         ]);
         const titles = await this.prisma.wikiPage.findMany({ where: { id: { in: topViews.map((t) => t.page_id) } }, select: { id: true, title: true, icon: true } });
         return {
-            pages: { total: pageIds.length, by_status: Object.fromEntries(byStatus.map((s) => [s.status, s._count._all])), review_overdue: overdue },
+            pages: { total: pageIds.length, by_type: Object.fromEntries(byType.map((t) => [t.page_type, t._count._all])), review_overdue: overdue },
             views: {
                 total: daily.reduce((n, d) => n + (d._sum.view_count ?? 0), 0),
                 daily: daily.map((d) => ({ day: d.day, views: d._sum.view_count ?? 0, readers: d._sum.unique_readers ?? 0 })),
@@ -949,12 +938,45 @@ export class DocsPagesService {
     // Helpers
     // ---------------------------------------------------------------------------------------------
 
-    private publishEvent(ctx: OrgContext, id: string, title: string, version: number) {
-        this.events.publish(ctx, {
-            event_key: 'docs.page.published', module: ModuleKey.BUSINESS_DOCS, entity_type: RecordEntityType.WIKI_PAGE, entity_id: id,
-            payload: { title, version_number: version },
-            activity: { summary: `published the page ${title}`, entity_label: title },
-        });
+    // ---------------------------------------------------------------------------------------------
+    // Attachments (cover + inline images): uploaded through the docs module on the page's EDIT level, so page editors
+    // do not need documents.documents.create. Markdown stores `![alt](attachment:<document_id>)`; the editor resolves
+    // it to a short-lived signed URL through attachmentUrl().
+    // ---------------------------------------------------------------------------------------------
+
+    async uploadAttachment(ctx: OrgContext, id: string, file: IncomingFile) {
+        const { level } = await this.access.readablePage(ctx, id);
+        this.access.assert(level, 'EDIT');
+        if (!file?.mimetype?.startsWith('image/')) throw new BadRequestException({ message: 'Only images can be added to a page', code: 'wiki_attachment_not_image' });
+        const doc = await this.documents.upload(ctx, file, { entity_type: RecordEntityType.WIKI_PAGE, entity_id: id, title: file.originalname } as Parameters<DocumentsService['upload']>[2], { source_module: ModuleKey.BUSINESS_DOCS, role: 'wiki_image', authorized_by_module: true });
+        const documentId = (doc as { id: string }).id;
+        await this.prisma.wikiPageAttachment.upsert({ where: { page_id_document_id: { page_id: id, document_id: documentId } }, update: {}, create: { page_id: id, document_id: documentId, added_by_user_id: ctx.user_id } });
+        await this.audit.record(ctx, 'wiki_page.attachment_added', { resource_type: 'wiki_page', resource_id: id, metadata: { document_id: documentId, filename: file.originalname } });
+        const url = await this.documents.issueRecordDownloadUrl(ctx.organization_id, documentId, 'inline');
+        return { document_id: documentId, src: `attachment:${documentId}`, url: url.path, expires_at: url.expires_at };
+    }
+
+    /** Signed inline URL for an image (or the cover) of a page the caller can read. */
+    async attachmentUrl(ctx: OrgContext, id: string, documentId: string) {
+        await this.access.readablePage(ctx, id);
+        const linked = await this.prisma.wikiPage.count({ where: { id, OR: [{ cover_document_id: documentId }, { attachments: { some: { document_id: documentId } } }] } });
+        if (!linked) throw new NotFoundException({ message: 'This image is not part of the page', code: 'wiki_attachment_not_found' });
+        const url = await this.documents.issueRecordDownloadUrl(ctx.organization_id, documentId, 'inline');
+        return { url: url.path, expires_at: url.expires_at };
+    }
+
+    /** Keep WikiPageAttachment rows in line with the images in the markdown + the cover (removed images unlink). */
+    private async syncAttachments(tx: Prisma.TransactionClient, ctx: OrgContext, pageId: string, md: string | null, coverId: string | null) {
+        const ids = [...new Set([...parseAttachmentRefs(md), ...(coverId ? [coverId] : [])])];
+        const owned = ids.length ? await tx.document.findMany({ where: { id: { in: ids }, organization_id: ctx.organization_id }, select: { id: true } }) : [];
+        const keep = owned.map((d) => d.id);
+        await tx.wikiPageAttachment.deleteMany({ where: { page_id: pageId, document_id: { notIn: keep } } });
+        if (keep.length) await tx.wikiPageAttachment.createMany({ data: keep.map((d) => ({ page_id: pageId, document_id: d, added_by_user_id: ctx.user_id })), skipDuplicates: true });
+    }
+
+    private async assertDocument(ctx: OrgContext, documentId: string) {
+        const n = await this.prisma.document.count({ where: { id: documentId, organization_id: ctx.organization_id, deleted_at: null } });
+        if (!n) throw new BadRequestException({ message: 'Cover image not found', code: 'wiki_cover_not_found' });
     }
 
     private snippet(md: string | null, q: string) {
@@ -998,7 +1020,7 @@ export class DocsPagesService {
     }
 
     private assertCustomerVisible(ctx: OrgContext, space: { allow_customer_visible: boolean }) {
-        if (!ctx.can('docs.pages.publish')) throw new ForbiddenException({ message: 'You need docs.pages.publish to expose a page to customers', code: 'permission_denied', permissions: ['docs.pages.publish'] });
+        if (!ctx.can(SHARE_CUSTOMERS)) throw new ForbiddenException({ message: `You need ${SHARE_CUSTOMERS} to expose a page to customers`, code: 'permission_denied', permissions: [SHARE_CUSTOMERS] });
         if (!space.allow_customer_visible) throw new BadRequestException({ message: 'This space does not allow customer-visible pages', code: 'wiki_customer_visible_not_allowed' });
     }
 

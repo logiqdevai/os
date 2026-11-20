@@ -13,6 +13,7 @@ import { DocsFormsController } from './controllers/forms.controller';
 import { DocsPublicFormsController } from './controllers/public-forms.controller';
 import { DocsMcp } from './docs.mcp';
 import { AiIntegrationModule } from '@/integrations/ai/ai.module';
+import { FilesModule } from '@/modules/files/files.module';
 import { DocsAiService } from './services/docs-ai.service';
 import { DocsTransferService } from './services/docs-transfer.service';
 import { DocsAiController } from './controllers/docs-ai.controller';
@@ -20,7 +21,7 @@ import { DocsTransferController } from './controllers/transfer.controller';
 
 /** 15 Business Docs — spaces, pages, templates, checklists, forms. Services are exported for automation (20) and other modules. */
 @Module({
-    imports: [AiIntegrationModule],
+    imports: [AiIntegrationModule, FilesModule],
     controllers: [DocsAiController, DocsTransferController, DocsSpacesController, DocsPagesController, DocsTemplatesController, DocsChecklistsController, DocsFormsController, DocsPublicFormsController],
     providers: [DocsAccessService, DocsSpacesService, DocsPagesService, DocsTemplatesService, DocsChecklistsService, DocsFormsService, DocsAiService, DocsTransferService, DocsMcp],
     exports: [DocsAiService, DocsAccessService, DocsSpacesService, DocsPagesService, DocsTemplatesService, DocsChecklistsService, DocsFormsService],

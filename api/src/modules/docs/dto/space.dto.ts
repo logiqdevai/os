@@ -93,16 +93,6 @@ export class CreateSpaceDto {
 
     @ApiProperty({ required: false })
     @IsOptional()
-    @IsBoolean()
-    members_can_publish?: boolean;
-
-    @ApiProperty({ required: false })
-    @IsOptional()
-    @IsBoolean()
-    require_review_before_publish?: boolean;
-
-    @ApiProperty({ required: false })
-    @IsOptional()
     @IsInt()
     sort_order?: number;
 

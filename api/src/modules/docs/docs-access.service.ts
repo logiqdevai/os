@@ -103,7 +103,7 @@ export class DocsAccessService {
         return out;
     }
 
-    /** Pages the caller may read: readable space + (organization visibility | own page | matching grant); drafts only for editors and owners. */
+    /** Pages the caller may read: readable space + (organization visibility | own page | matching grant). Every edit is live (no drafts). */
     readablePageWhere(ctx: OrgContext, p: DocsPrincipals, opts: { includeDeleted?: boolean } = {}): Prisma.WikiPageWhereInput {
         const where: Prisma.WikiPageWhereInput = {
             organization_id: ctx.organization_id,
@@ -116,17 +116,17 @@ export class DocsAccessService {
             ...(ctx.user_id ? [{ created_by_user_id: ctx.user_id }] : []),
         ];
         const grants = this.grantMatch(p);
-        const and: Prisma.WikiPageWhereInput[] = [
-            {
+        // Inside AND, so callers can spread this and still add their own OR (e.g. search title | content).
+        return {
+            ...where,
+            AND: [{
                 OR: [
                     { visibility: WikiVisibility.ORGANIZATION },
                     ...mine,
                     ...(grants.length ? [{ permissions: { some: { OR: grants } } }] : []),
                 ],
-            },
-        ];
-        if (!ctx.can('docs.pages.update')) and.push({ OR: [{ status: { not: 'DRAFT' } }, ...mine] });
-        return { ...where, AND: and };
+            }],
+        };
     }
 
     /** Effective level on a space (members table, privacy, permission keys). */
@@ -176,7 +176,7 @@ export class DocsAccessService {
         const principals = p ?? (await this.principals(ctx));
         const page = await this.prisma.wikiPage.findFirst({
             where: { id, ...this.readablePageWhere(ctx, principals, opts) },
-            include: { space: { select: { id: true, name: true, slug: true, is_private: true, owner_membership_id: true, allow_customer_visible: true, members_can_publish: true, icon: true, color: true } } },
+            include: { space: { select: { id: true, name: true, slug: true, is_private: true, owner_membership_id: true, allow_customer_visible: true, icon: true, color: true } } },
         });
         if (!page) throw new NotFoundException({ message: 'Page not found', code: 'wiki_page_not_found' });
         const level = await this.pageLevel(ctx, page, page.space, principals);

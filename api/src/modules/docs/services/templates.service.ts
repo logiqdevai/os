@@ -51,7 +51,7 @@ export class DocsTemplatesService {
     async create(ctx: OrgContext, dto: CreateTemplateDto) {
         await this.assertSpace(ctx, dto.space_id);
         const tpl = await this.prisma.wikiPageTemplate.create({
-            data: { ...dto, organization_id: ctx.organization_id, slug: await this.uniqueSlug(ctx, dto.name), content: { format: 'markdown' }, created_by_user_id: ctx.user_id },
+            data: { ...dto, organization_id: ctx.organization_id, slug: await this.uniqueSlug(ctx, dto.name), created_by_user_id: ctx.user_id },
         });
         await this.audit.record(ctx, 'wiki_template.created', { resource_type: 'wiki_page_template', resource_id: tpl.id, metadata: { after: { name: dto.name, page_type: dto.page_type } } });
         this.events.publish(ctx, { event_key: 'docs.template.created', module: ModuleKey.BUSINESS_DOCS, entity_kind: 'wiki_page_template', entity_id: tpl.id, payload: { name: tpl.name } });

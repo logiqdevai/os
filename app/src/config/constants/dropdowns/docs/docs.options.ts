@@ -1,6 +1,6 @@
 import type {
     CustomFormFieldType, CustomFormKind, CustomFormStatus, FormSubmissionStatus, WikiChecklistAssigneeKind, WikiChecklistItemStatus, WikiChecklistKind,
-    WikiChecklistRunStatus, WikiPageStatus, WikiPageType, WikiPermissionLevel, WikiPrincipalType, WikiSpaceKind, WikiVisibility,
+    WikiChecklistRunStatus, WikiPageType, WikiPermissionLevel, WikiPrincipalType, WikiSpaceKind, WikiVisibility,
 } from "@/features/docs/interfaces/docs.interfaces";
 import type { DropdownOption } from "@/lib/dropdown-option-label.utils";
 
@@ -13,13 +13,6 @@ export const WikiSpaceKindFormOptions: DropdownOption<WikiSpaceKind>[] = [
     { id: "PROJECT", label: "Project" },
 ];
 export const WikiSpaceKindFilterOptions: DropdownOption<WikiSpaceKind | "all">[] = [{ id: "all", label: "All kinds" }, ...WikiSpaceKindFormOptions];
-
-export const WikiPageStatusOptions: DropdownOption<WikiPageStatus>[] = [
-    { id: "DRAFT", label: "Draft" },
-    { id: "PUBLISHED", label: "Published" },
-    { id: "NEEDS_REVIEW", label: "Needs review" },
-    { id: "ARCHIVED", label: "Archived" },
-];
 
 export const WikiPageTypeFormOptions: DropdownOption<WikiPageType>[] = [
     { id: "GENERAL", label: "Page" },

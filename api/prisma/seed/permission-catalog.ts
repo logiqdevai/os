@@ -212,7 +212,8 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
   { key: 'notifications.defaults.manage', module: ModuleKey.NOTIFICATIONS, resource: 'defaults', action: 'manage' },
   { key: 'automation.rules.manage', module: ModuleKey.AUTOMATION, resource: 'rules', action: 'manage', is_sensitive: true },
   { key: 'docs.pages.read', module: ModuleKey.BUSINESS_DOCS, resource: 'pages', action: 'read' },
-  { key: 'docs.pages.publish', module: ModuleKey.BUSINESS_DOCS, resource: 'pages', action: 'publish' },
+  // 15 §4 — expose a page to customers (portal / help center). Pages have no draft/publish step: every edit is live.
+  { key: 'docs.pages.share_customers', module: ModuleKey.BUSINESS_DOCS, resource: 'pages', action: 'share_customers', is_sensitive: true },
   // --- Added from the feature specs' permission sections and module scopes (08–20) --------------------
   ...crud(ModuleKey.COMMUNICATION, 'communications', 'messages', ['send'], ['send']),
   ...crud(ModuleKey.COMMUNICATION, 'communications', 'templates'),
@@ -411,6 +412,8 @@ export const PERMISSION_CATALOG: PermissionSeed[] = [
  */
 export const RENAMED_PERMISSION_KEYS: Record<string, string> = {
   'finance.stripe.manage': 'finance.payment_providers.manage',
+  // 15: pages have no draft/publish step any more; the key only ever gated customer visibility.
+  'docs.pages.publish': 'docs.pages.share_customers',
 };
 
 /**
