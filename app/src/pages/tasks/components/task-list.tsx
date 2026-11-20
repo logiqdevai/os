@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Archive, ChevronDown, CircleDot, Plus, ListTodo, UserRound, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { MemberAvatar } from "@/components/ui/member-avatar";
+import { MemberAvatar, MemberAvatarStack } from "@/components/ui/member-avatar";
 import { EntityPicker } from "@/components/ui/entity-picker";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { Pagination } from "@/components/ui/pagination";
@@ -74,10 +74,12 @@ export function TaskList({ query, groupBy = "status", onPageChange, empty, hideP
                 label = t.project?.name ?? "No project";
                 sort = t.project ? 0 : 1;
             } else if (groupBy === "assignee") {
-                key = t.assignee?.id ?? "none";
-                label = t.assignee ? personName(t.assignee.user) : "Unassigned";
-                sort = t.assignee ? 0 : 1;
-                icon = <MemberAvatar person={t.assignee?.user} size="xs" />;
+                // Grouped by the first assignee; the row itself shows everyone.
+                const first = t.assignees[0];
+                key = first?.id ?? "none";
+                label = first ? personName(first.user) : "Unassigned";
+                sort = first ? 0 : 1;
+                icon = <MemberAvatar person={first?.user} size="xs" />;
             }
             if (!map.has(key)) map.set(key, { key, label, sort, icon, tasks: [] });
             map.get(key)!.tasks.push(t);
@@ -146,7 +148,7 @@ export function TaskList({ query, groupBy = "status", onPageChange, empty, hideP
                                         {!hideProject && show("project") && t.project && <span className="hidden max-w-36 truncate text-xs text-muted-foreground lg:inline">{t.project.name}</span>}
                                         {show("due") && t.due_date && <span className={cn("shrink-0 text-xs tabular", overdue ? "text-danger" : "text-muted-foreground")}>{formatDate(t.due_date, "MMM d")}</span>}
                                         {show("subtasks") && t._count.subtasks > 0 && <span className="hidden text-xs text-muted-foreground sm:inline">{t._count.subtasks} sub</span>}
-                                        {show("assignee") && <MemberAvatar person={t.assignee?.user} size="xs" />}
+                                        {show("assignee") && <MemberAvatarStack people={t.assignees} size="xs" />}
                                     </li>
                                 );
                             })}
@@ -195,8 +197,8 @@ function BulkBar({ ids, onDone }: { ids: string[]; onDone: () => void }) {
                 items={(people.data ?? []).map((m) => ({ id: m.id, label: personName(m.user), icon: <MemberAvatar person={m.user} size="xs" /> }))}
                 value={null}
                 onSearch={setSearch}
-                noneLabel="Unassign"
-                onChange={(v) => run({ patch: { assignee_membership_id: v }, optimistic: { assignee: (people.data ?? []).find((m) => m.id === v) ?? null } })}
+                noneLabel="Unassign all"
+                onChange={(v) => run({ patch: { assignee_ids: v ? [v] : [] }, optimistic: { assignees: (people.data ?? []).filter((m) => m.id === v) } })}
                 trigger={<Button variant="outline" size="sm"><UserRound /> Assign</Button>}
                 ariaLabel="Assign"
             />

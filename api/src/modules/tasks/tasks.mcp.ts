@@ -38,7 +38,7 @@ export class TasksMcp implements OnModuleInit {
                 ...base, name: 'tasks_tasks_update', description: 'Update a task: title, description, status_id (must be allowed by the workflow), priority, due_date, estimate, project, cycle, labels.', permission: 'tasks.tasks.update', input: UpdateTaskSchema,
                 handler: (ctx, { id, ...dto }) => this.tasks.update(ctx, id, dto),
             },
-            { ...base, name: 'tasks_tasks_assign', description: 'Assign a task to a member (or null to unassign).', permission: 'tasks.tasks.assign', input: AssignTaskSchema, handler: (ctx, a) => this.tasks.assign(ctx, a.id, { assignee_membership_id: a.assignee_membership_id }) },
+            { ...base, name: 'tasks_tasks_assign', description: 'Set the assignees of a task (list of member ids; empty list unassigns).', permission: 'tasks.tasks.assign', input: AssignTaskSchema, handler: (ctx, a) => this.tasks.assign(ctx, a.id, { assignee_ids: a.assignee_ids }) },
             {
                 ...base, name: 'tasks_comments_create', description: 'Comment on a task (visibility INTERNAL or CUSTOMER_VISIBLE; mentions are membership ids).', permission: 'tasks.tasks.update', input: CommentTaskSchema,
                 handler: (ctx, { id, ...dto }) => this.details.createComment(ctx, id, dto),

@@ -51,3 +51,16 @@ export function MemberAvatar({ person, size = "sm", showName, emptyLabel = "Unas
         </Tooltip>
     );
 }
+
+/** Overlapping avatars of several people (max `max` shown, then +N); nobody → the dashed "Unassigned" avatar. */
+export function MemberAvatarStack({ people, max = 3, size = "xs", emptyLabel = "Unassigned", className }: { people: { user: AvatarPerson }[]; max?: number; size?: "xs" | "sm" | "md"; emptyLabel?: string; className?: string }) {
+    if (!people.length) return <MemberAvatar person={null} size={size} emptyLabel={emptyLabel} className={className} />;
+    const shown = people.slice(0, max);
+    const extra = people.length - shown.length;
+    return (
+        <span className={cn("inline-flex items-center -space-x-1.5", className)}>
+            {shown.map((p, i) => <MemberAvatar key={i} person={p.user} size={size} className="rounded-full ring-2 ring-background" />)}
+            {extra > 0 && <span className={cn("inline-flex items-center justify-center rounded-full bg-secondary font-medium text-muted-foreground ring-2 ring-background", sizeClass[size])}>+{extra}</span>}
+        </span>
+    );
+}

@@ -50,7 +50,6 @@ export class TasksService {
                 { project: { branch_id: { in: scope.branch_ids } } },
                 { project: { team_id: { in: scope.team_ids } } },
                 { project: { company_id: { in: scope.customer_ids } } },
-                { assignee_membership_id: me },
                 { reporter_membership_id: me },
                 { assignees: { some: { membership_id: me } } },
                 { watchers: { some: { membership_id: me } } },
@@ -112,8 +111,8 @@ export class TasksService {
             this.scopeWhere(ctx),
             q.archived ? { archived_at: { not: null } } : { archived_at: null },
         ];
-        if (q.mine) and.push({ OR: [{ assignee_membership_id: me }, { assignees: { some: { membership_id: me } } }] });
-        if (q.assignee) and.push({ assignee_membership_id: who(q.assignee) });
+        if (q.mine) and.push({ assignees: { some: { membership_id: me } } });
+        if (q.assignee) and.push(q.assignee === 'none' ? { assignees: { none: {} } } : { assignees: { some: { membership_id: who(q.assignee) as string } } });
         if (q.reporter) and.push({ reporter_membership_id: who(q.reporter) });
         if (q.status_id?.length) and.push({ status_id: { in: q.status_id } });
         if (q.status_category?.length) and.push({ status: { category: { in: q.status_category } } });
@@ -271,9 +270,6 @@ export class TasksService {
 
     async create(ctx: OrgContext, dto: CreateTaskDto) {
         const me = ctx.membership_id;
-        if (dto.assignee_membership_id && dto.assignee_membership_id !== me && !ctx.can('tasks.tasks.assign')) {
-            throw new ForbiddenException({ message: 'Assigning someone else needs tasks.tasks.assign', code: 'permission_denied' });
-        }
         if (dto.assignee_ids?.some((id) => id !== me) && !ctx.can('tasks.tasks.assign')) {
             throw new ForbiddenException({ message: 'Assigning someone else needs tasks.tasks.assign', code: 'permission_denied' });
         }
@@ -297,9 +293,8 @@ export class TasksService {
         const template = (type?.template ?? {}) as { priority?: string; checklist?: string[]; estimate_points?: number };
 
         const checklist = dto.checklist?.length ? dto.checklist : template.checklist ?? [];
-        const assignee = dto.assignee_membership_id ?? null;
-        const extraAssignees = [...new Set((dto.assignee_ids ?? []).filter((id) => id !== assignee))];
-        const watchers = [...new Set([me, assignee, ...extraAssignees].filter(Boolean))] as string[];
+        const assignees = [...new Set(dto.assignee_ids ?? [])];
+        const watchers = [...new Set([me, ...assignees].filter(Boolean))] as string[];
 
         const task = await this.prisma.$transaction(async (tx) => {
             const number = await nextTaskNumber(tx, ctx.organization_id, teamId);
@@ -320,7 +315,6 @@ export class TasksService {
                     type_id: type?.id ?? null,
                     status_id: status?.id ?? null,
                     priority: dto.priority ?? ((template.priority as CreateTaskDto['priority']) || undefined),
-                    assignee_membership_id: assignee,
                     reporter_membership_id: me,
                     estimate_points: dto.estimate_points ?? template.estimate_points ?? null,
                     estimate_hours: dto.estimate_hours ?? null,
@@ -335,7 +329,7 @@ export class TasksService {
                 },
             });
             if (dto.label_ids?.length) await tx.taskLabelAssignment.createMany({ data: dto.label_ids.map((label_id) => ({ task_id: created.id, label_id })), skipDuplicates: true });
-            if (extraAssignees.length) await tx.taskAssignee.createMany({ data: extraAssignees.map((membership_id) => ({ task_id: created.id, membership_id })), skipDuplicates: true });
+            if (assignees.length) await tx.taskAssignee.createMany({ data: assignees.map((membership_id) => ({ task_id: created.id, membership_id })), skipDuplicates: true });
             if (watchers.length) await tx.taskWatcher.createMany({ data: watchers.map((membership_id) => ({ task_id: created.id, membership_id })), skipDuplicates: true });
             if (checklist.length) await tx.taskChecklistItem.createMany({ data: checklist.map((title, i) => ({ task_id: created.id, title, sort_order: i })) });
             await tx.taskStatusHistory.create({ data: { task_id: created.id, from_status_id: null, to_status_id: status?.id ?? null, to_category: status?.category ?? null, changed_by_membership_id: me } });
@@ -344,7 +338,7 @@ export class TasksService {
 
         const identifier = `${refs.team?.task_key || DEFAULT_TASK_KEY}-${task.number}`;
         await this.audit.record(ctx, 'task.created', { resource_type: 'task', resource_id: task.id, branch_id: refs.project?.branch_id ?? null, metadata: { identifier, after: dto } });
-        const assigneeIds = [assignee, ...extraAssignees].filter((id) => id && id !== me) as string[];
+        const assigneeIds = assignees.filter((id) => id !== me);
         this.events.publish(ctx, {
             event_key: 'tasks.task.created', module: ModuleKey.TASKS, entity_type: RecordEntityType.TASK, entity_id: task.id,
             payload: {
@@ -364,11 +358,13 @@ export class TasksService {
     async update(ctx: OrgContext, idOrKey: string, dto: UpdateTaskDto & { rank?: string }) {
         const before = await this.load(ctx, idOrKey, 'tasks.tasks.update');
         const me = ctx.membership_id;
-        const assigneeChanged = dto.assignee_membership_id !== undefined && dto.assignee_membership_id !== before.assignee_membership_id;
-        if (assigneeChanged && dto.assignee_membership_id !== me && !ctx.can('tasks.tasks.assign')) {
-            throw new ForbiddenException({ message: 'Assigning someone else needs tasks.tasks.assign', code: 'permission_denied' });
+        const beforeAssignees = before.assignees.map((a) => a.membership_id);
+        const nextAssignees = dto.assignee_ids ? [...new Set(dto.assignee_ids)] : null;
+        const addedAssignees = nextAssignees ? nextAssignees.filter((id) => !beforeAssignees.includes(id)) : [];
+        const removedAssignees = nextAssignees ? beforeAssignees.filter((id) => !nextAssignees.includes(id)) : [];
+        if ([...addedAssignees, ...removedAssignees].some((id) => id !== me) && !ctx.can('tasks.tasks.assign')) {
+            throw new ForbiddenException({ message: 'Changing assignees needs tasks.tasks.assign', code: 'permission_denied' });
         }
-        if (dto.assignee_ids && !ctx.can('tasks.tasks.assign')) throw new ForbiddenException({ message: 'Changing assignees needs tasks.tasks.assign', code: 'permission_denied' });
         if (dto.parent_task_id && dto.parent_task_id === before.id) throw new BadRequestException({ message: 'A task cannot be its own parent', code: 'task_parent_cycle' });
         const refs = await this.resolveRefs(ctx, dto, before.id);
 
@@ -414,12 +410,11 @@ export class TasksService {
                 await tx.taskLabelAssignment.deleteMany({ where: { task_id: before.id, label_id: { notIn: label_ids } } });
                 await tx.taskLabelAssignment.createMany({ data: label_ids.map((label_id) => ({ task_id: before.id, label_id })), skipDuplicates: true });
             }
-            if (assignee_ids) {
-                await tx.taskAssignee.deleteMany({ where: { task_id: before.id, membership_id: { notIn: assignee_ids } } });
-                await tx.taskAssignee.createMany({ data: assignee_ids.map((membership_id) => ({ task_id: before.id, membership_id })), skipDuplicates: true });
+            if (nextAssignees) {
+                await tx.taskAssignee.deleteMany({ where: { task_id: before.id, membership_id: { notIn: nextAssignees } } });
+                await tx.taskAssignee.createMany({ data: nextAssignees.map((membership_id) => ({ task_id: before.id, membership_id })), skipDuplicates: true });
             }
-            const newWatchers = [assigneeChanged ? dto.assignee_membership_id : null, ...(assignee_ids ?? [])].filter(Boolean) as string[];
-            if (newWatchers.length) await tx.taskWatcher.createMany({ data: newWatchers.map((membership_id) => ({ task_id: before.id, membership_id })), skipDuplicates: true });
+            if (addedAssignees.length) await tx.taskWatcher.createMany({ data: addedAssignees.map((membership_id) => ({ task_id: before.id, membership_id })), skipDuplicates: true });
             if (statusChanged) {
                 const lastChange = await tx.taskStatusHistory.findFirst({ where: { task_id: before.id }, orderBy: { changed_at: 'desc' }, select: { changed_at: true } });
                 const since = lastChange?.changed_at ?? before.created_at;
@@ -457,11 +452,11 @@ export class TasksService {
                 activity: { summary: `moved ${identifier} to ${nextStatus?.name ?? 'no status'}`, entity_label: `${identifier} ${before.title}`, project_id: before.project_id, company_id: before.project?.company_id ?? null, customer_visible: before.customer_visible },
             });
         }
-        if (assigneeChanged && dto.assignee_membership_id) {
-            await this.audit.record(ctx, 'task.assigned', { resource_type: 'task', resource_id: before.id, metadata: { identifier, before: before.assignee_membership_id, after: dto.assignee_membership_id } });
+        if (addedAssignees.length) {
+            await this.audit.record(ctx, 'task.assigned', { resource_type: 'task', resource_id: before.id, metadata: { identifier, before: beforeAssignees, after: nextAssignees } });
             this.events.publish(ctx, {
                 event_key: 'tasks.task.assigned', module: ModuleKey.TASKS, entity_type: RecordEntityType.TASK, entity_id: before.id,
-                payload: { identifier, title: before.title, assignee_membership_ids: dto.assignee_membership_id !== me ? [dto.assignee_membership_id] : [], previous_assignee_membership_id: before.assignee_membership_id },
+                payload: { identifier, title: before.title, assignee_membership_ids: addedAssignees.filter((id) => id !== me), previous_assignee_membership_ids: beforeAssignees },
             });
         }
         const projects = new Set([before.project_id, data.project_id as string].filter(Boolean));
@@ -470,7 +465,7 @@ export class TasksService {
     }
 
     async assign(ctx: OrgContext, idOrKey: string, dto: AssignTaskDto) {
-        return this.update(ctx, idOrKey, { assignee_membership_id: dto.assignee_membership_id });
+        return this.update(ctx, idOrKey, { assignee_ids: dto.assignee_ids });
     }
 
     /** Board drag & drop: change status and/or position between two neighbours. */
@@ -542,22 +537,25 @@ export class TasksService {
         const tasks = await this.prisma.task.findMany({
             where,
             take: 5000,
-            select: { assignee_membership_id: true, due_date: true, blocked: true, estimate_points: true, priority: true, status: { select: { category: true } } },
+            select: { assignees: { select: { membership_id: true } }, due_date: true, blocked: true, estimate_points: true, priority: true, status: { select: { category: true } } },
         });
         const today = startOfDay();
         const weekEnd = addDays(today, 7);
         const rows = new Map<string, { open: number; in_progress: number; overdue: number; blocked: number; points: number; due_this_week: number; urgent: number }>();
         for (const t of tasks) {
-            const key = t.assignee_membership_id ?? 'unassigned';
-            const r = rows.get(key) ?? { open: 0, in_progress: 0, overdue: 0, blocked: 0, points: 0, due_this_week: 0, urgent: 0 };
-            r.open += 1;
-            if (t.status?.category === TaskStatusCategory.IN_PROGRESS || t.status?.category === TaskStatusCategory.IN_REVIEW) r.in_progress += 1;
-            if (t.due_date && t.due_date < today) r.overdue += 1;
-            if (t.due_date && t.due_date >= today && t.due_date <= weekEnd) r.due_this_week += 1;
-            if (t.blocked || t.status?.category === TaskStatusCategory.BLOCKED) r.blocked += 1;
-            if (t.priority === 'URGENT' || t.priority === 'HIGH') r.urgent += 1;
-            r.points += t.estimate_points ? Number(t.estimate_points) : 0;
-            rows.set(key, r);
+            // A task with several assignees counts once for each of them.
+            const keys = t.assignees.length ? t.assignees.map((a) => a.membership_id) : ['unassigned'];
+            for (const key of keys) {
+                const r = rows.get(key) ?? { open: 0, in_progress: 0, overdue: 0, blocked: 0, points: 0, due_this_week: 0, urgent: 0 };
+                r.open += 1;
+                if (t.status?.category === TaskStatusCategory.IN_PROGRESS || t.status?.category === TaskStatusCategory.IN_REVIEW) r.in_progress += 1;
+                if (t.due_date && t.due_date < today) r.overdue += 1;
+                if (t.due_date && t.due_date >= today && t.due_date <= weekEnd) r.due_this_week += 1;
+                if (t.blocked || t.status?.category === TaskStatusCategory.BLOCKED) r.blocked += 1;
+                if (t.priority === 'URGENT' || t.priority === 'HIGH') r.urgent += 1;
+                r.points += t.estimate_points ? Number(t.estimate_points) : 0;
+                rows.set(key, r);
+            }
         }
         const memberIds = [...rows.keys()].filter((k) => k !== 'unassigned');
         const members = memberIds.length ? await this.prisma.membership.findMany({ where: { id: { in: memberIds } }, select: MEMBER_SELECT }) : [];
@@ -623,7 +621,7 @@ export class TasksService {
         if (dto.cycle_id && !cycle) missing.push('cycle');
         if (dto.release_id && !release) missing.push('release');
         if (dto.workstream_id && !workstream) missing.push('workstream');
-        const people = [dto.assignee_membership_id, ...(dto.assignee_ids ?? [])].filter(Boolean) as string[];
+        const people = dto.assignee_ids ?? [];
         if (people.length) {
             const count = await this.prisma.membership.count({ where: { id: { in: people }, organization_id: org } });
             if (count !== new Set(people).size) missing.push('assignee');

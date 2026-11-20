@@ -115,7 +115,7 @@ export const ACTION_CATALOG: ActionCatalogEntry[] = [
             { key: 'title', label: 'Title', type: 'text', required: true, placeholder: 'Kick-off with {{event.payload.name}}' },
             { key: 'description', label: 'Description', type: 'textarea' },
             { key: 'project_id', label: 'Project id', type: 'text' },
-            { key: 'assignee_membership_id', label: 'Assignee', type: 'member' },
+            { key: 'assignee_ids', label: 'Assignees', type: 'members' },
             { key: 'priority', label: 'Priority', type: 'select', options: PRIORITIES },
         ],
     },
@@ -127,8 +127,8 @@ export const ACTION_CATALOG: ActionCatalogEntry[] = [
     {
         key: 'tasks.assign', module: ModuleKey.TASKS, name: 'Assign task', kind: AutomationActionKind.ASSIGN,
         executor: { type: 'mcp', tool: 'tasks_tasks_assign' }, required_permission: 'tasks.tasks.assign',
-        description: 'Assigns a task to a member.',
-        fields: [recordId('Task id'), { key: 'assignee_membership_id', label: 'Assignee', type: 'member', required: true }],
+        description: 'Sets the assignees of a task.',
+        fields: [recordId('Task id'), { key: 'assignee_ids', label: 'Assignees', type: 'members', required: true }],
     },
     {
         key: 'crm.lead.create', module: ModuleKey.CRM, name: 'Create lead', kind: AutomationActionKind.CREATE_RECORD,

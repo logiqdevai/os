@@ -241,7 +241,7 @@ export class ProjectGovernanceService {
         if (action.task_id) throw new ConflictException({ message: 'A task already exists for this action', code: 'review_action_has_task' });
         const task = await this.tasks.create(ctx, {
             title: action.title, project_id: projectId, description: `Action from ${review.type.toLowerCase().replace('_', ' ')} review "${review.title}".`,
-            assignee_membership_id: action.owner_membership_id ?? undefined, due_date: action.due_date ?? undefined,
+            assignee_ids: action.owner_membership_id ? [action.owner_membership_id] : undefined, due_date: action.due_date ?? undefined,
         } as CreateTaskDto);
         actions[index] = { ...action, task_id: task.id };
         await this.prisma.projectReview.update({ where: { id }, data: { actions: actions as Prisma.InputJsonValue } });

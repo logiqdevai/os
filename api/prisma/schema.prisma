@@ -1441,7 +1441,6 @@ model Membership {
   project_allocations                 ProjectAllocation[]
   project_gate_approvals              ProjectGate[]                    @relation("ProjectGateApprover")
   // 06 Tasks
-  assigned_tasks                      Task[]                           @relation("TaskAssignee")
   reported_tasks                      Task[]                           @relation("TaskReporter")
   task_assignments                    TaskAssignee[]
   task_comments                       TaskComment[]                    @relation("TaskCommentAuthor")
@@ -6842,9 +6841,8 @@ model Task {
   /// Markdown body.
   description                String?
   priority                   TaskPriority             @default(NONE)
-  assignee_membership_id     String?
   reporter_membership_id     String?
-  estimate_points            Decimal?                 @db.Decimal(6, 2)
+  estimate_points           Decimal?                 @db.Decimal(6, 2)
   estimate_hours             Decimal?                 @db.Decimal(8, 2)
   start_date                 DateTime?                @db.Date
   due_date                   DateTime?                @db.Date
@@ -6887,7 +6885,6 @@ model Task {
   release             Release?           @relation(fields: [release_id], references: [id], onDelete: SetNull)
   type                TaskType?          @relation(fields: [type_id], references: [id], onDelete: SetNull)
   status              TaskStatus?        @relation(fields: [status_id], references: [id], onDelete: SetNull)
-  assignee            Membership?        @relation("TaskAssignee", fields: [assignee_membership_id], references: [id], onDelete: SetNull)
   reporter            Membership?        @relation("TaskReporter", fields: [reporter_membership_id], references: [id], onDelete: SetNull)
   recurring_template  Task?              @relation("TaskRecurringTemplate", fields: [recurring_template_task_id], references: [id], onDelete: SetNull)
   recurring_instances Task[]             @relation("TaskRecurringTemplate")
@@ -6922,7 +6919,6 @@ model Task {
   @@index([organization_id, status_id])
   @@index([project_id, status_id])
   @@index([search_vector], type: Gin)
-  @@index([assignee_membership_id, status_id])
   @@index([team_id, cycle_id])
   @@index([parent_task_id])
   @@index([milestone_id])
@@ -6930,7 +6926,7 @@ model Task {
   @@map("tasks")
 }
 
-/// 06 §3 — additional assignees beyond the primary assignee.
+/// 06 §3 — assignees of a task (any number); the only source of truth for who a task is assigned to.
 model TaskAssignee {
   task_id       String
   membership_id String

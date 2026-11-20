@@ -1,7 +1,7 @@
 import { useState, type DragEvent } from "react";
 import { MoreHorizontal, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MemberAvatar } from "@/components/ui/member-avatar";
+import { MemberAvatarStack } from "@/components/ui/member-avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -117,7 +117,7 @@ export function TaskBoard({ team, query, projectId, hidden }: { team: string; qu
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             )}
-                                            {show("assignee") && <MemberAvatar person={t.assignee?.user} size="xs" />}
+                                            {show("assignee") && <MemberAvatarStack people={t.assignees} size="xs" />}
                                         </div>
                                         <p className="line-clamp-3 text-[13px] text-foreground">{t.title}</p>
                                         <div className="mt-2 flex flex-wrap items-center gap-1.5">

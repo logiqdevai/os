@@ -6,7 +6,7 @@ export const taskFormSchema = z.object({
     team_id: z.string(),
     status_id: z.string().optional(),
     priority: z.enum(["NONE", "LOW", "MEDIUM", "HIGH", "URGENT"]),
-    assignee_membership_id: z.string().nullable(),
+    assignee_ids: z.array(z.string()),
     project_id: z.string().nullable(),
     due_date: z.string().optional(),
     estimate_points: z.string().optional().refine((v) => !v || (!Number.isNaN(Number(v)) && Number(v) >= 0), "Enter a number"),

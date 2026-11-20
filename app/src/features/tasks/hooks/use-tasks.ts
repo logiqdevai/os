@@ -60,7 +60,7 @@ export const isTempId = (id: string) => id.startsWith("temp-");
 
 export const useCreateTask = () => useTaskMutation(service.createTask, "Could not create task");
 /**
- * Sub-task: appears under the parent at once (temporary row, replaced by the refresh). `optimistic.assignee` etc. are
+ * Sub-task: appears under the parent at once (temporary row, replaced by the refresh). `optimistic.assignees` etc. are
  * not needed — a new sub-task starts unassigned in the parent's first status.
  */
 export const useCreateSubtask = () =>
@@ -69,7 +69,7 @@ export const useCreateSubtask = () =>
         "Could not add sub-task",
         (qc, v) => patchTaskDetail(qc, v.parent_task_id, (t) => ({
             ...t,
-            subtasks: [...t.subtasks, { id: tempId(), identifier: "…", title: v.title, status: t.workflow_statuses[0] ?? null, assignee: null } as unknown as TaskRef],
+            subtasks: [...t.subtasks, { id: tempId(), identifier: "…", title: v.title, status: t.workflow_statuses[0] ?? null, assignees: [] } as unknown as TaskRef],
         })),
     );
 /** Optimistic: every cached list, board and detail shows the change at once; `optimistic` carries display objects (status, assignee…). */
@@ -121,7 +121,7 @@ export const useArchiveTask = () => useEntityRemove({ root: TASKS_KEY, mutationF
 /**
  * Bulk changes: optimistic (fields patched / archived rows removed at once). The server reports per-task failures;
  * the refresh on settle puts refused tasks back and the caller toasts the partial failure.
- * Pass display objects for id fields in `optimistic` (e.g. `{ assignee }`).
+ * Pass display objects for id fields in `optimistic` (e.g. `{ assignees }`).
  */
 export const useBulkTasks = () =>
     useTaskOptimistic(

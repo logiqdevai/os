@@ -62,7 +62,7 @@ export interface TaskRef {
     priority: TaskPriority;
     due_date: string | null;
     status: { id: string; name: string; category: TaskStatusCategory; color: string | null } | null;
-    assignee: MemberRef | null;
+    assignees: MemberRef[];
 }
 
 export interface Task {
@@ -80,7 +80,6 @@ export interface Task {
     parent_task_id: string | null;
     status_id: string | null;
     type_id: string | null;
-    assignee_membership_id: string | null;
     estimate_points: string | null;
     estimate_hours: string | null;
     start_date: string | null;
@@ -99,7 +98,7 @@ export interface Task {
     project: { id: string; name: string; color: string | null } | null;
     milestone: { id: string; name: string } | null;
     cycle: { id: string; number: number; name: string | null } | null;
-    assignee: MemberRef | null;
+    assignees: MemberRef[];
     labels: TaskLabel[];
     _count: { subtasks: number; comments: number; checklist_items: number; attachments: number };
 }
@@ -110,7 +109,6 @@ export interface TaskDetail extends Task {
     release: { id: string; name: string; version: string | null } | null;
     parent: TaskRef | null;
     subtasks: TaskRef[];
-    assignees: { membership_id: string; membership: MemberRef }[];
     watchers: { membership_id: string; membership: MemberRef }[];
     checklist_items: { id: string; title: string; is_completed: boolean; sort_order: number }[];
     dependencies_from: { id: string; type: TaskDependencyType; target: TaskRef }[];
@@ -225,7 +223,7 @@ export interface CreateTaskDto {
     type_id?: string;
     status_id?: string;
     priority?: TaskPriority;
-    assignee_membership_id?: string | null;
+    assignee_ids?: string[];
     label_ids?: string[];
     estimate_points?: number | null;
     start_date?: string | null;

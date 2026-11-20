@@ -73,7 +73,7 @@ export class ProjectTimelineService {
             id: true, number: true, title: true, start_date: true, due_date: true, workstream_id: true, milestone_id: true, priority: true, completed_at: true,
             team: { select: { task_key: true } },
             status: { select: { id: true, name: true, category: true } },
-            assignee: { select: MEMBER_SELECT },
+            assignees: { select: { membership: { select: MEMBER_SELECT } }, orderBy: { assigned_at: 'asc' } },
         } satisfies Prisma.TaskSelect;
         const [milestones, workstreams, dependencies, dated, unscheduled] = await Promise.all([
             this.prisma.projectMilestone.findMany({ where: { project_id: projectId }, orderBy: [{ planned_date: { sort: 'asc', nulls: 'last' } }, { sort_order: 'asc' }], select: MILESTONE_SELECT }),
@@ -93,7 +93,7 @@ export class ProjectTimelineService {
                 select: { id: true, source_task_id: true, target_task_id: true, type: true },
             })
             : [];
-        const serialize = <T extends { number: number; team: { task_key: string | null } | null }>(t: T) => ({ ...t, identifier: taskIdentifier(t) });
+        const serialize = <T extends { number: number; team: { task_key: string | null } | null; assignees: { membership: unknown }[] }>({ assignees, ...t }: T) => ({ ...t, identifier: taskIdentifier(t), assignees: assignees.map((a) => a.membership) });
         return {
             project,
             milestones,

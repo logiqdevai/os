@@ -438,7 +438,7 @@ export interface TimelineTask {
     priority: string;
     completed_at: string | null;
     status: { id: string; name: string; category: string } | null;
-    assignee: MemberRef | null;
+    assignees: MemberRef[];
 }
 
 export interface ProjectTimeline {

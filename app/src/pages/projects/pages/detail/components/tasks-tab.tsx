@@ -4,7 +4,7 @@ import { ListTodo, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, TableToolbar, type DataTableColumn } from "@/components/ui/data-table";
-import { MemberAvatar } from "@/components/ui/member-avatar";
+import { MemberAvatarStack } from "@/components/ui/member-avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Can } from "@/components/access/can";
@@ -42,7 +42,7 @@ export function ProjectTasksTab({ project }: { project: ProjectDetail }) {
         { key: "priority", header: "Priority", hideBelow: "md", cell: (t) => <span className="text-xs text-muted-foreground">{getDropdownOptionLabel(TaskPriorityFormOptions, t.priority)}</span> },
         { key: "milestone", header: "Milestone", hideBelow: "lg", cell: (t) => <span className="truncate text-xs">{t.milestone?.name ?? "—"}</span> },
         { key: "due", header: "Due", hideBelow: "md", cell: (t) => <span className={cn("text-xs", t.due_date && t.due_date.slice(0, 10) < today && t.status?.category !== "DONE" && "text-danger")}>{formatDate(t.due_date, "d MMM")}</span> },
-        { key: "assignee", header: <span className="sr-only">Assignee</span>, className: "w-10", cell: (t) => <MemberAvatar person={t.assignee?.user} size="xs" /> },
+        { key: "assignee", header: <span className="sr-only">Assignee</span>, className: "w-10", cell: (t) => <MemberAvatarStack people={t.assignees} size="xs" /> },
     ];
 
     return (

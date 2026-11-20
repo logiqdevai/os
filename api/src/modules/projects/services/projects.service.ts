@@ -831,13 +831,13 @@ export class ProjectsService {
         }
         const ids = [...people.keys()];
         const openTasks = ids.length
-            ? await this.prisma.task.groupBy({
-                by: ['assignee_membership_id'],
-                where: { organization_id: ctx.organization_id, assignee_membership_id: { in: ids }, archived_at: null, status: { category: { notIn: [TaskStatusCategory.DONE, TaskStatusCategory.CANCELLED] } } },
+            ? await this.prisma.taskAssignee.groupBy({
+                by: ['membership_id'],
+                where: { membership_id: { in: ids }, task: { organization_id: ctx.organization_id, archived_at: null, status: { category: { notIn: [TaskStatusCategory.DONE, TaskStatusCategory.CANCELLED] } } } },
                 _count: { _all: true },
             })
             : [];
-        const tasksBy = new Map(openTasks.map((t) => [t.assignee_membership_id, t._count._all]));
+        const tasksBy = new Map(openTasks.map((t) => [t.membership_id, t._count._all]));
         const rows = [...people.values()]
             .map((p) => ({ ...p, open_tasks: tasksBy.get(p.membership.id) ?? 0, over_allocated: p.total_percent > 100 }))
             .sort((a, b) => b.total_percent - a.total_percent);

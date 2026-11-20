@@ -89,7 +89,7 @@ export class CalendarProjectedService {
 
     private async taskDue(ctx: OrgContext, from: Date, to: Date, which: 'mine' | 'all'): Promise<ProjectedItem[]> {
         const me = ctx.membership_id;
-        const mine: Prisma.TaskWhereInput = me ? { OR: [{ assignee_membership_id: me }, { assignees: { some: { membership_id: me } } }] } : { id: { in: [] } };
+        const mine: Prisma.TaskWhereInput = me ? { assignees: { some: { membership_id: me } } } : { id: { in: [] } };
         const rows = await this.prisma.task.findMany({
             where: {
                 AND: [

@@ -15,7 +15,7 @@ import { useSessionData } from "@/features/session/hooks/use-session";
 import { useCreateTask, useTaskLabels, useWorkflows } from "@/features/tasks/hooks/use-tasks";
 import { taskFormSchema, type TaskFormValues } from "@/features/tasks/validation-schemas/tasks.schema";
 import type { TaskDetail } from "@/features/tasks/interfaces/tasks.interfaces";
-import { AssigneePicker, LabelsPicker, PriorityPicker, ProjectPicker, StatusPicker } from "./task-pickers";
+import { AssigneesPicker, LabelsPicker, PriorityPicker, ProjectPicker, StatusPicker } from "./task-pickers";
 import { LabelChip } from "./task-badges";
 
 const NO_TEAM = "__none";
@@ -58,7 +58,7 @@ export function TaskCreateForm({ defaults, onCreated, onCancel, allowCreateMore,
     const firstTeam = workflows.data?.find((w) => w.team?.task_key)?.team?.id ?? NO_TEAM;
     const initial = useMemo<TaskFormValues>(() => ({
         title: "", description: "", team_id: defaults?.team_id ?? firstTeam, status_id: defaults?.status_id ?? undefined, priority: "NONE",
-        assignee_membership_id: null, project_id: defaults?.project_id ?? null, due_date: "", estimate_points: "", label_ids: [],
+        assignee_ids: [], project_id: defaults?.project_id ?? null, due_date: "", estimate_points: "", label_ids: [],
     }), [defaults?.team_id, defaults?.status_id, defaults?.project_id, firstTeam]);
     const form = useForm<TaskFormValues>({ resolver: zodResolver(taskFormSchema), defaultValues: initial });
     useEffect(() => { form.reset(initial); }, [initial, form]);
@@ -81,7 +81,7 @@ export function TaskCreateForm({ defaults, onCreated, onCancel, allowCreateMore,
                 team_id: v.team_id !== NO_TEAM ? v.team_id : undefined,
                 status_id: v.status_id,
                 priority: v.priority,
-                assignee_membership_id: v.assignee_membership_id,
+                assignee_ids: v.assignee_ids.length ? v.assignee_ids : undefined,
                 project_id: v.project_id ?? undefined,
                 parent_task_id: defaults?.parent_task_id ?? undefined,
                 cycle_id: defaults?.cycle_id ?? undefined,
@@ -147,10 +147,10 @@ export function TaskCreateForm({ defaults, onCreated, onCancel, allowCreateMore,
                         <FormField control={form.control} name="priority" render={({ field }) => (
                             <PriorityPicker className={pickerPill} value={field.value} onChange={field.onChange} />
                         )} />
-                        <FormField control={form.control} name="assignee_membership_id" render={({ field }) => (
+                        <FormField control={form.control} name="assignee_ids" render={({ field }) => (
                             canAssign
-                                ? <AssigneePicker className={pickerPill} value={field.value} onChange={field.onChange} />
-                                : <Button type="button" variant="secondary" className={pill} onClick={() => field.onChange(field.value ? null : me)}>{field.value ? "Assigned to me" : "Assign to me"}</Button>
+                                ? <AssigneesPicker className={pickerPill} value={field.value} onChange={field.onChange} />
+                                : <Button type="button" variant="secondary" className={pill} onClick={() => field.onChange(field.value.length ? [] : me ? [me] : [])}>{field.value.length ? "Assigned to me" : "Assign to me"}</Button>
                         )} />
                         <FormField control={form.control} name="project_id" render={({ field }) => (
                             <ProjectPicker className={pickerPill} value={field.value} onChange={field.onChange} currentName={defaults?.project_name} />
@@ -217,10 +217,10 @@ export function TaskCreateForm({ defaults, onCreated, onCancel, allowCreateMore,
                     <FormField control={form.control} name="priority" render={({ field }) => (
                         <PriorityPicker className="w-auto min-w-32" value={field.value} onChange={field.onChange} />
                     )} />
-                    <FormField control={form.control} name="assignee_membership_id" render={({ field }) => (
+                    <FormField control={form.control} name="assignee_ids" render={({ field }) => (
                         canAssign
-                            ? <AssigneePicker className="w-auto min-w-36" value={field.value} onChange={field.onChange} />
-                            : <Button type="button" variant="outline" className="h-8" onClick={() => field.onChange(field.value ? null : me)}>{field.value ? "Assigned to me" : "Assign to me"}</Button>
+                            ? <AssigneesPicker className="w-auto min-w-36" value={field.value} onChange={field.onChange} />
+                            : <Button type="button" variant="outline" className="h-8" onClick={() => field.onChange(field.value.length ? [] : me ? [me] : [])}>{field.value.length ? "Assigned to me" : "Assign to me"}</Button>
                     )} />
                     <FormField control={form.control} name="project_id" render={({ field }) => (
                         <ProjectPicker className="w-auto min-w-36" value={field.value} onChange={field.onChange} currentName={defaults?.project_name} />

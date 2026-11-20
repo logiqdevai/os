@@ -36,15 +36,15 @@ export const DATE_TRIGGER_SOURCES: DateTriggerSource[] = [
     {
         key: 'tasks.task.due_date', module: ModuleKey.TASKS, entity_type: RecordEntityType.TASK, name: 'Task due date', date_label: 'due date',
         description: 'Open tasks (not completed or archived) relative to their due date.', required_permission: 'tasks.tasks.read',
-        fields: [f('title', 'Title'), f('date', 'Due date', 'date'), f('assignee_membership_id', 'Assignee', 'id'), f('project_id', 'Project', 'id'), f('team_id', 'Team', 'id')],
+        fields: [f('title', 'Title'), f('date', 'Due date', 'date'), f('assignee_membership_ids', 'Assignees', 'id'), f('project_id', 'Project', 'id'), f('team_id', 'Team', 'id')],
         sample_payload: { title: 'Prepare kick-off deck', date: '2026-12-01', days_offset: 3 },
         find: async (prisma, org, from, to) => {
             const rows = await prisma.task.findMany({
                 where: { organization_id: org, due_date: { gte: from, lte: to }, completed_at: null, archived_at: null },
-                select: { id: true, title: true, due_date: true, assignee_membership_id: true, project_id: true, team_id: true },
+                select: { id: true, title: true, due_date: true, assignees: { select: { membership_id: true } }, project_id: true, team_id: true },
                 take: LIMIT,
             });
-            return rows.map((r) => ({ id: r.id, date: r.due_date as Date, payload: { title: r.title, date: day(r.due_date), assignee_membership_id: r.assignee_membership_id, assignee_membership_ids: r.assignee_membership_id ? [r.assignee_membership_id] : [], project_id: r.project_id, team_id: r.team_id } }));
+            return rows.map((r) => ({ id: r.id, date: r.due_date as Date, payload: { title: r.title, date: day(r.due_date), assignee_membership_ids: r.assignees.map((a) => a.membership_id), project_id: r.project_id, team_id: r.team_id } }));
         },
     },
     {

@@ -53,12 +53,12 @@ export class TaskReportsService {
         const openWhere: Prisma.TaskWhereInput = { AND: [...base, { archived_at: null }, { OR: [{ status_id: null }, { status: { category: { notIn: CLOSED } } }] }] };
         const today = startOfDay();
 
-        const [completed, created, openNow, overdueNow, blockedNow, openByAssignee, openByPriority, openByLabel] = await Promise.all([
+        const [completed, created, openNow, overdueNow, blockedNow, openByAssignee, openUnassigned, openByPriority, openByLabel] = await Promise.all([
             this.prisma.task.findMany({
                 where: { AND: [...base, { completed_at: { gte: from, lt: end } }, { status: { category: TaskStatusCategory.DONE } }] },
                 take: MAX_ROWS,
                 select: {
-                    id: true, created_at: true, completed_at: true, assignee_membership_id: true, priority: true,
+                    id: true, created_at: true, completed_at: true, assignees: { select: { membership_id: true } }, priority: true,
                     labels: { select: { label_id: true } },
                     status_history: { where: { to_category: { in: [TaskStatusCategory.IN_PROGRESS, TaskStatusCategory.IN_REVIEW] } }, orderBy: { changed_at: 'asc' }, take: 1, select: { changed_at: true } },
                 },
@@ -67,7 +67,9 @@ export class TaskReportsService {
             this.prisma.task.count({ where: openWhere }),
             this.prisma.task.count({ where: { AND: [openWhere, { due_date: { lt: today } }] } }),
             this.prisma.task.count({ where: { AND: [openWhere, { OR: [{ blocked: true }, { status: { category: TaskStatusCategory.BLOCKED } }] }] } }),
-            this.prisma.task.groupBy({ by: ['assignee_membership_id'], where: openWhere, _count: { _all: true } }),
+            // A task with several assignees counts once for each of them.
+            this.prisma.taskAssignee.groupBy({ by: ['membership_id'], where: { task: openWhere }, _count: { _all: true } }),
+            this.prisma.task.count({ where: { AND: [openWhere, { assignees: { none: {} } }] } }),
             this.prisma.task.groupBy({ by: ['priority'], where: openWhere, _count: { _all: true } }),
             this.prisma.taskLabelAssignment.groupBy({ by: ['label_id'], where: { task: openWhere }, _count: { _all: true } }),
         ]);
@@ -96,16 +98,17 @@ export class TaskReportsService {
                 b.cycle.push(cycle);
                 cycleAll.push(cycle);
             }
-            const key = t.assignee_membership_id ?? 'none';
-            const a = byAssignee.get(key) ?? { completed: 0, cycle: [] };
-            a.completed++;
-            if (cycle !== null) a.cycle.push(cycle);
-            byAssignee.set(key, a);
+            for (const key of t.assignees.length ? t.assignees.map((x) => x.membership_id) : ['none']) {
+                const a = byAssignee.get(key) ?? { completed: 0, cycle: [] };
+                a.completed++;
+                if (cycle !== null) a.cycle.push(cycle);
+                byAssignee.set(key, a);
+            }
             byPriority.set(t.priority, (byPriority.get(t.priority) ?? 0) + 1);
             for (const l of t.labels) byLabel.set(l.label_id, (byLabel.get(l.label_id) ?? 0) + 1);
         }
 
-        const memberIds = [...new Set([...byAssignee.keys(), ...openByAssignee.map((r) => r.assignee_membership_id ?? 'none')])].filter((id) => id !== 'none');
+        const memberIds = [...new Set([...byAssignee.keys(), ...openByAssignee.map((r) => r.membership_id)])].filter((id) => id !== 'none');
         const labelIds = [...new Set([...byLabel.keys(), ...openByLabel.map((r) => r.label_id)])];
         const [members, labels, burnup] = await Promise.all([
             memberIds.length ? this.prisma.membership.findMany({ where: { id: { in: memberIds }, organization_id: ctx.organization_id }, select: MEMBER_SELECT }) : Promise.resolve([]),
@@ -113,7 +116,7 @@ export class TaskReportsService {
             this.burnup(ctx, q, base),
         ]);
         const memberBy = new Map(members.map((m) => [m.id, m]));
-        const openAssignee = new Map(openByAssignee.map((r) => [r.assignee_membership_id ?? 'none', r._count._all]));
+        const openAssignee = new Map<string, number>([...openByAssignee.map((r) => [r.membership_id, r._count._all] as [string, number]), ...(openUnassigned ? [['none', openUnassigned] as [string, number]] : [])]);
         const openPriority = new Map(openByPriority.map((r) => [r.priority, r._count._all]));
         const openLabel = new Map(openByLabel.map((r) => [r.label_id, r._count._all]));
 

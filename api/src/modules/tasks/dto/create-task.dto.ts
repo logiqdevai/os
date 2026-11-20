@@ -73,13 +73,7 @@ export class CreateTaskDto {
     @IsEnum(TaskPriority)
     priority?: TaskPriority;
 
-    @ApiProperty({ required: false, nullable: true, description: 'Assigning someone else needs tasks.tasks.assign' })
-    @IsOptional()
-    @ValidateIf((_, v) => v !== null)
-    @IsUUID()
-    assignee_membership_id?: string | null;
-
-    @ApiProperty({ required: false, type: [String], description: 'Additional assignees' })
+    @ApiProperty({ required: false, type: [String], description: 'Assignee membership ids (replaces the whole list). Assigning someone else needs tasks.tasks.assign' })
     @IsOptional()
     @IsArray()
     @ArrayMaxSize(20)
@@ -173,10 +167,11 @@ export class MoveTaskDto {
 }
 
 export class AssignTaskDto {
-    @ApiProperty({ nullable: true, description: 'Membership id, or null to unassign' })
-    @ValidateIf((_, v) => v !== null)
-    @IsUUID()
-    assignee_membership_id: string | null;
+    @ApiProperty({ type: [String], description: 'Membership ids; an empty list unassigns' })
+    @IsArray()
+    @ArrayMaxSize(20)
+    @IsUUID('all', { each: true })
+    assignee_ids: string[];
 }
 
 export class BulkTaskPatchDto {
@@ -190,11 +185,12 @@ export class BulkTaskPatchDto {
     @IsEnum(TaskPriority)
     priority?: TaskPriority;
 
-    @ApiProperty({ required: false, nullable: true })
+    @ApiProperty({ required: false, type: [String] })
     @IsOptional()
-    @ValidateIf((_, v) => v !== null)
-    @IsUUID()
-    assignee_membership_id?: string | null;
+    @IsArray()
+    @ArrayMaxSize(20)
+    @IsUUID('all', { each: true })
+    assignee_ids?: string[];
 
     @ApiProperty({ required: false, nullable: true })
     @IsOptional()
@@ -363,7 +359,7 @@ export const CreateTaskSchema = z.object({
     type_id: z.string().uuid().optional(),
     status_id: z.string().uuid().optional(),
     priority: z.nativeEnum(TaskPriority).optional(),
-    assignee_membership_id: z.string().uuid().nullable().optional(),
+    assignee_ids: z.array(z.string().uuid()).max(20).optional(),
     label_ids: z.array(z.string().uuid()).max(30).optional(),
     estimate_points: z.number().min(0).max(1000).nullable().optional(),
     due_date: date.nullable().optional(),
@@ -380,7 +376,7 @@ export const UpdateTaskSchema = CreateTaskSchema.omit({ checklist: true }).parti
     blocked_reason: z.string().max(2000).optional(),
 });
 
-export const AssignTaskSchema = z.object({ id: z.string().min(1).describe('Task id or identifier'), assignee_membership_id: z.string().uuid().nullable() });
+export const AssignTaskSchema = z.object({ id: z.string().min(1).describe('Task id or identifier'), assignee_ids: z.array(z.string().uuid()).max(20).describe('Membership ids; empty array unassigns') });
 
 export const CommentTaskSchema = z.object({
     id: z.string().min(1).describe('Task id or identifier'),
@@ -394,7 +390,7 @@ export const BulkTaskSchema = z.object({
     patch: z.object({
         status_id: z.string().uuid().optional(),
         priority: z.nativeEnum(TaskPriority).optional(),
-        assignee_membership_id: z.string().uuid().nullable().optional(),
+        assignee_ids: z.array(z.string().uuid()).max(20).optional(),
         cycle_id: z.string().uuid().nullable().optional(),
         project_id: z.string().uuid().nullable().optional(),
         due_date: date.nullable().optional(),

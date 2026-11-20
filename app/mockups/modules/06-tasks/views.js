@@ -75,13 +75,13 @@
      MY TASKS (spec §3, §5, §12)
      @route  /tasks/mine?group=status|priority|project&view=
      @perm   VIEW tasks.tasks.read · create tasks.tasks.create · edit inline tasks.tasks.update · assign tasks.tasks.assign · bulk tasks.bulk.execute · delete tasks.tasks.delete*
-     @api    GET /tasks?assignee=me&status_category=&label=&cycle=&sort=&cursor= · POST /tasks · PATCH /tasks/:id (status_id, priority, assignee_membership_id, due_date, estimate_points)
+     @api    GET /tasks?assignee=me&status_category=&label=&cycle=&sort=&cursor= · POST /tasks · PATCH /tasks/:id (status_id, priority, assignees (TaskAssignee), due_date, estimate_points)
      @mcp    tasks_tasks_read · tasks_tasks_create · tasks_tasks_update · tasks_tasks_assign
-     @data   Task (number, title, status_id, priority, assignee_membership_id, due_date, estimate_points, project_id, blocked) · Team.task_key (key prefix) · TaskStatus.category · TaskLabelAssignment/TaskLabel · TaskAssignee (extra assignees)
+     @data   Task (number, title, status_id, priority, assignees (TaskAssignee), due_date, estimate_points, project_id, blocked) · Team.task_key (key prefix) · TaskStatus.category · TaskLabelAssignment/TaskLabel · TaskAssignee (extra assignees)
      @ui     div-grid rows (not <table>) with roving tabindex, Popover+Command pickers for status/assignee/priority (shadcn), Badge, Avatar, ToggleGroup for the view switch
      @states loading skeleton rows · empty ("Nothing assigned to you") · error · no-access
      @audit  every inline edit writes audit_events and a TaskStatusHistory row for status changes
-     @note   "My tasks" = Task.assignee_membership_id = me OR a TaskAssignee row for me. Grouping, order and visible columns ("Display") are per-user SavedView rows (entity_type TASK, module 02 platform table).
+     @note   "My tasks" = a TaskAssignee row for me. Grouping, order and visible columns ("Display") are per-user SavedView rows (entity_type TASK, module 02 platform table).
              Row highlight = keyboard focus / open peek.
      ===================================================================================================================== */
   function mine() {
@@ -89,7 +89,7 @@
     return '<div class="tk">' + bar2("My tasks <span class='badge'>10</span>", '<button class="btn sm">' + I("filter", 13) + ' Filter</button><button class="btn sm">' + I("sort", 13) + " Display</button>" + btn("New task", "plus", "sm primary")) +
       '<div style="padding:8px 20px;border-bottom:1px solid var(--hairline)">' + window.UI.filters.filterBar([["Assignee", "is", "Me"], ["Status category", "is not", "Done"]], sel("Group: Status") + sel("Order: Priority") + sel("List", "list") + btn("Save view", "plus", "sm")) + "</div>" +
       '<div class="tk-list">' + ["IN_REVIEW", "IN_PROGRESS", "BLOCKED", "TODO", "BACKLOG"].map((c) => group(c, g(c), "WEB-142")).join("") + "</div>" +
-      '<div style="padding:16px 20px">' + dm(["Task · number, title, status_id, priority, assignee_membership_id, due_date, estimate_points, blocked, project_id", "Team · task_key", "TaskStatus · category · TaskLabel · TaskAssignee", "SavedView · entity_type TASK (columns, grouping, sorting)"], []) + "</div></div>";
+      '<div style="padding:16px 20px">' + dm(["Task · number, title, status_id, priority, assignees (TaskAssignee), due_date, estimate_points, blocked, project_id", "Team · task_key", "TaskStatus · category · TaskLabel · TaskAssignee", "SavedView · entity_type TASK (columns, grouping, sorting)"], []) + "</div></div>";
   }
 
   /* =====================================================================================================================
@@ -98,7 +98,7 @@
      @perm   VIEW tasks.tasks.read · move cards tasks.tasks.update (only to statuses in allowed_transitions)
      @api    GET /tasks?team_id=&group=status · PATCH /tasks/:id {status_id, rank}
      @mcp    tasks_tasks_update
-     @data   Task (status_id, rank, priority, assignee_membership_id, estimate_points, due_date, blocked) · TaskStatus (team_id, category, sort_order, allowed_transitions)
+     @data   Task (status_id, rank, priority, assignees (TaskAssignee), estimate_points, due_date, blocked) · TaskStatus (team_id, category, sort_order, allowed_transitions)
      @ui     Kanban with a keyboard- and touch-capable drag library (dnd-kit); one column per TaskStatus of the team, ordered by sort_order
      @states loading · empty column ("No tasks") · error · no-access
      @note   Columns are the team's own statuses (TaskStatus.team_id, or the project type's); the order inside a column is Task.rank (fractional index string). A drop into a status not allowed from the current one is refused
@@ -112,7 +112,7 @@
         return '<div class="kcol"><div class="kcol-h"><div class="t">' + glyph(c[1]) + " " + c[0] + ' <span class="count">' + rows.length + '</span></div><div class="m"><span>' + rows.reduce((s, r) => s + r[9], 0) + ' pts</span></div></div><div class="kcol-b">' +
           (rows.length ? rows.map((r) => '<div class="kcard"><div class="co">' + r[0] + " " + pr(r[4]) + '</div><div class="n">' + r[1] + '</div><div style="display:flex;gap:6px;align-items:center;margin-top:8px">' + r[5].map((l) => lbl(l[0], l[1])).join("") + '<span style="flex:1"></span><span class="muted">' + r[9] + " pts</span>" + av(r[7]) + "</div></div>").join("") : '<div class="sub-note" style="padding:8px">No tasks</div>') + "</div></div>";
       }).join("") + "</div>" +
-      dm(["Task · status_id, rank, priority, assignee_membership_id, estimate_points, blocked", "TaskStatus · team_id, category, sort_order, allowed_transitions", "Cycle · number, status, starts_at, ends_at"], []) + "</div>";
+      dm(["Task · status_id, rank, priority, assignees (TaskAssignee), estimate_points, blocked", "TaskStatus · team_id, category, sort_order, allowed_transitions", "Cycle · number, status, starts_at, ends_at"], []) + "</div>";
   }
 
   /* =====================================================================================================================
@@ -133,7 +133,7 @@
       '<div class="tk-list"><div class="tk-grp"><div class="tk-grp-h">' + I("inbox", 14) + "<b>Triage</b><span class='n'>" + inbox.length + "</span><span class='muted' style='margin-left:8px'>no assignee, no priority</span></div>" +
       inbox.map((r) => '<div class="tk-row">' + pr("NONE") + '<span class="id">' + r[0] + "</span>" + glyph("BACKLOG") + '<span class="t">' + r[1] + '</span><span class="proj">' + I("support", 12) + r[2] + '</span><button class="btn sm">Accept</button><button class="btn sm">Decline</button></div>').join("") + "</div>" +
       group("BACKLOG", T.filter((r) => r[2] === "BACKLOG"), "") + "</div>" +
-      '<div style="padding:16px 20px">' + dm(["Task · status category BACKLOG, cycle_id, priority, assignee_membership_id, rank", "TicketTaskLink (13) · task_id, ticket_id (bidirectional sync)", "TaskType · name, template"], []) + "</div></div>";
+      '<div style="padding:16px 20px">' + dm(["Task · status category BACKLOG, cycle_id, priority, assignees (TaskAssignee), rank", "TicketTaskLink (13) · task_id, ticket_id (bidirectional sync)", "TaskType · name, template"], []) + "</div></div>";
   }
 
   /* =====================================================================================================================
@@ -227,7 +227,7 @@
      @route  /tasks/workload?team=&cycle=
      @perm   VIEW tasks.workload.read (scope-limited to the caller's teams)
      @api    GET /tasks/workload?team_id=&cycle_id=
-     @data   Task (assignee_membership_id, estimate_hours, estimate_points, due_date, blocked, status category) · Read-only: EmployeeCapacityPeriod (10) and ProjectAllocation (05) for capacity
+     @data   Task (assignees via TaskAssignee, estimate_hours, estimate_points, due_date, blocked, status category) · Read-only: EmployeeCapacityPeriod (10) and ProjectAllocation (05) for capacity
      @states loading · empty · error · no-access
      @note   This is TASK distribution: open tasks, estimates, overdue and blocked per person. Capacity, availability and utilization belong to 10 and 18; planned project allocation belongs to 05. The bottleneck flags are
              computed (overdue and blocked counts), not stored.
@@ -237,7 +237,7 @@
     return '<div class="a-page">' + head("Workload", "Open tasks and estimates per person.", sel("Cycle 14") + sel("Team: Web")) +
       tbl(["Person", ">Open", ">Estimate (h)", ">Overdue", ">Blocked", "Load vs capacity"], R.map((r) => [wh(r[0]), r[1], r[2], r[3] ? '<span class="badge red">' + r[3] + "</span>" : "0", r[4] ? '<span class="badge yellow">' + r[4] + "</span>" : "0", bar(Math.min(r[5], 100), r[5] > 100 ? "red" : "green") + (r[5] > 100 ? " " + muted(r[5] + "% of capacity") : "")])) +
       '<div class="sub-note" style="margin-top:8px">Marco Silva has 2 overdue tasks and is over capacity: reassign or move work. Capacity comes from 10, never edited here.</div>' +
-      dm(["Task · assignee_membership_id, estimate_hours, due_date, blocked", "Read-only: EmployeeCapacityPeriod (10) · ProjectAllocation (05)"], []) + "</div>";
+      dm(["Task · assignees (TaskAssignee), estimate_hours, due_date, blocked", "Read-only: EmployeeCapacityPeriod (10) · ProjectAllocation (05)"], []) + "</div>";
   }
 
   /* =====================================================================================================================

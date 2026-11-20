@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { MemberAvatar } from "@/components/ui/member-avatar";
+import { MemberAvatar, MemberAvatarStack } from "@/components/ui/member-avatar";
 import { EntityPicker } from "@/components/ui/entity-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -46,7 +46,7 @@ import { useSessionData } from "@/features/session/hooks/use-session";
 import { cn } from "@/lib/utils";
 import { InlineText } from "@/components/ui/inline-edit";
 import { MarkdownField } from "@/components/ui/markdown-field";
-import { AssigneePicker, LabelsPicker, PriorityPicker, ProjectPicker, StatusPicker } from "./task-pickers";
+import { AssigneesPicker, LabelsPicker, PriorityPicker, ProjectPicker, StatusPicker } from "./task-pickers";
 import { LabelChip, StatusIcon } from "./task-badges";
 import { TaskTimeSection } from "./task-time-section";
 
@@ -125,13 +125,13 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
                         <StatusPicker statuses={t.workflow_statuses} value={t.status_id} onChange={(v) => v && patch({ status_id: v }, { status: t.workflow_statuses.find((x) => x.id === v) })} disabled={!canEdit} />
                     </Prop>
                     <Prop label="Priority"><PriorityPicker value={t.priority} onChange={(priority) => patch({ priority })} disabled={!canEdit} /></Prop>
-                    <Prop label="Assignee">
+                    <Prop label="Assignees">
                         {canEdit && canAssign ? (
-                            <AssigneePicker value={t.assignee_membership_id} onChange={(v) => patch({ assignee_membership_id: v })} selected={t.assignee} />
+                            <AssigneesPicker value={t.assignees.map((m) => m.id)} selected={t.assignees} onChange={(ids) => patch({ assignee_ids: ids }, { assignees: t.assignees.filter((m) => ids.includes(m.id)) })} />
                         ) : (
-                            <div className="flex items-center gap-2">
-                                <MemberAvatar person={t.assignee?.user} showName />
-                                {canEdit && me && t.assignee_membership_id !== me && <Button size="sm" variant="ghost" onClick={() => patch({ assignee_membership_id: me })}>Take it</Button>}
+                            <div className="flex flex-wrap items-center gap-2">
+                                {t.assignees.length ? t.assignees.map((m) => <MemberAvatar key={m.id} person={m.user} showName />) : <MemberAvatar person={null} showName />}
+                                {canEdit && me && !t.assignees.some((m) => m.id === me) && <Button size="sm" variant="ghost" onClick={() => patch({ assignee_ids: [...t.assignees.map((m) => m.id), me] })}>Take it</Button>}
                             </div>
                         )}
                     </Prop>
@@ -268,7 +268,7 @@ function SubtasksSection({ task: t, canEdit }: { task: TaskDetail; canEdit: bool
                             <StatusIcon category={s.status?.category} color={s.status?.color} />
                             <span className="w-16 shrink-0 font-mono text-xs text-muted-foreground">{s.identifier}</span>
                             <span className={cn("min-w-0 flex-1 truncate", s.status?.category === "DONE" && "text-muted-foreground line-through")}>{s.title}</span>
-                            <MemberAvatar person={s.assignee?.user} size="xs" />
+                            <MemberAvatarStack people={s.assignees} size="xs" />
                         </Link>
                     </li>
                 ))}

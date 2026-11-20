@@ -171,7 +171,7 @@ export class TicketsService {
                 sla_policy: { select: { id: true, name: true, use_business_hours: true } },
                 sla_timers: { orderBy: { created_at: 'asc' } },
                 followers: { include: { membership: { select: MEMBER_SELECT } } },
-                task_links: { include: { task: { select: { id: true, number: true, title: true, priority: true, customer_visible: true, team: { select: { task_key: true } }, status: { select: { name: true, category: true, color: true } }, assignee: { select: MEMBER_SELECT } } } } },
+                task_links: { include: { task: { select: { id: true, number: true, title: true, priority: true, customer_visible: true, team: { select: { task_key: true } }, status: { select: { name: true, category: true, color: true } }, assignees: { select: { membership: { select: MEMBER_SELECT } } } } } } },
                 relations_from: { include: { target: { select: { id: true, reference: true, subject: true, status: { select: STATUS_SELECT } } } } },
                 relations_to: { include: { source: { select: { id: true, reference: true, subject: true, status: { select: STATUS_SELECT } } } } },
                 incident: { select: { id: true, title: true, status: true, severity: true } },
@@ -576,14 +576,13 @@ export class TicketsService {
                     title: dto.title ?? ticket.subject,
                     description: dto.description ?? `${ticket.description ?? ''}\n\n— From support ticket ${ticket.reference}`.trim(),
                     priority,
-                    assignee_membership_id: dto.assignee_membership_id ?? null,
                     reporter_membership_id: ctx.membership_id,
+                    ...(dto.assignee_membership_id && { assignees: { create: { membership_id: dto.assignee_membership_id } } }),
                     customer_visible: dto.customer_visible ?? false,
                     created_by_user_id: ctx.user_id,
                 },
                 include: { team: { select: { task_key: true } } },
             });
-            if (dto.assignee_membership_id) await tx.taskAssignee.createMany({ data: [{ task_id: created.id, membership_id: dto.assignee_membership_id }], skipDuplicates: true }).catch(() => undefined);
             await tx.taskLink.create({ data: { task_id: created.id, entity_type: 'TICKET', entity_id: id, relation: 'created_from', created_by_user_id: ctx.user_id } });
             await tx.ticketTaskLink.create({ data: { ticket_id: id, task_id: created.id, kind: 'CONVERTED', idempotency_key: `convert:${id}`, created_by_membership_id: ctx.membership_id } });
             const convId = await this.ensureConversation(tx, ctx, id);
