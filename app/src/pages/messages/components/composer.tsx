@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AtSign, Plus, SendHorizontal } from "lucide-react";
+import { AtSign, Plus, SendHorizontal, Smile } from "lucide-react";
+import { EmojiPicker } from "@/components/ui/emoji-picker";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,7 @@ export function Composer({ channelId, threadRootId, placeholder, disabled, disab
     const saveDraft = useSaveDraft();
     const post = usePostMessage();
     const [text, setText] = useState("");
+    const [emojiOpen, setEmojiOpen] = useState(false);
     const [mentions, setMentions] = useState<MentionMap>({});
     const [query, setQuery] = useState<string | null>(null);
     const [active, setActive] = useState("");
@@ -111,6 +113,20 @@ export function Composer({ channelId, threadRootId, placeholder, disabled, disab
         setQuery(match ? match[2] : null);
         if (value.trim()) sendTyping(channelId, threadRootId);
         scheduleDraftSave(value, mentions);
+    };
+
+    /** Insert the chosen emoji at the caret (end of the text if the field was never focused). */
+    const insertEmoji = (emoji: string) => {
+        const el = ref.current;
+        const start = el?.selectionStart ?? text.length;
+        const end = el?.selectionEnd ?? start;
+        const next = text.slice(0, start) + emoji + text.slice(end);
+        onChange(next);
+        setEmojiOpen(false);
+        requestAnimationFrame(() => {
+            el?.focus();
+            el?.setSelectionRange(start + emoji.length, start + emoji.length);
+        });
     };
 
     const pick = (option: string) => {
@@ -228,6 +244,14 @@ export function Composer({ channelId, threadRootId, placeholder, disabled, disab
                         <Button type="button" variant="ghost" size="icon-sm" aria-label="Mention someone" onClick={() => { onChange(`${text}${text && !text.endsWith(" ") ? " " : ""}@`); ref.current?.focus(); }}>
                             <AtSign />
                         </Button>
+                        <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+                            <PopoverTrigger asChild>
+                                <Button type="button" variant="ghost" size="icon-sm" aria-label="Add emoji"><Smile /></Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto border-0 bg-transparent p-0 shadow-none" align="start" side="top" onCloseAutoFocus={(e) => { e.preventDefault(); ref.current?.focus(); }}>
+                                <EmojiPicker onSelect={insertEmoji} />
+                            </PopoverContent>
+                        </Popover>
                         <Button type="button" size="icon-sm" className="ml-auto" onClick={send} disabled={(!text.trim() && !ready.length) || uploading} aria-label="Send">
                             <SendHorizontal />
                         </Button>

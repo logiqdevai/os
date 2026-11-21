@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Archive, Bell, BellOff, Link2, MoreHorizontal, Paperclip, Plus, Tag, Trash2, X } from "lucide-react";
+import { Archive, Bell, BellOff, Link2, MoreHorizontal, Plus, Tag, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,10 +13,9 @@ import { EntityPicker } from "@/components/ui/entity-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
-import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
+import { ErrorState, PageSkeleton } from "@/components/ui/states";
 import { usePermissions } from "@/hooks/use-permission";
 import {
-    useAddAttachment,
     useAddChecklistItem,
     useAddDependency,
     useArchiveTask,
@@ -27,7 +26,6 @@ import {
     useDeleteChecklistItem,
     useDeleteComment,
     useDeleteTask,
-    useRemoveAttachment,
     useRemoveDependency,
     useSetWatching,
     useTask,
@@ -49,9 +47,10 @@ import { MarkdownField } from "@/components/ui/markdown-field";
 import { AssigneesPicker, LabelsPicker, PriorityPicker, ProjectPicker, StatusPicker } from "./task-pickers";
 import { LabelChip, StatusIcon } from "./task-badges";
 import { TaskTimeSection } from "./task-time-section";
+import { TaskAttachments, useTaskFileDrop } from "./task-attachments";
 
 /**
- * Task detail (full page and side sheet): description, sub-tasks, checklist, links, attachments, comments, activity, properties.
+ * Task detail (full page and side sheet): description, uploaded files, sub-tasks, checklist, links, comments, activity, properties.
  * @perm VIEW tasks.tasks.read · edit tasks.tasks.update · assign tasks.tasks.assign · delete tasks.tasks.delete · internal comments tasks.comments.internal.read
  * @api GET/PATCH /tasks/:key · /comments · /checklist · /dependencies · /attachments · /watchers · /activity
  */
@@ -85,6 +84,7 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
     const labels = useTaskLabels();
     const cycles = useCycles({ team_id: t.team_id ?? undefined, status: "PLANNED,ACTIVE", limit: 20 });
     const [deleting, setDeleting] = useState(false);
+    const drop = useTaskFileDrop(t.id, canEdit);
 
     // Optimistic: the panel, lists and boards change at once; `optimistic` carries display objects for id fields.
     const patch = (dto: UpdateTaskDto, optimistic?: Record<string, unknown>) => update.mutate({ id: t.id, ...dto, optimistic });
@@ -93,7 +93,8 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
 
     return (
         <div className={cn("grid gap-6", !compact && "lg:grid-cols-[1fr_20rem]")}>
-            <div className="min-w-0 space-y-6">
+            <div className="relative min-w-0 space-y-6" {...drop.bind}>
+                {drop.overlay}
                 <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <span className="font-mono">{t.identifier}</span>
@@ -110,11 +111,12 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
                     <MarkdownField value={t.description} canEdit={canEdit} onSave={(next) => update.mutateAsync({ id: t.id, description: next })} />
                 </section>
 
+                <TaskAttachments task={t} canEdit={canEdit} />
+
                 <TaskTimeSection task={t} />
                 <SubtasksSection task={t} canEdit={canEdit} />
                 <ChecklistSection task={t} canEdit={canEdit} />
                 <LinksSection task={t} canEdit={canEdit} />
-                <AttachmentsSection task={t} canEdit={canEdit} />
                 <CommentsSection task={t} me={me} meRef={session?.active_organization ? { id: session.active_organization.membership_id, job_title: null, user: session.user } : null} />
                 <ActivitySection taskId={t.id} />
             </div>
@@ -365,53 +367,6 @@ function LinksSection({ task: t, canEdit }: { task: TaskDetail; canEdit: boolean
     );
 }
 
-function AttachmentsSection({ task: t, canEdit }: { task: TaskDetail; canEdit: boolean }) {
-    const add = useAddAttachment();
-    const remove = useRemoveAttachment();
-    const [adding, setAdding] = useState(false);
-    const [name, setName] = useState("");
-    const [url, setUrl] = useState("");
-    if (!t.attachments.length && !canEdit) return null;
-    return (
-        <section aria-label="Attachments">
-            <SectionTitle action={canEdit && !adding && <Button variant="ghost" size="sm" onClick={() => setAdding(true)}><Paperclip /> Add link</Button>}>Attachments</SectionTitle>
-            {t.attachments.length > 0 ? (
-                <ul className="space-y-1">
-                    {t.attachments.map((a) => {
-                        const href = a.document.external_url ?? a.document.url;
-                        const label = a.document.title ?? a.document.filename;
-                        return (
-                            <li key={a.id} className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-[13px]">
-                                <Paperclip className="size-4 shrink-0 text-ash" />
-                                {href ? <a href={href} target="_blank" rel="noreferrer noopener" className="min-w-0 flex-1 truncate hover:underline">{label}</a> : <span className="min-w-0 flex-1 truncate">{label}</span>}
-                                <span className="hidden text-xs text-muted-foreground sm:inline">{formatDate(a.created_at, "d MMM")}</span>
-                                {canEdit && <Button variant="ghost" size="icon-sm" aria-label={`Remove ${label}`} onClick={() => remove.mutate({ id: t.id, attId: a.id })}><X /></Button>}
-                            </li>
-                        );
-                    })}
-                </ul>
-            ) : !adding && <p className="text-[13px] text-muted-foreground">No attachments</p>}
-            {adding && (
-                <form
-                    className="mt-2 grid gap-2 sm:grid-cols-[1fr_1.5fr_auto]"
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        if (!url.trim()) return;
-                        add.mutate({ id: t.id, file_name: name.trim() || undefined, url: url.trim() }, { onSuccess: () => { setAdding(false); setName(""); setUrl(""); } });
-                    }}
-                >
-                    <Input className="h-8" placeholder="Name (optional)" value={name} onChange={(e) => setName(e.target.value)} aria-label="Attachment name" />
-                    <Input className="h-8" placeholder="https://figma.com/…" value={url} onChange={(e) => setUrl(e.target.value)} aria-label="Attachment link" />
-                    <div className="flex gap-2">
-                        <Button type="submit" size="sm" disabled={!url.trim()} loading={add.isPending}>Attach</Button>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => setAdding(false)}>Cancel</Button>
-                    </div>
-                </form>
-            )}
-        </section>
-    );
-}
-
 function CommentsSection({ task: t, me, meRef }: { task: TaskDetail; me?: string | null; meRef: MemberRef | null }) {
     const p = usePermissions();
     const comments = useTaskComments(t.id);
@@ -448,7 +403,6 @@ function CommentsSection({ task: t, me, meRef }: { task: TaskDetail; me?: string
                             <p className="whitespace-pre-wrap text-[13px] text-foreground">{c.body}</p>
                         </li>
                     ))}
-                    {!comments.data.length && <li><EmptyState compact title="No comments yet" className="py-4" /></li>}
                 </ul>
             )}
             {canWrite && visibilityOptions.length > 0 && (

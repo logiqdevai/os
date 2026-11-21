@@ -140,7 +140,7 @@
      TASK DETAIL (spec §3, §7–8, §13)
      @route  /tasks/:taskKey (side peek from lists, full page by direct link) e.g. /tasks/WEB-142
      @perm   VIEW tasks.tasks.read · edit tasks.tasks.update · assign tasks.tasks.assign · delete tasks.tasks.delete* · INTERNAL comments tasks.comments.internal.read
-     @api    GET /tasks/:key · PATCH /tasks/:id · POST /tasks/:id/comments {body, visibility} · POST /tasks/:id/checklist · POST /tasks/:id/links · POST /tasks/:id/attachments {document_id}
+     @api    GET /tasks/:key · PATCH /tasks/:id · POST /tasks/:id/comments {body, visibility} · POST /tasks/:id/checklist · POST /tasks/:id/links · POST /tasks/:id/attachments (multipart file)
      @mcp    tasks_tasks_read · tasks_tasks_update · tasks_tasks_assign
      @data   Task (all columns) · TaskAssignee · TaskLabelAssignment · TaskDependency · TaskChecklistItem · TaskComment · TaskAttachment (document_id, 17) · TaskLink · TaskStatusHistory · TaskWatcher · TimeEntry (18, read-only)
      @ui     Two-column page: title + Markdown description + sub-tasks + checklist + activity on the left, property panel on the right (shadcn Select/Popover+Command for every picker)

@@ -54,7 +54,13 @@ export const addDependency = async ({ id, ...dto }: { id: string; target_task_id
 export const removeDependency = async ({ id, depId }: { id: string; depId: string }) => (await axiosInstance.delete(R.dependency(id, depId))).data;
 export const setWatching = async ({ id, watching }: { id: string; watching: boolean }) =>
     (watching ? await axiosInstance.post(R.watchers(id), {}) : await axiosInstance.delete(R.watchers(id))).data;
-export const addAttachment = async ({ id, ...dto }: { id: string; file_name?: string; url?: string; mime_type?: string; size?: number }) => (await axiosInstance.post(R.attachments(id), dto)).data;
+export const addAttachment = async ({ id, file }: { id: string; file: File }) => {
+    const form = new FormData();
+    form.append("file", file);
+    return (await axiosInstance.post(R.attachments(id), form, { headers: { "Content-Type": "multipart/form-data" } })).data;
+};
+export const getAttachmentUrl = async ({ id, attId, disposition }: { id: string; attId: string; disposition: "inline" | "attachment" }): Promise<{ url: string; expires_at: string }> =>
+    (await axiosInstance.get(R.attachmentUrl(id, attId), { params: { disposition } })).data;
 export const removeAttachment = async ({ id, attId }: { id: string; attId: string }) => (await axiosInstance.delete(R.attachment(id, attId))).data;
 
 export const getTaskStatuses = async (params: Params): Promise<TaskStatus[]> => (await axiosInstance.get(R.statuses, { params })).data;

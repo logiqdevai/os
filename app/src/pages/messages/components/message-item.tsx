@@ -11,7 +11,7 @@ import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { patchMessageEverywhere, useDeleteMessage, useEditMessage, usePostMessage, useSetPinned, useSetSaved, useToggleReaction } from "@/features/messaging/hooks/use-messaging";
 import type { Message } from "@/features/messaging/interfaces/messaging.interfaces";
-import { QuickReactionOptions } from "@/config/constants/dropdowns/messaging/messaging.options";
+import { EmojiPicker } from "@/components/ui/emoji-picker";
 import { textToTokens, tokensToText } from "../utils/message-body";
 import { MessageBody } from "./message-body";
 import { useMessaging } from "./messaging-context";
@@ -190,12 +190,8 @@ export function MessageItem({ message: m, compact, onOpenThread, inThread, canPo
                     {canPost && (
                         <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
                             <PopoverTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="Add reaction"><SmilePlus /></Button></PopoverTrigger>
-                            <PopoverContent className="w-auto p-1" align="end">
-                                <div className="flex gap-0.5">
-                                    {QuickReactionOptions.map((r) => (
-                                        <button key={r.id} type="button" onClick={() => toggle(r.id)} className="grid size-8 place-items-center rounded-md text-lg hover:bg-accent" aria-label={r.label}>{r.id}</button>
-                                    ))}
-                                </div>
+                            <PopoverContent className="w-auto border-0 bg-transparent p-0 shadow-none" align="end">
+                                <EmojiPicker onSelect={toggle} />
                             </PopoverContent>
                         </Popover>
                     )}

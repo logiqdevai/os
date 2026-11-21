@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useMutationState, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import * as service from "../services/tasks.services";
 import { patchEntity, removeEntity, useEntityRemove, useEntityUpdate, useOptimisticMutation } from "@/lib/query/optimistic";
 import type { BoardData, MemberRef, TaskComment, TaskDetail, TaskRef, TaskStatus } from "../interfaces/tasks.interfaces";
@@ -174,8 +174,18 @@ export const useRemoveDependency = () =>
     );
 export const useSetWatching = () =>
     useTaskOptimistic(service.setWatching, "Could not update subscription", (qc, { id, watching }) => patchEntity(qc, TASKS_KEY, id, { is_watching: watching }));
-/** Adding an attachment creates a document on the server, so it is not optimistic; the form closes on success. */
-export const useAddAttachment = () => useTaskMutation(service.addAttachment, "Could not add attachment");
+/** Uploading creates a document on the server, so it is not optimistic; the file shows once the upload completes. */
+export const useAddAttachment = () => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationKey: ["task-upload"],
+        mutationFn: service.addAttachment,
+        meta: { errorTitle: "Could not upload file", errorToast: true },
+        onSettled: () => qc.invalidateQueries({ queryKey: TASKS_KEY }),
+    });
+};
+/** Files of this task still uploading (from the button, a drop or a paste). */
+export const useUploadingCount = (id: string) => useMutationState({ filters: { mutationKey: ["task-upload"], status: "pending" }, select: (m) => (m.state.variables as { id: string }).id }).filter((x) => x === id).length;
 export const useRemoveAttachment = () =>
     useTaskOptimistic(service.removeAttachment, "Could not remove attachment", (qc, { id, attId }) =>
         patchTaskDetail(qc, id, (t) => ({ ...t, attachments: t.attachments.filter((a) => a.id !== attId) })),

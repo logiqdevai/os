@@ -6,7 +6,6 @@ import { isLoggedIn, useAuthStore } from "@/stores/auth";
 import { ErrorState, NoAccessState, PageSkeleton } from "@/components/ui/states";
 import { getApiErrorStatus } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
-import { appColor } from "@/config/apps/app-colors";
 import { Rail } from "./rail";
 import { ContextPanel } from "./context-panel";
 import { AppBar } from "./app-bar";
@@ -85,7 +84,7 @@ export default function AppShell() {
 
     return (
         <TooltipProvider delayDuration={300}>
-            <div className="flex h-dvh overflow-hidden bg-background" style={appColor(app?.id) ? ({ "--app": appColor(app?.id) } as React.CSSProperties) : undefined}>
+            <div className="flex h-dvh overflow-hidden bg-background">
                 <Rail unread={unread} />
                 {showPanel && <ContextPanel app={app} onCollapse={() => setCollapsed(true)} />}
                 <div className="flex min-w-0 flex-1 flex-col">
@@ -98,7 +97,7 @@ export default function AppShell() {
                     />
                     <main
                         className={cn(
-                            "min-h-0 flex-1 bg-[color:var(--shell-content)] bg-[image:radial-gradient(44rem_24rem_at_100%_0%,color-mix(in_oklab,var(--app,var(--brand))_10%,transparent),transparent)]",
+                            "min-h-0 flex-1 bg-[color:var(--shell-content)] bg-[image:radial-gradient(44rem_24rem_at_100%_0%,color-mix(in_oklab,var(--brand)_10%,transparent),transparent)]",
                             app?.fill ? "overflow-hidden" : "overflow-y-auto"
                         )}
                     >

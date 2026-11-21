@@ -1,11 +1,12 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { DocumentScope, DocumentSource, ModuleKey, Prisma, RecordEntityType, TaskCommentVisibility, TaskDependencyType } from 'generated/prisma';
+import { ModuleKey, Prisma, RecordEntityType, TaskCommentVisibility, TaskDependencyType } from 'generated/prisma';
 import { PrismaService } from '@/core/databases/prisma/prisma.service';
 import { AuditService } from '@/shared/audit/audit.service';
 import { EventsService } from '@/shared/events/events.service';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { MEMBER_SELECT } from '@/modules/projects/utils/projects.utils';
-import { AddAttachmentDto, CreateChecklistItemDto, CreateCommentDto, CreateDependencyDto, UpdateChecklistItemDto, UpdateCommentDto } from '../dto/create-task.dto';
+import { CreateChecklistItemDto, CreateCommentDto, CreateDependencyDto, UpdateChecklistItemDto, UpdateCommentDto } from '../dto/create-task.dto';
+import { DocumentsService, IncomingFile } from '@/modules/files/services/documents.service';
 import { TasksService } from './tasks.service';
 
 const INTERNAL_READ = 'tasks.comments.internal.read';
@@ -18,6 +19,7 @@ export class TaskDetailsService {
         private readonly audit: AuditService,
         private readonly events: EventsService,
         private readonly tasks: TasksService,
+        private readonly documents: DocumentsService,
     ) { }
 
     // --- Comments ---------------------------------------------------------------------------------
@@ -190,49 +192,32 @@ export class TaskDetailsService {
         return { watching: false };
     }
 
-    // --- Attachments (metadata; files live in 17 Documents) ---------------------------------------
+    // --- Attachments (uploaded files; stored as 17 Documents) ---------------------------------------
 
-    async addAttachment(ctx: OrgContext, idOrKey: string, dto: AddAttachmentDto) {
+    /** Upload a file through the Documents module (task editors do not need documents.documents.create) and link it to the task. */
+    async addAttachment(ctx: OrgContext, idOrKey: string, file: IncomingFile) {
         const task = await this.tasks.assertAccess(ctx, idOrKey, 'tasks.tasks.update');
-        let documentId = dto.document_id;
-        if (documentId) {
-            const doc = await this.prisma.document.findFirst({ where: { id: documentId, organization_id: ctx.organization_id }, select: { id: true } });
-            if (!doc) throw new BadRequestException({ message: 'Document not found', code: 'document_not_found' });
-        } else {
-            if (!dto.file_name && !dto.url) throw new BadRequestException({ message: 'Send a document_id, or a file name / link', code: 'attachment_required' });
-            const doc = await this.prisma.document.create({
-                data: {
-                    organization_id: ctx.organization_id,
-                    filename: dto.file_name ?? dto.url,
-                    title: dto.file_name ?? dto.url,
-                    mimetype: dto.mime_type ?? null,
-                    size: dto.size !== undefined ? BigInt(dto.size) : null,
-                    external_url: dto.url ?? null,
-                    source: DocumentSource.UPLOAD,
-                    source_module: ModuleKey.TASKS,
-                    scope: DocumentScope.RECORD,
-                    entity_type: RecordEntityType.TASK,
-                    entity_id: task.id,
-                    project_id: task.project_id,
-                    owner_membership_id: ctx.membership_id,
-                    created_by_user_id: ctx.user_id,
-                },
-                select: { id: true },
-            });
-            documentId = doc.id;
-        }
-        try {
-            const attachment = await this.prisma.taskAttachment.create({
-                data: { task_id: task.id, document_id: documentId, added_by_user_id: ctx.user_id },
-                include: { document: { select: { id: true, title: true, filename: true, mimetype: true, size: true, external_url: true, url: true, created_at: true } } },
-            });
-            await this.audit.record(ctx, 'task.attachment_added', { resource_type: 'task', resource_id: task.id, metadata: { document_id: documentId, file_name: dto.file_name ?? null } });
-            this.events.publish(ctx, { event_key: 'tasks.attachment.added', module: ModuleKey.TASKS, entity_type: RecordEntityType.TASK, entity_id: task.id, payload: { identifier: task.identifier, document_id: documentId } });
-            return { ...attachment, document: { ...attachment.document, size: attachment.document.size !== null ? Number(attachment.document.size) : null } };
-        } catch (error) {
-            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new ConflictException({ message: 'Already attached', code: 'attachment_exists' });
-            throw error;
-        }
+        const doc = (await this.documents.upload(
+            ctx,
+            file,
+            { entity_type: RecordEntityType.TASK, entity_id: task.id, project_id: task.project_id ?? undefined, title: file?.originalname } as Parameters<DocumentsService['upload']>[2],
+            { source_module: ModuleKey.TASKS, role: 'task_attachment', authorized_by_module: true },
+        )) as { id: string };
+        const attachment = await this.prisma.taskAttachment.create({
+            data: { task_id: task.id, document_id: doc.id, added_by_user_id: ctx.user_id },
+            include: { document: { select: { id: true, title: true, filename: true, mimetype: true, size: true, created_at: true } } },
+        });
+        await this.audit.record(ctx, 'task.attachment_added', { resource_type: 'task', resource_id: task.id, metadata: { document_id: doc.id, file_name: file.originalname } });
+        this.events.publish(ctx, { event_key: 'tasks.attachment.added', module: ModuleKey.TASKS, entity_type: RecordEntityType.TASK, entity_id: task.id, payload: { identifier: task.identifier, document_id: doc.id } });
+        return { ...attachment, document: { ...attachment.document, size: attachment.document.size !== null ? Number(attachment.document.size) : null } };
+    }
+
+    async attachmentUrl(ctx: OrgContext, idOrKey: string, attachmentId: string, disposition: 'inline' | 'attachment') {
+        const task = await this.tasks.assertAccess(ctx, idOrKey);
+        const att = await this.prisma.taskAttachment.findFirst({ where: { id: attachmentId, task_id: task.id } });
+        if (!att) throw new NotFoundException({ message: 'Attachment not found', code: 'attachment_not_found' });
+        const res = await this.documents.issueRecordDownloadUrl(ctx.organization_id, att.document_id, disposition);
+        return { url: res.path, expires_at: res.expires_at };
     }
 
     async removeAttachment(ctx: OrgContext, idOrKey: string, attachmentId: string) {

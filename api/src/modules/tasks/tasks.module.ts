@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AiIntegrationModule } from '@/integrations/ai/ai.module';
+import { FilesModule } from '@/modules/files/files.module';
 import { TasksController } from './controllers/tasks.controller';
 import { CyclesController, ReleasesController, TaskConfigController } from './controllers/task-planning.controller';
 import { TasksService } from './services/tasks.service';
@@ -17,7 +18,7 @@ import { ReleaseNotesService } from './services/release-notes.service';
  * 06 Task Management. Other modules import this module and use `TasksService.lookup / assertAccess / scopeWhere / create`.
  */
 @Module({
-    imports: [AiIntegrationModule],
+    imports: [AiIntegrationModule, FilesModule],
     controllers: [TaskConfigController, CyclesController, ReleasesController, ReleaseNotesController, TaskReportsController, TasksController],
     providers: [TasksService, TaskDetailsService, TaskConfigService, CyclesService, ReleasesService, TaskReportsService, ReleaseNotesService, TasksMcp],
     exports: [TasksService, TaskDetailsService, TaskConfigService],

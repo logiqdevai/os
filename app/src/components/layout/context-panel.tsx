@@ -25,13 +25,13 @@ export function ContextPanelNav({ app, onNavigate }: { app: AppDefinition; onNav
                                 cn(
                                     "relative flex h-9 items-center gap-2.5 rounded-lg px-3 text-sm text-body transition-colors hover:bg-border-soft hover:text-foreground [&_svg]:size-4 [&_svg]:flex-none",
                                     isActive &&
-                                        "bg-[color-mix(in_oklab,var(--app,var(--brand))_12%,transparent)] font-medium text-foreground overflow-hidden before:absolute before:left-0 before:inset-y-0 before:w-[3px] before:bg-[var(--app,var(--brand))]"
+                                        "bg-[color-mix(in_oklab,var(--brand)_12%,transparent)] font-medium text-foreground overflow-hidden before:absolute before:left-0 before:inset-y-0 before:w-[3px] before:bg-[var(--brand)]"
                                 )
                             }
                         >
                             {({ isActive }) => (
                                 <>
-                                    {item.icon && <item.icon className={isActive ? "text-[var(--app,var(--brand))]" : "text-muted-foreground"} />}
+                                    {item.icon && <item.icon className={isActive ? "text-[var(--brand)]" : "text-muted-foreground"} />}
                                     <span className="truncate">{item.label}</span>
                                 </>
                             )}

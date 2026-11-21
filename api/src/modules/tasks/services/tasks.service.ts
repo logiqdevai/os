@@ -211,7 +211,7 @@ export class TasksService {
                 checklist_items: { orderBy: [{ sort_order: 'asc' }, { id: 'asc' }] },
                 dependencies_from: { include: { target: { select: TASK_REF_SELECT } } },
                 dependencies_to: { include: { source: { select: TASK_REF_SELECT } } },
-                attachments: { include: { document: { select: { id: true, title: true, filename: true, mimetype: true, size: true, external_url: true, url: true, created_at: true } } }, orderBy: { created_at: 'desc' } },
+                attachments: { include: { document: { select: { id: true, title: true, filename: true, mimetype: true, size: true, created_at: true } } }, orderBy: { created_at: 'desc' } },
                 links: true,
             },
         });

@@ -18,7 +18,7 @@ function RailButton({ to, label, active, children, badge }: { to: string; label:
                     className={cn(
                         "relative grid h-9 w-9 flex-none place-items-center rounded-[10px] text-rail-foreground transition-colors hover:bg-rail-hover hover:text-white [&_svg]:size-[18px] [&_svg]:stroke-[1.6]",
                         active &&
-                            "bg-[var(--app,var(--brand))] text-white shadow-[0_0_0_4px_color-mix(in_oklab,var(--app,var(--brand))_22%,transparent)] hover:bg-[var(--app,var(--brand))] hover:text-white before:absolute before:-left-[18px] before:top-[7px] before:bottom-[8px] before:w-[3px] before:rounded-r before:bg-white"
+                            "bg-[var(--brand)] text-primary-foreground shadow-[0_0_0_4px_color-mix(in_oklab,var(--brand)_22%,transparent)] hover:bg-[var(--brand)] hover:text-primary-foreground before:absolute before:-left-[18px] before:top-[7px] before:bottom-[8px] before:w-[3px] before:rounded-r before:bg-white"
                     )}
                 >
                     {children}

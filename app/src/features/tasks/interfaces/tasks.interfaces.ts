@@ -113,7 +113,7 @@ export interface TaskDetail extends Task {
     checklist_items: { id: string; title: string; is_completed: boolean; sort_order: number }[];
     dependencies_from: { id: string; type: TaskDependencyType; target: TaskRef }[];
     dependencies_to: { id: string; type: TaskDependencyType; source: TaskRef }[];
-    attachments: { id: string; created_at: string; document: { id: string; title: string | null; filename: string; mimetype: string | null; size: number | null; external_url: string | null; url: string | null } }[];
+    attachments: { id: string; created_at: string; document: { id: string; title: string | null; filename: string; mimetype: string | null; size: number | null } }[];
     workflow_statuses: TaskStatus[];
     is_watching: boolean;
 }

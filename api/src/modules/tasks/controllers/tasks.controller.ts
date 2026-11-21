@@ -1,14 +1,16 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { JwtGuard } from '@/shared/guards/jwt.guard';
 import { PermissionsGuard } from '@/shared/authorization/guards/permissions.guard';
 import { CurrentOrg, RequireAnyPermission, RequirePermission } from '@/shared/authorization/decorators/require-permission.decorator';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { ZodValidationPipe } from '@/shared/pipes/zod.validation.pipe';
+import type { IncomingFile } from '@/modules/files/services/documents.service';
+import { MAX_UPLOAD_BYTES } from '@/modules/files/utils/file-policy.utils';
 import { TasksService } from '../services/tasks.service';
 import { TaskDetailsService } from '../services/task-details.service';
 import {
-    AddAttachmentDto,
     AssignTaskDto,
     BulkTaskDto,
     CreateChecklistItemDto,
@@ -238,9 +240,21 @@ export class TasksController {
 
     @Post(':id/attachments')
     @RequirePermission('tasks.tasks.update')
-    @ApiOperation({ summary: 'Attach a document or a link (metadata; files live in Documents)' })
-    addAttachment(@CurrentOrg() ctx: OrgContext, @Param('id') id: string, @Body() dto: AddAttachmentDto) {
-        return this.details.addAttachment(ctx, id, dto);
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } }))
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({ schema: { type: 'object', required: ['file'], properties: { file: { type: 'string', format: 'binary' } } } })
+    @ApiOperation({ summary: 'Upload a file to the task (multipart field "file"); stored as a Document linked to the task' })
+    addAttachment(@CurrentOrg() ctx: OrgContext, @Param('id') id: string, @UploadedFile() file: IncomingFile) {
+        // Multer decodes header values as latin1; restore UTF-8 file names.
+        if (file?.originalname) file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
+        return this.details.addAttachment(ctx, id, file);
+    }
+
+    @Get(':id/attachments/:attachmentId/url')
+    @RequirePermission('tasks.tasks.read')
+    @ApiOperation({ summary: 'Short-lived signed URL of an attachment (inline for previews, attachment for downloads)' })
+    attachmentUrl(@CurrentOrg() ctx: OrgContext, @Param('id') id: string, @Param('attachmentId', ParseUUIDPipe) attachmentId: string, @Query('disposition') disposition?: string) {
+        return this.details.attachmentUrl(ctx, id, attachmentId, disposition === 'inline' ? 'inline' : 'attachment');
     }
 
     @Delete(':id/attachments/:attachmentId')

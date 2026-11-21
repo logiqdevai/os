@@ -22,6 +22,7 @@ export const TasksApiRoutes = {
     watchers: (id: string) => `/tasks/${id}/watchers`,
     attachments: (id: string) => `/tasks/${id}/attachments`,
     attachment: (id: string, attId: string) => `/tasks/${id}/attachments/${attId}`,
+    attachmentUrl: (id: string, attId: string) => `/tasks/${id}/attachments/${attId}/url`,
     statuses: "/task-statuses",
     workflows: "/task-statuses/workflows",
     statusReorder: "/task-statuses/reorder",

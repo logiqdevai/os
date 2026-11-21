@@ -306,37 +306,6 @@ export class CreateDependencyDto {
     type?: TaskDependencyType;
 }
 
-export class AddAttachmentDto {
-    @ApiProperty({ required: false, description: 'Existing document (17)' })
-    @IsOptional()
-    @IsUUID()
-    document_id?: string;
-
-    @ApiProperty({ required: false, example: 'brief.pdf' })
-    @IsOptional()
-    @IsString()
-    @MaxLength(300)
-    file_name?: string;
-
-    @ApiProperty({ required: false })
-    @IsOptional()
-    @IsString()
-    @MaxLength(200)
-    mime_type?: string;
-
-    @ApiProperty({ required: false })
-    @IsOptional()
-    @IsInt()
-    @Min(0)
-    size?: number;
-
-    @ApiProperty({ required: false, description: 'External link (Figma, Drive, …)' })
-    @IsOptional()
-    @IsString()
-    @MaxLength(2000)
-    url?: string;
-}
-
 export class WatcherDto {
     @ApiProperty({ required: false, description: 'Defaults to the caller' })
     @IsOptional()
