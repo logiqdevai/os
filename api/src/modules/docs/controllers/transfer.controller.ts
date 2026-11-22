@@ -9,7 +9,7 @@ import { ZodValidationPipe } from '@/shared/pipes/zod.validation.pipe';
 import { DocsTransferService } from '../services/docs-transfer.service';
 import { ExportDocsInput, ExportDocsSchema, ImportDocsInput, ImportDocsSchema } from '../dto/ai-transfer.dto';
 
-const MAX_IMPORT_BYTES = 50 * 1024 * 1024;
+const MAX_IMPORT_BYTES = 100 * 1024 * 1024;
 
 /** 15 §2, §10 — Markdown import (a .md or a .zip of them) and export (zip of .md files with front matter). */
 @ApiTags('Docs · Import & export')
@@ -32,7 +32,7 @@ export class DocsTransferController {
     @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_IMPORT_BYTES, files: 1 } }))
     @ApiConsumes('multipart/form-data')
     @ApiBody({ schema: { type: 'object', required: ['file', 'space_id'], properties: { file: { type: 'string', format: 'binary' }, space_id: { type: 'string' }, parent_page_id: { type: 'string' } } } })
-    @ApiOperation({ summary: 'Import Markdown pages (.md or .zip); folders become parent pages' })
+    @ApiOperation({ summary: 'Import Markdown pages (.md or .zip, including a Notion "Markdown & CSV" export with its images); folders become parent pages' })
     import(@CurrentOrg() ctx: OrgContext, @UploadedFile() file: { buffer: Buffer; originalname: string } | undefined, @Body(new ZodValidationPipe(ImportDocsSchema)) dto: ImportDocsInput) {
         if (file?.originalname) file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
         return this.transfer.import(ctx, file, dto);

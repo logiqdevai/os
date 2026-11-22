@@ -116,13 +116,13 @@ Columns in other modules that point at this module by plain string id or JSON (n
 - `CommThread.support_conversation_id` ([11](./11-communication-center.md), [L12034](../../api/prisma/schema.prisma#L12034)) — 13 SupportConversation holding inbound replies; id only.
 - `Channel.entity_type` ([12](./12-messaging-team-communication.md), [L13345](../../api/prisma/schema.prisma#L13345)) — 12 §7, §25 — associated business record for RECORD conversations (task, deal, ticket (13), proposal …).
 - `Announcement.incident_id` ([14](./14-notifications-activity-center.md), [L16580](../../api/prisma/schema.prisma#L16580)) — 13 SupportIncident this announcement reports on, when any.
-- `WikiPage.customer_visible` ([15](./15-notion-business-docs.md), [L17028](../../api/prisma/schema.prisma#L17028)) — 15 §4 — exposed through the Customer Portal (07) / help center (13 §6). Audited (15 §9).
-- `WikiPage.help_center_article_id` ([15](./15-notion-business-docs.md), [L17028](../../api/prisma/schema.prisma#L17028)) — 13 §6 KnowledgeArticle view published from this page (13 owns the article; the page is the source); id only.
-- `CustomForm.opens_at` ([15](./15-notion-business-docs.md), [L17431](../../api/prisma/schema.prisma#L17431)) — Automatic 06 Task / 13 Ticket creation is configured in 20 rules; this is the default hint shown there.
-- `WikiAiIndexEntry.knowledge_article_id` ([15](./15-notion-business-docs.md), [L17611](../../api/prisma/schema.prisma#L17611)) — 13 §6 — source help-center article when source_type = KNOWLEDGE_ARTICLE; only PUBLISHED articles are indexed.
-- `TimeEntry.ticket_id` ([18](./18-time-tracking.md), [L19395](../../api/prisma/schema.prisma#L19395)) — Support ticket (13 §4); id only.
-- `Timer.ticket_id` ([18](./18-time-tracking.md), [L19520](../../api/prisma/schema.prisma#L19520)) — Support ticket (13 §4); id only.
-- `TimeSuggestion.ticket_id` ([18](./18-time-tracking.md), [L19602](../../api/prisma/schema.prisma#L19602)) — Support ticket (13); id only.
+- `WikiPage.customer_visible` ([15](./15-notion-business-docs.md), [L17048](../../api/prisma/schema.prisma#L17048)) — 15 §4 — exposed through the Customer Portal (07) / help center (13 §6). Audited (15 §9).
+- `WikiPage.help_center_article_id` ([15](./15-notion-business-docs.md), [L17048](../../api/prisma/schema.prisma#L17048)) — 13 §6 KnowledgeArticle view published from this page (13 owns the article; the page is the source); id only.
+- `CustomForm.opens_at` ([15](./15-notion-business-docs.md), [L17451](../../api/prisma/schema.prisma#L17451)) — Automatic 06 Task / 13 Ticket creation is configured in 20 rules; this is the default hint shown there.
+- `WikiAiIndexEntry.knowledge_article_id` ([15](./15-notion-business-docs.md), [L17631](../../api/prisma/schema.prisma#L17631)) — 13 §6 — source help-center article when source_type = KNOWLEDGE_ARTICLE; only PUBLISHED articles are indexed.
+- `TimeEntry.ticket_id` ([18](./18-time-tracking.md), [L19415](../../api/prisma/schema.prisma#L19415)) — Support ticket (13 §4); id only.
+- `Timer.ticket_id` ([18](./18-time-tracking.md), [L19540](../../api/prisma/schema.prisma#L19540)) — Support ticket (13 §4); id only.
+- `TimeSuggestion.ticket_id` ([18](./18-time-tracking.md), [L19622](../../api/prisma/schema.prisma#L19622)) — Support ticket (13); id only.
 
 <!-- schema-refs:end -->
 
@@ -314,7 +314,7 @@ permissions, human approval, and audit logging.
 ## 4. Automatic Ticket-to-Task & Issue Creation
 
 <!-- schema-section:start -->
-> **Schema:** `SupportSettings` ([support_settings](../../api/prisma/schema.prisma#L14662)): `ai_require_task_approval`, `default_task_type_id`, `task_priority_mapping`, `task_status_sync_mapping` · `TicketCategory` ([ticket_categories](../../api/prisma/schema.prisma#L15009)): `default_project_id` · `TicketStatusHistory` ([ticket_status_history](../../api/prisma/schema.prisma#L15257)): `changed_via` · `TicketTaskLink` ([ticket_task_links](../../api/prisma/schema.prisma#L15338)): `idempotency_key`, `last_synced_task_status`, `sync_status` · enum `TicketTaskLinkKind` ([L14524](../../api/prisma/schema.prisma#L14524)) — other modules: `Release` ([releases](../../api/prisma/schema.prisma#L7091)): `affected_company_ids` ([06](./06-task-management.md)) · `TaskLink` ([task_links](../../api/prisma/schema.prisma#L7034)) ([06](./06-task-management.md)) · `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L19395)): `ticket_id` ([18](./18-time-tracking.md)) · `Timer` ([timers](../../api/prisma/schema.prisma#L19520)): `ticket_id` ([18](./18-time-tracking.md))
+> **Schema:** `SupportSettings` ([support_settings](../../api/prisma/schema.prisma#L14662)): `ai_require_task_approval`, `default_task_type_id`, `task_priority_mapping`, `task_status_sync_mapping` · `TicketCategory` ([ticket_categories](../../api/prisma/schema.prisma#L15009)): `default_project_id` · `TicketStatusHistory` ([ticket_status_history](../../api/prisma/schema.prisma#L15257)): `changed_via` · `TicketTaskLink` ([ticket_task_links](../../api/prisma/schema.prisma#L15338)): `idempotency_key`, `last_synced_task_status`, `sync_status` · enum `TicketTaskLinkKind` ([L14524](../../api/prisma/schema.prisma#L14524)) — other modules: `Release` ([releases](../../api/prisma/schema.prisma#L7091)): `affected_company_ids` ([06](./06-task-management.md)) · `TaskLink` ([task_links](../../api/prisma/schema.prisma#L7034)) ([06](./06-task-management.md)) · `TimeEntry` ([time_entries](../../api/prisma/schema.prisma#L19415)): `ticket_id` ([18](./18-time-tracking.md)) · `Timer` ([timers](../../api/prisma/schema.prisma#L19540)): `ticket_id` ([18](./18-time-tracking.md))
 <!-- schema-section:end -->
 
 This is a critical integration with the existing Task Manager.
@@ -407,7 +407,7 @@ permissions, and data isolation.
 ## 6. Knowledge Base & Help Center
 
 <!-- schema-section:start -->
-> **Schema:** `KnowledgeArticle` ([knowledge_articles](../../api/prisma/schema.prisma#L15533)): `ai_generated`, `is_faq`, `search_vector`, `translation_group_id`, `view_count` · `KnowledgeArticleFeedback` ([knowledge_article_feedback](../../api/prisma/schema.prisma#L15615)) · `KnowledgeArticleVersion` ([knowledge_article_versions](../../api/prisma/schema.prisma#L15596)) · `KnowledgeCategory` ([knowledge_categories](../../api/prisma/schema.prisma#L15505)) · `SupportIncident` ([support_incidents](../../api/prisma/schema.prisma#L15400)): `knowledge_article_id` · enum `KnowledgeArticleStatus` ([L14554](../../api/prisma/schema.prisma#L14554)) · enum `KnowledgeVisibility` ([L14562](../../api/prisma/schema.prisma#L14562)) — other modules: `Release` ([releases](../../api/prisma/schema.prisma#L7091)): `notes` ([06](./06-task-management.md)) · `WikiAiIndexEntry` ([wiki_ai_index_entries](../../api/prisma/schema.prisma#L17611)): `knowledge_article_id` ([15](./15-notion-business-docs.md)) · `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L17028)): `customer_visible`, `help_center_article_id` ([15](./15-notion-business-docs.md))
+> **Schema:** `KnowledgeArticle` ([knowledge_articles](../../api/prisma/schema.prisma#L15533)): `ai_generated`, `is_faq`, `search_vector`, `translation_group_id`, `view_count` · `KnowledgeArticleFeedback` ([knowledge_article_feedback](../../api/prisma/schema.prisma#L15615)) · `KnowledgeArticleVersion` ([knowledge_article_versions](../../api/prisma/schema.prisma#L15596)) · `KnowledgeCategory` ([knowledge_categories](../../api/prisma/schema.prisma#L15505)) · `SupportIncident` ([support_incidents](../../api/prisma/schema.prisma#L15400)): `knowledge_article_id` · enum `KnowledgeArticleStatus` ([L14554](../../api/prisma/schema.prisma#L14554)) · enum `KnowledgeVisibility` ([L14562](../../api/prisma/schema.prisma#L14562)) — other modules: `Release` ([releases](../../api/prisma/schema.prisma#L7091)): `notes` ([06](./06-task-management.md)) · `WikiAiIndexEntry` ([wiki_ai_index_entries](../../api/prisma/schema.prisma#L17631)): `knowledge_article_id` ([15](./15-notion-business-docs.md)) · `WikiPage` ([wiki_pages](../../api/prisma/schema.prisma#L17048)): `customer_visible`, `help_center_article_id` ([15](./15-notion-business-docs.md))
 <!-- schema-section:end -->
 
 Build an integrated knowledge management system.
@@ -559,7 +559,7 @@ channels.
 ## 11. Integrations & Shared Application Entities
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21929)) ([20](./20-automation-engine.md))
+> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21949)) ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 The Support module must be fully interconnected with the rest of the

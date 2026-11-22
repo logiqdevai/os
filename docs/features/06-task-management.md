@@ -82,8 +82,8 @@ Columns in other modules that point at this module by plain string id or JSON (n
 - `Ticket.release_id` ([13](./13-customer-support-communication-hub.md), [L15098](../../api/prisma/schema.prisma#L15098)) — 06 Release that shipped the fix (notified to the customer, §4); id only.
 - `SupportIncident.project_id` ([13](./13-customer-support-communication-hub.md), [L15400](../../api/prisma/schema.prisma#L15400)) — 05 Project / 06 Task the incident is tracked in; ids only.
 - `KnowledgeArticle.release_id` ([13](./13-customer-support-communication-hub.md), [L15533](../../api/prisma/schema.prisma#L15533)) — 06 Release whose notes this article publishes, when applicable; id only.
-- `WikiChecklistItem.task_type_id` ([15](./15-notion-business-docs.md), [L17338](../../api/prisma/schema.prisma#L17338)) — Task type (06 §3) for the generated Task; id only.
-- `CustomForm.opens_at` ([15](./15-notion-business-docs.md), [L17431](../../api/prisma/schema.prisma#L17431)) — Automatic 06 Task / 13 Ticket creation is configured in 20 rules; this is the default hint shown there.
+- `WikiChecklistItem.task_type_id` ([15](./15-notion-business-docs.md), [L17358](../../api/prisma/schema.prisma#L17358)) — Task type (06 §3) for the generated Task; id only.
+- `CustomForm.opens_at` ([15](./15-notion-business-docs.md), [L17451](../../api/prisma/schema.prisma#L17451)) — Automatic 06 Task / 13 Ticket creation is configured in 20 rules; this is the default hint shown there.
 
 <!-- schema-refs:end -->
 
@@ -146,7 +146,7 @@ Project overview, health, objectives, templates, duplication, archive, documenta
 ## 3. Task Record
 
 <!-- schema-section:start -->
-> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L6824)): `actual_hours`, `blocked_reason`, `cloned_from_task_id`, `duplicate_of_task_id` · `TaskAssignee` ([task_assignees](../../api/prisma/schema.prisma#L6929)) · `TaskChecklistItem` ([task_checklist_items](../../api/prisma/schema.prisma#L6972)) · `TaskDependency` ([task_dependencies](../../api/prisma/schema.prisma#L6955)) · `TaskLabel` ([task_labels](../../api/prisma/schema.prisma#L6774)) · `TaskStatus` ([task_statuses](../../api/prisma/schema.prisma#L6721)): `project_type_id` · `TaskType` ([task_types](../../api/prisma/schema.prisma#L6752)): `template` · enum `TaskDependencyType` ([L6681](../../api/prisma/schema.prisma#L6681)) · enum `TaskPriority` ([L6672](../../api/prisma/schema.prisma#L6672)) · enum `TaskStatusCategory` ([L6661](../../api/prisma/schema.prisma#L6661)) — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L2318)) ([01](./01-users-organizations-permissions.md)) · `Team` ([teams](../../api/prisma/schema.prisma#L1266)): `task_key` ([01](./01-users-organizations-permissions.md)) · `WikiChecklistItem` ([wiki_checklist_items](../../api/prisma/schema.prisma#L17338)): `task_type_id` ([15](./15-notion-business-docs.md))
+> **Schema:** `Task` ([tasks](../../api/prisma/schema.prisma#L6824)): `actual_hours`, `blocked_reason`, `cloned_from_task_id`, `duplicate_of_task_id` · `TaskAssignee` ([task_assignees](../../api/prisma/schema.prisma#L6929)) · `TaskChecklistItem` ([task_checklist_items](../../api/prisma/schema.prisma#L6972)) · `TaskDependency` ([task_dependencies](../../api/prisma/schema.prisma#L6955)) · `TaskLabel` ([task_labels](../../api/prisma/schema.prisma#L6774)) · `TaskStatus` ([task_statuses](../../api/prisma/schema.prisma#L6721)): `project_type_id` · `TaskType` ([task_types](../../api/prisma/schema.prisma#L6752)): `template` · enum `TaskDependencyType` ([L6681](../../api/prisma/schema.prisma#L6681)) · enum `TaskPriority` ([L6672](../../api/prisma/schema.prisma#L6672)) · enum `TaskStatusCategory` ([L6661](../../api/prisma/schema.prisma#L6661)) — other modules: `AuditEvent` ([audit_events](../../api/prisma/schema.prisma#L2318)) ([01](./01-users-organizations-permissions.md)) · `Team` ([teams](../../api/prisma/schema.prisma#L1266)): `task_key` ([01](./01-users-organizations-permissions.md)) · `WikiChecklistItem` ([wiki_checklist_items](../../api/prisma/schema.prisma#L17358)): `task_type_id` ([15](./15-notion-business-docs.md))
 <!-- schema-section:end -->
 
 Tasks should include:
@@ -354,7 +354,7 @@ Project roles (05 §10) and customer visibility flags determine which tasks a Me
 ## 16. API & Webhooks
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21929)) ([20](./20-automation-engine.md))
+> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21949)) ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 API: CRUD tasks and subtasks, transitions, assignment, comments, links to records, bulk operations, saved views, releases.

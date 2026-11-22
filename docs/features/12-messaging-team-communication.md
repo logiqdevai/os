@@ -107,9 +107,9 @@ Columns in other modules that point at this module by plain string id or JSON (n
 - `NotificationPreference.enabled` ([14](./14-notifications-activity-center.md), [L16352](../../api/prisma/schema.prisma#L16352)) — false = muted for this scope / channel (14 §6 per-record mute, 12 §17 per-channel settings).
 - `NotificationPreference.level` ([14](./14-notifications-activity-center.md), [L16352](../../api/prisma/schema.prisma#L16352)) — Record / module scope: all / important only / mentions and direct only / none (12 §17).
 - `NotificationKeyword.disabled_until` ([14](./14-notifications-activity-center.md), [L16396](../../api/prisma/schema.prisma#L16396)) — 12 §32 — "disable temporarily".
-- `AutomationSettings.dead_letter_alert_channel_id` ([20](./20-automation-engine.md), [L21116](../../api/prisma/schema.prisma#L21116)) — 12 Messaging channel that also receives the alert; id only.
-- `OutboundWebhook.channel_id` ([20](./20-automation-engine.md), [L21929](../../api/prisma/schema.prisma#L21929)) — 12 §40 — only messaging events from this channel; null = all channels the endpoint may see.
-- `OutboundWebhook.include_direct_messages` ([20](./20-automation-engine.md), [L21929](../../api/prisma/schema.prisma#L21929)) — 12 §40, §53 — direct-message events are excluded unless explicitly enabled.
+- `AutomationSettings.dead_letter_alert_channel_id` ([20](./20-automation-engine.md), [L21136](../../api/prisma/schema.prisma#L21136)) — 12 Messaging channel that also receives the alert; id only.
+- `OutboundWebhook.channel_id` ([20](./20-automation-engine.md), [L21949](../../api/prisma/schema.prisma#L21949)) — 12 §40 — only messaging events from this channel; null = all channels the endpoint may see.
+- `OutboundWebhook.include_direct_messages` ([20](./20-automation-engine.md), [L21949](../../api/prisma/schema.prisma#L21949)) — 12 §40, §53 — direct-message events are excluded unless explicitly enabled.
 
 <!-- schema-refs:end -->
 
@@ -1243,7 +1243,7 @@ Integration messages should clearly indicate their external source.
 ## 39. Webhooks & API
 
 <!-- schema-section:start -->
-> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13562)): `client_message_id` — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21929)) ([20](./20-automation-engine.md))
+> **Schema:** `Message` ([messages](../../api/prisma/schema.prisma#L13562)): `client_message_id` — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21949)) ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 Messaging must expose an extensible API.
@@ -1288,7 +1288,7 @@ Messaging must expose an extensible API.
 ## 40. Messaging Webhooks
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21929)): `channel_id`, `include_direct_messages` ([20](./20-automation-engine.md))
+> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21949)): `channel_id`, `include_direct_messages` ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 Support events such as:
@@ -1577,7 +1577,7 @@ Audit logs should be immutable and accessible only to authorized administrators.
 ## 52. Security
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21929)) ([20](./20-automation-engine.md)) · `Permission` ([permissions](../../api/prisma/schema.prisma#L1661)) ([01](./01-users-organizations-permissions.md))
+> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21949)) ([20](./20-automation-engine.md)) · `Permission` ([permissions](../../api/prisma/schema.prisma#L1661)) ([01](./01-users-organizations-permissions.md))
 <!-- schema-section:end -->
 
 > Authentication, authorization, RBAC, organization isolation and session management are defined by → [01](./01-users-organizations-permissions.md) · Linear LOG-406.
@@ -1608,7 +1608,7 @@ Users must never be able to retrieve messages or attachments outside their autho
 ## 53. Privacy
 
 <!-- schema-section:start -->
-> **Schema:** `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L14073)): `share_read_receipts` · `MessagingPresence` ([messaging_presence](../../api/prisma/schema.prisma#L14043)): `presence_hidden` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13205)): `presence_visibility`, `read_receipts_direct` — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21929)): `include_direct_messages` ([20](./20-automation-engine.md))
+> **Schema:** `MessagingMemberSettings` ([messaging_member_settings](../../api/prisma/schema.prisma#L14073)): `share_read_receipts` · `MessagingPresence` ([messaging_presence](../../api/prisma/schema.prisma#L14043)): `presence_hidden` · `MessagingSettings` ([messaging_settings](../../api/prisma/schema.prisma#L13205)): `presence_visibility`, `read_receipts_direct` — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21949)): `include_direct_messages` ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 Privacy controls should include:

@@ -1,6 +1,6 @@
 import type {
     CustomFormFieldType, CustomFormKind, CustomFormStatus, FormSubmissionStatus, WikiChecklistAssigneeKind, WikiChecklistItemStatus, WikiChecklistKind,
-    WikiChecklistRunStatus, WikiPageType, WikiPermissionLevel, WikiPrincipalType, WikiSpaceKind, WikiVisibility,
+    WikiChecklistRunStatus, WikiPageType, WikiTemplateCategory, WikiPermissionLevel, WikiPrincipalType, WikiSpaceKind, WikiVisibility,
 } from "@/features/docs/interfaces/docs.interfaces";
 import type { DropdownOption } from "@/lib/dropdown-option-label.utils";
 
@@ -25,6 +25,21 @@ export const WikiPageTypeFormOptions: DropdownOption<WikiPageType>[] = [
     { id: "ONBOARDING_GUIDE", label: "Onboarding guide" },
     { id: "OFFBOARDING_GUIDE", label: "Offboarding guide" },
     { id: "FAQ", label: "FAQ" },
+];
+
+/** Template gallery sections (15 §3), in gallery order. */
+export const WikiTemplateCategoryFormOptions: DropdownOption<WikiTemplateCategory>[] = [
+    { id: "COMPANY", label: "Company" },
+    { id: "PROJECTS", label: "Projects" },
+    { id: "MEETINGS", label: "Meetings" },
+    { id: "ENGINEERING", label: "Engineering" },
+    { id: "PRODUCT", label: "Product" },
+    { id: "OPERATIONS", label: "Operations" },
+    { id: "PEOPLE", label: "People & HR" },
+    { id: "SALES", label: "Sales" },
+    { id: "MARKETING", label: "Marketing" },
+    { id: "PERSONAL", label: "Personal" },
+    { id: "OTHER", label: "Other" },
 ];
 
 export const WikiVisibilityFormOptions: DropdownOption<WikiVisibility>[] = [

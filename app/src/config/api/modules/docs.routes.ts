@@ -40,6 +40,7 @@ export const DocsApiRoutes = {
     },
     templates: {
         list: "/docs/templates",
+        fromPage: "/docs/templates/from-page",
         detail: (id: string) => `/docs/templates/${id}`,
         action: (id: string, action: "duplicate" | "archive" | "unarchive") => `/docs/templates/${id}/${action}`,
     },

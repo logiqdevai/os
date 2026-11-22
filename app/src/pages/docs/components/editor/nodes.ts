@@ -48,6 +48,9 @@ export const Callout = Node.create({
                     state.wrapBlock("> ", null, node, () => {
                         state.write(`[!${String(node.attrs.type).toUpperCase()}]`);
                         state.ensureNewLine();
+                        // Write the "> " of the body's first line now: when the body starts with a mark (e.g. **bold**),
+                        // the inline renderer would otherwise skip it and the callout breaks on the next save.
+                        state.write("");
                         state.renderContent(node);
                     });
                 },

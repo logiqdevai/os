@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import type { Editor } from "@tiptap/react";
 import {
-    Archive, ArchiveRestore, CheckCircle2, Copy, Download, FileText, FileUp, History, ImagePlus, Link2, Lock, MessageSquare, MessageSquarePlus, MoreHorizontal, Star, Trash2,
+    Archive, ArchiveRestore, CheckCircle2, Copy, Download, FileUp, History, ImagePlus, LayoutTemplate, Link2, Lock, MessageSquare, MessageSquarePlus, MoreHorizontal, Star, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -27,6 +27,7 @@ import { ConflictDialog } from "../../components/conflict-dialog";
 import { PermissionsPanel } from "../../components/permissions-panel";
 import { CommentsPanel, HistoryPanel, LinksPanel } from "../../components/page-panels";
 import { ExportDocsDialog, ImportDocsDialog } from "../../components/transfer-dialogs";
+import { SaveAsTemplateDialog } from "../../components/save-as-template-dialog";
 import { AddIconButton, apiUrl, PageBreadcrumbs, PageCover, PageIconPicker, PageProperties, pickImageFile } from "../../components/page-chrome";
 import { DocIcon } from "../../components/doc-icons";
 import { mergeWithMarkers } from "../../utils/line-diff";
@@ -162,6 +163,7 @@ function PageScreen({ pg }: { pg: WikiPageDetail }) {
     const [panel, setPanel] = useState<Panel>(null);
     const [confirm, setConfirm] = useState<null | "trash" | "archive">(null);
     const [transfer, setTransfer] = useState<null | "import" | "export">(null);
+    const [savingTemplate, setSavingTemplate] = useState(false);
     const act = (a: "archive" | "unarchive" | "trash" | "acknowledge" | "reacknowledge") => action.mutate({ id: pg.id, action: a });
     const copyLink = () => void navigator.clipboard?.writeText(`${window.location.origin}/docs/pages/${pg.id}`);
 
@@ -215,8 +217,9 @@ function PageScreen({ pg }: { pg: WikiPageDetail }) {
                         <DropdownMenuItem onSelect={() => setPanel("history")}><History /> Version history</DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => setPanel("links")}><Link2 /> Backlinks ({pg.backlink_count})</DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => setPanel("permissions")}><Lock /> Permissions</DropdownMenuItem>
+                        {perms.can("docs.spaces.manage") && <DropdownMenuItem onSelect={() => setSavingTemplate(true)}><LayoutTemplate /> Save as template</DropdownMenuItem>}
                         {perms.can("docs.pages.export") && <DropdownMenuItem onSelect={() => setTransfer("export")}><Download /> Export as Markdown</DropdownMenuItem>}
-                        {editable && perms.can("docs.pages.import") && <DropdownMenuItem onSelect={() => setTransfer("import")}><FileUp /> Import sub-pages</DropdownMenuItem>}
+                        {editable && perms.can("docs.pages.import") && <DropdownMenuItem onSelect={() => setTransfer("import")}><FileUp /> Import Markdown or Notion</DropdownMenuItem>}
                         {pg.can.archive && (
                             <>
                                 <DropdownMenuSeparator />
@@ -298,6 +301,7 @@ function PageScreen({ pg }: { pg: WikiPageDetail }) {
                 )}
             </div>
 
+            <SaveAsTemplateDialog open={savingTemplate} onOpenChange={setSavingTemplate} page={{ id: pg.id, title: draft.title }} />
             <ImportDocsDialog open={transfer === "import"} onOpenChange={(o) => setTransfer(o ? "import" : null)} spaceId={pg.space_id} parentPageId={pg.id} parentTitle={draft.title || "Untitled"} />
             <ExportDocsDialog open={transfer === "export"} onOpenChange={(o) => setTransfer(o ? "export" : null)} spaceId={pg.space_id} pageId={pg.id} />
             <Sheet open={!!panel} onOpenChange={(o) => !o && setPanel(null)}>
@@ -336,7 +340,7 @@ function AckBanner({ page, onAck }: { page: WikiPageDetail; onAck: () => void })
 
 /** Notion's empty-page starter: continue with an empty page, or start from a template / an import. */
 function EmptyPageStarter({ onPick, onImport }: { onPick: (markdown: string, pageType?: WikiPageDetail["page_type"]) => void; onImport?: () => void }) {
-    const templates = useDocTemplates({ limit: 6 });
+    const templates = useDocTemplates({ limit: 6, featured: true });
     const list = templates.data?.data ?? [];
     if (!list.length && !onImport) return null;
     return (
@@ -347,8 +351,8 @@ function EmptyPageStarter({ onPick, onImport }: { onPick: (markdown: string, pag
                     <DocIcon icon={t.icon ?? "file-text"} /> {t.name}
                 </button>
             ))}
-            {onImport && <button type="button" onClick={onImport} className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-muted-foreground hover:bg-accent hover:text-foreground"><FileUp className="size-4" /> Import Markdown</button>}
-            <Link to="/docs/templates" className="flex items-center gap-2 rounded-md px-1.5 py-1 text-muted-foreground hover:bg-accent hover:text-foreground"><FileText className="size-4" /> All templates</Link>
+            {onImport && <button type="button" onClick={onImport} className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-muted-foreground hover:bg-accent hover:text-foreground"><FileUp className="size-4" /> Import Markdown or Notion</button>}
+            <Link to="/docs/templates" className="flex items-center gap-2 rounded-md px-1.5 py-1 text-muted-foreground hover:bg-accent hover:text-foreground"><LayoutTemplate className="size-4" /> Browse all templates</Link>
         </div>
     );
 }

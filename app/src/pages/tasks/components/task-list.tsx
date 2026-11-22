@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Archive, ChevronDown, CircleDot, Plus, ListTodo, UserRound, X } from "lucide-react";
+import { Archive, ChevronDown, CircleDot, Plus, ListTodo, Trash2, UserRound, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { MemberAvatar, MemberAvatarStack } from "@/components/ui/member-avatar";
@@ -174,6 +174,8 @@ function BulkBar({ ids, onDone }: { ids: string[]; onDone: () => void }) {
     const [search, setSearch] = useState("");
     const people = useTaskPeople(search);
     const [archiving, setArchiving] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const canDelete = usePermissions().can("tasks.tasks.delete");
     // Optimistic: rows change (or disappear when archived) at once and the selection clears. Only partial failures are
     // worth a toast; a full failure is toasted globally. mutateAsync so the toast survives this bar unmounting.
     const run = (body: { patch?: Record<string, unknown>; action?: string; optimistic?: Record<string, unknown> }) => {
@@ -181,6 +183,7 @@ function BulkBar({ ids, onDone }: { ids: string[]; onDone: () => void }) {
             if (r.failed.length) toast({ variant: "destructive", title: `${r.failed.length} of ${r.failed.length + r.updated} tasks could not be changed`, description: "Permission or workflow rules refused them." });
         }, () => undefined);
         setArchiving(false);
+        setDeleting(false);
         onDone();
     };
     return (
@@ -203,7 +206,17 @@ function BulkBar({ ids, onDone }: { ids: string[]; onDone: () => void }) {
                 ariaLabel="Assign"
             />
             <Button variant="outline" size="sm" onClick={() => setArchiving(true)}><Archive /> Archive</Button>
+            {canDelete && <Button variant="outline" size="sm" className="text-danger hover:text-danger" onClick={() => setDeleting(true)}><Trash2 /> Delete</Button>}
             <Button variant="ghost" size="icon-sm" aria-label="Clear selection" onClick={onDone}><X /></Button>
+            <ConfirmationDialog
+                isOpen={deleting}
+                onClose={() => setDeleting(false)}
+                title={`Delete ${ids.length} ${ids.length === 1 ? "task" : "tasks"}?`}
+                description="Comments, checklists and links are deleted too. This cannot be undone."
+                confirmText="Delete"
+                variant="destructive"
+                onConfirm={() => run({ action: "delete" })}
+            />
             <ConfirmationDialog
                 isOpen={archiving}
                 onClose={() => setArchiving(false)}

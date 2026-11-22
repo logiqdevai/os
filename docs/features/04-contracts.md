@@ -89,9 +89,9 @@ Columns in other modules that point at this module by plain string id or JSON (n
 - `ProposalVersion.contracts` ([03](./03-proposal-quotation-generator.md), [L4037](../../api/prisma/schema.prisma#L4037)) — Contracts generated from this exact proposal version (04 §7, §55).
 - `ProposalAcceptance.signature_request_id` ([03](./03-proposal-quotation-generator.md), [L4345](../../api/prisma/schema.prisma#L4345)) — Signature request id from the in-house e-signature service (04 §33–38); id only.
 - `ProjectChangeRequest.proposal_id` ([05](./05-project-management.md), [L6307](../../api/prisma/schema.prisma#L6307)) — Commercial links (03, 04) and the contract change request this originated (04 §26, §43).
-- `DocumentRetentionPolicy.enforced_by_module` ([17](./17-documents-file-management.md), [L18187](../../api/prisma/schema.prisma#L18187)) — Module that mandates this policy (e.g. CONTRACTS for 04 §84); null for organization policies.
-- `DocumentVersion.checksum_sha256` ([17](./17-documents-file-management.md), [L18481](../../api/prisma/schema.prisma#L18481)) — SHA-256 of the stored bytes (integrity, dedupe, 04 §17 hashes).
-- `TimeProjectSettings.contract_id` ([18](./18-time-tracking.md), [L19312](../../api/prisma/schema.prisma#L19312)) — Contract that defines the billing context (04 §54).
+- `DocumentRetentionPolicy.enforced_by_module` ([17](./17-documents-file-management.md), [L18207](../../api/prisma/schema.prisma#L18207)) — Module that mandates this policy (e.g. CONTRACTS for 04 §84); null for organization policies.
+- `DocumentVersion.checksum_sha256` ([17](./17-documents-file-management.md), [L18501](../../api/prisma/schema.prisma#L18501)) — SHA-256 of the stored bytes (integrity, dedupe, 04 §17 hashes).
+- `TimeProjectSettings.contract_id` ([18](./18-time-tracking.md), [L19332](../../api/prisma/schema.prisma#L19332)) — Contract that defines the billing context (04 §54).
 
 <!-- schema-refs:end -->
 
@@ -554,7 +554,7 @@ Errors should identify the exact missing input.
 ## 17. Rendered Document
 
 <!-- schema-section:start -->
-> **Schema:** `ContractVersion` ([contract_versions](../../api/prisma/schema.prisma#L4993)): `content_hash`, `variables` — other modules: `DocumentVersion` ([document_versions](../../api/prisma/schema.prisma#L18481)): `checksum_sha256` ([17](./17-documents-file-management.md))
+> **Schema:** `ContractVersion` ([contract_versions](../../api/prisma/schema.prisma#L4993)): `content_hash`, `variables` — other modules: `DocumentVersion` ([document_versions](../../api/prisma/schema.prisma#L18501)): `checksum_sha256` ([17](./17-documents-file-management.md))
 <!-- schema-section:end -->
 
 Every finalized generation creates a document artifact containing:
@@ -1284,7 +1284,7 @@ The chosen impact handling (obligations, child contracts) is kept in `ContractTe
 ## 54. Contract Value / Payment Context
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L19312)): `contract_id` ([18](./18-time-tracking.md))
+> **Schema:** other modules: `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L19332)): `contract_id` ([18](./18-time-tracking.md))
 <!-- schema-section:end -->
 
 Contracts may store structured contractual context:
@@ -1951,7 +1951,7 @@ When a contract expires or terminates:
 ## 84. Data Retention
 
 <!-- schema-section:start -->
-> **Schema:** `ContractType` ([contract_types](../../api/prisma/schema.prisma#L4652)): `retention_days` — other modules: `DocumentRetentionPolicy` ([document_retention_policies](../../api/prisma/schema.prisma#L18187)) ([17](./17-documents-file-management.md))
+> **Schema:** `ContractType` ([contract_types](../../api/prisma/schema.prisma#L4652)): `retention_days` — other modules: `DocumentRetentionPolicy` ([document_retention_policies](../../api/prisma/schema.prisma#L18207)) ([17](./17-documents-file-management.md))
 <!-- schema-section:end -->
 
 Retention policies should be configurable by organization and contract

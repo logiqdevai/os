@@ -6,32 +6,41 @@ import { EventsService } from '@/shared/events/events.service';
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { paginate, skipTake } from '@/shared/utils/pagination/pagination.utils';
 import { slugify } from '@/modules/auth/services/organization-setup.service';
-import { CreateTemplateDto, TemplateQuery, UpdateTemplateDto } from '../dto/template.dto';
+import { CreateTemplateDto, TemplateFromPageInput, TemplateQuery, UpdateTemplateDto } from '../dto/template.dto';
+import { DocsAccessService } from '../docs-access.service';
 
-/** Page templates (15 §2, §3). System templates (organization_id null) are read-only; duplicate them to change. */
+/**
+ * Page templates and the template gallery (15 §2, §3). System templates (organization_id null) are the built-in gallery,
+ * seeded by prisma/seed/docs-templates.ts and read-only; duplicate them to change. Organization templates are created
+ * from scratch or saved from a page ("Save as template"), which is also how an imported Notion template becomes reusable.
+ */
 @Injectable()
 export class DocsTemplatesService {
     constructor(
         private readonly prisma: PrismaService,
+        private readonly access: DocsAccessService,
         private readonly audit: AuditService,
         private readonly events: EventsService,
     ) { }
 
     async findAll(ctx: OrgContext, query: TemplateQuery) {
+        const owner = query.source === 'system' ? [{ organization_id: null }] : query.source === 'organization' ? [{ organization_id: ctx.organization_id }] : [{ organization_id: ctx.organization_id }, { organization_id: null }];
         const where: Prisma.WikiPageTemplateWhereInput = {
             AND: [
-                { OR: [{ organization_id: ctx.organization_id }, { organization_id: null }] },
+                { OR: owner },
                 ...(query.space_id ? [{ OR: [{ space_id: query.space_id }, { space_id: null }] }] : []),
+                ...(query.search ? [{ OR: [{ name: { contains: query.search, mode: 'insensitive' as const } }, { description: { contains: query.search, mode: 'insensitive' as const } }] }] : []),
             ],
             ...(query.archived ? { archived_at: { not: null } } : { archived_at: null }),
             ...(query.page_type && { page_type: query.page_type }),
-            ...(query.search && { name: { contains: query.search, mode: 'insensitive' } }),
+            ...(query.category && { category: query.category }),
+            ...(query.featured !== undefined && { is_featured: query.featured }),
         };
         const [items, total] = await Promise.all([
             this.prisma.wikiPageTemplate.findMany({
                 where,
                 ...skipTake(query),
-                orderBy: [{ is_system: 'desc' }, { sort_order: 'asc' }, { name: 'asc' }],
+                orderBy: [{ is_featured: 'desc' }, { is_system: 'desc' }, { sort_order: 'asc' }, { name: 'asc' }],
                 include: { space: { select: { id: true, name: true } }, _count: { select: { pages: true } } },
             }),
             this.prisma.wikiPageTemplate.count({ where }),
@@ -74,9 +83,27 @@ export class DocsTemplatesService {
             description: src.description ?? undefined,
             icon: src.icon ?? undefined,
             page_type: src.page_type,
+            category: src.category,
             content_markdown: src.content_markdown ?? undefined,
             default_review_interval_days: src.default_review_interval_days ?? undefined,
         });
+    }
+
+    /** "Save as template": copy a readable page (title, icon, type, Markdown) into a new organization template. */
+    async createFromPage(ctx: OrgContext, input: TemplateFromPageInput) {
+        const { page } = await this.access.readablePage(ctx, input.page_id);
+        const tpl = await this.create(ctx, {
+            name: (input.name ?? page.title).trim() || 'Untitled template',
+            description: input.description,
+            icon: page.icon ?? undefined,
+            page_type: page.page_type,
+            category: input.category,
+            is_featured: input.is_featured,
+            space_id: input.space_id,
+            content_markdown: page.content_markdown ?? undefined,
+        });
+        await this.audit.record(ctx, 'wiki_template.saved_from_page', { resource_type: 'wiki_page_template', resource_id: tpl.id, metadata: { page_id: page.id } });
+        return tpl;
     }
 
     async setArchived(ctx: OrgContext, id: string, archived: boolean) {

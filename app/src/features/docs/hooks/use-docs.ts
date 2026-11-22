@@ -153,6 +153,8 @@ export const useDocTemplates = (params: Params) => useQuery({ queryKey: [...KEY,
 export const useCreateDocTemplate = mutation(service.createTemplate, "Could not create the template");
 /** Autosaved template edit dialog: optimistic, failures show in its <SaveStatus />. */
 export const useUpdateDocTemplate = () => useEntityUpdate({ root: KEY, mutationFn: service.updateTemplate, meta: { errorTitle: "Could not save the template", errorToast: false } });
+export const useDuplicateDocTemplate = mutation(service.duplicateTemplate, "Could not duplicate the template");
+export const useCreateTemplateFromPage = mutation(service.createTemplateFromPage, "Could not save the page as a template");
 export const useArchiveDocTemplate = () => useEntityRemove({ root: [...KEY, "templates"], mutationFn: service.archiveTemplate, alsoInvalidate: [KEY], meta: { errorTitle: "Could not archive the template" } });
 
 export const useChecklists = (params: Params) => useQuery({ queryKey: [...KEY, "checklists", params], queryFn: () => service.getChecklists(params), placeholderData: keepPreviousData });

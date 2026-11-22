@@ -57,7 +57,7 @@ export default function SpaceDetailPage() {
                         <DropdownMenuContent align="end" className="w-52">
                             {canManage && <DropdownMenuItem onSelect={() => setEditOpen(true)}><Pencil /> Space settings</DropdownMenuItem>}
                             <DropdownMenuItem onSelect={() => setMembersOpen(true)}><Users /> {canManage || s.my_level === "MANAGE" ? "Manage access" : "Members"}</DropdownMenuItem>
-                            {canWrite && p.can("docs.pages.import") && <DropdownMenuItem onSelect={() => setTransfer("import")}><FileUp /> Import Markdown</DropdownMenuItem>}
+                            {canWrite && p.can("docs.pages.import") && <DropdownMenuItem onSelect={() => setTransfer("import")}><FileUp /> Import Markdown or Notion</DropdownMenuItem>}
                             {p.can("docs.pages.export") && <DropdownMenuItem onSelect={() => setTransfer("export")}><Download /> Export as Markdown</DropdownMenuItem>}
                             {canManage && !s.archived_at && (
                                 <>

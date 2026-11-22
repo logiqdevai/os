@@ -77,10 +77,10 @@ Columns in other modules that point at this module by plain string id or JSON (n
 - `CommTemplate.notification_event_type_id` ([11](./11-communication-center.md), [L11920](../../api/prisma/schema.prisma#L11920)) — 14 NotificationEventType key this template renders (kind NOTIFICATION); id only.
 - `CommMessage.notification_id` ([11](./11-communication-center.md), [L12070](../../api/prisma/schema.prisma#L12070)) — 14 Notification / NotificationDelivery this message delivers (kind NOTIFICATION); ids only.
 - `MessageReminder.notification_id` ([12](./12-messaging-team-communication.md), [L13928](../../api/prisma/schema.prisma#L13928)) — 14 Notification id emitted when triggered; id only.
-- `AutomationSettings.dead_letter_alerts_enabled` ([20](./20-automation-engine.md), [L21116](../../api/prisma/schema.prisma#L21116)) — 20 §6 — dead-letter alerting through 14 Notifications.
-- `AutomationTriggerDefinition.notifiable` ([20](./20-automation-engine.md), [L21163](../../api/prisma/schema.prisma#L21163)) — Also mirrored to 14 Notifications and outbound webhooks (20 §2).
-- `PlatformEvent.notifications_processed_at` ([20](./20-automation-engine.md), [L21437](../../api/prisma/schema.prisma#L21437)) — 14 Notifications fan-out done.
-- `AutomationApproval.notification_id` ([20](./20-automation-engine.md), [L21668](../../api/prisma/schema.prisma#L21668)) — 14 Notification id sent for this request; id only.
+- `AutomationSettings.dead_letter_alerts_enabled` ([20](./20-automation-engine.md), [L21136](../../api/prisma/schema.prisma#L21136)) — 20 §6 — dead-letter alerting through 14 Notifications.
+- `AutomationTriggerDefinition.notifiable` ([20](./20-automation-engine.md), [L21183](../../api/prisma/schema.prisma#L21183)) — Also mirrored to 14 Notifications and outbound webhooks (20 §2).
+- `PlatformEvent.notifications_processed_at` ([20](./20-automation-engine.md), [L21457](../../api/prisma/schema.prisma#L21457)) — 14 Notifications fan-out done.
+- `AutomationApproval.notification_id` ([20](./20-automation-engine.md), [L21688](../../api/prisma/schema.prisma#L21688)) — 14 Notification id sent for this request; id only.
 
 <!-- schema-refs:end -->
 
@@ -347,7 +347,7 @@ Audit the delivery of mandatory and security notifications, template changes and
 ## 14. API & Webhooks
 
 <!-- schema-section:start -->
-> **Schema:** `NotificationEvent` ([notification_events](../../api/prisma/schema.prisma#L15988)) · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L15933)) · `NotificationOrgSettings` ([notification_org_settings](../../api/prisma/schema.prisma#L16230)): `webhook_events_enabled` · enum `NotificationEventStatus` ([L15843](../../api/prisma/schema.prisma#L15843)) — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21929)) ([20](./20-automation-engine.md))
+> **Schema:** `NotificationEvent` ([notification_events](../../api/prisma/schema.prisma#L15988)) · `NotificationEventType` ([notification_event_types](../../api/prisma/schema.prisma#L15933)) · `NotificationOrgSettings` ([notification_org_settings](../../api/prisma/schema.prisma#L16230)): `webhook_events_enabled` · enum `NotificationEventStatus` ([L15843](../../api/prisma/schema.prisma#L15843)) — other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21949)) ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 API:

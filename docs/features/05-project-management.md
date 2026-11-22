@@ -127,10 +127,10 @@ Columns in other modules that point at this module by plain string id or JSON (n
 - `TicketCategory.default_project_id` ([13](./13-customer-support-communication-hub.md), [L15009](../../api/prisma/schema.prisma#L15009)) — 13 §4 — default project for tasks converted from tickets in this category (05 Project id).
 - `Ticket.change_request_id` ([13](./13-customer-support-communication-hub.md), [L15098](../../api/prisma/schema.prisma#L15098)) — Project Change Request (05 §45) created from this request.
 - `SupportIncident.project_id` ([13](./13-customer-support-communication-hub.md), [L15400](../../api/prisma/schema.prisma#L15400)) — 05 Project / 06 Task the incident is tracked in; ids only.
-- `WikiSpace.project_id` ([15](./15-notion-business-docs.md), [L16917](../../api/prisma/schema.prisma#L16917)) — 15 §4 — project help center space (05 §34).
-- `FolderTemplate.project_type_id` ([17](./17-documents-file-management.md), [L18222](../../api/prisma/schema.prisma#L18222)) — Project type this template applies to (05 §36); null for customer / employee / organization templates.
-- `TimeProjectSettings.members_only` ([18](./18-time-tracking.md), [L19312](../../api/prisma/schema.prisma#L19312)) — Only project members (05 §16) may log time.
-- `TimeProjectSettings.hours_alert_percent` ([18](./18-time-tracking.md), [L19312](../../api/prisma/schema.prisma#L19312)) — Alert when logged hours reach this percent of Project.budget_hours (05 §51).
+- `WikiSpace.project_id` ([15](./15-notion-business-docs.md), [L16932](../../api/prisma/schema.prisma#L16932)) — 15 §4 — project help center space (05 §34).
+- `FolderTemplate.project_type_id` ([17](./17-documents-file-management.md), [L18242](../../api/prisma/schema.prisma#L18242)) — Project type this template applies to (05 §36); null for customer / employee / organization templates.
+- `TimeProjectSettings.members_only` ([18](./18-time-tracking.md), [L19332](../../api/prisma/schema.prisma#L19332)) — Only project members (05 §16) may log time.
+- `TimeProjectSettings.hours_alert_percent` ([18](./18-time-tracking.md), [L19332](../../api/prisma/schema.prisma#L19332)) — Alert when logged hours reach this percent of Project.budget_hours (05 §51).
 
 <!-- schema-refs:end -->
 
@@ -542,7 +542,7 @@ Changes to important dates should be auditable.
 ## 16. Project Planning
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L19312)): `members_only` ([18](./18-time-tracking.md))
+> **Schema:** other modules: `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L19332)): `members_only` ([18](./18-time-tracking.md))
 <!-- schema-section:end -->
 
 Projects should support structured planning for:
@@ -881,7 +881,7 @@ Notes may contain rich text and attachments.
 ## 34. Project Documentation
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `WikiSpace` ([wiki_spaces](../../api/prisma/schema.prisma#L16917)): `project_id` ([15](./15-notion-business-docs.md))
+> **Schema:** other modules: `WikiSpace` ([wiki_spaces](../../api/prisma/schema.prisma#L16932)): `project_id` ([15](./15-notion-business-docs.md))
 <!-- schema-section:end -->
 
 Projects should provide access to relevant documentation such as requirements, specifications, architecture, designs, reports, and acceptance documentation.
@@ -901,7 +901,7 @@ Files remain managed by [17 Documents & File Management](./17-documents-file-man
 ## 36. Project Templates
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectTemplate` ([project_templates](../../api/prisma/schema.prisma#L5731)) — other modules: `FolderTemplate` ([folder_templates](../../api/prisma/schema.prisma#L18222)): `project_type_id` ([17](./17-documents-file-management.md)) · enum `FolderTemplateTarget` ([L17994](../../api/prisma/schema.prisma#L17994)) ([17](./17-documents-file-management.md))
+> **Schema:** `ProjectTemplate` ([project_templates](../../api/prisma/schema.prisma#L5731)) — other modules: `FolderTemplate` ([folder_templates](../../api/prisma/schema.prisma#L18242)): `project_type_id` ([17](./17-documents-file-management.md)) · enum `FolderTemplateTarget` ([L18014](../../api/prisma/schema.prisma#L18014)) ([17](./17-documents-file-management.md))
 <!-- schema-section:end -->
 
 Templates should allow organizations to standardize recurring project structures.
@@ -1067,7 +1067,7 @@ Each gate can record approver, status, decision, date, comments, and related mil
 ## 47. Acceptance Criteria
 
 <!-- schema-section:start -->
-> **Schema:** `ProjectAcceptanceCriterion` ([project_acceptance_criteria](../../api/prisma/schema.prisma#L6136)) · `ProjectDeliverableReview` ([project_deliverable_reviews](../../api/prisma/schema.prisma#L6583)) · enum `AcceptanceStatus` ([L5542](../../api/prisma/schema.prisma#L5542)) · enum `DeliverableStatus` ([L5530](../../api/prisma/schema.prisma#L5530)) — other modules: `DocumentApproval` ([document_approvals](../../api/prisma/schema.prisma#L18773)) ([17](./17-documents-file-management.md))
+> **Schema:** `ProjectAcceptanceCriterion` ([project_acceptance_criteria](../../api/prisma/schema.prisma#L6136)) · `ProjectDeliverableReview` ([project_deliverable_reviews](../../api/prisma/schema.prisma#L6583)) · enum `AcceptanceStatus` ([L5542](../../api/prisma/schema.prisma#L5542)) · enum `DeliverableStatus` ([L5530](../../api/prisma/schema.prisma#L5530)) — other modules: `DocumentApproval` ([document_approvals](../../api/prisma/schema.prisma#L18793)) ([17](./17-documents-file-management.md))
 <!-- schema-section:end -->
 
 Acceptance criteria can be defined for deliverables or milestones.
@@ -1116,7 +1116,7 @@ Employee and resource information remains owned by the relevant modules.
 ## 51. Resource Allocation
 
 <!-- schema-section:start -->
-> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L5778)): `budget_hours` · `ProjectAllocation` ([project_allocations](../../api/prisma/schema.prisma#L6407)) — other modules: `EmployeeCapacityPeriod` ([employee_capacity_periods](../../api/prisma/schema.prisma#L10923)) ([10](./10-employee-management-system.md)) · `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L19312)): `hours_alert_percent` ([18](./18-time-tracking.md))
+> **Schema:** `Project` ([projects](../../api/prisma/schema.prisma#L5778)): `budget_hours` · `ProjectAllocation` ([project_allocations](../../api/prisma/schema.prisma#L6407)) — other modules: `EmployeeCapacityPeriod` ([employee_capacity_periods](../../api/prisma/schema.prisma#L10923)) ([10](./10-employee-management-system.md)) · `TimeProjectSettings` ([time_project_settings](../../api/prisma/schema.prisma#L19332)): `hours_alert_percent` ([18](./18-time-tracking.md))
 <!-- schema-section:end -->
 
 Projects may record planned allocation by person/team, role, planned hours, date range, allocation percentage, workstream, and milestone.
@@ -1873,7 +1873,7 @@ Projects should be designed as first-class platform resources so external system
 ## 116. Cross-Module Webhook Workflows
 
 <!-- schema-section:start -->
-> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21929)) ([20](./20-automation-engine.md))
+> **Schema:** other modules: `OutboundWebhook` ([outbound_webhooks](../../api/prisma/schema.prisma#L21949)) ([20](./20-automation-engine.md))
 <!-- schema-section:end -->
 
 Examples:

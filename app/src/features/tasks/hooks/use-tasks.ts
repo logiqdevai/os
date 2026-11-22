@@ -129,7 +129,7 @@ export const useBulkTasks = () =>
         "Bulk update failed",
         (qc, { task_ids, patch, action, optimistic }) => {
             for (const id of task_ids) {
-                if (action === "archive") removeEntity(qc, TASKS_KEY, id);
+                if (action === "archive" || action === "delete") removeEntity(qc, TASKS_KEY, id);
                 else if (patch || optimistic) patchEntity(qc, TASKS_KEY, id, { ...(patch ?? {}), ...(optimistic ?? {}) });
             }
         },

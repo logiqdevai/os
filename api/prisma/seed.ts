@@ -2,12 +2,13 @@
  * Seed — docs/features/01-users-organizations-permissions.md
  *
  * Idempotent. Upserts the global permission catalog (§46) and the platform role templates
- * (§111, §79) that organizations clone. Run with:
+ * (§111, §79) that organizations clone, and the built-in docs template gallery (15 §3). Run with:
  *   npx dotenv run -f .env.staging -- npx prisma db seed
  */
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma';
 import { PERMISSION_CATALOG, RENAMED_PERMISSION_KEYS, ROLE_TEMPLATES, resolvePermissionKeys } from './seed/permission-catalog';
+import { seedDocsSystemTemplates } from './seed/docs-templates';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL as string });
 const prisma = new PrismaClient({ adapter });
@@ -89,6 +90,7 @@ async function main() {
   await renamePermissions();
   await seedPermissions();
   await seedRoleTemplates();
+  await seedDocsSystemTemplates(prisma);
 }
 
 main()

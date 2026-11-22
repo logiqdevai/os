@@ -16702,6 +16702,21 @@ enum WikiPageType {
   FAQ
 }
 
+/// 15 §3 — template gallery section (Notion's template gallery categories, for a business workspace).
+enum WikiTemplateCategory {
+  COMPANY
+  PROJECTS
+  MEETINGS
+  ENGINEERING
+  PRODUCT
+  OPERATIONS
+  PEOPLE
+  SALES
+  MARKETING
+  PERSONAL
+  OTHER
+}
+
 /// 15 §2 — who may see a page: whole organization, a branch, a team, a role or explicit members.
 /// BRANCH / TEAM / ROLE / MEMBERS enumerate the principals in WikiPagePermission.
 enum WikiVisibility {
@@ -16991,7 +17006,7 @@ model WikiSpaceMember {
 /// 15 §2, §3 — page templates (policy, procedure, runbook, meeting notes, decision record, handbook chapter,
 /// onboarding/offboarding guide). organization_id null = platform-provided system template.
 model WikiPageTemplate {
-  id                           String       @id @default(uuid())
+  id                           String               @id @default(uuid())
   organization_id              String?
   /// Optional: template offered only inside this space.
   space_id                     String?
@@ -16999,17 +17014,21 @@ model WikiPageTemplate {
   slug                         String
   description                  String?
   icon                         String?
-  page_type                    WikiPageType @default(GENERAL)
+  page_type                    WikiPageType         @default(GENERAL)
+  /// Gallery section the template is listed under (15 §3).
+  category                     WikiTemplateCategory @default(OTHER)
+  /// Shown in the gallery's "Featured" row.
+  is_featured                  Boolean              @default(false)
   /// Template body in the same Markdown dialect as WikiPage.content_markdown.
   content_markdown             String?
   /// Default review cadence for pages created from this template (15 §2).
   default_review_interval_days Int?
-  is_system                    Boolean      @default(false)
-  sort_order                   Int          @default(0)
+  is_system                    Boolean              @default(false)
+  sort_order                   Int                  @default(0)
   archived_at                  DateTime?
   created_by_user_id           String?
-  created_at                   DateTime     @default(now())
-  updated_at                   DateTime     @updatedAt
+  created_at                   DateTime             @default(now())
+  updated_at                   DateTime             @updatedAt
 
   organization Organization? @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   space        WikiSpace?    @relation(fields: [space_id], references: [id], onDelete: SetNull)
@@ -17017,6 +17036,7 @@ model WikiPageTemplate {
 
   @@unique([organization_id, slug])
   @@index([organization_id, page_type])
+  @@index([organization_id, category])
   @@map("wiki_page_templates")
 }
 

@@ -19,7 +19,8 @@ interface ImportProps {
 }
 
 /**
- * Import Markdown (15 §2): a .md file or a .zip of them; folders become parent pages.
+ * Import Markdown or a Notion export (15 §2): a .md file or a .zip of them; folders become parent pages. A Notion
+ * "Markdown & CSV" export is detected by the API: images and files come along and links between pages keep working.
  * @perm docs.pages.import + docs.pages.create (+ EDIT on the space) @api POST /docs/import (multipart) @audit wiki_page.imported
  */
 export function ImportDocsDialog({ open, onOpenChange, spaceId, parentPageId, parentTitle }: ImportProps) {
@@ -44,12 +45,12 @@ export function ImportDocsDialog({ open, onOpenChange, spaceId, parentPageId, pa
         <Dialog open={open} onOpenChange={(o) => !importDocs.isPending && onOpenChange(o)}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Import Markdown</DialogTitle>
+                    <DialogTitle>Import Markdown or Notion</DialogTitle>
                     <DialogDescription>{parentTitle ? `New pages go under “${parentTitle}”.` : "New pages go to the top level of this space."} Upload one .md file, or a .zip where folders become parent pages.</DialogDescription>
                 </DialogHeader>
                 {result ? (
                     <div className="space-y-3 text-[13px]">
-                        <p className="text-foreground">{result.page_count} page(s) created.</p>
+                        <p className="text-foreground">{result.format === "NOTION" ? "Notion export detected. " : ""}{result.page_count === 1 ? "1 page" : `${result.page_count} pages`} created{result.asset_count ? `, ${result.asset_count} image(s) and file(s) uploaded` : ""}.</p>
                         {result.warnings.length > 0 && (
                             <ul className="max-h-40 list-inside list-disc overflow-auto rounded-md border border-warning/40 bg-warning-soft p-2 text-xs text-foreground">
                                 {result.warnings.map((w) => <li key={w}>{w}</li>)}
@@ -66,8 +67,17 @@ export function ImportDocsDialog({ open, onOpenChange, spaceId, parentPageId, pa
                         >
                             <FileUp className="size-5 text-muted-foreground" />
                             <span className="text-[13px] text-foreground">{file ? file.name : "Choose a .md or .zip file"}</span>
-                            <span className="text-xs text-muted-foreground">Up to 50 MB · at most 500 pages</span>
+                            <span className="text-xs text-muted-foreground">Up to 100 MB · at most 500 pages</span>
                         </button>
+                        <details className="rounded-md border border-border bg-secondary/50 px-3 py-2 text-xs text-muted-foreground">
+                            <summary className="cursor-pointer font-medium text-foreground">Bringing a page or template from Notion?</summary>
+                            <ol className="mt-2 list-inside list-decimal space-y-1">
+                                <li>In Notion, open the page (duplicate a Marketplace template into your workspace first).</li>
+                                <li><b>••• → Export</b>, format <b>Markdown &amp; CSV</b>, include sub-pages and files.</li>
+                                <li>Upload the .zip here. Images, sub-pages and links come along; databases come in as pages.</li>
+                                <li>To reuse it, open the page and choose <b>••• → Save as template</b>.</li>
+                            </ol>
+                        </details>
                         {importDocs.error && <p role="alert" className="text-xs text-danger">Import failed: {getApiErrorMessage(importDocs.error)}</p>}
                     </div>
                 )}

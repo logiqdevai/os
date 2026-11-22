@@ -12,6 +12,8 @@ import { ChecklistQuerySchema, StartChecklistRunSchema } from './dto/checklist.d
 import { FormQuerySchema, SubmissionQuerySchema } from './dto/form.dto';
 import { AskDocsSchema } from './dto/ai-transfer.dto';
 import { DocsAiService } from './services/docs-ai.service';
+import { DocsTemplatesService } from './services/templates.service';
+import { TemplateFromPageSchema, TemplateQuerySchema } from './dto/template.dto';
 
 const id = z.object({ id: z.string().uuid() });
 
@@ -25,6 +27,7 @@ export class DocsMcp implements OnModuleInit {
         private readonly checklists: DocsChecklistsService,
         private readonly forms: DocsFormsService,
         private readonly ai: DocsAiService,
+        private readonly templates: DocsTemplatesService,
     ) { }
 
     onModuleInit() {
@@ -149,6 +152,21 @@ export class DocsMcp implements OnModuleInit {
                 name: 'docs_spaces_tree', description: 'Page tree (flat list with parent ids) of a space, by id or slug.',
                 permission: 'docs.pages.read', module: M, resource_type: 'wiki_space', input: z.object({ space: z.string().min(1) }),
                 handler: (ctx, args) => this.pages.tree(ctx, args.space),
+            },
+            {
+                name: 'docs_templates_list', description: 'Browse the page template gallery: built-in templates and the templates of this organization. Filter by category (COMPANY, PROJECTS, MEETINGS, ENGINEERING, PRODUCT, OPERATIONS, PEOPLE, SALES, MARKETING, PERSONAL, OTHER), featured, source ("system" | "organization") or search. Use a template id with docs_pages_create (template_id).',
+                permission: 'docs.pages.read', module: M, resource_type: 'wiki_page_template', input: TemplateQuerySchema,
+                handler: (ctx, args) => this.templates.findAll(ctx, args),
+            },
+            {
+                name: 'docs_templates_get', description: 'Get one page template with its Markdown content.',
+                permission: 'docs.pages.read', module: M, resource_type: 'wiki_page_template', input: id,
+                handler: (ctx, args) => this.templates.findOne(ctx, args.id),
+            },
+            {
+                name: 'docs_templates_create_from_page', description: 'Save an existing page as an organization template ("Save as template"), e.g. after importing a Notion template. Name defaults to the page title.',
+                permission: 'docs.spaces.manage', module: M, resource_type: 'wiki_page_template', input: TemplateFromPageSchema,
+                handler: (ctx, args) => this.templates.createFromPage(ctx, args),
             },
             {
                 name: 'docs_checklists_list', description: 'List onboarding / offboarding checklists.',

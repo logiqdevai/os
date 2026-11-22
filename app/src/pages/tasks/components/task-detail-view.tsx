@@ -108,7 +108,7 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
                 </div>
 
                 <section aria-label="Description">
-                    <MarkdownField value={t.description} canEdit={canEdit} onSave={(next) => update.mutateAsync({ id: t.id, description: next })} />
+                    <MarkdownField rich value={t.description} canEdit={canEdit} onSave={(next) => update.mutateAsync({ id: t.id, description: next })} />
                 </section>
 
                 <TaskAttachments task={t} canEdit={canEdit} />

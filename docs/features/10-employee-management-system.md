@@ -114,16 +114,16 @@ Columns in other modules that point at this module by plain string id or JSON (n
 - `PayrollSchedule.employee_id` ([09](./09-income-expense-management.md), [L9163](../../api/prisma/schema.prisma#L9163)) — 10 Employee; id only.
 - `PayrollEntry.employee_id` ([09](./09-income-expense-management.md), [L9210](../../api/prisma/schema.prisma#L9210)) — 10 Employee; id only.
 - `ExpenseClaim.employee_id` ([09](./09-income-expense-management.md), [L9583](../../api/prisma/schema.prisma#L9583)) — 10 Employee; id only.
-- `WikiChecklistRun.employee_id` ([15](./15-notion-business-docs.md), [L17369](../../api/prisma/schema.prisma#L17369)) — Employees (10) Employee record of the subject; id only.
-- `Folder.employee_id` ([17](./17-documents-file-management.md), [L18248](../../api/prisma/schema.prisma#L18248)) — 10 Employee for EMPLOYEE scope (HR documents); id only.
-- `Document.employee_id` ([17](./17-documents-file-management.md), [L18323](../../api/prisma/schema.prisma#L18323)) — 10 Employee for EMPLOYEE scope (HR documents); id only.
-- `TimeTrackingSettings.attendance_prefill_enabled` ([18](./18-time-tracking.md), [L19210](../../api/prisma/schema.prisma#L19210)) — Attendance (10) pre-fills the daily total (18 §9).
-- `TimeTrackingSettings.default_expected_hours_per_week` ([18](./18-time-tracking.md), [L19210](../../api/prisma/schema.prisma#L19210)) — Fallback expected hours per week when 10 Employees has no working-hours record.
-- `BillingRate.source_compensation_id` ([18](./18-time-tracking.md), [L19348](../../api/prisma/schema.prisma#L19348)) — 10 Employee compensation record this COST rate was synced from; id only.
-- `TimeEntry.employee_id` ([18](./18-time-tracking.md), [L19395](../../api/prisma/schema.prisma#L19395)) — 10 Employee record of the member at the time of logging; id only.
-- `TimeEntry.attendance_record_id` ([18](./18-time-tracking.md), [L19395](../../api/prisma/schema.prisma#L19395)) — Attendance record (10) that pre-filled this entry; id only.
-- `CalendarAvailabilitySchedule.honor_holidays` ([19](./19-calendar.md), [L20508](../../api/prisma/schema.prisma#L20508)) — Respect branch holidays (01 §122) and approved leave (10) on top of the rules.
-- `AutomationApprovalPolicy.delegate_when_out_of_office` ([20](./20-automation-engine.md), [L21713](../../api/prisma/schema.prisma#L21713)) — Route to the next approver of the policy while one is on leave (10) or has an out-of-office event (19).
+- `WikiChecklistRun.employee_id` ([15](./15-notion-business-docs.md), [L17389](../../api/prisma/schema.prisma#L17389)) — Employees (10) Employee record of the subject; id only.
+- `Folder.employee_id` ([17](./17-documents-file-management.md), [L18268](../../api/prisma/schema.prisma#L18268)) — 10 Employee for EMPLOYEE scope (HR documents); id only.
+- `Document.employee_id` ([17](./17-documents-file-management.md), [L18343](../../api/prisma/schema.prisma#L18343)) — 10 Employee for EMPLOYEE scope (HR documents); id only.
+- `TimeTrackingSettings.attendance_prefill_enabled` ([18](./18-time-tracking.md), [L19230](../../api/prisma/schema.prisma#L19230)) — Attendance (10) pre-fills the daily total (18 §9).
+- `TimeTrackingSettings.default_expected_hours_per_week` ([18](./18-time-tracking.md), [L19230](../../api/prisma/schema.prisma#L19230)) — Fallback expected hours per week when 10 Employees has no working-hours record.
+- `BillingRate.source_compensation_id` ([18](./18-time-tracking.md), [L19368](../../api/prisma/schema.prisma#L19368)) — 10 Employee compensation record this COST rate was synced from; id only.
+- `TimeEntry.employee_id` ([18](./18-time-tracking.md), [L19415](../../api/prisma/schema.prisma#L19415)) — 10 Employee record of the member at the time of logging; id only.
+- `TimeEntry.attendance_record_id` ([18](./18-time-tracking.md), [L19415](../../api/prisma/schema.prisma#L19415)) — Attendance record (10) that pre-filled this entry; id only.
+- `CalendarAvailabilitySchedule.honor_holidays` ([19](./19-calendar.md), [L20528](../../api/prisma/schema.prisma#L20528)) — Respect branch holidays (01 §122) and approved leave (10) on top of the rules.
+- `AutomationApprovalPolicy.delegate_when_out_of_office` ([20](./20-automation-engine.md), [L21733](../../api/prisma/schema.prisma#L21733)) — Route to the next approver of the policy while one is on leave (10) or has an out-of-office event (19).
 
 <!-- schema-refs:end -->
 

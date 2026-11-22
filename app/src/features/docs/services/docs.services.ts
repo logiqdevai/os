@@ -1,7 +1,7 @@
 import axiosInstance from "@/config/api/axios";
 import { ApiRoutes } from "@/config/api/routes";
 import type {
-    ChecklistItemInput, CreateChecklistDto, CreateFormDto, CreatePageDto, CreateSpaceDto, CreateTemplateDto, CustomForm, CustomFormDetail, DocsDirectory,
+    ChecklistItemInput, CreateChecklistDto, CreateFormDto, CreatePageDto, CreateSpaceDto, CreateTemplateDto, TemplateFromPageDto, CustomForm, CustomFormDetail, DocsDirectory,
     FillableForm, FormAssignment, FormRecipient, FormSubmission, FormSummary, MyFormAssignment, Paginated, UpdateFormDto, UpdatePageDto, UpdateSpaceDto,
     WikiAcknowledgements, WikiChecklist, WikiChecklistRun, WikiChecklistRunDetail, WikiHome, WikiPageComment, WikiPageDetail, WikiPageLinks, WikiPageListItem, WikiPagePermissions, SetPagePermissionsDto,
     WikiPageVersion, WikiSpace, WikiSpaceDetail, WikiPrincipalType, WikiPermissionLevel, WikiTemplate, WikiTreeNode, DocsAiAnswer, DocsAiStatus, DocsAnalytics, DocsExportScope, DocsImportResult, DocsTransferJob,
@@ -62,6 +62,9 @@ export const getTemplates = (params: Params) => get<Paginated<WikiTemplate>>(R()
 export const createTemplate = (dto: CreateTemplateDto) => post<WikiTemplate>(R().templates.list, dto);
 export const updateTemplate = ({ id, ...dto }: Partial<CreateTemplateDto> & { id: string }) => patch<WikiTemplate>(R().templates.detail(id), dto);
 export const archiveTemplate = (id: string) => post(R().templates.action(id, "archive"));
+export const duplicateTemplate = (id: string) => post<WikiTemplate>(R().templates.action(id, "duplicate"));
+/** "Save as template" from a page (docs.spaces.manage). */
+export const createTemplateFromPage = (dto: TemplateFromPageDto) => post<WikiTemplate>(R().templates.fromPage, dto);
 
 // Checklists
 export const getChecklists = (params: Params) => get<Paginated<WikiChecklist>>(R().checklists.list, params);

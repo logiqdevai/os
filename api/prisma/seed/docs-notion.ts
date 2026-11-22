@@ -103,10 +103,10 @@ const SPACES: SpaceSeed[] = [
 ];
 
 const TEMPLATES = [
-  { name: 'Meeting notes', icon: 'pen-line', type: 'MEETING_NOTES', md: `# Meeting notes\n\n**Date:**\n**Attendees:**\n\n## Agenda\n\n1. \n\n## Notes\n\n## Action items\n\n- [ ] ` },
-  { name: 'Project brief', icon: 'target', type: 'GENERAL', md: `# Project brief\n\n## Goal\n\n## Scope\n\n- In scope\n- Out of scope\n\n## Milestones\n\n- [ ] \n\n## Risks\n\n> ` },
-  { name: 'Decision record', icon: 'scale', type: 'DECISION_RECORD', md: `# Decision\n\n**Status:** proposed\n\n## Context\n\n## Decision\n\n## Consequences\n` },
-  { name: 'How-to guide', icon: 'book-open', type: 'PROCEDURE', md: `# How to …\n\n## When to use this\n\n## Steps\n\n1. \n\n## Troubleshooting\n` },
+  { name: 'Board meeting notes', icon: 'pen-line', type: 'MEETING_NOTES', category: 'MEETINGS', md: `# Board meeting notes\n\n**Date:**\n**Attendees:**\n\n## Agenda\n\n1. \n\n## Notes\n\n## Action items\n\n- [ ] ` },
+  { name: 'Client project brief', icon: 'target', type: 'GENERAL', category: 'PROJECTS', md: `# Client project brief\n\n## Goal\n\n## Scope\n\n- In scope\n- Out of scope\n\n## Milestones\n\n- [ ] \n\n## Risks\n\n> ` },
+  { name: 'Architecture decision record', icon: 'scale', type: 'DECISION_RECORD', category: 'ENGINEERING', md: `# Decision\n\n**Status:** proposed\n\n## Context\n\n## Decision\n\n## Consequences\n` },
+  { name: 'How-to guide', icon: 'book-open', type: 'PROCEDURE', category: 'OPERATIONS', md: `# How to …\n\n## When to use this\n\n## Steps\n\n1. \n\n## Troubleshooting\n` },
 ];
 
 async function wipe(org: string) {
@@ -175,7 +175,7 @@ async function main() {
   }
 
   for (const [i, t] of TEMPLATES.entries()) {
-    await prisma.wikiPageTemplate.create({ data: { organization_id: org, name: t.name, slug: slugify(t.name), icon: t.icon, page_type: t.type, content_markdown: t.md, sort_order: i, created_by_user_id: user.id } });
+    await prisma.wikiPageTemplate.create({ data: { organization_id: org, name: t.name, slug: slugify(t.name), icon: t.icon, page_type: t.type, category: t.category, content_markdown: t.md, sort_order: i, created_by_user_id: user.id } });
   }
   console.log(`Seeded ${SPACES.length} spaces, ${pages} pages, ${TEMPLATES.length} templates for ${EMAIL}.`);
 }

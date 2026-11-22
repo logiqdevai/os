@@ -11,6 +11,8 @@ export type WikiSpaceKind = (typeof WikiSpaceKinds)[keyof typeof WikiSpaceKinds]
 export type WikiPageType =
     | "GENERAL" | "POLICY" | "PROCEDURE" | "RUNBOOK" | "MEETING_NOTES" | "DECISION_RECORD"
     | "HANDBOOK_CHAPTER" | "ONBOARDING_GUIDE" | "OFFBOARDING_GUIDE" | "FAQ";
+export type WikiTemplateCategory =
+    | "COMPANY" | "PROJECTS" | "MEETINGS" | "ENGINEERING" | "PRODUCT" | "OPERATIONS" | "PEOPLE" | "SALES" | "MARKETING" | "PERSONAL" | "OTHER";
 export type WikiVisibility = "ORGANIZATION" | "BRANCH" | "TEAM" | "ROLE" | "MEMBERS";
 export type WikiPermissionLevel = "VIEW" | "COMMENT" | "EDIT" | "MANAGE";
 export type WikiPrincipalType = "MEMBERSHIP" | "TEAM" | "BRANCH" | "ROLE" | "DEPARTMENT";
@@ -219,6 +221,8 @@ export interface WikiTemplate {
     description: string | null;
     icon: string | null;
     page_type: WikiPageType;
+    category: WikiTemplateCategory;
+    is_featured: boolean;
     content_markdown: string | null;
     default_review_interval_days: number | null;
     is_system: boolean;
@@ -478,8 +482,19 @@ export interface CreateTemplateDto {
     description?: string;
     icon?: string;
     page_type?: WikiPageType;
+    category?: WikiTemplateCategory;
+    is_featured?: boolean;
     content_markdown?: string;
     default_review_interval_days?: number;
+}
+
+/** "Save as template": copy a page into a new organization template. */
+export interface TemplateFromPageDto {
+    page_id: string;
+    name?: string;
+    description?: string;
+    category?: WikiTemplateCategory;
+    is_featured?: boolean;
 }
 
 export interface ChecklistItemInput {
@@ -552,7 +567,11 @@ export type DocsExportScope = "PAGE" | "SUBTREE" | "SPACE";
 
 export interface DocsImportResult {
     job_id: string;
+    /** NOTION when a Notion "Markdown & CSV" export was detected. */
+    format: "MARKDOWN" | "NOTION";
     page_count: number;
+    /** Images and files uploaded into the imported pages. */
+    asset_count: number;
     warnings: string[];
     pages: { id: string; title: string }[];
     root_page_id: string | null;

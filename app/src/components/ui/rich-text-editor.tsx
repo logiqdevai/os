@@ -3,7 +3,9 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "tiptap-markdown";
-import { Bold, Code, Heading2, Italic, Link2, List, ListOrdered, Quote, Strikethrough } from "lucide-react";
+import { BubbleMenu } from "@tiptap/react/menus";
+import { Bold, Check, ChevronDown, Code, Code2, Heading1, Heading2, Heading3, Italic, Link2, List, ListOrdered, Pilcrow, Quote, Strikethrough } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 interface RichTextEditorProps {
@@ -80,9 +82,58 @@ export function RichTextEditor({ value, onChange, placeholder = "Write something
         { label: "Code", icon: Code, active: editor.isActive("code"), run: () => editor.chain().focus().toggleCode().run() },
         { label: "Link", icon: Link2, active: editor.isActive("link"), run: setLink },
     ];
+    type Tool = { label: string; icon: typeof Bold; active: boolean; run: () => void };
+    const byLabel = (l: string) => tools.find((t) => t.label === l)!;
+    const blocks: Tool[] = [
+        { label: "Text", icon: Pilcrow, active: editor.isActive("paragraph"), run: () => editor.chain().focus().setParagraph().run() },
+        { label: "Heading 1", icon: Heading1, active: editor.isActive("heading", { level: 1 }), run: () => editor.chain().focus().toggleHeading({ level: 1 }).run() },
+        { label: "Heading 2", icon: Heading2, active: editor.isActive("heading", { level: 2 }), run: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
+        { label: "Heading 3", icon: Heading3, active: editor.isActive("heading", { level: 3 }), run: () => editor.chain().focus().toggleHeading({ level: 3 }).run() },
+    ];
+    const lists: Tool[] = [byLabel("Bulleted list"), byLabel("Numbered list")];
+    const codeBlock: Tool = { label: "Code block", icon: Code2, active: editor.isActive("codeBlock"), run: () => editor.chain().focus().toggleCodeBlock().run() };
+    const barBtn = (t: Tool) => (
+        <button key={t.label} type="button" title={t.label} aria-label={t.label} aria-pressed={t.active}
+            onMouseDown={(e) => e.preventDefault()} onClick={t.run}
+            className={cn("inline-flex size-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground", t.active && "text-foreground")}>
+            <t.icon className="size-4" />
+        </button>
+    );
+    const menuOf = (title: string, items: Tool[], TriggerIcon: typeof Bold) => (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <button type="button" title={title} aria-label={title} onMouseDown={(e) => e.preventDefault()}
+                    className="inline-flex h-7 items-center gap-0.5 rounded px-1.5 text-muted-foreground hover:bg-accent hover:text-foreground">
+                    <TriggerIcon className="size-4" /><ChevronDown className="size-3" />
+                </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" onCloseAutoFocus={(e) => { e.preventDefault(); editor.commands.focus(); }}>
+                {items.map((i) => (
+                    <DropdownMenuItem key={i.label} onSelect={i.run}>
+                        <i.icon className="size-4" />{i.label}{i.active && <Check className="ml-auto size-3.5" />}
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+    const sep = <span className="mx-0.5 h-4 w-px bg-border" aria-hidden />;
 
     return (
         <div className={cn(!bare && "rounded-md border border-input bg-transparent focus-within:ring-1 focus-within:ring-ring", disabled && "cursor-not-allowed opacity-50", className)}>
+            {bare && !disabled && (
+                <BubbleMenu editor={editor} options={{ placement: "top", offset: 8 }}
+                    shouldShow={({ editor: e, state }) => e.isEditable && !state.selection.empty && !e.isActive("codeBlock")}>
+                    <div role="toolbar" aria-label="Formatting" className="flex items-center gap-0.5 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+                        {menuOf("Text style", blocks, Pilcrow)}
+                        {sep}
+                        {barBtn(byLabel("Bold"))}{barBtn(byLabel("Italic"))}{barBtn(byLabel("Strikethrough"))}
+                        {sep}
+                        {barBtn(byLabel("Link"))}{barBtn(byLabel("Quote"))}{barBtn(byLabel("Code"))}{barBtn(codeBlock)}
+                        {sep}
+                        {menuOf("Lists", lists, List)}
+                    </div>
+                </BubbleMenu>
+            )}
             <div className={cn("flex flex-wrap gap-0.5 border-b border-border px-1.5 py-1", bare && "hidden")} role="toolbar" aria-label="Formatting">
                 {tools.map((t) => (
                     <button

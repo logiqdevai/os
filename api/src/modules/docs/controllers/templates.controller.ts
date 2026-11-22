@@ -6,7 +6,7 @@ import { CurrentOrg, RequirePermission } from '@/shared/authorization/decorators
 import { OrgContext } from '@/shared/authorization/interfaces/org-context.interface';
 import { ZodValidationPipe } from '@/shared/pipes/zod.validation.pipe';
 import { DocsTemplatesService } from '../services/templates.service';
-import { CreateTemplateDto, TemplateQuery, TemplateQuerySchema, UpdateTemplateDto } from '../dto/template.dto';
+import { CreateTemplateDto, TemplateFromPageDto, TemplateFromPageSchema, TemplateQuery, TemplateQuerySchema, UpdateTemplateDto } from '../dto/template.dto';
 
 @ApiTags('Docs · Templates')
 @ApiBearerAuth()
@@ -17,7 +17,7 @@ export class DocsTemplatesController {
 
     @Get()
     @RequirePermission('docs.pages.read')
-    @ApiOperation({ summary: 'List page templates (system + organization)' })
+    @ApiOperation({ summary: 'List page templates — the gallery (built-in system templates + organization templates); filter by category, featured, source' })
     findAll(@CurrentOrg() ctx: OrgContext, @Query(new ZodValidationPipe(TemplateQuerySchema)) query: TemplateQuery) {
         return this.templates.findAll(ctx, query);
     }
@@ -34,6 +34,13 @@ export class DocsTemplatesController {
     @ApiOperation({ summary: 'Create a template' })
     create(@CurrentOrg() ctx: OrgContext, @Body() dto: CreateTemplateDto) {
         return this.templates.create(ctx, dto);
+    }
+
+    @Post('from-page')
+    @RequirePermission('docs.spaces.manage')
+    @ApiOperation({ summary: 'Save a page as an organization template ("Save as template"); the caller must be able to read the page' })
+    createFromPage(@CurrentOrg() ctx: OrgContext, @Body(new ZodValidationPipe(TemplateFromPageSchema)) dto: TemplateFromPageDto) {
+        return this.templates.createFromPage(ctx, dto);
     }
 
     @Patch(':id')
