@@ -112,7 +112,7 @@ export class DocsPagesController {
     @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 25 * 1024 * 1024, files: 1 } }))
     @ApiConsumes('multipart/form-data')
     @ApiBody({ schema: { type: 'object', required: ['file'], properties: { file: { type: 'string', format: 'binary' } } } })
-    @ApiOperation({ summary: 'Upload an image for the page (cover or inline). Returns { document_id, src: "attachment:<id>", url } — put src in the markdown or document_id in cover_document_id.' })
+    @ApiOperation({ summary: 'Upload a file for the page (cover, inline image, video, audio or file block). Returns { document_id, src: "attachment:<id>", url } — put src in the markdown or document_id in cover_document_id.' })
     uploadAttachment(@CurrentOrg() ctx: OrgContext, @Param('id', ParseUUIDPipe) id: string, @UploadedFile() file: IncomingFile) {
         if (file?.originalname) file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
         return this.pages.uploadAttachment(ctx, id, file);

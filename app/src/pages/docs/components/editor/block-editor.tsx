@@ -10,9 +10,11 @@ import { Extension } from "@tiptap/core";
 import Suggestion from "@tiptap/suggestion";
 import { Markdown } from "tiptap-markdown";
 import { Bold, Check, Code, FileText, Highlighter, Italic, Link2, Strikethrough, Underline, X } from "lucide-react";
+import { EmojiPicker } from "@/components/ui/emoji-picker";
 import { cn } from "@/lib/utils";
 import { DocIcon } from "../doc-icons";
 import { EditorEnvContext, type EditorEnv, type MentionCandidate } from "./editor-env";
+import { Column, Columns, DateChip, InlineMath, Media, PageCodeBlock, TableOfContents } from "./block-nodes";
 import { Callout, PageImage, PageRef, PersonMention, Toggle, ToggleContent, ToggleSummary } from "./nodes";
 import { filterSlashItems, type SlashItem } from "./slash-items";
 import { createMenuStore, SuggestionPopup } from "./suggestion-menu";
@@ -42,8 +44,19 @@ const markdownOf = (e: Editor) => (e.storage as unknown as { markdown: { getMark
  */
 export function BlockEditor({ value, onChange, env, onSave, onExitTop, placeholder = "Write, press '/' for commands, '@' to mention…", autoFocus, className, onReady }: BlockEditorProps) {
     const last = useRef(value);
-    const envRef = useRef(env);
-    envRef.current = env;
+    const editorRef = useRef<Editor | null>(null);
+    // The page's env plus what only the editor can offer (the emoji picker anchored at the caret).
+    const [emojiPick, setEmojiPick] = useState<{ x: number; y: number; onPick: (emoji: string) => void } | null>(null);
+    const fullEnv = useMemo<EditorEnv>(() => ({
+        ...env,
+        pickEmoji: (onPick) => {
+            const ed = editorRef.current;
+            const at = ed ? ed.view.coordsAtPos(ed.state.selection.from) : { left: 200, bottom: 200 };
+            setEmojiPick({ x: at.left, y: at.bottom, onPick });
+        },
+    }), [env]);
+    const envRef = useRef(fullEnv);
+    envRef.current = fullEnv;
     const saveRef = useRef(onSave);
     saveRef.current = onSave;
     const exitTopRef = useRef(onExitTop);
@@ -53,13 +66,15 @@ export function BlockEditor({ value, onChange, env, onSave, onExitTop, placehold
     const mention = useMemo(() => createMenuStore<MentionCandidate>(), []);
 
     const extensions = useMemo(() => [
-        StarterKit.configure({ link: { openOnClick: false, autolink: true }, dropcursor: { color: "var(--info)", width: 3 } }),
+        StarterKit.configure({ codeBlock: false, link: { openOnClick: false, autolink: true }, dropcursor: { color: "var(--info)", width: 3 } }),
         TaskList,
         TaskItem.configure({ nested: true }),
         Highlight,
         Table.configure({ resizable: false, HTMLAttributes: { class: "notion-table" } }),
         TableRow, TableHeader, TableCell,
         Callout,
+        PageCodeBlock,
+        Media, TableOfContents, DateChip, InlineMath, Columns, Column,
         Toggle, ToggleSummary, ToggleContent,
         PageRef,
         PageImage,
@@ -157,16 +172,16 @@ export function BlockEditor({ value, onChange, env, onSave, onExitTop, placehold
             // Paste or drop image files: upload into the page and insert them where they land.
             handlePaste: (_view, event) => {
                 const files = [...(event.clipboardData?.files ?? [])].filter((f) => f.type.startsWith("image/"));
-                if (!files.length || !envRef.current.uploadImage) return false;
-                for (const f of files) void envRef.current.uploadImage(f).then((src) => editorRef.current?.chain().focus().setImage({ src, alt: f.name }).run()).catch(() => undefined);
+                if (!files.length || !envRef.current.uploadFile) return false;
+                for (const f of files) void envRef.current.uploadFile(f).then((src) => editorRef.current?.chain().focus().setImage({ src, alt: f.name }).run()).catch(() => undefined);
                 return true;
             },
             handleDrop: (view, event, _slice, moved) => {
                 if (moved) return false;
                 const files = [...(event.dataTransfer?.files ?? [])].filter((f) => f.type.startsWith("image/"));
-                if (!files.length || !envRef.current.uploadImage) return false;
+                if (!files.length || !envRef.current.uploadFile) return false;
                 const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
-                for (const f of files) void envRef.current.uploadImage(f).then((src) => editorRef.current?.chain().focus().insertContentAt(at ?? view.state.doc.content.size, { type: "image", attrs: { src, alt: f.name } }).run()).catch(() => undefined);
+                for (const f of files) void envRef.current.uploadFile(f).then((src) => editorRef.current?.chain().focus().insertContentAt(at ?? view.state.doc.content.size, { type: "image", attrs: { src, alt: f.name } }).run()).catch(() => undefined);
                 return true;
             },
         },
@@ -176,7 +191,6 @@ export function BlockEditor({ value, onChange, env, onSave, onExitTop, placehold
             onChange(md);
         },
     });
-    const editorRef = useRef<Editor | null>(null);
     editorRef.current = editor;
 
     useEffect(() => { if (editor) onReady?.(editor); /* once per editor */ }, [editor]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -190,7 +204,7 @@ export function BlockEditor({ value, onChange, env, onSave, onExitTop, placehold
 
     if (!editor) return null;
     return (
-        <EditorEnvContext.Provider value={env}>
+        <EditorEnvContext.Provider value={fullEnv}>
             <div ref={container} className={cn("relative", className)}>
                 {env.editable && <FormatBubble editor={editor} />}
                 {env.editable && <BlockHandle editor={editor} container={container} />}
@@ -201,13 +215,23 @@ export function BlockEditor({ value, onChange, env, onSave, onExitTop, placehold
                     empty="No results"
                     group={(it) => it.group}
                     keyOf={(it) => it.title}
+                    footer={<><span>Close menu</span><kbd className="rounded border border-border px-1 text-[10.5px]">esc</kbd></>}
                     render={(it) => (
                         <>
-                            <span className="flex size-9 flex-none items-center justify-center rounded-md border border-border bg-card text-muted-foreground"><it.icon className="size-4" /></span>
-                            <span className="min-w-0"><span className="block text-[13px] font-medium text-foreground">{it.title}</span><span className="block truncate text-[11.5px] text-muted-foreground">{it.hint}</span></span>
+                            <it.icon className="size-[18px] flex-none text-muted-foreground" aria-hidden />
+                            <span className="min-w-0 flex-1 truncate text-[13.5px] text-foreground" title={it.hint}>{it.title}</span>
                         </>
                     )}
                 />
+                {emojiPick && (
+                    <>
+                        <div className="fixed inset-0 z-40" onMouseDown={() => setEmojiPick(null)} aria-hidden />
+                        <div className="fixed z-50 overflow-hidden rounded-lg border border-border shadow-lg" style={{ left: Math.max(8, Math.min(emojiPick.x, window.innerWidth - 336)), top: Math.min(emojiPick.y + 6, window.innerHeight - 396) }}
+                            onKeyDown={(e) => e.key === "Escape" && setEmojiPick(null)}>
+                            <EmojiPicker onSelect={(emoji) => { emojiPick.onPick(emoji); setEmojiPick(null); }} />
+                        </div>
+                    </>
+                )}
                 <SuggestionPopup
                     store={mention}
                     label="Mention a person or page"

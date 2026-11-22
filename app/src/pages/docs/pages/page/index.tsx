@@ -113,7 +113,7 @@ function PageScreen({ pg }: { pg: WikiPageDetail }) {
     const env = useMemo<EditorEnv>(() => ({
         pageId: pg.id,
         editable,
-        resolveImage: async (src) => {
+        resolveAttachment: async (src) => {
             if (/^https?:\/\//.test(src)) return src;
             const m = /^attachment:([0-9a-f-]{36})$/i.exec(src);
             if (!m) return null;
@@ -123,7 +123,7 @@ function PageScreen({ pg }: { pg: WikiPageDetail }) {
             imageUrls.current.set(m[1], apiUrl(url));
             return apiUrl(url);
         },
-        uploadImage: editable ? async (file) => {
+        uploadFile: editable ? async (file) => {
             const res = await upload.mutateAsync({ id: pg.id, file });
             imageUrls.current.set(res.document_id, apiUrl(res.url));
             return res.src;

@@ -947,8 +947,8 @@ export class DocsPagesService {
     async uploadAttachment(ctx: OrgContext, id: string, file: IncomingFile) {
         const { level } = await this.access.readablePage(ctx, id);
         this.access.assert(level, 'EDIT');
-        if (!file?.mimetype?.startsWith('image/')) throw new BadRequestException({ message: 'Only images can be added to a page', code: 'wiki_attachment_not_image' });
-        const doc = await this.documents.upload(ctx, file, { entity_type: RecordEntityType.WIKI_PAGE, entity_id: id, title: file.originalname } as Parameters<DocumentsService['upload']>[2], { source_module: ModuleKey.BUSINESS_DOCS, role: 'wiki_image', authorized_by_module: true });
+        if (!file) throw new BadRequestException({ message: 'A file is required', code: 'wiki_attachment_missing' });
+        const doc = await this.documents.upload(ctx, file, { entity_type: RecordEntityType.WIKI_PAGE, entity_id: id, title: file.originalname } as Parameters<DocumentsService['upload']>[2], { source_module: ModuleKey.BUSINESS_DOCS, role: 'wiki_attachment', authorized_by_module: true });
         const documentId = (doc as { id: string }).id;
         await this.prisma.wikiPageAttachment.upsert({ where: { page_id_document_id: { page_id: id, document_id: documentId } }, update: {}, create: { page_id: id, document_id: documentId, added_by_user_id: ctx.user_id } });
         await this.audit.record(ctx, 'wiki_page.attachment_added', { resource_type: 'wiki_page', resource_id: id, metadata: { document_id: documentId, filename: file.originalname } });

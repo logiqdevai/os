@@ -16,6 +16,8 @@ import { CalloutView, ImageView, PageRefView } from "./node-views";
  *   Page link [Title](/docs/pages/<id>)  — also reads the legacy [[Title]]
  *   Mention   [@Name](mention:member/<membership_id>)
  *   Image     ![alt](attachment:<document_id>)  — resolved to a signed URL when shown
+ *   Toggle heading  <details data-level="1|2|3"> …
+ * (media, equations, columns, TOC and date: ./block-nodes.ts)
  */
 
 type Ser = MarkdownSerializerState & { inTable?: boolean };
@@ -81,13 +83,21 @@ export const Callout = Node.create({
 const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 export const Toggle = Details.extend({
+    /** `level` 1–3 makes the toggle a Notion "Toggle heading"; 0 is a plain toggle list. */
+    addAttributes() {
+        return {
+            ...this.parent?.(),
+            level: { default: 0, parseHTML: (el) => Number(el.getAttribute("data-level") || 0), renderHTML: (a) => (a.level ? { "data-level": String(a.level) } : {}) },
+        };
+    },
     addStorage() {
         return {
             markdown: {
                 serialize(state: Ser, node: PMNode) {
                     const summary = node.firstChild;
                     const body = node.childCount > 1 ? node.child(1) : null;
-                    state.write(`<details>\n<summary>${escapeHtml(summary?.textContent ?? "")}</summary>\n\n`);
+                    const level = Number(node.attrs.level) || 0;
+                    state.write(`<details${level ? ` data-level="${level}"` : ""}>\n<summary>${escapeHtml(summary?.textContent ?? "")}</summary>\n\n`);
                     if (body) state.renderContent(body);
                     state.ensureNewLine();
                     state.write("</details>");

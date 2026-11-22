@@ -1,0 +1,21 @@
+/** Languages offered by the code block's picker. "" is plain text; "mermaid" and "math" also render a preview. */
+export const CODE_LANGUAGES: { value: string; label: string }[] = [
+    { value: "", label: "Plain text" },
+    { value: "mermaid", label: "Mermaid (diagram)" },
+    { value: "math", label: "LaTeX (equation)" },
+    { value: "bash", label: "Bash" },
+    { value: "css", label: "CSS" },
+    { value: "go", label: "Go" },
+    { value: "html", label: "HTML" },
+    { value: "java", label: "Java" },
+    { value: "javascript", label: "JavaScript" },
+    { value: "json", label: "JSON" },
+    { value: "markdown", label: "Markdown" },
+    { value: "php", label: "PHP" },
+    { value: "python", label: "Python" },
+    { value: "ruby", label: "Ruby" },
+    { value: "rust", label: "Rust" },
+    { value: "sql", label: "SQL" },
+    { value: "typescript", label: "TypeScript" },
+    { value: "yaml", label: "YAML" },
+];

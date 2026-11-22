@@ -67,7 +67,7 @@ export function ImageView({ node, selected }: ReactNodeViewProps) {
     useEffect(() => {
         let alive = true;
         setFailed(false);
-        env.resolveImage(src).then((u) => { if (alive) { setUrl(u); setFailed(!u); } }).catch(() => alive && setFailed(true));
+        env.resolveAttachment(src).then((u) => { if (alive) { setUrl(u); setFailed(!u); } }).catch(() => alive && setFailed(true));
         return () => { alive = false; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [src]);
