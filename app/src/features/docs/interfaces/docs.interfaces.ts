@@ -307,6 +307,8 @@ export interface FormField {
     label: string;
     description?: string;
     required: boolean;
+    /** false = hidden from respondents (default true). */
+    visible?: boolean;
     options?: FormFieldOption[];
     scale?: { min: number; max: number; min_label?: string; max_label?: string };
     max_files?: number;

@@ -14,7 +14,7 @@ export type Answers = Record<string, unknown>;
 export function validateAnswers(fields: FormField[], answers: Answers) {
     const errors: Record<string, string> = {};
     for (const f of fields) {
-        if (f.type === "SECTION" || f.type === "FILE_UPLOAD" || f.type === "SIGNATURE") continue;
+        if (f.visible === false || f.type === "SECTION" || f.type === "FILE_UPLOAD" || f.type === "SIGNATURE") continue;
         const v = answers[f.key];
         const empty = v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length) || (f.type === "CHECKBOX" && v !== true && f.required);
         if (f.required && empty) { errors[f.key] = "Required"; continue; }
@@ -42,7 +42,7 @@ export function FormRenderer({ fields, onSubmit, pending, submitLabel = "Submit"
             }}
             noValidate
         >
-            {fields.map((f) => {
+            {fields.filter((f) => f.visible !== false).map((f) => {
                 const id = `field-${f.key}`;
                 const err = errors[f.key];
                 if (f.type === "SECTION") return <div key={f.key} className="border-b border-border pb-1 pt-2"><h2 className="text-[15px] font-medium text-foreground">{f.label}</h2>{f.description && <p className="text-xs text-muted-foreground">{f.description}</p>}</div>;

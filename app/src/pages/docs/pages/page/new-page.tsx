@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Page } from "@/components/ui/page";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/states";
@@ -21,6 +21,7 @@ export default function NewPageRedirect() {
     const create = useCreatePage();
     const spaces = useSpaces({ limit: 100 });
     const started = useRef(false);
+    const [failure, setFailure] = useState<unknown>(null);
     const explicit = sp.get("space");
     const fallback = spaces.data?.data.find((s) => s.id === lastSpaceId())?.id ?? spaces.data?.data[0]?.id;
     const spaceId = explicit ?? fallback;
@@ -28,18 +29,17 @@ export default function NewPageRedirect() {
     useEffect(() => {
         if (started.current || !spaceId) return;
         started.current = true;
-        create.mutate(
-            { space_id: spaceId, parent_page_id: sp.get("parent") ?? undefined, template_id: sp.get("template") ?? undefined, title: "" },
-            {
-                onSuccess: (pg) => {
-                    try { localStorage.setItem("docs:last-space", spaceId); } catch { /* storage blocked */ }
-                    navigate(`/docs/pages/${pg.id}?new=1`, { replace: true });
-                },
+        // mutateAsync (not mutate + onSuccess): the redirect must not depend on this component's observer surviving React StrictMode's remount.
+        create.mutateAsync({ space_id: spaceId, parent_page_id: sp.get("parent") ?? undefined, template_id: sp.get("template") ?? undefined, title: "" }).then(
+            (pg) => {
+                try { localStorage.setItem("docs:last-space", spaceId); } catch { /* storage blocked */ }
+                navigate(`/docs/pages/${pg.id}?new=1`, { replace: true });
             },
+            (e) => setFailure(e),
         );
     }, [spaceId, sp, create, navigate]);
 
-    if (create.error) return <Page><ErrorState error={create.error} /></Page>;
+    if (failure) return <Page><ErrorState error={failure as Error} /></Page>;
     if (!explicit && spaces.data && !spaces.data.data.length) {
         return <Page><EmptyState icon={BookOpen} title="Create a space first" description="Pages live in spaces. Ask a docs manager to create one." /></Page>;
     }

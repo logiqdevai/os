@@ -106,6 +106,8 @@ export const CustomFormFieldTypeOptions: DropdownOption<CustomFormFieldType>[] =
     { id: "CHECKBOX", label: "Checkbox" },
     { id: "SCALE", label: "Scale" },
     { id: "DATE", label: "Date" },
+    { id: "FILE_UPLOAD", label: "File upload" },
+    { id: "SIGNATURE", label: "Signature" },
     { id: "SECTION", label: "Section heading" },
 ];
 

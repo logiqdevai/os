@@ -4,8 +4,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 /**
  * "Want to leave?" guard shared by Dialog and Sheet.
  *
- * A modal that contains a form (a modal that writes data) does not close on an outside click, Escape or the X button.
- * It asks "Discard changes?" first; "Leave" closes the modal, "Keep editing" returns to the form.
+ * A modal that contains a form (a modal that writes data) closes immediately on an outside click, Escape or the X button
+ * as long as nothing was changed. Once the user edits a field it asks "Discard changes?" first;
+ * "Leave" closes the modal, "Keep editing" returns to the form.
  * Modals without a <form> (confirmations, pickers, read-only views, search) close immediately.
  * Pass `confirmClose={false}` on the content to opt out. Tag a form-less modal that writes data with `data-leave-guard`.
  */
@@ -18,10 +19,17 @@ export function useLeaveGuard(enabled = true) {
 
     // The X button lives inside the modal content, so its parent is the content element.
     const writesData = () => !!closeRef.current?.parentElement?.querySelector("form, [data-leave-guard]");
-    const blocked = () => enabled && !bypass.current && writesData();
+    // Set once the user edits any field inside the modal; an untouched modal closes without asking.
+    const dirty = useRef(false);
+    const markDirty = () => {
+        dirty.current = true;
+    };
+    const blocked = () => enabled && !bypass.current && dirty.current && writesData();
 
     return {
         closeRef,
+        /** Spread on the modal content: marks the modal as changed when any field inside it is edited. */
+        track: { onInputCapture: markDirty, onChangeCapture: markDirty },
         /** Wrap Radix `onPointerDownOutside` / `onEscapeKeyDown`: keeps the caller's handler, then asks before closing. */
         dismiss: <E extends Dismiss>(userHandler?: (e: E) => void) => (e: E) => {
             userHandler?.(e);

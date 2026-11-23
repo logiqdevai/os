@@ -11,6 +11,8 @@ export const FormFieldSchema = z.object({
     label: z.string().min(1).max(300),
     description: z.string().max(1000).optional(),
     required: z.boolean().default(false),
+    /** Hidden questions are kept in the builder but not shown to respondents, and are not required or stored. */
+    visible: z.boolean().default(true),
     options: z.array(z.object({ value: z.string().min(1).max(120), label: z.string().min(1).max(200) })).max(50).optional(),
     scale: z.object({ min: z.number().int().min(0).max(10), max: z.number().int().min(1).max(10), min_label: z.string().max(60).optional(), max_label: z.string().max(60).optional() }).optional(),
     accept: z.array(z.string()).optional(),
@@ -50,7 +52,7 @@ export class CreateFormDto {
     @IsUUID()
     space_id?: string;
 
-    @ApiProperty({ required: false, description: 'Array of fields: { key, type, label, description?, required, options?, scale? }' })
+    @ApiProperty({ required: false, description: 'Array of fields: { key, type, label, description?, required, visible?, options?, scale? }' })
     @IsOptional()
     @IsArray()
     fields_schema?: unknown[];

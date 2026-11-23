@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowDown, ArrowUp, Check, Copy, Lock, Plus, Rocket, Save, Trash2, Unlock } from "lucide-react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Check, Copy, Lock, Rocket, Save, Trash2, Unlock } from "lucide-react";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
-import { EmptyState, ErrorState, ListSkeleton, NoAccessState, PageSkeleton } from "@/components/ui/states";
+import { ErrorState, ListSkeleton, NoAccessState, PageSkeleton } from "@/components/ui/states";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { usePermissions } from "@/hooks/use-permission";
 import { SaveStatus } from "@/components/ui/save-status";
@@ -20,10 +19,11 @@ import { formatDate, formatDateTime, personName } from "@/lib/format";
 import { getDropdownOptionLabel } from "@/lib/dropdown-option-label.utils";
 import { CustomFormFieldTypeOptions, CustomFormKindFormOptions, FormSubmissionStatusOptions } from "@/config/constants/dropdowns/docs/docs.options";
 import { useCreateForm, useCreateFormAssignment, useDeleteForm, useForm, useFormAction, useFormAssignments, useFormResponses, useFormSummary, useReviewResponse, useUpdateForm } from "@/features/docs/hooks/use-docs";
-import type { CustomFormFieldType, CustomFormKind, FormField, FormSubmission } from "@/features/docs/interfaces/docs.interfaces";
+import type { CustomFormKind, FormField, FormSubmission } from "@/features/docs/interfaces/docs.interfaces";
 import { DocsMemberPicker, DocsStatusBadge } from "../../components/docs-ui";
+import { FormRenderer } from "../../components/form-renderer";
+import { CHOICE, FormBuilder } from "./form-builder";
 
-const CHOICE: CustomFormFieldType[] = ["SINGLE_CHOICE", "MULTI_CHOICE"];
 type FormDto = { name: string; description?: string; kind: CustomFormKind; is_anonymous: boolean; allow_multiple_submissions: boolean; requires_review: boolean; confirmation_message?: string; fields_schema: FormField[] };
 /** First problem that blocks saving, shown inline (no toast). */
 const formProblem = (d: FormDto): string | null => {
@@ -32,9 +32,14 @@ const formProblem = (d: FormDto): string | null => {
     if (new Set(keys).size !== keys.length) return "Two questions have the same key";
     if (d.fields_schema.some((x) => !x.label.trim())) return "Every question needs a label";
     if (d.fields_schema.some((x) => CHOICE.includes(x.type) && !(x.options?.length))) return "Choice questions need options";
+    if (d.fields_schema.some((x) => CHOICE.includes(x.type) && (x.options ?? []).some((o) => !o.label.trim()))) return "Choice options can't be empty";
+    if (d.fields_schema.some((x) => CHOICE.includes(x.type) && new Set((x.options ?? []).map((o) => o.label.trim().toLowerCase())).size !== (x.options ?? []).length)) return "Two options of a question have the same text";
+    if (d.fields_schema.some((x) => x.type === "SCALE" && !(Number.isInteger(x.scale?.min) && Number.isInteger(x.scale?.max) && (x.scale?.min as number) < (x.scale?.max as number)))) return "A scale needs whole numbers with the minimum below the maximum";
     return null;
 };
+const uniqueKey = (base: string, taken: string[]) => { let k = base, n = 2; while (taken.includes(k)) k = `${base}_${n++}`; return k; };
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").replace(/^(\d)/, "f_$1").slice(0, 60) || "field";
 
 /**
@@ -48,7 +53,7 @@ export default function FormDetailPage() {
     const navigate = useNavigate();
     const p = usePermissions();
     const [sp, setSp] = useSearchParams();
-    const tab = id ? sp.get("tab") ?? "build" : "build";
+    const tab = sp.get("tab") ?? "build";
     const form = useForm(id);
     const create = useCreateForm();
     const update = useUpdateForm();
@@ -63,6 +68,8 @@ export default function FormDetailPage() {
     const [confirmation, setConfirmation] = useState("");
     const [fields, setFields] = useState<FormField[]>([]);
     const [deleting, setDeleting] = useState(false);
+    const [removeIdx, setRemoveIdx] = useState<number | null>(null);
+    const [selected, setSelected] = useState<string | null>(null);
 
     // Load the form once per id: refetches after an autosave must not overwrite what is being edited.
     const loadedId = useRef<string | null>(null);
@@ -91,8 +98,19 @@ export default function FormDetailPage() {
     if (form.error) return <Page><ErrorState error={form.error} onRetry={() => form.refetch()} /></Page>;
     const f = form.data;
     const canEdit = id ? p.can("docs.forms.update") : true;
-    const editField = (i: number, patch: Partial<FormField>) => setFields((list) => list.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+    const persistedKeys = new Set((serverDto?.fields_schema ?? []).map((x) => x.key));
+    const hasResponses = (f?._count?.submissions ?? 0) > 0;
+    /** The key follows the label until the question is saved; a saved key never changes, so collected answers keep matching. */
+    const settleKey = (i: number) => {
+        const x = fields[i];
+        if (!x || persistedKeys.has(x.key) || !/^question_d+$/.test(x.key) || !x.label.trim()) return;
+        const key = uniqueKey(slug(x.label), fields.filter((_, j) => j !== i).map((y) => y.key));
+        setFields((list) => list.map((y, idx) => (idx === i ? { ...y, key } : y)));
+        if (selected === x.key) setSelected(key);
+    };
+    const removeQuestion = (i: number) => { setFields((l) => l.filter((_, idx) => idx !== i)); setRemoveIdx(null); };
 
+    const questionCount = fields.filter((x) => x.type !== "SECTION").length;
     const createForm = () => {
         setShowProblem(true);
         if (problem) return;
@@ -115,11 +133,10 @@ export default function FormDetailPage() {
         <Page width="wide">
             <PageHeader
                 back={{ to: "/docs/forms", label: "Forms" }}
-                title={id ? f?.name ?? "Form" : "New form"}
-                meta={f && <><DocsStatusBadge status={f.status} />{f.current_version_number > 0 && <Badge variant="outline">v{f.current_version_number}</Badge>}</>}
-                actions={f && (
+                title={name.trim() || (id ? f?.name : "") || "Untitled form"}
+                meta={<>{f ? <DocsStatusBadge status={f.status} /> : <Badge variant="outline">Draft</Badge>}{f && f.current_version_number > 0 && <Badge variant="outline">v{f.current_version_number}</Badge>}<span className="text-xs text-muted-foreground">{questionCount} {questionCount === 1 ? "question" : "questions"} · {f?._count?.submissions ?? 0} responses</span></>}
+                actions={!f ? (canEdit && <Button onClick={createForm} loading={create.isPending}><Save /> Create form</Button>) : (
                     <>
-                        <Button variant="outline" asChild><Link to={`/docs/forms/${f.id}/fill`}>Preview</Link></Button>
                         {p.can("docs.forms.update") && <SaveStatus state={autosave} />}
                         {p.can("docs.forms.update") && f.status === "PUBLISHED" && <Button variant="outline" onClick={() => action.mutate({ id: f.id, action: "close" })}><Lock /> Close</Button>}
                         {p.can("docs.forms.update") && f.status === "CLOSED" && <Button variant="outline" onClick={() => action.mutate({ id: f.id, action: "reopen" })}><Unlock /> Reopen</Button>}
@@ -129,73 +146,49 @@ export default function FormDetailPage() {
                 )}
             />
             <Tabs value={tab} onValueChange={(v) => setSp(() => new URLSearchParams({ tab: v }), { replace: true })}>
-                {id && (
-                    <TabsList className="mb-4">
-                        <TabsTrigger value="build">Build</TabsTrigger>
-                        <TabsTrigger value="responses">Responses ({f?._count?.submissions ?? 0})</TabsTrigger>
-                        <TabsTrigger value="share">Share</TabsTrigger>
-                    </TabsList>
-                )}
-                <TabsContent value="build" className="space-y-6">
-                    <div className="grid gap-4 rounded-lg border border-border bg-card p-4 sm:grid-cols-2">
-                        <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="form-name">Name</Label><Input id="form-name" value={name} onChange={(e) => setName(e.target.value)} disabled={!canEdit} placeholder="Quarterly team check-in" /></div>
-                        <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="form-desc">Description</Label><Textarea id="form-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} disabled={!canEdit} /></div>
-                        <div className="space-y-1.5">
-                            <Label>Kind</Label>
-                            <Select value={kind} onValueChange={(v) => setKind(v as CustomFormKind)} disabled={!canEdit}>
-                                <SelectTrigger aria-label="Kind"><SelectValue /></SelectTrigger>
-                                <SelectContent>{CustomFormKindFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-1.5"><Label htmlFor="form-confirm">Confirmation message</Label><Input id="form-confirm" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} disabled={!canEdit} placeholder="Thanks — we got it." /></div>
-                        <Toggle label="Anonymous / public link" hint="Responses are not linked to a person; the published form gets a public URL." checked={anonymous} onChange={setAnonymous} disabled={!canEdit} />
-                        <Toggle label="Allow several responses per person" checked={multiple} onChange={setMultiple} disabled={!canEdit} />
-                        <Toggle label="Responses need review" checked={review} onChange={setReview} disabled={!canEdit} />
-                    </div>
-                    <Section title="Questions" actions={canEdit && <Button size="sm" variant="outline" onClick={() => setFields((l) => [...l, { key: `question_${l.length + 1}`, type: "SHORT_TEXT", label: "", required: false }])}><Plus /> Add question</Button>}>
-                        {!fields.length ? <div className="rounded-lg border border-border bg-card"><EmptyState compact title="No questions yet" description="Add the questions people answer." /></div> : (
-                            <ol className="space-y-2">
-                                {fields.map((fl, i) => (
-                                    <li key={i} className="space-y-3 rounded-lg border border-border bg-card p-3">
-                                        <div className="grid gap-2 sm:grid-cols-[1fr_180px_auto]">
-                                            <Input value={fl.label} placeholder="Question" aria-label={`Question ${i + 1}`} disabled={!canEdit} onChange={(e) => editField(i, { label: e.target.value, ...(fl.key.startsWith("question_") || !fl.key ? { key: slug(e.target.value) } : {}) })} />
-                                            <Select value={fl.type} onValueChange={(v) => editField(i, { type: v as CustomFormFieldType, ...(CHOICE.includes(v as CustomFormFieldType) && !fl.options?.length ? { options: [{ value: "option_1", label: "Option 1" }] } : {}), ...(v === "SCALE" ? { scale: { min: 1, max: 5 } } : {}) })} disabled={!canEdit}>
-                                                <SelectTrigger aria-label="Question type"><SelectValue /></SelectTrigger>
-                                                <SelectContent>{CustomFormFieldTypeOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                            {canEdit && (
-                                                <div className="flex">
-                                                    <Button variant="ghost" size="icon-sm" aria-label="Move up" disabled={i === 0} onClick={() => setFields((l) => { const n = [...l]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; return n; })}><ArrowUp /></Button>
-                                                    <Button variant="ghost" size="icon-sm" aria-label="Move down" disabled={i === fields.length - 1} onClick={() => setFields((l) => { const n = [...l]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; return n; })}><ArrowDown /></Button>
-                                                    <Button variant="ghost" size="icon-sm" aria-label="Remove question" onClick={() => setFields((l) => l.filter((_, idx) => idx !== i))}><Trash2 /></Button>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                                            <span className="font-mono">{fl.key}</span>
-                                            {fl.type !== "SECTION" && <label className="flex items-center gap-2"><Switch checked={fl.required} onCheckedChange={(v) => editField(i, { required: v })} disabled={!canEdit} aria-label="Required" /> Required</label>}
-                                        </div>
-                                        {CHOICE.includes(fl.type) && (
-                                            <div className="space-y-1.5">
-                                                <Label className="text-xs">Options (one per line)</Label>
-                                                <Textarea rows={3} disabled={!canEdit} value={(fl.options ?? []).map((o) => o.label).join("\n")} onChange={(e) => editField(i, { options: e.target.value.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => ({ value: slug(l), label: l })) })} />
-                                            </div>
-                                        )}
-                                        {fl.type === "SCALE" && (
-                                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                                                <Input type="number" aria-label="Minimum" value={fl.scale?.min ?? 1} onChange={(e) => editField(i, { scale: { ...(fl.scale ?? { min: 1, max: 5 }), min: Number(e.target.value) } })} disabled={!canEdit} />
-                                                <Input type="number" aria-label="Maximum" value={fl.scale?.max ?? 5} onChange={(e) => editField(i, { scale: { ...(fl.scale ?? { min: 1, max: 5 }), max: Number(e.target.value) } })} disabled={!canEdit} />
-                                                <Input aria-label="Low label" placeholder="Low label" value={fl.scale?.min_label ?? ""} onChange={(e) => editField(i, { scale: { ...(fl.scale ?? { min: 1, max: 5 }), min_label: e.target.value } })} disabled={!canEdit} />
-                                                <Input aria-label="High label" placeholder="High label" value={fl.scale?.max_label ?? ""} onChange={(e) => editField(i, { scale: { ...(fl.scale ?? { min: 1, max: 5 }), max_label: e.target.value } })} disabled={!canEdit} />
-                                            </div>
-                                        )}
-                                    </li>
-                                ))}
-                            </ol>
+                <TabsList className="mb-4">
+                    <TabsTrigger value="build">Edit</TabsTrigger>
+                    <TabsTrigger value="preview">Preview</TabsTrigger>
+                    {id && <TabsTrigger value="responses">Responses ({f?._count?.submissions ?? 0})</TabsTrigger>}
+                    {id && <TabsTrigger value="share">Share</TabsTrigger>}
+                </TabsList>
+                <TabsContent value="build" className="space-y-3">
+                    <FormBuilder
+                        fields={fields} setFields={setFields} canEdit={canEdit} name={name} setName={setName} description={description} setDescription={setDescription}
+                        selected={selected} setSelected={setSelected} settleKey={settleKey}
+                        onRemoveQuestion={(i) => (hasResponses && persistedKeys.has(fields[i].key) ? setRemoveIdx(i) : removeQuestion(i))}
+                        settings={(
+                            <>
+                                <div className="space-y-1.5">
+                                    <Label>Kind</Label>
+                                    <Select value={kind} onValueChange={(v) => setKind(v as CustomFormKind)} disabled={!canEdit}>
+                                        <SelectTrigger aria-label="Kind"><SelectValue /></SelectTrigger>
+                                        <SelectContent>{CustomFormKindFormOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5"><Label htmlFor="form-confirm">Confirmation message</Label><Input id="form-confirm" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} disabled={!canEdit} placeholder="Thanks — we got it." /></div>
+                                <Toggle label="Anonymous / public link" hint="Responses are not linked to a person; the published form gets a public URL." checked={anonymous} onChange={setAnonymous} disabled={!canEdit} />
+                                <Toggle label="Allow several responses per person" checked={multiple} onChange={setMultiple} disabled={!canEdit} />
+                                <Toggle label="Responses need review" checked={review} onChange={setReview} disabled={!canEdit} />
+                            </>
                         )}
-                    </Section>
+                    />
+                    <ConfirmationDialog
+                        isOpen={removeIdx !== null}
+                        onClose={() => setRemoveIdx(null)}
+                        title="Remove this question?"
+                        description="This form already has responses. Answers to this question stay in the saved responses but are no longer shown in the form."
+                        confirmText="Remove"
+                        variant="destructive"
+                        onConfirm={() => removeIdx !== null && removeQuestion(removeIdx)}
+                    />
                     {canEdit && problem && (showProblem || !!id) && <p role="alert" className="text-xs text-warning">{problem}{id ? " — changes are saved once this is fixed." : ""}</p>}
-                    {canEdit && !id && <div className="flex justify-end"><Button onClick={createForm} loading={create.isPending}><Save /> Create form</Button></div>}
+                </TabsContent>
+                <TabsContent value="preview">
+                    <div className="mx-auto max-w-2xl space-y-4 rounded-lg border border-border bg-card p-6">
+                        <div><h2 className="text-xl font-medium text-foreground">{name || "Untitled form"}</h2>{description && <p className="text-[13px] text-muted-foreground">{description}</p>}</div>
+                        <FormRenderer fields={fields} onSubmit={() => undefined} submitLabel="Submit (preview)" />
+                    </div>
                 </TabsContent>
                 {id && <TabsContent value="responses"><ResponsesTab formId={id} /></TabsContent>}
                 {id && f && (

@@ -384,7 +384,7 @@ export class DocsFormsService {
         const out: Record<string, unknown> = {};
         const errors: Record<string, string> = {};
         for (const f of fields) {
-            if (f.type === 'SECTION') continue;
+            if (f.type === 'SECTION' || f.visible === false) continue;
             const v = answers[f.key];
             const empty = v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length) || (f.type === 'CHECKBOX' && v === false && f.required);
             if (empty) {
