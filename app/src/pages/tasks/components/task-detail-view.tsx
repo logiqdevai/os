@@ -129,7 +129,7 @@ function TaskDetailBody({ task: t, compact, onDeleted }: { task: TaskDetail; com
                     <Prop label="Priority"><PriorityPicker value={t.priority} onChange={(priority) => patch({ priority })} disabled={!canEdit} /></Prop>
                     <Prop label="Assignees">
                         {canEdit && canAssign ? (
-                            <AssigneesPicker value={t.assignees.map((m) => m.id)} selected={t.assignees} onChange={(ids) => patch({ assignee_ids: ids }, { assignees: t.assignees.filter((m) => ids.includes(m.id)) })} />
+                            <AssigneesPicker value={t.assignees.map((m) => m.id)} selected={t.assignees} onChange={(ids, members) => patch({ assignee_ids: ids }, { assignees: members })} />
                         ) : (
                             <div className="flex flex-wrap items-center gap-2">
                                 {t.assignees.length ? t.assignees.map((m) => <MemberAvatar key={m.id} person={m.user} showName />) : <MemberAvatar person={null} showName />}

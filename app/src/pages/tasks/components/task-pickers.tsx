@@ -21,7 +21,7 @@ interface Common {
 }
 
 /** Multi-select assignees (Popover + Command with check marks). `selected` keeps current people visible when the search hides them. */
-export function AssigneesPicker({ value, onChange, selected = [], disabled, trigger, className }: { value: string[]; onChange: (ids: string[]) => void; selected?: MemberRef[]; disabled?: boolean; trigger?: ReactNode; className?: string }) {
+export function AssigneesPicker({ value, onChange, selected = [], disabled, trigger, className }: { value: string[]; onChange: (ids: string[], members: MemberRef[]) => void; selected?: MemberRef[]; disabled?: boolean; trigger?: ReactNode; className?: string }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const people = useTaskPeople(search);
@@ -47,7 +47,10 @@ export function AssigneesPicker({ value, onChange, selected = [], disabled, trig
                             {rows.map((p) => {
                                 const on = value.includes(p.id);
                                 return (
-                                    <CommandItem key={p.id} value={p.id} onSelect={() => onChange(on ? value.filter((v) => v !== p.id) : [...value, p.id])}>
+                                    <CommandItem key={p.id} value={p.id} onSelect={() => {
+                                        const ids = on ? value.filter((v) => v !== p.id) : [...value, p.id];
+                                        onChange(ids, rows.filter((r) => ids.includes(r.id)));
+                                    }}>
                                         <Check className={cn("size-4", on ? "opacity-100" : "opacity-0")} />
                                         <MemberAvatar person={p.user} size="xs" showName />
                                     </CommandItem>
